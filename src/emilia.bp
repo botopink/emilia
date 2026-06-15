@@ -1,0 +1,15 @@
+//// emilia — CSS-in-bp for botopink/jhonstart (intent skeleton).
+////
+//// This file is the placeholder body declared by `root.bp`'s `pub default mod
+//// emilia;`. The real runtime (the `EmiliaClass` record, `styled` namespace,
+//// `css """…"""` + `tw "…"` template fns, and the `Stylesheet` host-cell
+//// seam) is implemented across the F1–F5 steps of
+//// `tasks/v0.beta.19/specs/emilia.md` in the parent workspace.
+////
+//// Until then, the only published symbol is a sentinel `version` constant —
+//// enough for `from "emilia"` to resolve in a consumer and for `botopink test`
+//// to see a module that compiles. The empty surface is deliberate: the spec
+//// is INTENT, immutable once written, and seed commits ship only what is
+//// strictly needed for the workspace to wire emilia as a submodule.
+
+pub val version = "0.0.1";

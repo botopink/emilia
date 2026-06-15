@@ -1,0 +1,15 @@
+//// The `emilia` package — module-tree root.
+////
+//// `emilia` is a single-module library: `emilia.bp` carries the whole lib
+//// (the `EmiliaClass` record, the `styled` namespace, the `css`/`tw` template
+//// fns, and the `Stylesheet` host-cell seam). Declaring it `pub default mod`
+//// makes it the package's public surface AND its default module: a consumer
+//// reaches the named items via `import {styled, css, tw} from "emilia"` and
+//// binds the package handle with `import emilia`, which resolves to the
+//// module's `pub default fn` (the `tw "…"` utility template).
+////
+//// The runtime is intentionally absent from this seed commit — see
+//// `tasks/v0.beta.19/specs/emilia.md` in the parent workspace for the intent
+//// + the F-step ordering.
+
+pub default mod emilia;
