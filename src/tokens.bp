@@ -1,0 +1,86 @@
+//// emilia/tokens — the typed `Token` enum: the entire authored surface.
+////
+//// A consumer writes styles by LISTING typed tokens; never by writing CSS
+//// strings. Each variant maps to a fixed CSS declaration via
+//// `tokenToCss` (in `emilia.bp`). Unknown tokens are type errors at the
+//// call site, not runtime fall-throughs.
+////
+//// SECTIONS (V0 — flattened into prefixed variant names):
+////
+////   Text   — TextBold / Italic / Underline / LineThrough / Left/Center/Right,
+////            TextSize{Xs, Sm, Base, Lg, Xl, X2xl, X3xl}.
+////   Color  — text color, fixed palette {Red500, Red700, Blue500, Blue700,
+////            Gray500, White, Black} + ColorHex(string) escape.
+////   Bg     — background color, fixed palette {Red500, Blue500, Gray100,
+////            Gray900, White, Black} + BgHex(string) escape.
+////   Pad    — padding, three axes: PadX{1,2,4,8,16}, PadY{1,2,4},
+////            PadAll{1,2,4,8,16} — `1` = 0.25rem, `4` = 1rem, …
+////
+//// V0 SCAFFOLDING NOTE. The spec authors the surface as nested sections
+//// with path access (`.Text.Bold`, `.Color.Red.500`, `.Pad.X.4`). That
+//// shape requires the `enum-sections` language extension (v0.beta.20
+//// frente-a keystone). Until enum-sections lands, this V0 enum encodes
+//// the same logical sections via flat prefixed variant names
+//// (`.TextBold`, `.ColorRed500`, `.PadX4`). The `tokenToCss` mapping +
+//// the hashed-class / per-render flush mechanism stay identical when F1
+//// re-shapes the enum.
+////
+//// V0 is intentionally narrow — F1 fills out Text/Font/Color/Bg/Pad/
+//// Margin/Layout/Flex/Border/Effect + the modifier variants
+//// (Hover/Focus/Active/Md/Lg/Xl). F0 ships just enough variants to
+//// prove the shape and pin the `tokenToCss` / `flush()` contract.
+////
+//// LANGUAGE GOTCHA (encountered during F0): a line comment INSIDE an
+//// enum body (between variant arms) trips the parser — section headers
+//// must live in the file/module docblock (here), not between variants.
+
+pub enum Token {
+    TextBold,
+    TextItalic,
+    TextUnderline,
+    TextLineThrough,
+    TextLeft,
+    TextCenter,
+    TextRight,
+    TextSizeXs,
+    TextSizeSm,
+    TextSizeBase,
+    TextSizeLg,
+    TextSizeXl,
+    TextSizeX2xl,
+    TextSizeX3xl,
+    ColorRed500,
+    ColorRed700,
+    ColorBlue500,
+    ColorBlue700,
+    ColorGray500,
+    ColorWhite,
+    ColorBlack,
+    ColorHex(value: string),
+    BgRed500,
+    BgBlue500,
+    BgGray100,
+    BgGray900,
+    BgWhite,
+    BgBlack,
+    BgHex(value: string),
+    PadX1,
+    PadX2,
+    PadX4,
+    PadX8,
+    PadX16,
+    PadY1,
+    PadY2,
+    PadY4,
+    PadAll1,
+    PadAll2,
+    PadAll4,
+    PadAll8,
+    PadAll16,
+    Hover(inner: Token[]),
+    Focus(inner: Token[]),
+    Active(inner: Token[]),
+    Md(inner: Token[]),
+    Lg(inner: Token[]),
+    Xl(inner: Token[]),
+}

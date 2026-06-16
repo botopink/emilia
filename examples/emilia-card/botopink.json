@@ -1,0 +1,1 @@
+{ "name": "emilia-card", "version": "0.0.1", "target": "commonJS", "dependencies": ["jhonstart", "emilia"] }

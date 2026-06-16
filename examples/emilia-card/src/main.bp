@@ -1,0 +1,106 @@
+// emilia-card — a small jhonstart page styled via emilia's `Token` enum.
+//
+// V0 surface (this example): `emilia(...)` is called as an ordinary fn
+// whose return is the class NAME (a `string`); the spec's
+// `#[emilia(...)] div([])` decorator form and the `[emilia]={…}` html DSL
+// attribute form need the two generic jhonstart hooks (F0 second half,
+// deferred — both depend on compiler features outside this lib).
+//
+// What this example DOES prove end-to-end:
+//   - Mixed token lists lower to flat CSS declarations joined with `;`.
+//   - Modifier variants (`.Hover([...])`, `.Md([...])`) compose pseudo /
+//     media wrappers around their inner tokens.
+//   - Identical token lists on two sites collapse to ONE class name
+//     (content-derived `e_<hash>`).
+//   - `flush()` returns a `<style>...</style>` block and clears
+//     the per-render registry.
+//
+// Composition mirrors the SSR contract from the spec ("Render output"):
+//   `renderToString(page) + flush()` — markup first, then the
+//   `<style>` block. Here we just smoke-test that both pieces produce
+//   the expected golden strings.
+
+// `emilia` is the bare entry point; `flush` is the per-render serializer
+// (the SSR caller pairs it with `renderToString`). The `import emilia from
+// "emilia"` package-handle form binds the handle but doesn't lower the bare
+// fn call yet — recorded follow-up; the `{emilia, flush}` named imports
+// reach both today.
+
+import { emilia, flush, Token } from "emilia";
+import { div, p, h1, renderToString } from "jhonstart";
+
+// A card: outer container + heading + body, all styled via emilia tokens.
+// The class names returned by `emilia(...)` are stable hashes — call sites
+// using identical token lists share one class (`cardBg` below).
+val cardBg = emilia([
+    Token.PadAll4,
+    Token.BgWhite,
+    Token.ColorBlack,
+]);
+val titleStyle = emilia([
+    Token.TextSizeX3xl,
+    Token.TextBold,
+    Token.ColorRed500,
+]);
+val bodyStyle = emilia([
+    Token.TextSizeBase,
+    Token.ColorGray500,
+    Token.Hover([Token.ColorRed500]),
+    Token.Md([Token.TextSizeLg]),
+]);
+
+// The element tree. Builders take `Children`; V0's `Element` has no
+// attribute slot, so the class names produced above are not yet
+// inlined into the rendered HTML — they live in the `<style>` block.
+// Once jhonstart grows an attribute carrier + the
+// annotation-on-builder hook, the spec form (`#[emilia([…])] div([…])`)
+// will write the class into the rendered tag.
+val page = div([
+    h1([]),
+    p([]),
+]);
+
+// Pretty-print the test summary (`@print` is the test-runner ergonomic).
+fn main() {
+    @print(renderToString(page));
+    @print(cardBg);
+    @print(titleStyle);
+    @print(bodyStyle);
+    @print(flush());
+}
+
+// ── tests — the smoke contract ──────────────────────────────────────────────
+
+test "page renders to the expected jhonstart tree" {
+    assert renderToString(page) == "<div><h1></h1><p></p></div>";
+}
+
+test "all three style sites produce `e_<hash>`-shaped class names" {
+    assert cardBg.startsWith("e_");
+    assert titleStyle.startsWith("e_");
+    assert bodyStyle.startsWith("e_");
+}
+
+test "identical token lists collapse to the same class name" {
+    val cardBg2 = emilia([
+        Token.PadAll4,
+        Token.BgWhite,
+        Token.ColorBlack,
+    ]);
+    assert cardBg2 == cardBg;
+}
+
+test "flush returns a `<style>...</style>` block with the registered rules" {
+    val styles = flush();
+    assert styles.startsWith("<style>");
+    assert styles.endsWith("</style>");
+    // Three distinct classes were registered above (cardBg, titleStyle,
+    // bodyStyle) PLUS one re-registration in the previous test — the Map
+    // dedup keeps just the three unique entries.
+    assert styles.indexOf(cardBg) != -1;
+    assert styles.indexOf(titleStyle) != -1;
+    assert styles.indexOf(bodyStyle) != -1;
+    // Modifier composition shows through into the body class.
+    assert styles.indexOf(":hover{color:#ef4444}") != -1;
+    assert styles.indexOf("@media(min-width:768px){font-size:1.125rem}") != -1;
+}

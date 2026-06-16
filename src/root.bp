@@ -1,15 +1,31 @@
 //// The `emilia` package — module-tree root.
 ////
-//// `emilia` is a single-module library: `emilia.bp` carries the whole lib
-//// (the `EmiliaClass` record, the `styled` namespace, the `css`/`tw` template
-//// fns, and the `Stylesheet` host-cell seam). Declaring it `pub default mod`
-//// makes it the package's public surface AND its default module: a consumer
-//// reaches the named items via `import {styled, css, tw} from "emilia"` and
-//// binds the package handle with `import emilia`, which resolves to the
-//// module's `pub default fn` (the `tw "…"` utility template).
+//// emilia is a two-module library at V0:
+////   - `tokens` — the typed `Token` enum (the entire authored surface).
+////   - `emilia` — the public `emilia(tokens) -> string` entry point + the
+////                `tokenToCss` dispatcher + `flush()` + the `Stylesheet`
+////                host-cell externals.
 ////
-//// The runtime is intentionally absent from this seed commit — see
-//// `tasks/v0.beta.19/specs/emilia.md` in the parent workspace for the intent
-//// + the F-step ordering.
+//// SPEC ASKED FOR A 3-MODULE SPLIT (`tokens` / `stylesheet` / `emilia`),
+//// with `stylesheet.bp` owning the `#[@external(node, …)]` host-cell
+//// surface (`register` / `flush`) and `emilia.bp` importing those
+//// externals. The split typechecks but does NOT lower correctly at v0 —
+//// `import { register }` from a sibling module resolves the binding at
+//// type level but the symbol is `undefined` at runtime (cross-module
+//// external lowering doesn't yet route through the bare-import binding —
+//// the std-lib pattern uses QUALIFIED calls `env.read(…)` after `import {
+//// env } from "std"`, and that path is module-level, not sibling-bare).
+//// Folding the host-cell externals into `emilia.bp` removes the seam
+//// without changing the public surface; restoring the 3-module split is
+//// a follow-up once `import { sibling-fn };` reaches parity with the
+//// `import { env } from "std";` codepath. Recorded in
+//// `tasks/v0.beta.20/specs/ecosystem.md` Phases F0 closeout.
+////
+//// Declared `pub default mod emilia` so the package's bare-handle binding
+//// (`import emilia, { Token } from "emilia"`) resolves to the `emilia`
+//// module's default-fn surface. `Token` is reached from `tokens` via the
+//// flat-import shorthand the resolver already follows (a sibling-module
+//// symbol resolves through `pub mod`s declared here).
 
+pub mod tokens;
 pub default mod emilia;

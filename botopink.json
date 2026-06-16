@@ -1,11 +1,12 @@
 {
   "name": "emilia",
   "version": "0.0.1",
-  "description": "Styled-components + tailwind-style CSS-in-bp library for jhonstart — a styled.<tag>``…`` builder + a css\"\"\"…\"\"\" template fn, plus a tailwind-like utility token set, all pure botopink driven by @Expr and @ExprCustom",
+  "description": "Type-safe CSS-in-bp library for jhonstart — a `Token` enum surface (variants per CSS family + Hex(string) escape) walked at comptime, resolved to flat CSS declarations, registered on a per-render Stylesheet host cell, and flushed alongside renderToString",
   "target": "commonJS",
   "src": "src/",
   "files": [
     "root.bp",
+    "tokens.bp",
     "emilia.bp"
   ]
 }
