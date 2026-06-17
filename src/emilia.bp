@@ -1,226 +1,303 @@
-//// emilia — the `emilia(tokens)` entry point + `tokenToCss` dispatcher.
-////
-//// CONSUMER SURFACE (V0 — F0 scaffolding):
-////
-////   import emilia, { Token } from "emilia";
-////
-////   val cls = emilia([Token.TextBold, Token.PadX4]);
-////   // cls is the class name registered on the per-render Stylesheet.
-////   // Later: val styles = emilia.flush(); → "<style>.e_<hash>{...}</style>"
-////
-//// The spec form (`emilia([.Text.Bold, .Pad.X.4])` decorator on a builder
-//// call, or `<div [emilia]={[…]}>` html DSL attribute) needs the
-//// `enum-sections` keystone (frente-a) + the two GENERIC jhonstart hooks
-//// (annotation-on-builder + `[name]={expr}` html attribute scanner). F0
-//// proves the underlying mechanism: walk a `Token[]` list, resolve each
-//// to a CSS declaration, hash the body into a stable class name, register
-//// on the host-cell `Stylesheet`. The jhonstart hooks are recorded
-//// follow-ups (TODO §F0 — second half).
-////
-//// Pipeline (per `emilia(tokens)` call):
-////   1. `tokens.map(tokenToCss)` — each variant lowers to one declaration.
-////   2. `.filter(notEmpty)` — drop empty results (defensive; `tokenToCss`
-////      should never emit `""` for a real variant).
-////   3. `.join(";")` — concatenate into a single CSS rule body.
-////   4. `hashHex(body)` — content-derived class id (djb2-style, hex-encoded).
-////   5. `Stylesheet.register("e_<hash>", body)` — push to the per-render Map.
-////   6. Return `"e_<hash>"` — the consumer (jhonstart, later) inlines this
-////      string as the element's `class` attribute.
-////
-//// Identical token lists collapse to the same class name (acceptance gate
-//// `hash`), and two consecutive `flush()` calls emit two independent
-//// `<style>` blocks (gate `flush`) — both inherited from the host cell's
-//// register/clear contract.
-////
-//// LANGUAGE GOTCHA (encountered during F0): array TYPES are postfix
-//// (`Token[]`), not prefix (`[Token]`). Array LITERALS are bracketed
-//// (`[Token.TextBold, ...]`); the `[Token]` form is reserved for a future
-//// generic-bracket type sugar.
-////
-//// LANGUAGE GOTCHA (encountered during F0): a line comment INSIDE an enum
-//// body (between variant arms) trips the parser — section headers belong
-//// ABOVE the enum, not inside it.
-
 import { Token };
 
-#[@external(node, when(argc == 2): """(function(__N, __B){ (globalThis.__emilia_sheet ||= new Map()).set(__N, __B); })($0, $1)""")]
-declare fn register(name: string, body: string) -> unit;
-
-#[@external(node, when(argc == 0): """(function(){ var __M = (globalThis.__emilia_sheet ||= new Map()); var __S = "<style>" + Array.from(__M.entries()).map(function(__E){ return "." + __E[0] + "{" + __E[1] + "}"; }).join("") + "</style>"; __M.clear(); return __S; })()""")]
-declare fn flushSheet() -> string;
-
-// ── public API ───────────────────────────────────────────────────────────────
-
-// Walk a `Token[]` array → register its rule body on the Stylesheet → return
-// the assigned class name. The single public emilia call.
-pub fn emilia(tokens: Token[]) -> string {
-    val rules = tokens
-        .map({ t -> tokenToCss(t) })
-        .filter({ d -> d != "" })
-        .join(";");
-    val name = "e_" + hashHex(rules);
-    register(name, rules);
-    return name;
-}
-
-// Re-export `flush` from the stylesheet module so the SSR caller writes
-// `emilia.flush()` (the package handle binds to this module's default fn;
-// the explicit re-export keeps the surface flat and findable).
-pub fn flush() -> string {
-    return flushSheet();
-}
-
-// ── tokenToCss — exhaustive (for the F0 surface) ─────────────────────────────
-//
-// V0 covers the Text/Color/Bg/Pad flat variants from `tokens.bp`. F1+F2 grow
-// this into the full nested-section enum once `enum-sections` lands; the
-// per-section helper split (`textTokenToCss`, `colorTokenToCss`, …) is in F2.
 fn tokenToCss(t: Token) -> string {
     val out = case t {
-        TextBold        -> "font-weight:bold";
-        TextItalic      -> "font-style:italic";
-        TextUnderline   -> "text-decoration:underline";
-        TextLineThrough -> "text-decoration:line-through";
-        TextLeft        -> "text-align:left";
-        TextCenter      -> "text-align:center";
-        TextRight       -> "text-align:right";
-        TextSizeXs      -> "font-size:0.75rem";
-        TextSizeSm      -> "font-size:0.875rem";
-        TextSizeBase    -> "font-size:1rem";
-        TextSizeLg      -> "font-size:1.125rem";
-        TextSizeXl      -> "font-size:1.25rem";
-        TextSizeX2xl    -> "font-size:1.5rem";
-        TextSizeX3xl    -> "font-size:1.875rem";
-        ColorRed500     -> "color:#ef4444";
-        ColorRed700     -> "color:#b91c1c";
-        ColorBlue500    -> "color:#3b82f6";
-        ColorBlue700    -> "color:#1d4ed8";
-        ColorGray500    -> "color:#6b7280";
-        ColorWhite      -> "color:#ffffff";
-        ColorBlack      -> "color:#000000";
-        ColorHex(value) -> "color:" + value;
-        BgRed500        -> "background:#ef4444";
-        BgBlue500       -> "background:#3b82f6";
-        BgGray100       -> "background:#f3f4f6";
-        BgGray900       -> "background:#111827";
-        BgWhite         -> "background:#ffffff";
-        BgBlack         -> "background:#000000";
-        BgHex(value)    -> "background:" + value;
-        PadX1           -> "padding-left:0.25rem;padding-right:0.25rem";
-        PadX2           -> "padding-left:0.5rem;padding-right:0.5rem";
-        PadX4           -> "padding-left:1rem;padding-right:1rem";
-        PadX8           -> "padding-left:2rem;padding-right:2rem";
-        PadX16          -> "padding-left:4rem;padding-right:4rem";
-        PadY1           -> "padding-top:0.25rem;padding-bottom:0.25rem";
-        PadY2           -> "padding-top:0.5rem;padding-bottom:0.5rem";
-        PadY4           -> "padding-top:1rem;padding-bottom:1rem";
-        PadAll1         -> "padding:0.25rem";
-        PadAll2         -> "padding:0.5rem";
-        PadAll4         -> "padding:1rem";
-        PadAll8         -> "padding:2rem";
-        PadAll16        -> "padding:4rem";
-        Hover(inner)    -> ":hover{" + tokensToCss(inner) + "}";
-        Focus(inner)    -> ":focus{" + tokensToCss(inner) + "}";
-        Active(inner)   -> ":active{" + tokensToCss(inner) + "}";
-        Md(inner)       -> "@media(min-width:768px){" + tokensToCss(inner) + "}";
-        Lg(inner)       -> "@media(min-width:1024px){" + tokensToCss(inner) + "}";
-        Xl(inner)       -> "@media(min-width:1280px){" + tokensToCss(inner) + "}";
+        Text(_inner)   -> textTokenToCss(_inner);
+        _              -> "other";
     };
     return out;
 }
 
-// Recursive helper used by the modifier arms — same shape as `emilia()`'s
-// inner pipeline but WITHOUT the `register` side effect (modifiers compose
-// their inner declarations into a single wrapped string; the outer
-// `emilia()` does the hashing + register once at the top).
-fn tokensToCss(tokens: Token[]) -> string {
-    return tokens
-        .map({ t -> tokenToCss(t) })
-        .filter({ d -> d != "" })
-        .join(";");
+fn textTokenToCss(t: TokenText) -> string {
+    val out = case t {
+        Bold         -> "font-weight:bold";
+        Italic       -> "font-style:italic";
+        Underline    -> "text-decoration:underline";
+        LineThrough  -> "text-decoration:line-through";
+        Left         -> "text-align:left";
+        Center       -> "text-align:center";
+        Right        -> "text-align:right";
+        Justify      -> "text-align:justify";
+        Size(_inner) -> textSizeToCss(_inner);
+    };
+    return out;
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-// Content-derived class id. djb2-style fold over the body's UTF-16 code units,
-// rendered as a lowercase hex string. Identical inputs → identical hex →
-// identical class name (the spec's `hash` acceptance gate). commonJS only at
-// v1 (an erlang/beam port would shell out to `erlang:phash2/1` + `integer_to_binary/2`).
-#[@external(node, when(argc == 1): """(function(__S){ var __H = 5381; for (var __I = 0; __I < __S.length; __I++) { __H = (Math.imul(__H, 33) + __S.charCodeAt(__I)) >>> 0; } return __H.toString(16); })($0)""")]
-declare fn hashHex(s: string) -> string;
-
-// Internal alias for the re-export. `flush()` above calls into this; the
-// stylesheet module owns the host expression — duplicated here only because
-// the resolver doesn't (yet) lift sibling-module fns into the package's
-// default-fn surface in one hop.
-
-// ── tests ────────────────────────────────────────────────────────────────────
-//
-// In-file smoke tests — exercise the four spec acceptance gates this V0
-// scaffolding can reach (parse / render / hash / flush). The decorator-form
-// gates (`#[emilia([…])] div([])` / `<div [emilia]={[…]}>`) need the
-// jhonstart hooks and are covered in F5's `examples/emilia-card/`.
-
-test "emilia of an empty token list registers a (stable) empty-body class" {
-    val a = emilia([]);
-    val b = emilia([]);
-    assert a == b;
-    assert a.startsWith("e_");
-    val styles = flush();
-    assert styles == "<style>." + a + "{}</style>";
+fn textSizeToCss(s: TokenTextSize) -> string {
+    val out = case s {
+        Xs   -> "font-size:0.75rem";
+        Sm   -> "font-size:0.875rem";
+        Base -> "font-size:1rem";
+        Lg   -> "font-size:1.125rem";
+        Xl   -> "font-size:1.25rem";
+        X2xl -> "font-size:1.5rem";
+        X3xl -> "font-size:1.875rem";
+        X4xl -> "font-size:2.25rem";
+    };
+    return out;
 }
 
-test "emilia of one text token produces a single-declaration rule" {
-    val cls = emilia([Token.TextBold]);
-    val styles = flush();
-    assert styles == "<style>." + cls + "{font-weight:bold}</style>";
+fn fontTokenToCss(t: TokenFont) -> string {
+    val out = case t {
+        Sans           -> "font-family:ui-sans-serif,system-ui,sans-serif";
+        Serif          -> "font-family:ui-serif,Georgia,serif";
+        Mono           -> "font-family:ui-monospace,SFMono-Regular,Menlo,monospace";
+        Weight(_inner) -> fontWeightToCss(_inner);
+    };
+    return out;
 }
 
-test "emilia of mixed tokens joins declarations with `;`" {
-    val cls = emilia([Token.PadAll4, Token.BgWhite, Token.TextSizeLg]);
-    val styles = flush();
-    assert styles == "<style>." + cls + "{padding:1rem;background:#ffffff;font-size:1.125rem}</style>";
+fn fontWeightToCss(w: TokenFontWeight) -> string {
+    val out = case w {
+        Light  -> "font-weight:300";
+        Normal -> "font-weight:400";
+        Medium -> "font-weight:500";
+        Bold   -> "font-weight:700";
+        Black  -> "font-weight:900";
+    };
+    return out;
 }
 
-test "two emilia sites with the same token list collapse to one class" {
-    val a = emilia([Token.BgWhite]);
-    val b = emilia([Token.BgWhite]);
-    assert a == b;
-    val styles = flush();
-    assert styles == "<style>." + a + "{background:#ffffff}</style>";
+fn colorTokenToCss(t: TokenColor) -> string {
+    val out = case t {
+        Red(_inner)   -> "color:red";
+        Blue(_inner)  -> "color:blue";
+        Green(_inner) -> "color:green";
+        Gray(_inner)  -> "color:gray";
+        White         -> "color:#ffffff";
+        Black         -> "color:#000000";
+        Hex(value)    -> "color:" + value;
+    };
+    return out;
 }
 
-test "ColorHex carries an arbitrary value through tokenToCss" {
-    val cls = emilia([Token.ColorHex("#abc")]);
-    val styles = flush();
-    assert styles == "<style>." + cls + "{color:#abc}</style>";
+fn bgTokenToCss(t: TokenBg) -> string {
+    val out = case t {
+        Red(_inner)  -> "background:red";
+        Blue(_inner) -> "background:blue";
+        Gray(_inner) -> "background:gray";
+        White        -> "background:#ffffff";
+        Black        -> "background:#000000";
+        Hex(value)   -> "background:" + value;
+    };
+    return out;
 }
 
-test "Hover modifier wraps inner tokens in a `:hover{...}` block" {
-    val cls = emilia([Token.BgRed500, Token.Hover([Token.BgWhite, Token.TextBold])]);
-    val styles = flush();
-    assert styles == "<style>." + cls + "{background:#ef4444;:hover{background:#ffffff;font-weight:bold}}</style>";
+fn padTokenToCss(t: TokenPad) -> string {
+    val out = case t {
+        X(_inner)   -> "padding-x:" + padScaleX(_inner);
+        Y(_inner)   -> "padding-y:" + padScaleY(_inner);
+        All(_inner) -> "padding:" + padScaleAll(_inner);
+    };
+    return out;
 }
 
-test "Md modifier produces an `@media(min-width:768px){...}` block" {
-    val cls = emilia([Token.PadX4, Token.Md([Token.PadX8])]);
-    val styles = flush();
-    assert styles == "<style>." + cls + "{padding-left:1rem;padding-right:1rem;@media(min-width:768px){padding-left:2rem;padding-right:2rem}}</style>";
+fn padScaleX(s: TokenPadX) -> string {
+    val out = case s {
+        __1  -> "0.25rem";
+        __2  -> "0.5rem";
+        __4  -> "1rem";
+        __8  -> "2rem";
+        __16 -> "4rem";
+    };
+    return out;
 }
 
-test "modifiers nest — Md(Hover(...)) composes both wrappers" {
-    val cls = emilia([Token.Md([Token.Hover([Token.BgBlack])])]);
-    val styles = flush();
-    assert styles == "<style>." + cls + "{@media(min-width:768px){:hover{background:#000000}}}</style>";
+fn padScaleY(s: TokenPadY) -> string {
+    val out = case s {
+        __1 -> "0.25rem";
+        __2 -> "0.5rem";
+        __4 -> "1rem";
+        __8 -> "2rem";
+    };
+    return out;
 }
 
-test "two consecutive flush() calls emit two independent <style> blocks" {
-    val c1 = emilia([Token.TextBold]);
-    val s1 = flush();
-    val c2 = emilia([Token.TextItalic]);
-    val s2 = flush();
-    assert s1 == "<style>." + c1 + "{font-weight:bold}</style>";
-    assert s2 == "<style>." + c2 + "{font-style:italic}</style>";
-    val s3 = flush();
-    assert s3 == "<style></style>";
+fn padScaleAll(s: TokenPadAll) -> string {
+    val out = case s {
+        __1  -> "0.25rem";
+        __2  -> "0.5rem";
+        __4  -> "1rem";
+        __8  -> "2rem";
+        __16 -> "4rem";
+    };
+    return out;
+}
+
+fn marginTokenToCss(t: TokenMargin) -> string {
+    val out = case t {
+        X(_inner)   -> marginScaleX(_inner);
+        Y(_inner)   -> "margin-y:" + marginScaleY(_inner);
+        All(_inner) -> "margin:" + marginScaleAll(_inner);
+    };
+    return out;
+}
+
+fn marginScaleX(s: TokenMarginX) -> string {
+    val out = case s {
+        Auto -> "margin-auto";
+        __1  -> "m-0.25";
+        __2  -> "m-0.5";
+        __4  -> "m-1";
+        __8  -> "m-2";
+    };
+    return out;
+}
+
+fn marginScaleY(s: TokenMarginY) -> string {
+    val out = case s {
+        __1 -> "0.25rem";
+        __2 -> "0.5rem";
+        __4 -> "1rem";
+        __8 -> "2rem";
+    };
+    return out;
+}
+
+fn marginScaleAll(s: TokenMarginAll) -> string {
+    val out = case s {
+        __1 -> "0.25rem";
+        __2 -> "0.5rem";
+        __4 -> "1rem";
+        __8 -> "2rem";
+    };
+    return out;
+}
+
+fn layoutTokenToCss(t: TokenLayout) -> string {
+    val out = case t {
+        Block       -> "display:block";
+        InlineBlock -> "display:inline-block";
+        Inline      -> "display:inline";
+        Hidden      -> "display:none";
+        Flex        -> "display:flex";
+        Grid        -> "display:grid";
+    };
+    return out;
+}
+
+fn flexTokenToCss(t: TokenFlex) -> string {
+    val out = case t {
+        Row             -> "flex-direction:row";
+        Col             -> "flex-direction:column";
+        Wrap            -> "flex-wrap:wrap";
+        NoWrap          -> "flex-wrap:nowrap";
+        Items(_inner)   -> flexItemsToCss(_inner);
+        Justify(_inner) -> flexJustifyToCss(_inner);
+        Gap(_inner)     -> "gap:" + flexGapScale(_inner);
+    };
+    return out;
+}
+
+fn flexItemsToCss(p: TokenFlexItems) -> string {
+    val out = case p {
+        Start   -> "align-items:flex-start";
+        Center  -> "align-items:center";
+        End     -> "align-items:flex-end";
+        Stretch -> "align-items:stretch";
+    };
+    return out;
+}
+
+fn flexJustifyToCss(p: TokenFlexJustify) -> string {
+    val out = case p {
+        Start   -> "justify-content:flex-start";
+        Center  -> "justify-content:center";
+        End     -> "justify-content:flex-end";
+        Between -> "justify-content:space-between";
+        Around  -> "justify-content:space-around";
+    };
+    return out;
+}
+
+fn flexGapScale(s: TokenFlexGap) -> string {
+    val out = case s {
+        __1 -> "0.25rem";
+        __2 -> "0.5rem";
+        __4 -> "1rem";
+        __8 -> "2rem";
+    };
+    return out;
+}
+
+fn borderTokenToCss(t: TokenBorder) -> string {
+    val out = case t {
+        W(_inner)       -> borderWidthToCss(_inner);
+        Color(_inner)   -> borderColorToCss(_inner);
+        Rounded(_inner) -> borderRoundedToCss(_inner);
+    };
+    return out;
+}
+
+fn borderWidthToCss(s: TokenBorderW) -> string {
+    val out = case s {
+        __0 -> "border-width:0";
+        __1 -> "border-width:1px";
+        __2 -> "border-width:2px";
+        __4 -> "border-width:4px";
+    };
+    return out;
+}
+
+fn borderColorToCss(c: TokenBorderColor) -> string {
+    val out = case c {
+        Red(_inner)  -> "border-color:red";
+        Gray(_inner) -> "border-color:gray";
+        Hex(value)   -> "border-color:" + value;
+    };
+    return out;
+}
+
+fn borderRoundedToCss(r: TokenBorderRounded) -> string {
+    val out = case r {
+        Sm   -> "border-radius:0.125rem";
+        Md   -> "border-radius:0.375rem";
+        Lg   -> "border-radius:0.5rem";
+        Full -> "border-radius:9999px";
+    };
+    return out;
+}
+
+fn effectTokenToCss(t: TokenEffect) -> string {
+    val out = case t {
+        Shadow(_inner)  -> shadowToCss(_inner);
+        Opacity(_inner) -> opacityToCss(_inner);
+    };
+    return out;
+}
+
+fn shadowToCss(s: TokenEffectShadow) -> string {
+    val out = case s {
+        Sm -> "box-shadow:sm";
+        Md -> "box-shadow:md";
+        Lg -> "box-shadow:lg";
+        Xl -> "box-shadow:xl";
+    };
+    return out;
+}
+
+fn opacityToCss(o: TokenEffectOpacity) -> string {
+    val out = case o {
+        __0   -> "opacity:0";
+        __25  -> "opacity:0.25";
+        __50  -> "opacity:0.5";
+        __75  -> "opacity:0.75";
+        __100 -> "opacity:1";
+    };
+    return out;
+}
+
+fn redPaletteHex(s: TokenColorRed) -> string {
+    val out = case s {
+        __100 -> "#fee2e2";
+        __200 -> "#fecaca";
+        __300 -> "#fca5a5";
+        __400 -> "#f87171";
+        __500 -> "#ef4444";
+        __600 -> "#dc2626";
+        __700 -> "#b91c1c";
+        __800 -> "#991b1b";
+        __900 -> "#7f1d1d";
+    };
+    return out;
 }
