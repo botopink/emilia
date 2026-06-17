@@ -1,1 +1,15 @@
-{ "name": "emilia-card", "version": "0.0.1", "target": "commonJS", "dependencies": ["jhonstart", "emilia"] }
+{
+    "name": "emilia-card",
+    "version": "0.0.1",
+    "target": "commonJS",
+    "dependencies": {
+        "jhonstart": {
+            "git": "https://github.com/botopink/jhonstart.git",
+            "branch": "feat"
+        },
+        "emilia": {
+            "git": "https://github.com/botopink/emilia.git",
+            "branch": "feat"
+        }
+    }
+}
