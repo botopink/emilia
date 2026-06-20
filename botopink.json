@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Type-safe CSS-in-bp library for jhonstart — a `Token` enum surface (variants per CSS family + Hex(string) escape) walked at comptime, resolved to flat CSS declarations, registered on a per-render Stylesheet host cell, and flushed alongside renderToString",
   "target": "commonJS",
+  "targets": ["commonJS"],
   "src": "src/",
   "files": [
     "root.bp",
