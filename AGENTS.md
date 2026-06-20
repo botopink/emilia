@@ -136,25 +136,33 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 
 ## Test surface
 
-- `botopink test` inside `repository/emilia/` runs `src/emilia.bp`'s 9
-  in-file `test {}` blocks (empty list / one token / mixed tokens /
-  hash collapse / `ColorHex` payload / two flushes / Hover / Md /
-  nested modifiers).
-- `botopink test` inside `examples/emilia-card/` runs 4 more (`page`
-  tree shape / class-name shape / collapse across sites / flush block
-  composition).
-- Total: **13 green** across the lib + the example.
+- `botopink test` inside `repository/emilia/` runs `src/emilia.bp`'s
+  11 in-file `test {}` blocks (Text.Bold / Text.Size.Lg / Color.Black
+  / Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md +
+  Hover/Md modifier composition + multi-token `tokensToCss` + nested
+  modifier chain). The full `emilia(tokens)/flush()` public surface +
+  the `examples/emilia-card/` runtime smoke remain deferred — they
+  belong to the V1 re-author follow-up (the `register`/`flushSheet`/
+  `hashHex` declares + the V1 example migration `Token.X` →
+  `.X.Y.Z`).
+- `botopink test` inside `examples/emilia-card/` reds at v0.beta.22
+  because the example still uses V0 token names (`Token.PadAll4`,
+  `Token.BgWhite`, …) — migration to V1 paths is part of the same
+  follow-up.
 
 ## Spec / phase status
 
 | Phase | Status |
 | --- | --- |
-| F0 — lib stand-up | DONE (jhonstart 2 hooks DEFERRED) |
-| F1 — fill out `Token` | partial (3 sections + modifiers; nested form blocks on `enum-sections`) |
-| F2 — `tokenToCss` exhaustive | DONE |
-| F3 — modifier composition | DONE |
-| F4 — `flush()` per-render | DONE |
-| F5 — example + docs sweep | DONE (this commit) |
+| F0 — lib stand-up | DONE-then-undone (V0 surface dropped during V1 WIP) |
+| F1 — fill out `Token` | DONE (V1 nested-section landed `3f77623`) |
+| F2 — `tokenToCss` exhaustive | DONE for V1 (re-pinned under v0.beta.22 ecosystem-and-snap-tail F2) |
+| F3 — modifier composition | DONE for V1 (re-pinned alongside F2) |
+| F4 — `flush()` per-render | DEFERRED (re-author after V1 example migration) |
+| F5 — example + docs sweep | DEFERRED (V1 example migration first) |
 
 Spec lives in
-[`tasks/v0.beta.20/specs/ecosystem.md`](../../tasks/v0.beta.20/specs/ecosystem.md).
+[`tasks/v0.beta.20/specs/ecosystem.md`](../../tasks/v0.beta.20/specs/ecosystem.md);
+the V1 re-author follow-up rides on
+[`tasks/v0.beta.22/specs/05-ecosystem-and-snap-tail.md`](../../tasks/v0.beta.22/specs/05-ecosystem-and-snap-tail.md)
+F2's deferred half.

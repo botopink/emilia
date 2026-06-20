@@ -1,5 +1,26 @@
 # emilia · CHANGELOG
 
+## Unreleased — v0.beta.22
+
+- **ecosystem-and-snap-tail F2** — `tokenToCss` exhaustive dispatch +
+  modifier composition re-pinned for the V1 nested-section enum (the
+  V0 surface dropped during the `3f77623` WIP migration). Every top-
+  level section (`Text/Font/Color/Bg/Pad/Margin/Layout/Flex/Border/
+  Effect`) routes to its typed sub-dispatcher; every modifier
+  (`Hover/Focus/Active/Md/Lg/Xl`) recurses through the new
+  `tokensToCss` helper to compose the inner CSS inside the
+  pseudo/media wrapper. 11 in-file smoke tests pin the V1 leaf set +
+  modifier composition. The full `emilia(tokens)/flush()` public
+  surface remains deferred (the `register`/`flushSheet`/`hashHex`
+  declares + `pub fn emilia/flush` need re-authoring under a follow-
+  up commit pair, blocked on the V0→V1 example migration).
+
+  GOTCHA pinned: in `case ARM(field) -> ...`, the bind name maps to
+  the variant's **literal field name**. Section-auto-synth variants
+  carry `_inner` (use `_inner`); user-declared payloads use the
+  declared name (`Hover(inner: Token[])` → `Hover(inner)`, not
+  `Hover(_inner)`). Mixing the two issues `undefined.map` at runtime.
+
 ## Unreleased — v0.beta.20
 
 - **F0** lib stand-up (v0 surface): `Token` enum with 3 sections

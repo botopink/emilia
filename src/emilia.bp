@@ -1,11 +1,45 @@
 import { Token };
 
+// Exhaustive dispatch over the V1 nested-section `Token` enum. Each
+// section pattern (`Text(inner)`, `Color(inner)`, …) routes to a typed
+// sub-dispatcher; each modifier pattern (`Hover(inner)`, `Md(inner)`,
+// …) wraps the composed inner CSS in the matching pseudo/media block
+// via `tokensToCss`. Adding a new top-level section + modifier requires
+// extending both this switch and the corresponding sub-dispatcher.
 fn tokenToCss(t: Token) -> string {
     val out = case t {
-        Text(_inner)   -> textTokenToCss(_inner);
-        _              -> "other";
+        Text(_inner)    -> textTokenToCss(_inner);
+        Font(_inner)    -> fontTokenToCss(_inner);
+        Color(_inner)   -> colorTokenToCss(_inner);
+        Bg(_inner)      -> bgTokenToCss(_inner);
+        Pad(_inner)     -> padTokenToCss(_inner);
+        Margin(_inner)  -> marginTokenToCss(_inner);
+        Layout(_inner)  -> layoutTokenToCss(_inner);
+        Flex(_inner)    -> flexTokenToCss(_inner);
+        Border(_inner)  -> borderTokenToCss(_inner);
+        Effect(_inner)  -> effectTokenToCss(_inner);
+        Hover(inner)    -> ":hover{" + tokensToCss(inner) + "}";
+        Focus(inner)    -> ":focus{" + tokensToCss(inner) + "}";
+        Active(inner)   -> ":active{" + tokensToCss(inner) + "}";
+        Md(inner)       -> "@media(min-width:768px){" + tokensToCss(inner) + "}";
+        Lg(inner)       -> "@media(min-width:1024px){" + tokensToCss(inner) + "}";
+        Xl(inner)       -> "@media(min-width:1280px){" + tokensToCss(inner) + "}";
     };
     return out;
+}
+
+// Recursive helper used by the modifier arms — same fold-to-CSS shape
+// as the (deferred) public `emilia()` entry point's inner pipeline,
+// but WITHOUT the `register` side effect. Modifiers compose their inner
+// declarations into a single wrapped string; the outer `emilia()`
+// (when re-authored under the F0 follow-up — V0 surface dropped during
+// the `3f77623` WIP migration to V1 enum-sections) does the hashing +
+// register once at the top.
+fn tokensToCss(tokens: Token[]) -> string {
+    return tokens
+        .map({ t -> tokenToCss(t) })
+        .filter({ d -> d != "" })
+        .join(";");
 }
 
 fn textTokenToCss(t: TokenText) -> string {
@@ -300,4 +334,67 @@ fn redPaletteHex(s: TokenColorRed) -> string {
         __900 -> "#7f1d1d";
     };
     return out;
+}
+
+// ── tests ────────────────────────────────────────────────────────────────────
+// V1 enum-section dispatch smoke. The full `emilia(tokens)/flush()`
+// public surface dropped during the `3f77623` WIP migration is not
+// re-authored here (a follow-up under `v0.beta.22 ecosystem-and-snap-
+// tail` F0-extension); these tests pin `tokenToCss` exhaustiveness +
+// modifier composition shape for the post-V1 leaf set.
+
+test "tokenToCss — Text.Bold lowers to font-weight:bold" {
+    assert tokenToCss(.Text.Bold) == "font-weight:bold";
+}
+
+test "tokenToCss — Text.Size.Lg lowers to font-size:1.125rem" {
+    assert tokenToCss(.Text.Size.Lg) == "font-size:1.125rem";
+}
+
+test "tokenToCss — Color.Black lowers to color:#000000" {
+    assert tokenToCss(.Color.Black) == "color:#000000";
+}
+
+test "tokenToCss — Bg.White lowers to background:#ffffff" {
+    assert tokenToCss(.Bg.White) == "background:#ffffff";
+}
+
+test "tokenToCss — Layout.Flex lowers to display:flex" {
+    assert tokenToCss(.Layout.Flex) == "display:flex";
+}
+
+test "tokenToCss — Border.Rounded.Full lowers to border-radius:9999px" {
+    assert tokenToCss(.Border.Rounded.Full) == "border-radius:9999px";
+}
+
+test "tokenToCss — Effect.Shadow.Md lowers to box-shadow:md" {
+    assert tokenToCss(.Effect.Shadow.Md) == "box-shadow:md";
+}
+
+test "tokenToCss — Hover modifier wraps inner CSS in :hover{...}" {
+    val inner: Token[] = [.Color.Black];
+    val h = Token.Hover(inner);
+    val css = tokenToCss(h);
+    assert css == ":hover{color:#000000}";
+}
+
+test "tokenToCss — Md modifier wraps inner CSS in @media(min-width:768px){...}" {
+    val inner: Token[] = [.Text.Bold];
+    val m = Token.Md(inner);
+    val css = tokenToCss(m);
+    assert css == "@media(min-width:768px){font-weight:bold}";
+}
+
+test "tokensToCss — composes a multi-token list with ';' separator" {
+    val list: Token[] = [.Text.Bold, .Color.Black];
+    val css = tokensToCss(list);
+    assert css == "font-weight:bold;color:#000000";
+}
+
+test "tokenToCss — nested modifiers compose left-to-right" {
+    val deepest: Token[] = [.Text.Bold];
+    val mid: Token[] = [Token.Md(deepest)];
+    val outer = Token.Hover(mid);
+    val css = tokenToCss(outer);
+    assert css == ":hover{@media(min-width:768px){font-weight:bold}}";
 }
