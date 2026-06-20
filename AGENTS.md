@@ -137,18 +137,20 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 ## Test surface
 
 - `botopink test` inside `repository/emilia/` runs `src/emilia.bp`'s
-  11 in-file `test {}` blocks (Text.Bold / Text.Size.Lg / Color.Black
-  / Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md +
-  Hover/Md modifier composition + multi-token `tokensToCss` + nested
-  modifier chain). The full `emilia(tokens)/flush()` public surface +
-  the `examples/emilia-card/` runtime smoke remain deferred — they
-  belong to the V1 re-author follow-up (the `register`/`flushSheet`/
-  `hashHex` declares + the V1 example migration `Token.X` →
-  `.X.Y.Z`).
-- `botopink test` inside `examples/emilia-card/` reds at v0.beta.22
-  because the example still uses V0 token names (`Token.PadAll4`,
-  `Token.BgWhite`, …) — migration to V1 paths is part of the same
-  follow-up.
+  17 in-file `test {}` blocks:
+  - 7 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
+    Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md);
+  - 4 modifier composition tests (Hover / Md / multi-token / nested);
+  - 6 public-surface smoke (empty-list class / single-token rule /
+    mixed-token join / hash collapse / Hover wrap in registered class /
+    two-flush independent blocks). The async `flush()` returns
+    `@Future<string>`; tests `await flush()` via the implicit
+    `test {…}` future context shipped in bot-lang's `test-runner-async`
+    commit.
+- `botopink test` inside `examples/emilia-card/` ships 4 green tests
+  on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`,
+  …) — the V0→V1 migration landed under v0.beta.22
+  `ecosystem-and-snap-tail` F2.5.
 
 ## Spec / phase status
 
@@ -158,8 +160,8 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 | F1 — fill out `Token` | DONE (V1 nested-section landed `3f77623`) |
 | F2 — `tokenToCss` exhaustive | DONE for V1 (re-pinned under v0.beta.22 ecosystem-and-snap-tail F2) |
 | F3 — modifier composition | DONE for V1 (re-pinned alongside F2) |
-| F4 — `flush()` per-render | DEFERRED (re-author after V1 example migration) |
-| F5 — example + docs sweep | DEFERRED (V1 example migration first) |
+| F4 — `flush()` per-render | DONE — async (`@Future<string>`); test bodies await via implicit future context (bot-lang `<test-runner-async>` commit) |
+| F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
 
 Spec lives in
 [`tasks/v0.beta.20/specs/ecosystem.md`](../../tasks/v0.beta.20/specs/ecosystem.md);

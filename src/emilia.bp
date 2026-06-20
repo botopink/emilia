@@ -1,5 +1,63 @@
 import { Token };
 
+// ── host-cell externals ──────────────────────────────────────────────────────
+//
+// The `Stylesheet` host cell is a JS `Map` lazily created on `globalThis`.
+// `register(name, body)` writes (name → body) to the cell. `flushSheet()`
+// serialises the cell into a `<style>` block and clears it (per-render
+// contract: two consecutive flushes emit two independent blocks; the second
+// is `<style></style>` if no register happened in between).
+//
+// `flushSheet` returns `@Future<string>` — wrapped in `Promise.resolve(...)`
+// so the public `flush()` surface is awaitable from any callsite (an SSR
+// pipeline may chain it with `await renderToString(page)` symmetric to
+// `await fetch(url)` from `std/http`). Tests support `await` via the
+// implicit future context (`inferTestDecl`) + `async function` emission
+// in `commonJS.emitTestFn`. The erlang backend's eager `@Future<T>` = `T`
+// rule makes `await` an identity there.
+//
+// commonJS only at v1 — an erlang/beam port would swap `Map` for
+// `persistent_term` (recorded follow-up; emilia is commonJS-only per
+// `botopink.json` `targets: ["commonJS"]`).
+#[@external(node, when(argc == 2): """(function(__N, __B){ (globalThis.__emilia_sheet ||= new Map()).set(__N, __B); })($0, $1)""")]
+declare fn register(name: string, body: string) -> unit;
+
+#[@future]
+#[@external(node, when(argc == 0): """Promise.resolve((function(){ var __M = (globalThis.__emilia_sheet ||= new Map()); var __S = "<style>" + Array.from(__M.entries()).map(function(__E){ return "." + __E[0] + "{" + __E[1] + "}"; }).join("") + "</style>"; __M.clear(); return __S; })())""")]
+declare fn flushSheet() -> @Future<string>;
+
+// Content-derived class id. djb2-style fold over the body's UTF-16 code
+// units, rendered as a lowercase hex string. Identical inputs → identical
+// hex → identical class name (the acceptance gate `hash`). commonJS only —
+// an erlang port would shell out to `erlang:phash2/1 + integer_to_binary/2`.
+#[@external(node, when(argc == 1): """(function(__S){ var __H = 5381; for (var __I = 0; __I < __S.length; __I++) { __H = (Math.imul(__H, 33) + __S.charCodeAt(__I)) >>> 0; } return __H.toString(16); })($0)""")]
+declare fn hashHex(s: string) -> string;
+
+// ── public API ───────────────────────────────────────────────────────────────
+
+// Walk a `Token[]` array → register its rule body on the Stylesheet → return
+// the assigned class name. The single public emilia call.
+pub fn emilia(tokens: Token[]) -> string {
+    val rules = tokensToCss(tokens);
+    val name = "e_" + hashHex(rules);
+    register(name, rules);
+    return name;
+}
+
+// Serialise the Stylesheet into a `<style>...</style>` block AND clear
+// the cell. Per-render contract — two consecutive calls emit two
+// independent blocks; the second is `<style></style>` if no `register`
+// happened in between.
+//
+// Async (`@Future<string>`) so the SSR caller can chain it with the
+// other async pieces of a render pipeline (`await renderToString(page)
+// + await flush()`). Tests resolve the future inline via the implicit
+// `test {…}` future context.
+#[@future]
+pub fn flush() -> @Future<string> {
+    return await flushSheet();
+}
+
 // Exhaustive dispatch over the V1 nested-section `Token` enum. Each
 // section pattern (`Text(inner)`, `Color(inner)`, …) routes to a typed
 // sub-dispatcher; each modifier pattern (`Hover(inner)`, `Md(inner)`,
@@ -397,4 +455,63 @@ test "tokenToCss — nested modifiers compose left-to-right" {
     val outer = Token.Hover(mid);
     val css = tokenToCss(outer);
     assert css == ":hover{@media(min-width:768px){font-weight:bold}}";
+}
+
+// ── public emilia/flush smoke ────────────────────────────────────────────────
+
+test "emilia of an empty token list registers a (stable) empty-body class" {
+    val empty: Token[] = [];
+    val a = emilia(empty);
+    val b = emilia(empty);
+    assert a == b;
+    assert a.startsWith("e_");
+    val styles = await flush();
+    assert styles == "<style>." + a + "{}</style>";
+}
+
+test "emilia of one text token produces a single-declaration rule" {
+    val tokens: Token[] = [.Text.Bold];
+    val cls = emilia(tokens);
+    val styles = await flush();
+    assert styles == "<style>." + cls + "{font-weight:bold}</style>";
+}
+
+test "emilia of mixed tokens joins declarations with ';'" {
+    val tokens: Token[] = [.Bg.White, .Text.Size.Lg];
+    val cls = emilia(tokens);
+    val styles = await flush();
+    assert styles == "<style>." + cls + "{background:#ffffff;font-size:1.125rem}</style>";
+}
+
+test "two emilia sites with the same token list collapse to one class" {
+    val tokens: Token[] = [.Bg.White];
+    val a = emilia(tokens);
+    val b = emilia(tokens);
+    assert a == b;
+    val styles = await flush();
+    assert styles == "<style>." + a + "{background:#ffffff}</style>";
+}
+
+// Hex(value) payload variant inside a nested section can't be constructed
+// inline via the current dot-shorthand grammar (`[.Color.Hex("#abc")]`
+// trips the parser — the dot-chain + payload-call combination doesn't
+// propagate the typed-array context inside the array literal). Until the
+// shorthand for that shape lands, callers wrap the call in a fn or use
+// the typed `val` intermediate. Tracked as part of `enum-sections` tail.
+
+test "Hover modifier wraps inner tokens in a ':hover{...}' block" {
+    val inner: Token[] = [.Bg.White, .Text.Bold];
+    val tokens: Token[] = [.Bg.Black, Token.Hover(inner)];
+    val cls = emilia(tokens);
+    val styles = await flush();
+    assert styles == "<style>." + cls + "{background:#000000;:hover{background:#ffffff;font-weight:bold}}</style>";
+}
+
+test "two consecutive flushes emit two independent blocks" {
+    val first: Token[] = [.Text.Bold];
+    val _a = emilia(first);
+    val s1 = await flush();
+    val s2 = await flush();
+    assert s1.startsWith("<style>");
+    assert s2 == "<style></style>";
 }

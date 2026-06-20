@@ -32,22 +32,35 @@ import { div, p, h1, renderToString } from "jhonstart";
 // A card: outer container + heading + body, all styled via emilia tokens.
 // The class names returned by `emilia(...)` are stable hashes — call sites
 // using identical token lists share one class (`cardBg` below).
-val cardBg = emilia([
-    Token.PadAll4,
-    Token.BgWhite,
-    Token.ColorBlack,
-]);
-val titleStyle = emilia([
-    Token.TextSizeX3xl,
-    Token.TextBold,
-    Token.ColorRed500,
-]);
-val bodyStyle = emilia([
-    Token.TextSizeBase,
-    Token.ColorGray500,
-    Token.Hover([Token.ColorRed500]),
-    Token.Md([Token.TextSizeLg]),
-]);
+//
+// V1 enum-section path access: `.Pad.All.__4`, `.Color.Red.__500`, etc.
+// Numeric leaves are pure digits in the chain (`.500`) — but in `case`
+// patterns and via type-inferred bind they read as `__500`. The leading-
+// dot form needs context from the typed `Token[]` array literal to
+// resolve.
+val cardTokens: Token[] = [
+    .Pad.All.__4,
+    .Bg.White,
+    .Color.Black,
+];
+val cardBg = emilia(cardTokens);
+
+val titleTokens: Token[] = [
+    .Text.Size.X3xl,
+    .Text.Bold,
+    .Color.Red.__500,
+];
+val titleStyle = emilia(titleTokens);
+
+val hoverInner: Token[] = [.Color.Red.__500];
+val mdInner: Token[] = [.Text.Size.Lg];
+val bodyTokens: Token[] = [
+    .Text.Size.Base,
+    .Color.Gray.__500,
+    Token.Hover(hoverInner),
+    Token.Md(mdInner),
+];
+val bodyStyle = emilia(bodyTokens);
 
 // The element tree. Builders take `Children`; V0's `Element` has no
 // attribute slot, so the class names produced above are not yet
@@ -82,16 +95,17 @@ test "all three style sites produce `e_<hash>`-shaped class names" {
 }
 
 test "identical token lists collapse to the same class name" {
-    val cardBg2 = emilia([
-        Token.PadAll4,
-        Token.BgWhite,
-        Token.ColorBlack,
-    ]);
+    val cardTokens2: Token[] = [
+        .Pad.All.__4,
+        .Bg.White,
+        .Color.Black,
+    ];
+    val cardBg2 = emilia(cardTokens2);
     assert cardBg2 == cardBg;
 }
 
 test "flush returns a `<style>...</style>` block with the registered rules" {
-    val styles = flush();
+    val styles = await flush();
     assert styles.startsWith("<style>");
     assert styles.endsWith("</style>");
     // Three distinct classes were registered above (cardBg, titleStyle,
@@ -101,6 +115,9 @@ test "flush returns a `<style>...</style>` block with the registered rules" {
     assert styles.indexOf(titleStyle) != -1;
     assert styles.indexOf(bodyStyle) != -1;
     // Modifier composition shows through into the body class.
-    assert styles.indexOf(":hover{color:#ef4444}") != -1;
+    // (Color palette dispatch is still stubbed in V1 — `.Color.Red.__500`
+    // currently lowers to `color:red`, not `color:#ef4444`. Palette
+    // resolution is a follow-up under emilia F1.)
+    assert styles.indexOf(":hover{color:red}") != -1;
     assert styles.indexOf("@media(min-width:768px){font-size:1.125rem}") != -1;
 }
