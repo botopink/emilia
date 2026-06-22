@@ -29,7 +29,7 @@
   `Active`, `Md`, `Lg`, `Xl`), `emilia(tokens: Token[]) -> string`
   entry point, `flush() -> string` per-render serializer, the
   `Stylesheet` host cell (commonJS only at v1 — folded into
-  `emilia.bp` because cross-module `#[@external]` symbol imports don't
+  `emilia.bp` because cross-module `#[@External.<targert>(...)]` symbol imports don't
   lower at v0). Two-module package (`tokens` + `emilia`); `botopink
   test` green over 9 in-file blocks.
 - **F2** `tokenToCss` exhaustive `case` covering every v0 variant.

@@ -49,7 +49,7 @@ attachment syntaxes.
   `"@media(min-width:768px){...}"`), which is concatenated into the
   outer class body just like any flat declaration.
 - **Lowering to JS.** v0 lowers to plain `function emilia(tokens) {
-  ... }` + a host expression per `#[@external]` declaration. There is
+  ... }` + a host expression per `#[@External.<targert>(...)]` declaration. There is
   **no compiler change** beyond what was already in `feat` (`@external`
   templates, `case`/exhaustiveness, enum payload destructuring with
   named fields).
@@ -83,7 +83,7 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 
 - **Not a compiler change.** No new `#[@…]` annotation in the core, no
   AST node, no codegen hook. The entire DSL is `pub fn` + `case` +
-  `#[@external]` — already shipped primitives.
+  `#[@External.<targert>(...)]` — already shipped primitives.
 - **Not a runtime CSS engine.** No selector parsing, no nested
   selectors beyond the modifier wrappers (`Hover`, `Focus`, `Active`,
   `Md`, `Lg`, `Xl`), no preprocessor pipeline. The scope is a flat
@@ -103,7 +103,7 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   line comment inside the enum body (parser gotcha).
 - `src/emilia.bp` — the public `emilia(tokens) -> string` +
   `flush() -> string` + the `tokenToCss`/`tokensToCss` dispatchers +
-  the `#[@external(node, …)]` host-cell expressions (`register`,
+  the `#\[@External\.node(…)]` host-cell expressions (`register`,
   `flushSheet`).
 - `botopink.json` — `files: ["root.bp", "tokens.bp", "emilia.bp"]`
   (`.d.bp` are NOT in the module tree — memory:
@@ -128,10 +128,10 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   prefix bracket parses only as an array literal (`[Token.PadX4]`).
 - **`from "emilia"` only**, never a relative module path. emilia is a
   workspace-external lib and the consumer is jhonstart-based code.
-- **Cross-module `#[@external]` symbol imports don't lower at v0** —
+- **Cross-module `#[@External.<targert>(...)]` symbol imports don't lower at v0** —
   `import { register };` from a sibling module resolves the type but
   the runtime symbol is `undefined`. Until the codegen path closes
-  that gap, keep all `#[@external]` host-cell expressions in the
+  that gap, keep all `#[@External.<targert>(...)]` host-cell expressions in the
   module that USES them (currently `emilia.bp`).
 
 ## Test surface
