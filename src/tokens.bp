@@ -34,7 +34,7 @@
 ////   .Lg([Token])     → "@media(min-width:1024px){…}"
 ////   .Xl([Token])     → "@media(min-width:1280px){…}"
 
-pub enum Token {
+pub type Token {
     Text {
         Bold,
         Italic,

@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.beta.22
 
+- **1.0.3 surface** (botopink-lang front 12): `pub enum Token` is
+  `pub type Token { … }` (sections and payload variants unchanged). Tests 17/17 on
+  commonJS and erlang; `emilia-card` builds and its 4 tests pass (it still fails at
+  run time on the known commonJS sibling `require("../module")`, as before).
+  `botopink format` is not applied: it reorders the variants and sections.
+
 - The erlang target runs: `register`, `flushSheet` and `hashHex` carry an
   `@External.Erlang` form (process-dictionary sheet, the same djb2 hash), so
   `botopink test --target erlang` passes 17/17 instead of stopping at

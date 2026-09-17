@@ -100,8 +100,8 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 - `src/root.bp` — `pub mod tokens; pub default mod emilia;` (the
   v0 build folded the `stylesheet` module into `emilia.bp` — see the
   "Deferred" section of the README for the restoration follow-up).
-- `src/tokens.bp` — the `Token` enum: all v0 variants + the modifier
-  variants. Section headers live in the docblock; v0 NEVER puts a
+- `src/tokens.bp` — the `Token` enum-shaped `type` (`pub type Token { … }`,
+  1.0.3 surface): all v0 variants + the modifier variants. Section headers live in the docblock; v0 NEVER puts a
   line comment inside the enum body (parser gotcha).
 - `src/emilia.bp` — the public `emilia(tokens) -> string` +
   `flush() -> string` + the `tokenToCss`/`tokensToCss` dispatchers +
@@ -130,8 +130,11 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   `ColorHex(v) -> …`. The positional binding parses but lowers to
   `undefined` (codegen relies on the field name to project the payload
   from the runtime variant record).
-- **No line comment inside an enum body.** Section headers go in the
-  module docblock; the parser trips on a `//` between variant arms.
+- **No line comment inside an enum body** (kept from the 1.0.2 parser; the
+  1.0.3 field list accepts comments, but the body stays comment-free).
+  Section headers go in the module docblock.
+- **`botopink format` is not applied to `tokens.bp`:** the formatter prints
+  payload variants before sections, reordering the authored `Token` body.
 - **Array type spelling is postfix** — `Token[]`, NOT `[Token]`. The
   prefix bracket parses only as an array literal (`[Token.PadX4]`).
 - **`from "emilia"` only**, never a relative module path. emilia is a
