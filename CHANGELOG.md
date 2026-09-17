@@ -2,6 +2,11 @@
 
 ## Unreleased — v0.beta.22
 
+- The erlang target runs: `register`, `flushSheet` and `hashHex` carry an
+  `@External.Erlang` form (process-dictionary sheet, the same djb2 hash), so
+  `botopink test --target erlang` passes 17/17 instead of stopping at
+  `MissingExternalTarget`; `botopink.json` lists `erlang` in `targets`.
+
 - The examples gate no longer aborts silently on a `scripts/known-broken-examples.txt`
   holding only comments or blank lines: the runner reads the list with `awk`, whose
   "no entry" is not a failure under `set -euo pipefail`.

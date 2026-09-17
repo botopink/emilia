@@ -89,9 +89,11 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   `Md`, `Lg`, `Xl`), no preprocessor pipeline. The scope is a flat
   declaration list per class with the modifier wrappers nested ONE
   level deep (and themselves nestable, e.g. `Md(Hover(...))`).
-- **Not coupled to a backend beyond commonJS at v1.** The `Stylesheet`
-  host cell is a JS `Map`; an erlang/beam port is a clean follow-up
-  (same `register`/`flush` contract, swap the cell type).
+- **commonJS and erlang.** The `Stylesheet` host cell is a JS `Map` on
+  commonJS and an ordered `[{Name, Body}]` list in the process dictionary on
+  erlang (same `register`/`flush` contract); `hashHex` folds the same djb2 on
+  both, so class names agree for ASCII bodies. `botopink test --target erlang`
+  runs the suite (17/17). beam/wasm are not ported.
 
 ## Files
 
