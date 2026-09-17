@@ -69,9 +69,9 @@ val bodyStyle = emilia(bodyTokens);
 // annotation-on-builder hook, the spec form (`#[emilia([…])] div([…])`)
 // will write the class into the rendered tag.
 val page = div([
-    h1([]),
-    p([]),
-]);
+    h1([], []),
+    p([], []),
+], []);
 
 // Pretty-print the test summary (`@print` is the test-runner ergonomic).
 fn main() {

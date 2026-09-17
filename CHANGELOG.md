@@ -2,6 +2,11 @@
 
 ## Unreleased — v0.beta.22
 
+- `examples/emilia-card` builds again: its jhonstart builder calls pass `attrs`
+  explicitly (parameter defaults are not applied yet), it leaves
+  `scripts/known-broken-examples.txt`, and CI checks jhonstart out beside
+  emilia so the examples gate can resolve it.
+
 - **MIT license.** `LICENSE` (`Copyright (c) 2026 Eric Fillipe and botopink
   contributors`) backs the README's License section, which now points at it.
 

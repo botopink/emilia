@@ -107,6 +107,15 @@ jobs:
       # stage as the pre-commit hook); scripts/known-broken-examples.txt lists
       # the ones allowed to fail. Each example uses its own manifest target, so
       # this runs once, not per target.
+      # examples/emilia-card depends on jhonstart; the compiler resolves it from
+      # botopink-lang/repository/jhonstart, so check it out there.
+      - name: Checkout jhonstart (examples dependency)
+        uses: actions/checkout@v5
+        with:
+          repository: botopink/jhonstart
+          ref: feat
+          path: botopink-lang/repository/jhonstart
+
       - name: Examples build
         working-directory: botopink-lang/repository/${{ env.LIB_NAME }}
         shell: bash
