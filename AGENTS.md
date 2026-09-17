@@ -135,6 +135,11 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   Section headers go in the module docblock.
 - **`botopink format` is not applied to `tokens.bp`:** the formatter prints
   payload variants before sections, reordering the authored `Token` body.
+- **A section of `Token` is a type written by its path** — `Token.Text`,
+  `Token.Text.Size`, `Token.Border.Color` (botopink-lang decision 8 §5.3b).
+  The flat spelling (`TokenText`) names nothing and reds with a hint; a
+  sub-dispatcher takes its own section, never the whole `Token`, so its
+  `case` stays exhaustive without a `_` and a new member reds it.
 - **Array type spelling is postfix** — `Token[]`, NOT `[Token]`. The
   prefix bracket parses only as an array literal (`[Token.PadX4]`).
 - **`from "emilia"` only**, never a relative module path. emilia is a

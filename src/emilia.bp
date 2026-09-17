@@ -106,7 +106,7 @@ fn tokensToCss(tokens: Token[]) -> string {
         .join(";");
 }
 
-fn textTokenToCss(t: TokenText) -> string {
+fn textTokenToCss(t: Token.Text) -> string {
     val out = case t {
         Bold         -> "font-weight:bold";
         Italic       -> "font-style:italic";
@@ -121,7 +121,7 @@ fn textTokenToCss(t: TokenText) -> string {
     return out;
 }
 
-fn textSizeToCss(s: TokenTextSize) -> string {
+fn textSizeToCss(s: Token.Text.Size) -> string {
     val out = case s {
         Xs   -> "font-size:0.75rem";
         Sm   -> "font-size:0.875rem";
@@ -135,7 +135,7 @@ fn textSizeToCss(s: TokenTextSize) -> string {
     return out;
 }
 
-fn fontTokenToCss(t: TokenFont) -> string {
+fn fontTokenToCss(t: Token.Font) -> string {
     val out = case t {
         Sans           -> "font-family:ui-sans-serif,system-ui,sans-serif";
         Serif          -> "font-family:ui-serif,Georgia,serif";
@@ -145,7 +145,7 @@ fn fontTokenToCss(t: TokenFont) -> string {
     return out;
 }
 
-fn fontWeightToCss(w: TokenFontWeight) -> string {
+fn fontWeightToCss(w: Token.Font.Weight) -> string {
     val out = case w {
         Light  -> "font-weight:300";
         Normal -> "font-weight:400";
@@ -156,7 +156,7 @@ fn fontWeightToCss(w: TokenFontWeight) -> string {
     return out;
 }
 
-fn colorTokenToCss(t: TokenColor) -> string {
+fn colorTokenToCss(t: Token.Color) -> string {
     val out = case t {
         Red(_inner)   -> "color:red";
         Blue(_inner)  -> "color:blue";
@@ -169,7 +169,7 @@ fn colorTokenToCss(t: TokenColor) -> string {
     return out;
 }
 
-fn bgTokenToCss(t: TokenBg) -> string {
+fn bgTokenToCss(t: Token.Bg) -> string {
     val out = case t {
         Red(_inner)  -> "background:red";
         Blue(_inner) -> "background:blue";
@@ -181,7 +181,7 @@ fn bgTokenToCss(t: TokenBg) -> string {
     return out;
 }
 
-fn padTokenToCss(t: TokenPad) -> string {
+fn padTokenToCss(t: Token.Pad) -> string {
     val out = case t {
         X(_inner)   -> "padding-x:" + padScaleX(_inner);
         Y(_inner)   -> "padding-y:" + padScaleY(_inner);
@@ -190,7 +190,7 @@ fn padTokenToCss(t: TokenPad) -> string {
     return out;
 }
 
-fn padScaleX(s: TokenPadX) -> string {
+fn padScaleX(s: Token.Pad.X) -> string {
     val out = case s {
         __1  -> "0.25rem";
         __2  -> "0.5rem";
@@ -201,7 +201,7 @@ fn padScaleX(s: TokenPadX) -> string {
     return out;
 }
 
-fn padScaleY(s: TokenPadY) -> string {
+fn padScaleY(s: Token.Pad.Y) -> string {
     val out = case s {
         __1 -> "0.25rem";
         __2 -> "0.5rem";
@@ -211,7 +211,7 @@ fn padScaleY(s: TokenPadY) -> string {
     return out;
 }
 
-fn padScaleAll(s: TokenPadAll) -> string {
+fn padScaleAll(s: Token.Pad.All) -> string {
     val out = case s {
         __1  -> "0.25rem";
         __2  -> "0.5rem";
@@ -222,7 +222,7 @@ fn padScaleAll(s: TokenPadAll) -> string {
     return out;
 }
 
-fn marginTokenToCss(t: TokenMargin) -> string {
+fn marginTokenToCss(t: Token.Margin) -> string {
     val out = case t {
         X(_inner)   -> marginScaleX(_inner);
         Y(_inner)   -> "margin-y:" + marginScaleY(_inner);
@@ -231,7 +231,7 @@ fn marginTokenToCss(t: TokenMargin) -> string {
     return out;
 }
 
-fn marginScaleX(s: TokenMarginX) -> string {
+fn marginScaleX(s: Token.Margin.X) -> string {
     val out = case s {
         Auto -> "margin-auto";
         __1  -> "m-0.25";
@@ -242,7 +242,7 @@ fn marginScaleX(s: TokenMarginX) -> string {
     return out;
 }
 
-fn marginScaleY(s: TokenMarginY) -> string {
+fn marginScaleY(s: Token.Margin.Y) -> string {
     val out = case s {
         __1 -> "0.25rem";
         __2 -> "0.5rem";
@@ -252,7 +252,7 @@ fn marginScaleY(s: TokenMarginY) -> string {
     return out;
 }
 
-fn marginScaleAll(s: TokenMarginAll) -> string {
+fn marginScaleAll(s: Token.Margin.All) -> string {
     val out = case s {
         __1 -> "0.25rem";
         __2 -> "0.5rem";
@@ -262,7 +262,7 @@ fn marginScaleAll(s: TokenMarginAll) -> string {
     return out;
 }
 
-fn layoutTokenToCss(t: TokenLayout) -> string {
+fn layoutTokenToCss(t: Token.Layout) -> string {
     val out = case t {
         Block       -> "display:block";
         InlineBlock -> "display:inline-block";
@@ -274,7 +274,7 @@ fn layoutTokenToCss(t: TokenLayout) -> string {
     return out;
 }
 
-fn flexTokenToCss(t: TokenFlex) -> string {
+fn flexTokenToCss(t: Token.Flex) -> string {
     val out = case t {
         Row             -> "flex-direction:row";
         Col             -> "flex-direction:column";
@@ -287,7 +287,7 @@ fn flexTokenToCss(t: TokenFlex) -> string {
     return out;
 }
 
-fn flexItemsToCss(p: TokenFlexItems) -> string {
+fn flexItemsToCss(p: Token.Flex.Items) -> string {
     val out = case p {
         Start   -> "align-items:flex-start";
         Center  -> "align-items:center";
@@ -297,7 +297,7 @@ fn flexItemsToCss(p: TokenFlexItems) -> string {
     return out;
 }
 
-fn flexJustifyToCss(p: TokenFlexJustify) -> string {
+fn flexJustifyToCss(p: Token.Flex.Justify) -> string {
     val out = case p {
         Start   -> "justify-content:flex-start";
         Center  -> "justify-content:center";
@@ -308,7 +308,7 @@ fn flexJustifyToCss(p: TokenFlexJustify) -> string {
     return out;
 }
 
-fn flexGapScale(s: TokenFlexGap) -> string {
+fn flexGapScale(s: Token.Flex.Gap) -> string {
     val out = case s {
         __1 -> "0.25rem";
         __2 -> "0.5rem";
@@ -318,7 +318,7 @@ fn flexGapScale(s: TokenFlexGap) -> string {
     return out;
 }
 
-fn borderTokenToCss(t: TokenBorder) -> string {
+fn borderTokenToCss(t: Token.Border) -> string {
     val out = case t {
         W(_inner)       -> borderWidthToCss(_inner);
         Color(_inner)   -> borderColorToCss(_inner);
@@ -327,7 +327,7 @@ fn borderTokenToCss(t: TokenBorder) -> string {
     return out;
 }
 
-fn borderWidthToCss(s: TokenBorderW) -> string {
+fn borderWidthToCss(s: Token.Border.W) -> string {
     val out = case s {
         __0 -> "border-width:0";
         __1 -> "border-width:1px";
@@ -337,7 +337,7 @@ fn borderWidthToCss(s: TokenBorderW) -> string {
     return out;
 }
 
-fn borderColorToCss(c: TokenBorderColor) -> string {
+fn borderColorToCss(c: Token.Border.Color) -> string {
     val out = case c {
         Red(_inner)  -> "border-color:red";
         Gray(_inner) -> "border-color:gray";
@@ -346,7 +346,7 @@ fn borderColorToCss(c: TokenBorderColor) -> string {
     return out;
 }
 
-fn borderRoundedToCss(r: TokenBorderRounded) -> string {
+fn borderRoundedToCss(r: Token.Border.Rounded) -> string {
     val out = case r {
         Sm   -> "border-radius:0.125rem";
         Md   -> "border-radius:0.375rem";
@@ -356,7 +356,7 @@ fn borderRoundedToCss(r: TokenBorderRounded) -> string {
     return out;
 }
 
-fn effectTokenToCss(t: TokenEffect) -> string {
+fn effectTokenToCss(t: Token.Effect) -> string {
     val out = case t {
         Shadow(_inner)  -> shadowToCss(_inner);
         Opacity(_inner) -> opacityToCss(_inner);
@@ -364,7 +364,7 @@ fn effectTokenToCss(t: TokenEffect) -> string {
     return out;
 }
 
-fn shadowToCss(s: TokenEffectShadow) -> string {
+fn shadowToCss(s: Token.Effect.Shadow) -> string {
     val out = case s {
         Sm -> "box-shadow:sm";
         Md -> "box-shadow:md";
@@ -374,7 +374,7 @@ fn shadowToCss(s: TokenEffectShadow) -> string {
     return out;
 }
 
-fn opacityToCss(o: TokenEffectOpacity) -> string {
+fn opacityToCss(o: Token.Effect.Opacity) -> string {
     val out = case o {
         __0   -> "opacity:0";
         __25  -> "opacity:0.25";
@@ -385,7 +385,7 @@ fn opacityToCss(o: TokenEffectOpacity) -> string {
     return out;
 }
 
-fn redPaletteHex(s: TokenColorRed) -> string {
+fn redPaletteHex(s: Token.Color.Red) -> string {
     val out = case s {
         __100 -> "#fee2e2";
         __200 -> "#fecaca";

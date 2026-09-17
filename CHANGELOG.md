@@ -2,6 +2,14 @@
 
 ## Unreleased — v0.beta.22
 
+- **Section types by path** (botopink-lang front 06 N28/C8): the 27
+  sub-dispatcher annotations name their section by path — `TokenText` is
+  `Token.Text`, `TokenTextSize` is `Token.Text.Size`, … The flat names were
+  never declared; the checker accepted them until pattern bindings became
+  typed. Tests 17/17 on commonJS and erlang; `emilia-card` builds and its 4
+  tests pass (it still fails at run time on the known commonJS sibling
+  `require("../module")`, as before).
+
 - **1.0.3 surface** (botopink-lang front 12): `pub enum Token` is
   `pub type Token { … }` (sections and payload variants unchanged). Tests 17/17 on
   commonJS and erlang; `emilia-card` builds and its 4 tests pass (it still fails at
