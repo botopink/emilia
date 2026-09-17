@@ -111,6 +111,12 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 - `examples/emilia-card/` — runnable smoke (4 in-file `test {}`)
   composing three emilia class names + a Hover/Md modifier on a small
   jhonstart page; depends on `jhonstart` + `emilia`.
+- `scripts/git-hooks/pre-commit` + `scripts/git-hooks/lib/runner-standalone.sh`
+  — the pre-commit gate, byte-identical to the sibling libraries' (see
+  "Local gate").
+- `.github/workflows/test.yml` — CI: `zig build test-libs -- --lib emilia
+  --target commonJS` on ubuntu, macos and windows, against botopink-lang
+  `vars.BOTOPINK_LANG_REF` (default `feat`).
 
 ## Maintainer rules
 
@@ -147,10 +153,12 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
     `@Future<string>`; tests `await flush()` via the implicit
     `test {…}` future context shipped in bot-lang's `test-runner-async`
     commit.
-- `botopink test` inside `examples/emilia-card/` ships 4 green tests
-  on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`,
-  …) — the V0→V1 migration landed under v0.beta.22
-  `ecosystem-and-snap-tail` F2.5.
+- `examples/emilia-card/` carries 4 in-file tests on V1 enum-section
+  paths (`.Pad.All.__4`, `.Color.Red.__500`, …), but at botopink-lang
+  `feat` (2026-09-17) the example does not compile: `'h1' expects 2
+  argument(s), got 1` — jhonstart's element builders take a second
+  argument the example does not pass. Neither the gate nor CI runs it
+  (`test-libs` compiles the library root only).
 
 ## Spec / phase status
 
@@ -168,3 +176,26 @@ Spec lives in
 the V1 re-author follow-up rides on
 [`tasks/v0.beta.22/specs/05-ecosystem-and-snap-tail.md`](../../tasks/v0.beta.22/specs/05-ecosystem-and-snap-tail.md)
 F2's deferred half.
+
+## Local gate
+
+`scripts/git-hooks/pre-commit` is the tracked pre-commit gate. It is
+self-contained: it sources `scripts/git-hooks/lib/runner-standalone.sh`
+from this repository and reaches nothing outside it, so a standalone
+clone, a checkout inside the botopink meta workspace and a worktree run
+the same gate. Install it once per clone:
+
+```sh
+git config core.hooksPath scripts/git-hooks
+```
+
+`core.hooksPath` is per clone and applies to every worktree of it. The
+gate checks staged files for conflict markers, then runs `botopink test`
+over `src/` (the 17 tests above), so a source file that does not parse —
+e.g. one carrying markdown escapes like `#\[@External\.node(` — fails
+the commit. The compiler binary is located via (in order)
+`$BOTOPINK_BIN`, the nearest ancestor
+`repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If none
+resolve, the gate prints a yellow warning and exits 0 — CI runs the full
+suite and catches any regression there. Never commit with `--no-verify`;
+fix the red instead.

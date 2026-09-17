@@ -2,6 +2,11 @@
 
 ## Unreleased — v0.beta.22
 
+- **A gate.** `scripts/git-hooks/pre-commit` (conflict markers, then
+  `botopink test`; install with `git config core.hooksPath
+  scripts/git-hooks`) and `.github/workflows/test.yml` (`test-libs --lib
+  emilia --target commonJS`), matching the sibling libraries. Before this,
+  a commit ran nothing locally or in CI.
 - **ecosystem-and-snap-tail F2** — `tokenToCss` exhaustive dispatch +
   modifier composition re-pinned for the V1 nested-section enum (the
   V0 surface dropped during the `3f77623` WIP migration). Every top-
