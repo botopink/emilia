@@ -2,6 +2,9 @@
 
 ## Unreleased — v0.beta.22
 
+- **MIT license.** `LICENSE` (`Copyright (c) 2026 Eric Fillipe and botopink
+  contributors`) backs the README's License section, which now points at it.
+
 - **A gate.** `scripts/git-hooks/pre-commit` (conflict markers, then
   `botopink test`; install with `git config core.hooksPath
   scripts/git-hooks`) and `.github/workflows/test.yml` (`test-libs --lib
