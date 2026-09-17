@@ -199,3 +199,12 @@ the commit. The compiler binary is located via (in order)
 resolve, the gate prints a yellow warning and exits 0 — CI runs the full
 suite and catches any regression there. Never commit with `--no-verify`;
 fix the red instead.
+
+After `botopink test`, the gate builds every `examples/*/` that has a
+`botopink.json` (`runExamplesGate`, each with its own manifest target,
+into a throwaway `--out`); CI runs the same function once per workflow.
+`scripts/known-broken-examples.txt` lists the examples allowed to fail —
+`examples/<name>  <reason>` per line — and cannot rot: a listed example
+that builds, or a listed path that no longer exists, fails the gate too.
+When a fix makes an example build, delete its line in the same commit.
+`examples/emilia-card` is listed as known broken (`'h1' expects 2 argument(s), got 1`).
