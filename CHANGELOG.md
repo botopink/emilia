@@ -2,6 +2,10 @@
 
 ## Unreleased — v0.beta.22
 
+- The examples gate no longer aborts silently on a `scripts/known-broken-examples.txt`
+  holding only comments or blank lines: the runner reads the list with `awk`, whose
+  "no entry" is not a failure under `set -euo pipefail`.
+
 - `examples/emilia-card` builds again: its jhonstart builder calls pass `attrs`
   explicitly (parameter defaults are not applied yet), it leaves
   `scripts/known-broken-examples.txt`, and CI checks jhonstart out beside
