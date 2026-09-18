@@ -1,4 +1,4 @@
-import { Token } from "tokens";
+import {Token} from "tokens";
 
 // ── host-cell externals ──────────────────────────────────────────────────────
 //
@@ -20,13 +20,13 @@ import { Token } from "tokens";
 // rule makes `await` an identity there.
 //
 // Both commonJS and erlang carry the cells; beam/wasm are not ported.
-#[@External.node(when(argc == 2): """(function(__N, __B){ (globalThis.__emilia_sheet ||= new Map()).set(__N, __B); })($0, $1)"""),
-  @External.Erlang("""(fun(N__, B__) -> L__ = case get('__emilia_sheet') of undefined -> []; X__ -> X__ end, put('__emilia_sheet', lists:keystore(N__, 1, L__, {N__, B__})), ok end)($0, $1)""")]
+#[@External.node(when(argc == 2): """(function(__N, __B){ (globalThis.__emilia_sheet ||= new Map()).set(__N, __B); })($0, $1)""")]
+#[@External.Erlang("""(fun(N__, B__) -> L__ = case get('__emilia_sheet') of undefined -> []; X__ -> X__ end, put('__emilia_sheet', lists:keystore(N__, 1, L__, {N__, B__})), ok end)($0, $1)""")]
 declare fn register(name: string, body: string) -> void;
 
 #[@future]
-#[@External.node(when(argc == 0): """Promise.resolve((function(){ var __M = (globalThis.__emilia_sheet ||= new Map()); var __S = "<style>" + Array.from(__M.entries()).map(function(__E){ return "." + __E[0] + "{" + __E[1] + "}"; }).join("") + "</style>"; __M.clear(); return __S; })())"""),
-  @External.Erlang("""(fun() -> L__ = case erase('__emilia_sheet') of undefined -> []; X__ -> X__ end, iolist_to_binary([<<"<style>">>, [[<<".">>, K__, <<"{">>, V__, <<"}">>] || {K__, V__} <- L__], <<"</style>">>]) end)()""")]
+#[@External.node(when(argc == 0): """Promise.resolve((function(){ var __M = (globalThis.__emilia_sheet ||= new Map()); var __S = "<style>" + Array.from(__M.entries()).map(function(__E){ return "." + __E[0] + "{" + __E[1] + "}"; }).join("") + "</style>"; __M.clear(); return __S; })())""")]
+#[@External.Erlang("""(fun() -> L__ = case erase('__emilia_sheet') of undefined -> []; X__ -> X__ end, iolist_to_binary([<<"<style>">>, [[<<".">>, K__, <<"{">>, V__, <<"}">>] || {K__, V__} <- L__], <<"</style>">>]) end)()""")]
 declare fn flushSheet() -> @Future<string>;
 
 // Content-derived class id. djb2-style fold over the body's UTF-16 code
@@ -35,8 +35,8 @@ declare fn flushSheet() -> @Future<string>;
 // folds the same djb2 over the codepoints masked to 32 bits, so both targets
 // produce the same class name for ASCII rule bodies (astral characters are one
 // codepoint in erlang, two UTF-16 units in JS).
-#[@External.node(when(argc == 1): """(function(__S){ var __H = 5381; for (var __I = 0; __I < __S.length; __I++) { __H = (Math.imul(__H, 33) + __S.charCodeAt(__I)) >>> 0; } return __H.toString(16); })($0)"""),
-  @External.Erlang("""(fun(S__) -> H__ = lists:foldl(fun(C__, A__) -> (A__ * 33 + C__) band 16#FFFFFFFF end, 5381, unicode:characters_to_list(S__)), list_to_binary(string:lowercase(integer_to_list(H__, 16))) end)($0)""")]
+#[@External.node(when(argc == 1): """(function(__S){ var __H = 5381; for (var __I = 0; __I < __S.length; __I++) { __H = (Math.imul(__H, 33) + __S.charCodeAt(__I)) >>> 0; } return __H.toString(16); })($0)""")]
+#[@External.Erlang("""(fun(S__) -> H__ = lists:foldl(fun(C__, A__) -> (A__ * 33 + C__) band 16#FFFFFFFF end, 5381, unicode:characters_to_list(S__)), list_to_binary(string:lowercase(integer_to_list(H__, 16))) end)($0)""")]
 declare fn hashHex(s: string) -> string;
 
 // ── public API ───────────────────────────────────────────────────────────────
@@ -72,22 +72,22 @@ pub fn flush() -> @Future<string> {
 // extending both this switch and the corresponding sub-dispatcher.
 fn tokenToCss(t: Token) -> string {
     val out = case t {
-        Text(_inner)    -> textTokenToCss(_inner);
-        Font(_inner)    -> fontTokenToCss(_inner);
-        Color(_inner)   -> colorTokenToCss(_inner);
-        Bg(_inner)      -> bgTokenToCss(_inner);
-        Pad(_inner)     -> padTokenToCss(_inner);
-        Margin(_inner)  -> marginTokenToCss(_inner);
-        Layout(_inner)  -> layoutTokenToCss(_inner);
-        Flex(_inner)    -> flexTokenToCss(_inner);
-        Border(_inner)  -> borderTokenToCss(_inner);
-        Effect(_inner)  -> effectTokenToCss(_inner);
-        Hover(inner)    -> ":hover{" + tokensToCss(inner) + "}";
-        Focus(inner)    -> ":focus{" + tokensToCss(inner) + "}";
-        Active(inner)   -> ":active{" + tokensToCss(inner) + "}";
-        Md(inner)       -> "@media(min-width:768px){" + tokensToCss(inner) + "}";
-        Lg(inner)       -> "@media(min-width:1024px){" + tokensToCss(inner) + "}";
-        Xl(inner)       -> "@media(min-width:1280px){" + tokensToCss(inner) + "}";
+        Text(_inner) -> textTokenToCss(_inner);
+        Font(_inner) -> fontTokenToCss(_inner);
+        Color(_inner) -> colorTokenToCss(_inner);
+        Bg(_inner) -> bgTokenToCss(_inner);
+        Pad(_inner) -> padTokenToCss(_inner);
+        Margin(_inner) -> marginTokenToCss(_inner);
+        Layout(_inner) -> layoutTokenToCss(_inner);
+        Flex(_inner) -> flexTokenToCss(_inner);
+        Border(_inner) -> borderTokenToCss(_inner);
+        Effect(_inner) -> effectTokenToCss(_inner);
+        Hover(inner) -> ":hover{" + tokensToCss(inner) + "}";
+        Focus(inner) -> ":focus{" + tokensToCss(inner) + "}";
+        Active(inner) -> ":active{" + tokensToCss(inner) + "}";
+        Md(inner) -> "@media(min-width:768px){" + tokensToCss(inner) + "}";
+        Lg(inner) -> "@media(min-width:1024px){" + tokensToCss(inner) + "}";
+        Xl(inner) -> "@media(min-width:1280px){" + tokensToCss(inner) + "}";
     };
     return out;
 }
@@ -100,22 +100,19 @@ fn tokenToCss(t: Token) -> string {
 // the `3f77623` WIP migration to V1 enum-sections) does the hashing +
 // register once at the top.
 fn tokensToCss(tokens: Token[]) -> string {
-    return tokens
-        .map({ t -> tokenToCss(t) })
-        .filter({ d -> d != "" })
-        .join(";");
+    return tokens.map({ t -> tokenToCss(t) }).filter({ d -> d != "" }).join(";");
 }
 
 fn textTokenToCss(t: Token.Text) -> string {
     val out = case t {
-        Bold         -> "font-weight:bold";
-        Italic       -> "font-style:italic";
-        Underline    -> "text-decoration:underline";
-        LineThrough  -> "text-decoration:line-through";
-        Left         -> "text-align:left";
-        Center       -> "text-align:center";
-        Right        -> "text-align:right";
-        Justify      -> "text-align:justify";
+        Bold -> "font-weight:bold";
+        Italic -> "font-style:italic";
+        Underline -> "text-decoration:underline";
+        LineThrough -> "text-decoration:line-through";
+        Left -> "text-align:left";
+        Center -> "text-align:center";
+        Right -> "text-align:right";
+        Justify -> "text-align:justify";
         Size(_inner) -> textSizeToCss(_inner);
     };
     return out;
@@ -123,11 +120,11 @@ fn textTokenToCss(t: Token.Text) -> string {
 
 fn textSizeToCss(s: Token.Text.Size) -> string {
     val out = case s {
-        Xs   -> "font-size:0.75rem";
-        Sm   -> "font-size:0.875rem";
+        Xs -> "font-size:0.75rem";
+        Sm -> "font-size:0.875rem";
         Base -> "font-size:1rem";
-        Lg   -> "font-size:1.125rem";
-        Xl   -> "font-size:1.25rem";
+        Lg -> "font-size:1.125rem";
+        Xl -> "font-size:1.25rem";
         X2xl -> "font-size:1.5rem";
         X3xl -> "font-size:1.875rem";
         X4xl -> "font-size:2.25rem";
@@ -137,9 +134,9 @@ fn textSizeToCss(s: Token.Text.Size) -> string {
 
 fn fontTokenToCss(t: Token.Font) -> string {
     val out = case t {
-        Sans           -> "font-family:ui-sans-serif,system-ui,sans-serif";
-        Serif          -> "font-family:ui-serif,Georgia,serif";
-        Mono           -> "font-family:ui-monospace,SFMono-Regular,Menlo,monospace";
+        Sans -> "font-family:ui-sans-serif,system-ui,sans-serif";
+        Serif -> "font-family:ui-serif,Georgia,serif";
+        Mono -> "font-family:ui-monospace,SFMono-Regular,Menlo,monospace";
         Weight(_inner) -> fontWeightToCss(_inner);
     };
     return out;
@@ -147,44 +144,44 @@ fn fontTokenToCss(t: Token.Font) -> string {
 
 fn fontWeightToCss(w: Token.Font.Weight) -> string {
     val out = case w {
-        Light  -> "font-weight:300";
+        Light -> "font-weight:300";
         Normal -> "font-weight:400";
         Medium -> "font-weight:500";
-        Bold   -> "font-weight:700";
-        Black  -> "font-weight:900";
+        Bold -> "font-weight:700";
+        Black -> "font-weight:900";
     };
     return out;
 }
 
 fn colorTokenToCss(t: Token.Color) -> string {
     val out = case t {
-        Red(_inner)   -> "color:red";
-        Blue(_inner)  -> "color:blue";
+        Red(_inner) -> "color:red";
+        Blue(_inner) -> "color:blue";
         Green(_inner) -> "color:green";
-        Gray(_inner)  -> "color:gray";
-        White         -> "color:#ffffff";
-        Black         -> "color:#000000";
-        Hex(value)    -> "color:" + value;
+        Gray(_inner) -> "color:gray";
+        White -> "color:#ffffff";
+        Black -> "color:#000000";
+        Hex(value) -> "color:" + value;
     };
     return out;
 }
 
 fn bgTokenToCss(t: Token.Bg) -> string {
     val out = case t {
-        Red(_inner)  -> "background:red";
+        Red(_inner) -> "background:red";
         Blue(_inner) -> "background:blue";
         Gray(_inner) -> "background:gray";
-        White        -> "background:#ffffff";
-        Black        -> "background:#000000";
-        Hex(value)   -> "background:" + value;
+        White -> "background:#ffffff";
+        Black -> "background:#000000";
+        Hex(value) -> "background:" + value;
     };
     return out;
 }
 
 fn padTokenToCss(t: Token.Pad) -> string {
     val out = case t {
-        X(_inner)   -> "padding-x:" + padScaleX(_inner);
-        Y(_inner)   -> "padding-y:" + padScaleY(_inner);
+        X(_inner) -> "padding-x:" + padScaleX(_inner);
+        Y(_inner) -> "padding-y:" + padScaleY(_inner);
         All(_inner) -> "padding:" + padScaleAll(_inner);
     };
     return out;
@@ -192,10 +189,10 @@ fn padTokenToCss(t: Token.Pad) -> string {
 
 fn padScaleX(s: Token.Pad.X) -> string {
     val out = case s {
-        __1  -> "0.25rem";
-        __2  -> "0.5rem";
-        __4  -> "1rem";
-        __8  -> "2rem";
+        __1 -> "0.25rem";
+        __2 -> "0.5rem";
+        __4 -> "1rem";
+        __8 -> "2rem";
         __16 -> "4rem";
     };
     return out;
@@ -213,10 +210,10 @@ fn padScaleY(s: Token.Pad.Y) -> string {
 
 fn padScaleAll(s: Token.Pad.All) -> string {
     val out = case s {
-        __1  -> "0.25rem";
-        __2  -> "0.5rem";
-        __4  -> "1rem";
-        __8  -> "2rem";
+        __1 -> "0.25rem";
+        __2 -> "0.5rem";
+        __4 -> "1rem";
+        __8 -> "2rem";
         __16 -> "4rem";
     };
     return out;
@@ -224,8 +221,8 @@ fn padScaleAll(s: Token.Pad.All) -> string {
 
 fn marginTokenToCss(t: Token.Margin) -> string {
     val out = case t {
-        X(_inner)   -> marginScaleX(_inner);
-        Y(_inner)   -> "margin-y:" + marginScaleY(_inner);
+        X(_inner) -> marginScaleX(_inner);
+        Y(_inner) -> "margin-y:" + marginScaleY(_inner);
         All(_inner) -> "margin:" + marginScaleAll(_inner);
     };
     return out;
@@ -234,10 +231,10 @@ fn marginTokenToCss(t: Token.Margin) -> string {
 fn marginScaleX(s: Token.Margin.X) -> string {
     val out = case s {
         Auto -> "margin-auto";
-        __1  -> "m-0.25";
-        __2  -> "m-0.5";
-        __4  -> "m-1";
-        __8  -> "m-2";
+        __1 -> "m-0.25";
+        __2 -> "m-0.5";
+        __4 -> "m-1";
+        __8 -> "m-2";
     };
     return out;
 }
@@ -264,34 +261,34 @@ fn marginScaleAll(s: Token.Margin.All) -> string {
 
 fn layoutTokenToCss(t: Token.Layout) -> string {
     val out = case t {
-        Block       -> "display:block";
+        Block -> "display:block";
         InlineBlock -> "display:inline-block";
-        Inline      -> "display:inline";
-        Hidden      -> "display:none";
-        Flex        -> "display:flex";
-        Grid        -> "display:grid";
+        Inline -> "display:inline";
+        Hidden -> "display:none";
+        Flex -> "display:flex";
+        Grid -> "display:grid";
     };
     return out;
 }
 
 fn flexTokenToCss(t: Token.Flex) -> string {
     val out = case t {
-        Row             -> "flex-direction:row";
-        Col             -> "flex-direction:column";
-        Wrap            -> "flex-wrap:wrap";
-        NoWrap          -> "flex-wrap:nowrap";
-        Items(_inner)   -> flexItemsToCss(_inner);
+        Row -> "flex-direction:row";
+        Col -> "flex-direction:column";
+        Wrap -> "flex-wrap:wrap";
+        NoWrap -> "flex-wrap:nowrap";
+        Items(_inner) -> flexItemsToCss(_inner);
         Justify(_inner) -> flexJustifyToCss(_inner);
-        Gap(_inner)     -> "gap:" + flexGapScale(_inner);
+        Gap(_inner) -> "gap:" + flexGapScale(_inner);
     };
     return out;
 }
 
 fn flexItemsToCss(p: Token.Flex.Items) -> string {
     val out = case p {
-        Start   -> "align-items:flex-start";
-        Center  -> "align-items:center";
-        End     -> "align-items:flex-end";
+        Start -> "align-items:flex-start";
+        Center -> "align-items:center";
+        End -> "align-items:flex-end";
         Stretch -> "align-items:stretch";
     };
     return out;
@@ -299,11 +296,11 @@ fn flexItemsToCss(p: Token.Flex.Items) -> string {
 
 fn flexJustifyToCss(p: Token.Flex.Justify) -> string {
     val out = case p {
-        Start   -> "justify-content:flex-start";
-        Center  -> "justify-content:center";
-        End     -> "justify-content:flex-end";
+        Start -> "justify-content:flex-start";
+        Center -> "justify-content:center";
+        End -> "justify-content:flex-end";
         Between -> "justify-content:space-between";
-        Around  -> "justify-content:space-around";
+        Around -> "justify-content:space-around";
     };
     return out;
 }
@@ -320,8 +317,8 @@ fn flexGapScale(s: Token.Flex.Gap) -> string {
 
 fn borderTokenToCss(t: Token.Border) -> string {
     val out = case t {
-        W(_inner)       -> borderWidthToCss(_inner);
-        Color(_inner)   -> borderColorToCss(_inner);
+        W(_inner) -> borderWidthToCss(_inner);
+        Color(_inner) -> borderColorToCss(_inner);
         Rounded(_inner) -> borderRoundedToCss(_inner);
     };
     return out;
@@ -339,18 +336,18 @@ fn borderWidthToCss(s: Token.Border.W) -> string {
 
 fn borderColorToCss(c: Token.Border.Color) -> string {
     val out = case c {
-        Red(_inner)  -> "border-color:red";
+        Red(_inner) -> "border-color:red";
         Gray(_inner) -> "border-color:gray";
-        Hex(value)   -> "border-color:" + value;
+        Hex(value) -> "border-color:" + value;
     };
     return out;
 }
 
 fn borderRoundedToCss(r: Token.Border.Rounded) -> string {
     val out = case r {
-        Sm   -> "border-radius:0.125rem";
-        Md   -> "border-radius:0.375rem";
-        Lg   -> "border-radius:0.5rem";
+        Sm -> "border-radius:0.125rem";
+        Md -> "border-radius:0.375rem";
+        Lg -> "border-radius:0.5rem";
         Full -> "border-radius:9999px";
     };
     return out;
@@ -358,7 +355,7 @@ fn borderRoundedToCss(r: Token.Border.Rounded) -> string {
 
 fn effectTokenToCss(t: Token.Effect) -> string {
     val out = case t {
-        Shadow(_inner)  -> shadowToCss(_inner);
+        Shadow(_inner) -> shadowToCss(_inner);
         Opacity(_inner) -> opacityToCss(_inner);
     };
     return out;
@@ -376,10 +373,10 @@ fn shadowToCss(s: Token.Effect.Shadow) -> string {
 
 fn opacityToCss(o: Token.Effect.Opacity) -> string {
     val out = case o {
-        __0   -> "opacity:0";
-        __25  -> "opacity:0.25";
-        __50  -> "opacity:0.5";
-        __75  -> "opacity:0.75";
+        __0 -> "opacity:0";
+        __25 -> "opacity:0.25";
+        __50 -> "opacity:0.5";
+        __75 -> "opacity:0.75";
         __100 -> "opacity:1";
     };
     return out;

@@ -45,7 +45,14 @@ pub type Token {
         Right,
         Justify,
         Size {
-            Xs, Sm, Base, Lg, Xl, X2xl, X3xl, X4xl,
+            Xs,
+            Sm,
+            Base,
+            Lg,
+            Xl,
+            X2xl,
+            X3xl,
+            X4xl,
         }
     }
 
@@ -54,39 +61,125 @@ pub type Token {
         Serif,
         Mono,
         Weight {
-            Light, Normal, Medium, Bold, Black,
+            Light,
+            Normal,
+            Medium,
+            Bold,
+            Black,
         }
     }
 
     Color {
-        Red   { 100, 200, 300, 400, 500, 600, 700, 800, 900 }
-        Blue  { 100, 200, 300, 400, 500, 600, 700, 800, 900 }
-        Green { 100, 300, 500, 700, 900 }
-        Gray  { 100, 200, 300, 400, 500, 600, 700, 800, 900 }
+        Red {
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+        }
+        Blue {
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+        }
+        Green {
+            100,
+            300,
+            500,
+            700,
+            900,
+        }
+        Gray {
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+        }
         White,
         Black,
         Hex(value: string),
     }
 
     Bg {
-        Red   { 100, 500, 700 }
-        Blue  { 100, 500, 700 }
-        Gray  { 100, 200, 500, 900 }
+        Red {
+            100,
+            500,
+            700,
+        }
+        Blue {
+            100,
+            500,
+            700,
+        }
+        Gray {
+            100,
+            200,
+            500,
+            900,
+        }
         White,
         Black,
         Hex(value: string),
     }
 
     Pad {
-        X   { 1, 2, 4, 8, 16 }
-        Y   { 1, 2, 4, 8 }
-        All { 1, 2, 4, 8, 16 }
+        X {
+            1,
+            2,
+            4,
+            8,
+            16,
+        }
+        Y {
+            1,
+            2,
+            4,
+            8,
+        }
+        All {
+            1,
+            2,
+            4,
+            8,
+            16,
+        }
     }
 
     Margin {
-        X   { Auto, 1, 2, 4, 8 }
-        Y   { 1, 2, 4, 8 }
-        All { 1, 2, 4, 8 }
+        X {
+            Auto,
+            1,
+            2,
+            4,
+            8,
+        }
+        Y {
+            1,
+            2,
+            4,
+            8,
+        }
+        All {
+            1,
+            2,
+            4,
+            8,
+        }
     }
 
     Layout {
@@ -103,24 +196,69 @@ pub type Token {
         Col,
         Wrap,
         NoWrap,
-        Items   { Start, Center, End, Stretch }
-        Justify { Start, Center, End, Between, Around }
-        Gap     { 1, 2, 4, 8 }
+        Items {
+            Start,
+            Center,
+            End,
+            Stretch,
+        }
+        Justify {
+            Start,
+            Center,
+            End,
+            Between,
+            Around,
+        }
+        Gap {
+            1,
+            2,
+            4,
+            8,
+        }
     }
 
     Border {
-        W { 0, 1, 2, 4 }
+        W {
+            0,
+            1,
+            2,
+            4,
+        }
         Color {
-            Red  { 100, 500, 700 }
-            Gray { 100, 500, 700 }
+            Red {
+                100,
+                500,
+                700,
+            }
+            Gray {
+                100,
+                500,
+                700,
+            }
             Hex(value: string),
         }
-        Rounded { Sm, Md, Lg, Full }
+        Rounded {
+            Sm,
+            Md,
+            Lg,
+            Full,
+        }
     }
 
     Effect {
-        Shadow  { Sm, Md, Lg, Xl }
-        Opacity { 0, 25, 50, 75, 100 }
+        Shadow {
+            Sm,
+            Md,
+            Lg,
+            Xl,
+        }
+        Opacity {
+            0,
+            25,
+            50,
+            75,
+            100,
+        }
     }
 
     Hover(inner: Token[]),

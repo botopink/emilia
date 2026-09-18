@@ -137,8 +137,11 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 - **No line comment inside an enum body** (kept from the 1.0.2 parser; the
   1.0.3 field list accepts comments, but the body stays comment-free).
   Section headers go in the module docblock.
-- **`botopink format` is not applied to `tokens.bp`:** the formatter prints
-  payload variants before sections, reordering the authored `Token` body.
+- **`botopink format` is applied to every source, `tokens.bp` included.** It
+  used to reorder the authored `Token` body — payload variants printed before
+  the sections — which is why this line once excluded the file. botopink-lang
+  `37d3dc7` records member positions and no longer reorders, and decision 34
+  withdrew the exemption; `botopink format --check` is green here.
 - **A section of `Token` is a type written by its path** — `Token.Text`,
   `Token.Text.Size`, `Token.Border.Color` (botopink-lang decision 8 §5.3b).
   The flat spelling (`TokenText`) names nothing and reds with a hint; a
