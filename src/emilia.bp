@@ -22,7 +22,7 @@ import { Token };
 // Both commonJS and erlang carry the cells; beam/wasm are not ported.
 #[@External.node(when(argc == 2): """(function(__N, __B){ (globalThis.__emilia_sheet ||= new Map()).set(__N, __B); })($0, $1)"""),
   @External.Erlang("""(fun(N__, B__) -> L__ = case get('__emilia_sheet') of undefined -> []; X__ -> X__ end, put('__emilia_sheet', lists:keystore(N__, 1, L__, {N__, B__})), ok end)($0, $1)""")]
-declare fn register(name: string, body: string) -> unit;
+declare fn register(name: string, body: string) -> void;
 
 #[@future]
 #[@External.node(when(argc == 0): """Promise.resolve((function(){ var __M = (globalThis.__emilia_sheet ||= new Map()); var __S = "<style>" + Array.from(__M.entries()).map(function(__E){ return "." + __E[0] + "{" + __E[1] + "}"; }).join("") + "</style>"; __M.clear(); return __S; })())"""),
