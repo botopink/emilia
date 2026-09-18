@@ -23,9 +23,11 @@
 ////
 //// Declared `pub default mod emilia` so the package's bare-handle binding
 //// (`import emilia, { Token } from "emilia"`) resolves to the `emilia`
-//// module's default-fn surface. `Token` is reached from `tokens` via the
-//// flat-import shorthand the resolver already follows (a sibling-module
-//// symbol resolves through `pub mod`s declared here).
+//// module's default-fn surface. `emilia.bp` reaches `Token` by naming the
+//// sibling module it comes from (`import { Token } from "tokens";`): the
+//// bare flat-import shorthand (`import { Token };`) type-checks, but
+//// commonJS lowers it to `require("../module")`, which resolves inside the
+//// package and not when emilia is consumed as a dependency.
 
 pub mod tokens;
 pub default mod emilia;

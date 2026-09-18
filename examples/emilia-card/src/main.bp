@@ -74,12 +74,13 @@ val page = div([
 ], []);
 
 // Pretty-print the test summary (`@print` is the test-runner ergonomic).
-fn main() {
+#[@future]
+fn main() -> @Future<void> {
     @print(renderToString(page));
     @print(cardBg);
     @print(titleStyle);
     @print(bodyStyle);
-    @print(flush());
+    @print(await flush());
 }
 
 // ── tests — the smoke contract ──────────────────────────────────────────────
