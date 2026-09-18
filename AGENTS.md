@@ -106,7 +106,8 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 - `src/emilia.bp` — the public `emilia(tokens) -> string` +
   `flush() -> string` + the `tokenToCss`/`tokensToCss` dispatchers +
   the `#\[@External\.node(…)]` host-cell expressions (`register`,
-  `flushSheet`).
+  `flushSheet`). It imports `Token` as `import { Token } from "tokens";` —
+  naming the sibling module is **required**, see "Gotchas".
 - `botopink.json` — `files: ["root.bp", "tokens.bp", "emilia.bp"]`
   (`.d.bp` are NOT in the module tree — memory:
   `project_libs_module_migration_done`).
@@ -117,8 +118,11 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   — the pre-commit gate, byte-identical to the sibling libraries' (see
   "Local gate").
 - `.github/workflows/test.yml` — CI: `zig build test-libs -- --lib emilia
-  --target commonJS` on ubuntu, macos and windows, against botopink-lang
-  `vars.BOTOPINK_LANG_REF` (default `feat`).
+  --target <t>` for `{commonJS, erlang}` on ubuntu and macos, plus `commonJS`
+  on windows (`escript` ships cleanly only on linux + macos), against
+  botopink-lang `vars.BOTOPINK_LANG_REF` (default `feat`). Both rows are hard
+  cells — no `allow_fail`. The examples stage reads each example's own manifest
+  target, so it is pinned to the commonJS row and runs once.
 
 ## Maintainer rules
 
@@ -149,6 +153,14 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   the runtime symbol is `undefined`. Until the codegen path closes
   that gap, keep all `#[@External.<targert>(...)]` host-cell expressions in the
   module that USES them (currently `emilia.bp`).
+- **A sibling-module import always names its module** — `import { Token } from
+  "tokens";`, never the bare `import { Token };`. Both type-check, but commonJS
+  lowers the bare form to `require("../module")`: a path that resolves while
+  emilia is compiled on its own and not when it is a dependency, which is how
+  `examples/emilia-card` came to build and then die with `Cannot find module
+  '../module'`. Reported to botopink-lang as a codegen defect
+  (`src/codegen/commonJS.zig`, the require path of a dependency's sibling
+  module); naming the module is the workaround and reads better anyway.
 
 ## Test surface
 
@@ -218,4 +230,10 @@ into a throwaway `--out`); CI runs the same function once per workflow.
 that builds, or a listed path that no longer exists, fails the gate too.
 When a fix makes an example build, delete its line in the same commit. The list may be absent,
 empty or hold only `#` comments — each means no example is allowed to fail.
-No example is listed today, so the file is absent. `examples/emilia-card` builds; it depends on jhonstart, so CI checks jhonstart out beside emilia before the examples gate. Its builder calls pass `attrs` explicitly (`h1([…], [])`) — parameter defaults are not applied by the compiler yet (botopink-lang 1.0.4-beta 06 N1).
+No example is listed today, so the file is absent. `examples/emilia-card` builds
+**and runs** (`botopink run` prints the tree, the three `e_<hash>` class names
+and the `<style>` block); it depends on jhonstart, so CI checks jhonstart out
+beside emilia before the examples gate. Its builder calls pass `attrs`
+explicitly (`h1([…], [])`) — parameter defaults are not applied by the compiler
+yet (botopink-lang 1.0.4-beta 06 N1) — and its `main` is
+`#[@future] fn main() -> @Future<void>` so `flush()` can be awaited.
