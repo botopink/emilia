@@ -2,6 +2,28 @@
 
 ## Unreleased — v0.beta.22
 
+- **`examples/emilia-backgrounds/` — the worked example** (1.0.10-beta front
+  `39-emilia-backgrounds`). The new workspace member composes what the front
+  unblocked: a hero panel whose photograph COVERS its box and is anchored to
+  the top so a face is not cropped off, and does not scroll with the page; a
+  gradient call to action; a three-stop banner whose `Via` is listed after its
+  `From`, so the three-colour list is the one that survives; a gradient-text
+  heading built from `bg-clip-text` plus a transparent colour — the idiom that
+  needs `§ 10.2` and not just `§ 10.4`; and a texture tiling on one axis inside
+  the padding box. None of the five was expressible before: `Bg` could set a
+  colour and nothing else.
+  Its last two tests carry the front's argument. A project's
+  `--color-indigo-500` reaches `.Gradient.From.Indigo.500` and
+  `.Bg.Color.Indigo.500` alike — ONE custom property, not two transcriptions
+  that agree today — and the rule does not change when the project overrides
+  it, only the `:root` block does. And nothing the example emits carries a `#`,
+  an `oklch(`, a `rem` or a Tailwind class fragment. 12 in-file tests, green on
+  commonJS and on erlang; it builds and runs.
+  **The spec named two flat files, `examples/backgrounds-example.bp` and
+  `examples/gradients-example.bp`.** emilia is a workspace since decision 75
+  and an example is a MEMBER with its own manifest, so the two are one member —
+  the same reading front 36 made of its own spec.
+
 - **Gradient stops — `From`, `Via` and `Stop` over the whole palette, and 910
   leaves walked for a literal** (1.0.10-beta front `39-emilia-backgrounds`,
   steps 3–4). Each of the three stops carries front 33's grid — 26 families x

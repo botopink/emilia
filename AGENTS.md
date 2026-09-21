@@ -213,8 +213,8 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `botopink.json` declares members and is never a package — no `src`, `files`,
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
-command inside one of its members: emilia, emilia-card, emilia-cascade,
-emilia-layout, emilia-modifiers, emilia-spacing, emilia-theme`. Every `modules/*/`
+command inside one of its members: emilia, emilia-backgrounds, emilia-card,
+emilia-cascade, emilia-layout, emilia-modifiers, emilia-spacing, emilia-theme`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -330,6 +330,20 @@ emilia/
 │   │                    resolves a length, and halving `--spacing` gives the
 │   │                    same class with the same declarations. 12 in-file
 │   │                    test {}, green on both targets)
+│   ├── emilia-backgrounds/ ← member `emilia-backgrounds` (an application:
+│   │                    entry main.bp, targets [commonJS, erlang], `emilia`
+│   │                    via { "workspace": true } — the front 39 showcase:
+│   │                    the seven keyword sub-sections of `Bg`, the eight
+│   │                    gradient directions, a hero panel whose photograph
+│   │                    covers and anchors, a gradient call to action, a
+│   │                    three-stop banner whose `Via` is listed after its
+│   │                    `From`, a gradient-text heading built with
+│   │                    `bg-clip-text`, and a texture that tiles on one axis.
+│   │                    Its last two tests are the front's argument: a
+│   │                    project's indigo reaches the gradient stop and the
+│   │                    background alike, and nothing it emits resolves a
+│   │                    colour or a length. 12 in-file test {}, green on both
+│   │                    targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
 │                        target commonJS, `emilia` via { "workspace": true },
 │                        `jhonstart` still by { git, branch } until jhonstart
@@ -562,9 +576,12 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **313/313** on
+  refuses) runs every module's in-file `test {}` blocks, **348/348** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 225 (`emilia.bp`). `emilia.bp`'s 225 are front 56's 33
+  (`output.bp`) + 260 (`emilia.bp`). The 313 before front 39 were 311 on
+  commonJS — `.Layout.Block` was dead beside `output.bp`'s record of the same
+  name, and the pre-commit gate (which runs the manifest target) was red; see
+  § Maintainer rules. `emilia.bp`'s 225 are front 56's 33
   (below) plus front 33's 81 plus front 35's 31 plus front 34's 50 — two per
   variant family (the `Variant` halves and the CSS the row renders), the three
   dark-mode strategies a cell each, the ranges, a three-deep chain, the indexed
@@ -619,6 +636,20 @@ to the commonJS row and runs once.
   The async `flush()` returns `@Future<string>`; tests `await flush()`
   via the implicit `test {…}` future context shipped in bot-lang's
   `test-runner-async` commit.
+- `examples/emilia-backgrounds/` is the member `emilia-backgrounds` and is
+  front 39's worked example: the seven keyword sub-sections of `Bg` as one rule
+  each, the eight gradient directions, a hero panel whose photograph covers its
+  box and is anchored to the top so a face is not cropped off, a gradient call
+  to action, a three-stop banner whose `Via` is listed after its `From` (so the
+  three-colour list is the one that survives), a gradient-text heading built
+  from `bg-clip-text` plus a transparent colour, and a texture tiling on one
+  axis inside the padding box. Its last two tests carry the front's argument: a
+  project's `--color-indigo-500` reaches `.Gradient.From.Indigo.500` and
+  `.Bg.Color.Indigo.500` alike — one custom property, not two transcriptions —
+  and nothing the example emits carries a `#`, an `oklch(`, a `rem` or a
+  Tailwind class fragment. 12 in-file tests, green on commonJS and on erlang;
+  it builds and runs.
+
 - `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
   tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.600`, …), the
   flush one rewritten by front 56 to the layered document and the hoisted
@@ -702,7 +733,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **All 286 cells are reachable since `1cd39b2`**: `.Color.Red.{100,500,700}` and `.Color.Gray.{100,500,700}` were declared and unreachable while the compiler's leading-dot resolver guessed between `Token` and `__Token__Border`, and botopink-lang `f01c508a` closed it; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
 | 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
 | 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). +30 inline tests in `modules/emilia`, which is **313** on commonJS and on erlang with front 34 merged in. **`Break` is FLAT** — `BreakAfter`/`BreakBefore`/`BreakInside`, not the spec's `Break { After, Before, Inside }`: a section head named like a top-level payload variant shadows that variant's payload projection, and front 34 carries `After`/`Before` (§ Maintainer rules). **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
-| 1.0.10-beta front 39 — backgrounds | DONE — steps 1–4. Step 1: the seven keyword sub-sections of `Bg` (`Attachment`, `Clip`, `Origin`, `Pos`, `Repeat`, `Size`, `Image.None`), 29 leaves appended after front 33's `Bg.Color` block and the legacy leaves. `Pos` not `Position` (so `.Bg.Pos.*` reads apart from `.Layout.Position.*`), `Repeat.None` not `NoRepeat`, `Clip.Text` the one clip value that is not a `*-box`. The legacy `Bg` leaves are byte-identical and pinned; this front does NOT fold them into `background-color`. Step 2: `Gradient` is a TOP-LEVEL section (a stop sets a custom property, not `background-image`), `Gradient.To` the eight directions — the phrases spelled in one place, `to top right` and never `to top-right`. Steps 3–4: `From` / `Via` / `Stop` each carry front 33's whole grid (291 leaves each) through `paletteVar(family, shade)`, so a stop and a background reference ONE custom property; token ORDER is load-bearing (`Via`'s three-stop list beats `From`'s two-stop one, and `Stop` writes no list so it cannot overwrite `Via`'s). **The stop composition diverges from the spec after the upstream check the spec demanded** — upstream's position variables and `--tw-gradient-via-stops` rest on `@property` registration emilia does not emit, so the registered `#0000` default is written as a `var(…, transparent)` fallback instead. 910 leaves walked for a literal, a length and a class fragment, each walk with a control that fails |
+| 1.0.10-beta front 39 — backgrounds | DONE — steps 1–4. Step 1: the seven keyword sub-sections of `Bg` (`Attachment`, `Clip`, `Origin`, `Pos`, `Repeat`, `Size`, `Image.None`), 29 leaves appended after front 33's `Bg.Color` block and the legacy leaves. `Pos` not `Position` (so `.Bg.Pos.*` reads apart from `.Layout.Position.*`), `Repeat.None` not `NoRepeat`, `Clip.Text` the one clip value that is not a `*-box`. The legacy `Bg` leaves are byte-identical and pinned; this front does NOT fold them into `background-color`. Step 2: `Gradient` is a TOP-LEVEL section (a stop sets a custom property, not `background-image`), `Gradient.To` the eight directions — the phrases spelled in one place, `to top right` and never `to top-right`. Steps 3–4: `From` / `Via` / `Stop` each carry front 33's whole grid (291 leaves each) through `paletteVar(family, shade)`, so a stop and a background reference ONE custom property; token ORDER is load-bearing (`Via`'s three-stop list beats `From`'s two-stop one, and `Stop` writes no list so it cannot overwrite `Via`'s). **The stop composition diverges from the spec after the upstream check the spec demanded** — upstream's position variables and `--tw-gradient-via-stops` rest on `@property` registration emilia does not emit, so the registered `#0000` default is written as a `var(…, transparent)` fallback instead. 910 leaves walked for a literal, a length and a class fragment, each walk with a control that fails. `examples/emilia-backgrounds/` is the showcase (12 tests). +35 inline tests in `modules/emilia`, which is **348** on commonJS and on erlang. **Reference gaps left undeclared**: colour-stop positions (`from-10%`), radial and conic gradients, gradient interpolation (`bg-linear-to-r/oklch`) and every arbitrary-value form (`bg-[url(…)]`, `bg-size-[…]`) — the escape-hatch front's |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in
