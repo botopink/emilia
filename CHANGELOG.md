@@ -2,6 +2,21 @@
 
 ## Unreleased — v0.beta.22
 
+- **Parent, sibling, direction and descent** (1.0.10-beta front
+  `34-emilia-modifiers`, step 6). Six `Group*` and eight `Peer*`, each built by
+  substituting a state into the reference's two templates, written once:
+  `groupVariant(state)` is `&:is(:where(.group)<state> *)` and
+  `peerVariant(state)` is `&:is(:where(.peer)<state> ~ *)`. **`.group` and
+  `.peer` are the consumer's classes** — emilia emits the selector that reads
+  them and never the class itself, which is now stated in `docs.md` beside the
+  table. `GroupVisited`, `PeerActive` and `PeerRequired` come from the front's
+  *Carried from 1.0.8-beta* section, translated into the v4.3 template as that
+  section spells out. `Rtl` and `Ltr` are the rows where the class is NOT
+  leading — `[dir="rtl"] &` — and `Children`/`Descendants` are the rows where
+  it is wrapped — `:is(& > *)` and `:is(& *)`; all four go through the same
+  `selector` field as `&:focus`, which is the whole argument for the one-`&`
+  template. 269/269 on both targets.
+
 - **The nine pseudo-elements** (1.0.10-beta front `34-emilia-modifiers`,
   step 5). `Before`, `After`, `FirstLetter`, `FirstLine`, `Placeholder`,
   `File` (`&::file-selector-button`) and `Backdrop` take `&::`; `Marker` and

@@ -489,6 +489,39 @@ moves the queries and the class hashes with it.
 | `selection:` | `Token.Selection(inner)` | `& ::selection{…}` |
 | `backdrop:` | `Token.Backdrop(inner)` | `&::backdrop{…}` |
 
+**Parent state — the `.group` class is the consumer's, never emilia's**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `group-hover:` | `Token.GroupHover(inner)` | `&:is(:where(.group):hover *){…}` |
+| `group-focus:` | `Token.GroupFocus(inner)` | `&:is(:where(.group):focus *){…}` |
+| `group-active:` | `Token.GroupActive(inner)` | `&:is(:where(.group):active *){…}` |
+| `group-visited:` | `Token.GroupVisited(inner)` | `&:is(:where(.group):visited *){…}` |
+| `group-disabled:` | `Token.GroupDisabled(inner)` | `&:is(:where(.group):disabled *){…}` |
+| `group-open:` | `Token.GroupOpen(inner)` | `&:is(:where(.group):open *){…}` |
+
+**Sibling state — the `.peer` class is the consumer's, never emilia's**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `peer-hover:` | `Token.PeerHover(inner)` | `&:is(:where(.peer):hover ~ *){…}` |
+| `peer-focus:` | `Token.PeerFocus(inner)` | `&:is(:where(.peer):focus ~ *){…}` |
+| `peer-active:` | `Token.PeerActive(inner)` | `&:is(:where(.peer):active ~ *){…}` |
+| `peer-checked:` | `Token.PeerChecked(inner)` | `&:is(:where(.peer):checked ~ *){…}` |
+| `peer-invalid:` | `Token.PeerInvalid(inner)` | `&:is(:where(.peer):invalid ~ *){…}` |
+| `peer-required:` | `Token.PeerRequired(inner)` | `&:is(:where(.peer):required ~ *){…}` |
+| `peer-disabled:` | `Token.PeerDisabled(inner)` | `&:is(:where(.peer):disabled ~ *){…}` |
+| `peer-placeholder-shown:` | `Token.PeerPlaceholderShown(inner)` | `&:is(:where(.peer):placeholder-shown ~ *){…}` |
+
+**Writing direction and descent**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `rtl:` | `Token.Rtl(inner)` | `[dir="rtl"] &{…}` |
+| `ltr:` | `Token.Ltr(inner)` | `[dir="ltr"] &{…}` |
+| `*:` | `Token.Children(inner)` | `:is(& > *){…}` |
+| `**:` | `Token.Descendants(inner)` | `:is(& *){…}` |
+
 `.group` and `.peer` are classes the **consumer's markup** carries: emilia
 emits the selector that reads them and never the class itself.
 

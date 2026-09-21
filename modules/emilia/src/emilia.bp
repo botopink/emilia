@@ -213,6 +213,24 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Marker(inner) -> nestVariant(tokensToSheet(inner, th), markerVariant());
         Selection(inner) -> nestVariant(tokensToSheet(inner, th), selectionVariant());
         Backdrop(inner) -> nestVariant(tokensToSheet(inner, th), backdropVariant());
+        GroupHover(inner) -> nestVariant(tokensToSheet(inner, th), groupHoverVariant());
+        GroupFocus(inner) -> nestVariant(tokensToSheet(inner, th), groupFocusVariant());
+        GroupActive(inner) -> nestVariant(tokensToSheet(inner, th), groupActiveVariant());
+        GroupVisited(inner) -> nestVariant(tokensToSheet(inner, th), groupVisitedVariant());
+        GroupDisabled(inner) -> nestVariant(tokensToSheet(inner, th), groupDisabledVariant());
+        GroupOpen(inner) -> nestVariant(tokensToSheet(inner, th), groupOpenVariant());
+        PeerHover(inner) -> nestVariant(tokensToSheet(inner, th), peerHoverVariant());
+        PeerFocus(inner) -> nestVariant(tokensToSheet(inner, th), peerFocusVariant());
+        PeerActive(inner) -> nestVariant(tokensToSheet(inner, th), peerActiveVariant());
+        PeerChecked(inner) -> nestVariant(tokensToSheet(inner, th), peerCheckedVariant());
+        PeerInvalid(inner) -> nestVariant(tokensToSheet(inner, th), peerInvalidVariant());
+        PeerRequired(inner) -> nestVariant(tokensToSheet(inner, th), peerRequiredVariant());
+        PeerDisabled(inner) -> nestVariant(tokensToSheet(inner, th), peerDisabledVariant());
+        PeerPlaceholderShown(inner) -> nestVariant(tokensToSheet(inner, th), peerPlaceholderShownVariant());
+        Rtl(inner) -> nestVariant(tokensToSheet(inner, th), rtlVariant());
+        Ltr(inner) -> nestVariant(tokensToSheet(inner, th), ltrVariant());
+        Children(inner) -> nestVariant(tokensToSheet(inner, th), childrenVariant());
+        Descendants(inner) -> nestVariant(tokensToSheet(inner, th), descendantsVariant());
         // ── end front 34 ─────────────────────────────────────────────────
     };
     return out;
@@ -282,6 +300,18 @@ fn breakpointVariant(th: Theme, name: string) -> Variant {
 // RANGE is nesting and not a variant: `md:max-xl:` is `Md([MaxXl([…])])`.
 fn maxBreakpointVariant(th: Theme, name: string) -> Variant {
     return Variant(atRule: "@media (width < " + themeValue(th, name) + ")", selector: "&");
+}
+
+// The reference gives `group-*` as one template with the state substituted in,
+// so it is written once. `.group` is a class the CONSUMER's markup carries;
+// emilia never emits it.
+fn groupVariant(state: string) -> Variant {
+    return selectorVariant("&:is(:where(.group)" + state + " *)");
+}
+
+// The same, for the sibling form. `.peer` is the consumer's too.
+fn peerVariant(state: string) -> Variant {
+    return selectorVariant("&:is(:where(.peer)" + state + " ~ *)");
 }
 
 // ── breakpoints — min-width, read from the theme's `--breakpoint-*` ladder ───
@@ -559,6 +589,84 @@ pub fn backdropVariant() -> Variant {
     return selectorVariant("&::backdrop");
 }
 
+// ── parent state — the `.group` class is the consumer's, never emilia's ───
+
+pub fn groupHoverVariant() -> Variant {
+    return groupVariant(":hover");
+}
+
+pub fn groupFocusVariant() -> Variant {
+    return groupVariant(":focus");
+}
+
+pub fn groupActiveVariant() -> Variant {
+    return groupVariant(":active");
+}
+
+pub fn groupVisitedVariant() -> Variant {
+    return groupVariant(":visited");
+}
+
+pub fn groupDisabledVariant() -> Variant {
+    return groupVariant(":disabled");
+}
+
+pub fn groupOpenVariant() -> Variant {
+    return groupVariant(":open");
+}
+
+// ── sibling state — the `.peer` class is the consumer's, never emilia's ───
+
+pub fn peerHoverVariant() -> Variant {
+    return peerVariant(":hover");
+}
+
+pub fn peerFocusVariant() -> Variant {
+    return peerVariant(":focus");
+}
+
+pub fn peerActiveVariant() -> Variant {
+    return peerVariant(":active");
+}
+
+pub fn peerCheckedVariant() -> Variant {
+    return peerVariant(":checked");
+}
+
+pub fn peerInvalidVariant() -> Variant {
+    return peerVariant(":invalid");
+}
+
+pub fn peerRequiredVariant() -> Variant {
+    return peerVariant(":required");
+}
+
+pub fn peerDisabledVariant() -> Variant {
+    return peerVariant(":disabled");
+}
+
+pub fn peerPlaceholderShownVariant() -> Variant {
+    return peerVariant(":placeholder-shown");
+}
+
+// ── writing direction and descent ────────────────────────────────────────
+
+pub fn rtlVariant() -> Variant {
+    return selectorVariant("[dir=\"rtl\"] &");
+}
+
+pub fn ltrVariant() -> Variant {
+    return selectorVariant("[dir=\"ltr\"] &");
+}
+
+pub fn childrenVariant() -> Variant {
+    return selectorVariant(":is(& > *)");
+}
+
+pub fn descendantsVariant() -> Variant {
+    return selectorVariant(":is(& *)");
+}
+
 // ── front 34 · tests ─────────────────────────────────────────────────────
 //
 // Each family gets two: the `Variant` halves against the reference's two
@@ -825,6 +933,81 @@ test "pseudo-elements — the CSS each row renders around one declaration" {
     assert modifierCss(Token.Backdrop(inner)) == ".x::backdrop{font-weight:bold}";
 }
 
+test "parent state (`group-*`) — the two halves of every Variant in the family" {
+    assert groupHoverVariant().atRule == "";
+    assert groupHoverVariant().selector == "&:is(:where(.group):hover *)";
+    assert groupFocusVariant().atRule == "";
+    assert groupFocusVariant().selector == "&:is(:where(.group):focus *)";
+    assert groupActiveVariant().atRule == "";
+    assert groupActiveVariant().selector == "&:is(:where(.group):active *)";
+    assert groupVisitedVariant().atRule == "";
+    assert groupVisitedVariant().selector == "&:is(:where(.group):visited *)";
+    assert groupDisabledVariant().atRule == "";
+    assert groupDisabledVariant().selector == "&:is(:where(.group):disabled *)";
+    assert groupOpenVariant().atRule == "";
+    assert groupOpenVariant().selector == "&:is(:where(.group):open *)";
+}
+
+test "parent state (`group-*`) — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.GroupHover(inner)) == ".x:is(:where(.group):hover *){font-weight:bold}";
+    assert modifierCss(Token.GroupFocus(inner)) == ".x:is(:where(.group):focus *){font-weight:bold}";
+    assert modifierCss(Token.GroupActive(inner)) == ".x:is(:where(.group):active *){font-weight:bold}";
+    assert modifierCss(Token.GroupVisited(inner)) == ".x:is(:where(.group):visited *){font-weight:bold}";
+    assert modifierCss(Token.GroupDisabled(inner)) == ".x:is(:where(.group):disabled *){font-weight:bold}";
+    assert modifierCss(Token.GroupOpen(inner)) == ".x:is(:where(.group):open *){font-weight:bold}";
+}
+
+test "sibling state (`peer-*`) — the two halves of every Variant in the family" {
+    assert peerHoverVariant().atRule == "";
+    assert peerHoverVariant().selector == "&:is(:where(.peer):hover ~ *)";
+    assert peerFocusVariant().atRule == "";
+    assert peerFocusVariant().selector == "&:is(:where(.peer):focus ~ *)";
+    assert peerActiveVariant().atRule == "";
+    assert peerActiveVariant().selector == "&:is(:where(.peer):active ~ *)";
+    assert peerCheckedVariant().atRule == "";
+    assert peerCheckedVariant().selector == "&:is(:where(.peer):checked ~ *)";
+    assert peerInvalidVariant().atRule == "";
+    assert peerInvalidVariant().selector == "&:is(:where(.peer):invalid ~ *)";
+    assert peerRequiredVariant().atRule == "";
+    assert peerRequiredVariant().selector == "&:is(:where(.peer):required ~ *)";
+    assert peerDisabledVariant().atRule == "";
+    assert peerDisabledVariant().selector == "&:is(:where(.peer):disabled ~ *)";
+    assert peerPlaceholderShownVariant().atRule == "";
+    assert peerPlaceholderShownVariant().selector == "&:is(:where(.peer):placeholder-shown ~ *)";
+}
+
+test "sibling state (`peer-*`) — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.PeerHover(inner)) == ".x:is(:where(.peer):hover ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerFocus(inner)) == ".x:is(:where(.peer):focus ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerActive(inner)) == ".x:is(:where(.peer):active ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerChecked(inner)) == ".x:is(:where(.peer):checked ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerInvalid(inner)) == ".x:is(:where(.peer):invalid ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerRequired(inner)) == ".x:is(:where(.peer):required ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerDisabled(inner)) == ".x:is(:where(.peer):disabled ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerPlaceholderShown(inner)) == ".x:is(:where(.peer):placeholder-shown ~ *){font-weight:bold}";
+}
+
+test "writing direction and descent — the two halves of every Variant in the family" {
+    assert rtlVariant().atRule == "";
+    assert rtlVariant().selector == "[dir=\"rtl\"] &";
+    assert ltrVariant().atRule == "";
+    assert ltrVariant().selector == "[dir=\"ltr\"] &";
+    assert childrenVariant().atRule == "";
+    assert childrenVariant().selector == ":is(& > *)";
+    assert descendantsVariant().atRule == "";
+    assert descendantsVariant().selector == ":is(& *)";
+}
+
+test "writing direction and descent — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Rtl(inner)) == "[dir=\"rtl\"] .x{font-weight:bold}";
+    assert modifierCss(Token.Ltr(inner)) == "[dir=\"ltr\"] .x{font-weight:bold}";
+    assert modifierCss(Token.Children(inner)) == ":is(.x > *){font-weight:bold}";
+    assert modifierCss(Token.Descendants(inner)) == ":is(.x *){font-weight:bold}";
+}
+
 test "dark — the `Media` strategy is an at-rule over the bare ampersand" {
     val th = defaultTheme();
     assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
@@ -937,6 +1120,18 @@ test "`marker` and `selection` carry the space before `::`, and the others do no
     assert selectionVariant().selector == "& ::selection";
     assert beforeVariant().selector == "&::before";
     assert placeholderVariant().selector == "&::placeholder";
+}
+
+test "`rtl` and `ltr` put the ampersand LAST, and the class still lands there" {
+    val inner = boldInner();
+    assert modifierCss(Token.Rtl(inner)) == "[dir=\"rtl\"] .x{font-weight:bold}";
+    assert modifierCss(Token.Ltr(inner)) == "[dir=\"ltr\"] .x{font-weight:bold}";
+}
+
+test "`*:` and `**:` wrap the ampersand rather than following it" {
+    val inner = boldInner();
+    assert modifierCss(Token.Children(inner)) == ":is(.x > *){font-weight:bold}";
+    assert modifierCss(Token.Descendants(inner)) == ":is(.x *){font-weight:bold}";
 }
 
 test "`inert` is the attribute pair the reference gives, not a pseudo-class" {

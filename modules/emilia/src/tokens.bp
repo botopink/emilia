@@ -12,7 +12,7 @@
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
 //// payload — siblings of section heads at the top level. Front 34 widened
-//// them from six to 64; the full map is under MODIFIERS below.
+//// them from six to 82; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -161,6 +161,30 @@
 ////     .Marker([Token])           marker:          → & ::marker{…}
 ////     .Selection([Token])        selection:       → & ::selection{…}
 ////     .Backdrop([Token])         backdrop:        → &::backdrop{…}
+////
+////   parent state — the `.group` class is the consumer's, never emilia's
+////     .GroupHover([Token])       group-hover:     → &:is(:where(.group):hover *){…}
+////     .GroupFocus([Token])       group-focus:     → &:is(:where(.group):focus *){…}
+////     .GroupActive([Token])      group-active:    → &:is(:where(.group):active *){…}
+////     .GroupVisited([Token])     group-visited:   → &:is(:where(.group):visited *){…}
+////     .GroupDisabled([Token])    group-disabled:  → &:is(:where(.group):disabled *){…}
+////     .GroupOpen([Token])        group-open:      → &:is(:where(.group):open *){…}
+////
+////   sibling state — the `.peer` class is the consumer's, never emilia's
+////     .PeerHover([Token])        peer-hover:      → &:is(:where(.peer):hover ~ *){…}
+////     .PeerFocus([Token])        peer-focus:      → &:is(:where(.peer):focus ~ *){…}
+////     .PeerActive([Token])       peer-active:     → &:is(:where(.peer):active ~ *){…}
+////     .PeerChecked([Token])      peer-checked:    → &:is(:where(.peer):checked ~ *){…}
+////     .PeerInvalid([Token])      peer-invalid:    → &:is(:where(.peer):invalid ~ *){…}
+////     .PeerRequired([Token])     peer-required:   → &:is(:where(.peer):required ~ *){…}
+////     .PeerDisabled([Token])     peer-disabled:   → &:is(:where(.peer):disabled ~ *){…}
+////     .PeerPlaceholderShown([Token]) peer-placeholder-shown: → &:is(:where(.peer):placeholder-shown ~ *){…}
+////
+////   writing direction and descent
+////     .Rtl([Token])              rtl:             → [dir="rtl"] &{…}
+////     .Ltr([Token])              ltr:             → [dir="ltr"] &{…}
+////     .Children([Token])         *:               → :is(& > *){…}
+////     .Descendants([Token])      **:              → :is(& *){…}
 
 pub type Token {
     Text {
@@ -774,5 +798,29 @@ pub type Token {
     Marker(inner: Token[]),
     Selection(inner: Token[]),
     Backdrop(inner: Token[]),
+    //
+    // parent state — the `.group` class is the consumer's, never emilia's
+    GroupHover(inner: Token[]),
+    GroupFocus(inner: Token[]),
+    GroupActive(inner: Token[]),
+    GroupVisited(inner: Token[]),
+    GroupDisabled(inner: Token[]),
+    GroupOpen(inner: Token[]),
+    //
+    // sibling state — the `.peer` class is the consumer's, never emilia's
+    PeerHover(inner: Token[]),
+    PeerFocus(inner: Token[]),
+    PeerActive(inner: Token[]),
+    PeerChecked(inner: Token[]),
+    PeerInvalid(inner: Token[]),
+    PeerRequired(inner: Token[]),
+    PeerDisabled(inner: Token[]),
+    PeerPlaceholderShown(inner: Token[]),
+    //
+    // writing direction and descent
+    Rtl(inner: Token[]),
+    Ltr(inner: Token[]),
+    Children(inner: Token[]),
+    Descendants(inner: Token[]),
     // ── end front 34 ─────────────────────────────────────────────────────────
 }
