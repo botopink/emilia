@@ -595,6 +595,82 @@ than `Self` and a nested `Place { … }`: **`Self` is a language keyword**, so a
 section cannot be named it. The family is flattened the way `Break` is, and no
 emitted byte differs.
 
+### Grid — `§ 6.8`–`§ 6.14`
+
+`display:grid` is `Layout`'s (`.Layout.Grid`) and used to be all emilia had:
+there was no template, no span, no start, no end, no flow and no implicit
+track, so nothing could be put inside the box it declares.
+
+```bp
+.Grid.Cols.12        // grid-template-columns:repeat(12, minmax(0, 1fr))
+.Grid.Cols.None      // grid-template-columns:none
+.Grid.Cols.Subgrid   // grid-template-columns:subgrid
+.Grid.Rows.3         // grid-template-rows:repeat(3, minmax(0, 1fr))
+
+.Grid.Col.Auto       // grid-column:auto
+.Grid.Col.Span.2     // grid-column:span 2 / span 2
+.Grid.Col.Span.Full  // grid-column:1 / -1
+.Grid.Col.Start.13   // grid-column-start:13
+.Grid.Col.End.Auto   // grid-column-end:auto
+.Grid.Row.Span.2     // grid-row:span 2 / span 2
+.Grid.Row.End.3      // grid-row-end:3
+
+.Grid.Flow.Col       // grid-auto-flow:column   ← `col` abbreviates, CSS does not
+.Grid.Flow.RowDense  // grid-auto-flow:row dense   ← one space, not a hyphen
+.Grid.AutoCols.Min   // grid-auto-columns:min-content
+.Grid.AutoRows.Fr    // grid-auto-rows:minmax(0, 1fr)
+```
+
+A template is a **function of the leaf**, not a lookup: `gridRepeat(n)` builds
+`repeat(N, minmax(0, 1fr))` — one space after each comma — and it is the only
+place that text is spelled. The `minmax(0, 1fr)` inside it is `gridFr()`, the
+same string the implicit `fr` tracks read, so the two cannot drift.
+
+`Cols`, `Rows` and `Span` run **1 … 12**; `Start` and `End` run **1 … 13**,
+because a twelve-column grid has thirteen lines.
+
+**Nothing in `Grid` is a length.** A column count, a span and a line number are
+integers, so no leaf reaches `spacing(n)` and none spells a `rem`.
+
+**Not declared:** every arbitrary-value form (`grid-cols-[200px_1fr]`,
+`col-start-[7]`), which belongs to the escape-hatch front.
+
+### Gap — `§ 6.15`
+
+```bp
+.Gap.All.0        // gap:0
+.Gap.All.4        // gap:calc(var(--spacing) * 4)
+.Gap.All.Half.1   // gap:calc(var(--spacing) * 1.5)
+.Gap.All.Px       // gap:1px
+.Gap.X.2          // column-gap:calc(var(--spacing) * 2)
+.Gap.Y.6          // row-gap:calc(var(--spacing) * 6)
+```
+
+`Gap` is a **top-level section**, not a sub-section of `Flex`, because `gap`,
+`column-gap` and `row-gap` separate the items of a grid exactly as they separate
+the items of a flex row. It carries front 35's full scale — the thirty
+multipliers `0 … 96`, the `Px` step and `Half { 0, 1, 2, 3 }` — on each of
+`All`, `X` and `Y`.
+
+`.Gap.All.4` and `.Pad.All.4` carry the same length because both answer
+`spacing(4)`. Overriding `--spacing` moves both and rewrites neither rule.
+
+The pre-front-37 `.Flex.Gap.{1,2,4,8}` paths **still compile and still emit
+`gap:`** — the same declaration by a narrower name. They used to answer a
+hand-written `rem` ladder (`gap-4` was `gap:1rem`, the last of the seven front
+54 found); they answer `spacing(n)` now, and a test compares the two spellings
+to **each other** so they cannot drift apart again.
+
+#### Nothing in `Flex`, `Grid` or `Gap` resolves a length
+
+The three sections declare **356 leaves** (126 + 125 + 105), and a test walks
+every one of them asserting the emitted declaration carries no `rem`, carries a
+`:`, and carries no Tailwind class fragment. Only `Flex.Basis` and `Gap` are
+lengths and both go through `spacing(n)` / `spacingHalf(n)`; a grow factor, an
+order, a column count, a span and a line number are bare integers. The same
+test asserts `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
+discriminate rather than to pass vacuously.
+
 ### Modifiers — the variant table
 
 A modifier is the only way a token reaches a state, a breakpoint or a

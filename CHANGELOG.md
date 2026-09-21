@@ -2,6 +2,60 @@
 
 ## Unreleased — v0.beta.22
 
+- **The dispatchers, the walk, and the SEVENTH `rem` ladder** (1.0.10-beta front
+  `37-emilia-grid`, steps 4–5). `Gap` is a TOP-LEVEL section — `gap`,
+  `column-gap` and `row-gap` separate the items of a grid exactly as they
+  separate the items of a flex row, so a sub-section of `Flex` was the wrong
+  home for it. `All`, `X` and `Y` carry front 35's full scale and answer front
+  54's `spacing(n)` / `spacingHalf(n)`.
+  **`flexGapScale` is deleted.** It answered `__1 -> "0.25rem"`, `__4 ->
+  "1rem"` — the last of the seven hand-written `rem` ladders front 54 found in
+  `emilia.bp`, and the one front 35 could not take because `Gap` is this
+  front's section under the milestone's ownership rule. `.Flex.Gap.{1,2,4,8}`
+  still compiles and now emits what `.Gap.All.N` emits; the two spellings are
+  compared to EACH OTHER rather than each to an expected string, so they cannot
+  drift again. **`spacing.bp`'s docblock still claimed all seven for front 35**
+  — front 35's README says six and lists `Gap` under *Does not touch* — and the
+  docblock was the drift; it is corrected here. **No literal `rem` ladder is
+  left in `emilia.bp`.**
+  `flexTokenToCss`, `gridTokenToCss` and `gapTokenToCss` all take `th: Theme`,
+  all are `val out = case …; return out;` with arrow arms only, and all are
+  exhaustive with no `_`. Two arms joined the shared `case` in front-number
+  order, after `Flex` and before `Border`.
+  **THE FRONT'S REGRESSION.** A walk over all **356** leaves — 126 `Flex`, 125
+  `Grid`, 105 `Gap` — asserts no declaration carries a `rem`, that every one
+  carries a `:`, and that none carries a Tailwind class fragment (`gap-1`,
+  `basis-`, `order-`, `flex-1`, `grid-cols-`, `col-span-`, `auto-cols-`,
+  `grid-flow-`, `place-content-`, `items-start`). **The control**:
+  `.Border.Rounded.Lg` is asserted to DO carry a `rem`, and a deliberate
+  `0.25rem` planted in one `gapScaleAll` arm was confirmed to fail the walk
+  before being taken out. A third test compares `.Gap.All.4`, `.Gap.X.12`,
+  `.Flex.Basis.8` and `.Gap.All.Half.3` to the matching `Pad` leaves
+  value-for-value rather than to literals. +7 in-file tests (245 → 252; the
+  module is 340).
+- **`Grid` — the section that did not exist** (1.0.10-beta front
+  `37-emilia-grid`, step 3). `.Layout.Grid` emitted `display:grid` and there
+  was nothing to put in the box: no `grid-template-columns`, no span, no start
+  or end, no auto-flow, no implicit tracks. `Grid.Cols`, `Grid.Rows`,
+  `Grid.Col`, `Grid.Row`, `Grid.Flow`, `Grid.AutoCols` and `Grid.AutoRows`
+  close `§ 6.8`–`§ 6.14` — 125 leaves, none of them a length.
+  **A template is a function of the leaf, not a lookup.** `gridRepeat(n)`
+  builds `repeat(N, minmax(0, 1fr))` from the numeral, so adding a column count
+  is one arm and not two, and the text is spelled in exactly one place; the
+  `minmax(0, 1fr)` inside it is `gridFr()`, the SAME string `auto-cols-fr` and
+  `auto-rows-fr` read, so the two cannot drift. A test compares the emitted
+  values to the two functions rather than to literals.
+  **`Start` and `End` run to 13** because a twelve-column grid has thirteen
+  lines; `Cols`, `Rows` and `Span` run to 12. A span is the doubled
+  `span N / span N` and `col-span-full` is the line-based `1 / -1` instead —
+  two shapes from one sub-section.
+  Two spellings that are easy to get wrong, each pinned: `grid-flow-col` is
+  `grid-auto-flow:column` — the UTILITY abbreviates and the CSS value does not
+  — and `grid-flow-row-dense` is `row dense`, one space and not a hyphen.
+  **Reference gap, recorded rather than hidden:** `§ 6.8` prints only 1–6 and
+  12, `§ 6.9` only `span-1`/`span-2`/`span-full`/`start-1`/`end-1`; the extents
+  1–12 and 1–13 are declared by interpolation and must be confirmed against
+  upstream before merge. +7 in-file tests (238 → 245).
 - **The alignment family — seven property groups that had no token at all**
   (1.0.10-beta front `37-emilia-grid`, step 2). `§ 6.16`–`§ 6.24` is nine
   property groups and emilia carried two of them, each a third short:

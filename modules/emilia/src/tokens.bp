@@ -86,7 +86,39 @@
 ////              `.Layout.Columns.Md` is `columns:var(--container-md)`, the
 ////              same reference `.Size.MaxW.Md` reads — and no leaf in the
 ////              section spells a `rem`
-////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
+////   Flex     — front 37: the flex CONTAINER and the flex ITEM. Seven
+////              direction/wrap leaves (Row/RowReverse/Col/ColReverse/Wrap/
+////              WrapReverse/NoWrap), the `flex` shorthand as Value{One,Auto,
+////              Initial,None} — `Value` and not `Flex`, a section carrying no
+////              sub-section of its own name — Grow{0,1}, Shrink{0,1},
+////              Basis over front 35's scale plus Auto/Full/Frac, and
+////              Order{1..12,First,Last,None}. Beside them the WHOLE
+////              alignment family of §6.16-§6.24: Items, Justify,
+////              JustifyItems, JustifySelf, AlignSelf, Content, PlaceContent,
+////              PlaceItems, PlaceSelf. It stays here although it applies to
+////              GRID too — `align-items` and `justify-content` were spelled
+////              `.Flex.*` before front 37 and renaming a token that compiles
+////              is what the milestone forbids; a grid container writes
+////              `.Flex.Justify.Center` and gets the right CSS. `AlignSelf`
+////              and the FLAT Place* trio rather than `Self` and `Place{…}`:
+////              `Self` is a language KEYWORD and neither parses. The legacy
+////              Gap{1,2,4,8} stays and now emits what `.Gap.All.N` emits.
+////              Only Basis is a length, and it answers `spacing(n)`
+////   Grid     — front 37: §6.8-§6.14. Cols/Rows {1..12, None, Subgrid},
+////              Col/Row { Auto, Span{1..12,Full}, Start{1..13,Auto},
+////              End{1..13,Auto} } — Start and End run to 13 because a
+////              twelve-column grid has THIRTEEN LINES — Flow{Row,Col,Dense,
+////              RowDense,ColDense}, AutoCols/AutoRows{Auto,Min,Max,Fr}.
+////              Nothing here is a length: a count, a span and a line number
+////              are integers. `gridRepeat(n)` builds
+////              `repeat(N, minmax(0, 1fr))` and `gridFr()` the
+////              `minmax(0, 1fr)` inside it, each spelled once
+////   Gap      — front 37: §6.15, TOP LEVEL rather than a sub-section of
+////              Flex, because `gap`, `column-gap` and `row-gap` separate the
+////              items of a grid exactly as they separate the items of a flex
+////              row. All/X/Y over front 35's full scale, answering front
+////              54's `spacing(n)`/`spacingHalf(n)`, so `.Gap.All.4` and
+////              `.Pad.All.4` are the same length by construction
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
 ////
@@ -925,6 +957,68 @@ pub type Token {
             8,
         }
     }
+
+    // `Grid` is the two-dimensional half of `§ 6` — templates, spans, starts,
+    // ends, auto-flow and the implicit tracks. `display:grid` is front 36's;
+    // before this section there was nothing to put inside the box it declares.
+    //
+    // NOTHING HERE IS A LENGTH. A column count, a span and a line number are
+    // integers, so no leaf reaches `spacing` and no leaf spells a `rem`; the
+    // one composed value, `repeat(N, minmax(0, 1fr))`, is built by `gridRepeat`
+    // from the leaf's numeral and is spelled in exactly one place.
+    //
+    // `Start` and `End` run to 13 because a twelve-column grid has THIRTEEN
+    // LINES. `Cols`/`Rows` and `Span` run to 12.
+    Grid {
+        Cols { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, None, Subgrid }
+        Rows { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, None, Subgrid }
+        Col {
+            Auto,
+            Span { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, Full }
+            Start { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, Auto }
+            End { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, Auto }
+        }
+        Row {
+            Auto,
+            Span { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, Full }
+            Start { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, Auto }
+            End { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, Auto }
+        }
+        Flow { Row, Col, Dense, RowDense, ColDense }
+        AutoCols { Auto, Min, Max, Fr }
+        AutoRows { Auto, Min, Max, Fr }
+    }
+
+    // `Gap` is TOP LEVEL rather than a sub-section of `Flex`, because `gap`,
+    // `column-gap` and `row-gap` apply to a grid container exactly as they
+    // apply to a flex one. It carries front 35's scale and answers front 54's
+    // `spacing(n)` / `spacingHalf(n)`, so `.Gap.All.4` and `.Pad.All.4` are the
+    // same length by construction.
+    //
+    // The pre-37 `.Flex.Gap.{1,2,4,8}` paths keep working and keep emitting
+    // `gap:` — the same declaration by a narrower name, asserted side by side
+    // with `.Gap.All.N` so the two spellings cannot drift.
+    Gap {
+        All {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Half { 0, 1, 2, 3 }
+        }
+        X {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Half { 0, 1, 2, 3 }
+        }
+        Y {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Half { 0, 1, 2, 3 }
+        }
+    }
+    // ── end front 37 ────────────────────────────────────────────────────────
 
     Border {
         W {

@@ -145,6 +145,8 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Space(_inner) -> spaceTokenToSheet(_inner, th);
         Layout(_inner) -> declSheet(layoutTokenToCss(_inner, th));
         Flex(_inner) -> declSheet(flexTokenToCss(_inner, th));
+        Grid(_inner) -> declSheet(gridTokenToCss(_inner, th));
+        Gap(_inner) -> declSheet(gapTokenToCss(_inner, th));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
         Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
@@ -5251,6 +5253,273 @@ fn legacyGapScale(s: Token.Flex.Gap, th: Theme) -> string {
     return out;
 }
 
+// ── the grid container and the grid item · `§ 6.8`–`§ 6.14` ─────────────────
+//
+// `display:grid` is front 36's and was all emilia had: there was no template,
+// no span, no start, no end, no flow and no implicit track, so nothing could be
+// put inside the box it declares. NOTHING BELOW IS A LENGTH — a column count, a
+// span and a line number are integers — so no leaf here reaches `spacing` and
+// none spells a `rem`.
+
+// `§ 6.8` prints `grid-cols-N` as `repeat(N, minmax(0, 1fr))`, ONE SPACE after
+// each comma. It is a function of the leaf rather than a lookup, so adding a
+// column count is one arm and not two, and the text lives here alone.
+fn gridRepeat(n: string) -> string {
+    return "repeat(" + n + ", " + gridFr() + ")";
+}
+
+// The implicit-track `fr` of `§ 6.13`/`§ 6.14` is the same `minmax(0, 1fr)`
+// `gridRepeat` puts inside its `repeat()`, so it is written once and read twice.
+fn gridFr() -> string {
+    return "minmax(0, 1fr)";
+}
+
+// `§ 6.9` prints a span DOUBLED — `span 2 / span 2` — because the start and the
+// end of the placement are both relative.
+fn gridSpan(n: string) -> string {
+    return "span " + n + " / span " + n;
+}
+
+fn gridTokenToCss(t: Token.Grid, th: Theme) -> string {
+    val out = case t {
+        Cols(_inner) -> oneDecl("grid-template-columns", gridColsToCss(_inner, th));
+        Rows(_inner) -> oneDecl("grid-template-rows", gridRowsToCss(_inner, th));
+        Col(_inner) -> gridColToCss(_inner, th);
+        Row(_inner) -> gridRowToCss(_inner, th);
+        Flow(_inner) -> oneDecl("grid-auto-flow", gridFlowToCss(_inner, th));
+        AutoCols(_inner) -> oneDecl("grid-auto-columns", gridAutoColsToCss(_inner, th));
+        AutoRows(_inner) -> oneDecl("grid-auto-rows", gridAutoRowsToCss(_inner, th));
+    };
+    return out;
+}
+
+fn gridColsToCss(c: Token.Grid.Cols, th: Theme) -> string {
+    val out = case c {
+        __1 -> gridRepeat("1"); __2 -> gridRepeat("2"); __3 -> gridRepeat("3");
+        __4 -> gridRepeat("4"); __5 -> gridRepeat("5"); __6 -> gridRepeat("6");
+        __7 -> gridRepeat("7"); __8 -> gridRepeat("8"); __9 -> gridRepeat("9");
+        __10 -> gridRepeat("10"); __11 -> gridRepeat("11"); __12 -> gridRepeat("12");
+        None -> "none";
+        Subgrid -> "subgrid";
+    };
+    return out;
+}
+
+fn gridRowsToCss(r: Token.Grid.Rows, th: Theme) -> string {
+    val out = case r {
+        __1 -> gridRepeat("1"); __2 -> gridRepeat("2"); __3 -> gridRepeat("3");
+        __4 -> gridRepeat("4"); __5 -> gridRepeat("5"); __6 -> gridRepeat("6");
+        __7 -> gridRepeat("7"); __8 -> gridRepeat("8"); __9 -> gridRepeat("9");
+        __10 -> gridRepeat("10"); __11 -> gridRepeat("11"); __12 -> gridRepeat("12");
+        None -> "none";
+        Subgrid -> "subgrid";
+    };
+    return out;
+}
+
+// `col-auto` and `col-span-*` are the `grid-column` SHORTHAND; `col-start-*`
+// and `col-end-*` are the two longhands, which is why one section answers three
+// property names.
+fn gridColToCss(c: Token.Grid.Col, th: Theme) -> string {
+    val out = case c {
+        Auto -> "grid-column:auto";
+        Span(_inner) -> oneDecl("grid-column", gridColSpanToCss(_inner, th));
+        Start(_inner) -> oneDecl("grid-column-start", gridColStartToCss(_inner, th));
+        End(_inner) -> oneDecl("grid-column-end", gridColEndToCss(_inner, th));
+    };
+    return out;
+}
+
+fn gridColSpanToCss(s: Token.Grid.Col.Span, th: Theme) -> string {
+    val out = case s {
+        __1 -> gridSpan("1"); __2 -> gridSpan("2"); __3 -> gridSpan("3");
+        __4 -> gridSpan("4"); __5 -> gridSpan("5"); __6 -> gridSpan("6");
+        __7 -> gridSpan("7"); __8 -> gridSpan("8"); __9 -> gridSpan("9");
+        __10 -> gridSpan("10"); __11 -> gridSpan("11"); __12 -> gridSpan("12");
+        Full -> "1 / -1";
+    };
+    return out;
+}
+
+fn gridColStartToCss(s: Token.Grid.Col.Start, th: Theme) -> string {
+    val out = case s {
+        __1 -> "1"; __2 -> "2"; __3 -> "3"; __4 -> "4"; __5 -> "5"; __6 -> "6"; __7 -> "7";
+        __8 -> "8"; __9 -> "9"; __10 -> "10"; __11 -> "11"; __12 -> "12"; __13 -> "13";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn gridColEndToCss(e: Token.Grid.Col.End, th: Theme) -> string {
+    val out = case e {
+        __1 -> "1"; __2 -> "2"; __3 -> "3"; __4 -> "4"; __5 -> "5"; __6 -> "6"; __7 -> "7";
+        __8 -> "8"; __9 -> "9"; __10 -> "10"; __11 -> "11"; __12 -> "12"; __13 -> "13";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn gridRowToCss(r: Token.Grid.Row, th: Theme) -> string {
+    val out = case r {
+        Auto -> "grid-row:auto";
+        Span(_inner) -> oneDecl("grid-row", gridRowSpanToCss(_inner, th));
+        Start(_inner) -> oneDecl("grid-row-start", gridRowStartToCss(_inner, th));
+        End(_inner) -> oneDecl("grid-row-end", gridRowEndToCss(_inner, th));
+    };
+    return out;
+}
+
+fn gridRowSpanToCss(s: Token.Grid.Row.Span, th: Theme) -> string {
+    val out = case s {
+        __1 -> gridSpan("1"); __2 -> gridSpan("2"); __3 -> gridSpan("3");
+        __4 -> gridSpan("4"); __5 -> gridSpan("5"); __6 -> gridSpan("6");
+        __7 -> gridSpan("7"); __8 -> gridSpan("8"); __9 -> gridSpan("9");
+        __10 -> gridSpan("10"); __11 -> gridSpan("11"); __12 -> gridSpan("12");
+        Full -> "1 / -1";
+    };
+    return out;
+}
+
+fn gridRowStartToCss(s: Token.Grid.Row.Start, th: Theme) -> string {
+    val out = case s {
+        __1 -> "1"; __2 -> "2"; __3 -> "3"; __4 -> "4"; __5 -> "5"; __6 -> "6"; __7 -> "7";
+        __8 -> "8"; __9 -> "9"; __10 -> "10"; __11 -> "11"; __12 -> "12"; __13 -> "13";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn gridRowEndToCss(e: Token.Grid.Row.End, th: Theme) -> string {
+    val out = case e {
+        __1 -> "1"; __2 -> "2"; __3 -> "3"; __4 -> "4"; __5 -> "5"; __6 -> "6"; __7 -> "7";
+        __8 -> "8"; __9 -> "9"; __10 -> "10"; __11 -> "11"; __12 -> "12"; __13 -> "13";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+// `grid-flow-row-dense` is TWO WORDS separated by one space, and `grid-flow-col`
+// is `column` — the utility abbreviates where the CSS value does not.
+fn gridFlowToCss(f: Token.Grid.Flow, th: Theme) -> string {
+    val out = case f {
+        Row -> "row";
+        Col -> "column";
+        Dense -> "dense";
+        RowDense -> "row dense";
+        ColDense -> "column dense";
+    };
+    return out;
+}
+
+fn gridAutoColsToCss(a: Token.Grid.AutoCols, th: Theme) -> string {
+    val out = case a {
+        Auto -> "auto";
+        Min -> "min-content";
+        Max -> "max-content";
+        Fr -> gridFr();
+    };
+    return out;
+}
+
+fn gridAutoRowsToCss(a: Token.Grid.AutoRows, th: Theme) -> string {
+    val out = case a {
+        Auto -> "auto";
+        Min -> "min-content";
+        Max -> "max-content";
+        Fr -> gridFr();
+    };
+    return out;
+}
+
+// ── gap · `§ 6.15` ───────────────────────────────────────────────────────────
+//
+// `Gap` IS TOP LEVEL. `gap` applies to a grid container exactly as it applies
+// to a flex one, so a sub-section of `Flex` would be the wrong home for it and
+// `§ 6.15` treats it as one row of one chapter. It carries front 35's scale
+// and answers `spacing(n)` / `spacingHalf(n)`, so `.Gap.All.4` and `.Pad.All.4`
+// are the same length by construction rather than by two tables agreeing today.
+
+fn gapTokenToCss(t: Token.Gap, th: Theme) -> string {
+    val out = case t {
+        All(_inner) -> oneDecl("gap", gapScaleAll(_inner, th));
+        X(_inner) -> oneDecl("column-gap", gapScaleX(_inner, th));
+        Y(_inner) -> oneDecl("row-gap", gapScaleY(_inner, th));
+    };
+    return out;
+}
+
+fn gapScaleAll(s: Token.Gap.All, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> gapHalfAll(_inner, th);
+    };
+    return out;
+}
+
+fn gapHalfAll(h: Token.Gap.All.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn gapScaleX(s: Token.Gap.X, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> gapHalfX(_inner, th);
+    };
+    return out;
+}
+
+fn gapHalfX(h: Token.Gap.X.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn gapScaleY(s: Token.Gap.Y, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> gapHalfY(_inner, th);
+    };
+    return out;
+}
+
+fn gapHalfY(h: Token.Gap.Y.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
 // ── tests · the flex item ────────────────────────────────────────────────────
 
 test "flex direction and wrap — the four that compile today, unchanged" {
@@ -5399,6 +5668,310 @@ test "`flex-start` and `start` are both right, and each from its own token" {
     assert tokenDeclarations(.Flex.JustifyItems.Start).indexOf("flex-start") == -1;
     assert tokenDeclarations(.Flex.PlaceItems.Start).indexOf("flex-start") == -1;
 }
+
+// ── tests · grid ─────────────────────────────────────────────────────────────
+
+test "a column template is a repeat built from the leaf, with its spaces" {
+    assert tokenDeclarations(.Grid.Cols.1)
+        == "grid-template-columns:repeat(1, minmax(0, 1fr))";
+    assert tokenDeclarations(.Grid.Cols.6)
+        == "grid-template-columns:repeat(6, minmax(0, 1fr))";
+    assert tokenDeclarations(.Grid.Cols.12)
+        == "grid-template-columns:repeat(12, minmax(0, 1fr))";
+    assert tokenDeclarations(.Grid.Rows.3)
+        == "grid-template-rows:repeat(3, minmax(0, 1fr))";
+    assert tokenDeclarations(.Grid.Cols.12).indexOf("repeat(12,minmax") == -1;
+    assert tokenDeclarations(.Grid.Cols.12).indexOf("minmax(0,1fr)") == -1;
+}
+
+test "`none` and `subgrid` are keywords, not a repeat of anything" {
+    assert tokenDeclarations(.Grid.Cols.None) == "grid-template-columns:none";
+    assert tokenDeclarations(.Grid.Cols.Subgrid) == "grid-template-columns:subgrid";
+    assert tokenDeclarations(.Grid.Rows.None) == "grid-template-rows:none";
+    assert tokenDeclarations(.Grid.Rows.Subgrid) == "grid-template-rows:subgrid";
+    assert tokenDeclarations(.Grid.Cols.None).indexOf("repeat") == -1;
+}
+
+// `repeat(…, minmax(0, 1fr))` is spelled in `gridRepeat` and nowhere else, and
+// the `minmax(0, 1fr)` inside it is `gridFr`'s — the same string the implicit
+// `fr` tracks read. Comparing the emitted values to the functions is what makes
+// a second spelling impossible rather than merely absent today.
+test "`gridRepeat` and `gridFr` are the only places those two strings live" {
+    val cols = tokenDeclarations(.Grid.Cols.12).split(":").at(1) ?? "";
+    val rows = tokenDeclarations(.Grid.Rows.12).split(":").at(1) ?? "";
+    assert cols == gridRepeat("12");
+    assert rows == gridRepeat("12");
+    assert cols == rows;
+    val autoCols = tokenDeclarations(.Grid.AutoCols.Fr).split(":").at(1) ?? "";
+    val autoRows = tokenDeclarations(.Grid.AutoRows.Fr).split(":").at(1) ?? "";
+    assert autoCols == gridFr();
+    assert autoRows == gridFr();
+    assert gridRepeat("12").indexOf(gridFr()) != -1;
+}
+
+test "a span is doubled, and `full` is the line-based form instead" {
+    assert tokenDeclarations(.Grid.Col.Auto) == "grid-column:auto";
+    assert tokenDeclarations(.Grid.Col.Span.1) == "grid-column:span 1 / span 1";
+    assert tokenDeclarations(.Grid.Col.Span.2) == "grid-column:span 2 / span 2";
+    assert tokenDeclarations(.Grid.Col.Span.12) == "grid-column:span 12 / span 12";
+    assert tokenDeclarations(.Grid.Col.Span.Full) == "grid-column:1 / -1";
+    assert tokenDeclarations(.Grid.Row.Auto) == "grid-row:auto";
+    assert tokenDeclarations(.Grid.Row.Span.2) == "grid-row:span 2 / span 2";
+    assert tokenDeclarations(.Grid.Row.Span.Full) == "grid-row:1 / -1";
+}
+
+// A twelve-column grid has thirteen lines, so `Start` and `End` run one past
+// `Cols` and `Span`.
+test "the thirteenth line exists, on both axes and on both ends" {
+    assert tokenDeclarations(.Grid.Col.Start.1) == "grid-column-start:1";
+    assert tokenDeclarations(.Grid.Col.Start.13) == "grid-column-start:13";
+    assert tokenDeclarations(.Grid.Col.Start.Auto) == "grid-column-start:auto";
+    assert tokenDeclarations(.Grid.Col.End.7) == "grid-column-end:7";
+    assert tokenDeclarations(.Grid.Col.End.13) == "grid-column-end:13";
+    assert tokenDeclarations(.Grid.Col.End.Auto) == "grid-column-end:auto";
+    assert tokenDeclarations(.Grid.Row.Start.13) == "grid-row-start:13";
+    assert tokenDeclarations(.Grid.Row.End.3) == "grid-row-end:3";
+}
+
+test "auto-flow keeps one space, and `col` is `column` in the value" {
+    assert tokenDeclarations(.Grid.Flow.Row) == "grid-auto-flow:row";
+    assert tokenDeclarations(.Grid.Flow.Col) == "grid-auto-flow:column";
+    assert tokenDeclarations(.Grid.Flow.Dense) == "grid-auto-flow:dense";
+    assert tokenDeclarations(.Grid.Flow.RowDense) == "grid-auto-flow:row dense";
+    assert tokenDeclarations(.Grid.Flow.ColDense) == "grid-auto-flow:column dense";
+    assert tokenDeclarations(.Grid.Flow.RowDense).indexOf("row-dense") == -1;
+    assert tokenDeclarations(.Grid.Flow.Col).indexOf("flow:col;") == -1;
+}
+
+test "the implicit tracks — `min`/`max` are `-content`, `fr` is a minmax" {
+    assert tokenDeclarations(.Grid.AutoCols.Auto) == "grid-auto-columns:auto";
+    assert tokenDeclarations(.Grid.AutoCols.Min) == "grid-auto-columns:min-content";
+    assert tokenDeclarations(.Grid.AutoCols.Max) == "grid-auto-columns:max-content";
+    assert tokenDeclarations(.Grid.AutoCols.Fr) == "grid-auto-columns:minmax(0, 1fr)";
+    assert tokenDeclarations(.Grid.AutoRows.Auto) == "grid-auto-rows:auto";
+    assert tokenDeclarations(.Grid.AutoRows.Min) == "grid-auto-rows:min-content";
+    assert tokenDeclarations(.Grid.AutoRows.Max) == "grid-auto-rows:max-content";
+    assert tokenDeclarations(.Grid.AutoRows.Fr) == "grid-auto-rows:minmax(0, 1fr)";
+}
+
+// ── tests · gap ──────────────────────────────────────────────────────────────
+
+test "gap — the shorthand over the ladder, and zero is the literal 0" {
+    assert tokenDeclarations(.Gap.All.0) == "gap:0";
+    assert tokenDeclarations(.Gap.All.1) == "gap:" + spacing(1);
+    assert tokenDeclarations(.Gap.All.2) == "gap:" + spacing(2);
+    assert tokenDeclarations(.Gap.All.4) == "gap:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Gap.All.96) == "gap:" + spacing(96);
+    assert tokenDeclarations(.Gap.All.Px) == "gap:1px";
+    assert tokenDeclarations(.Gap.All.Half.1) == "gap:" + spacingHalf(1);
+}
+
+test "gap — the two axes are two different properties" {
+    assert tokenDeclarations(.Gap.X.1) == "column-gap:" + spacing(1);
+    assert tokenDeclarations(.Gap.X.2) == "column-gap:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Gap.Y.1) == "row-gap:" + spacing(1);
+    assert tokenDeclarations(.Gap.Y.6) == "row-gap:calc(var(--spacing) * 6)";
+    assert tokenDeclarations(.Gap.X.0) == "column-gap:0";
+    assert tokenDeclarations(.Gap.Y.Px) == "row-gap:1px";
+}
+
+// THE SEVENTH LADDER, CLOSED. `flexGapScale` answered `__4 -> "1rem"` — the
+// last of the seven hand-written `rem` ladders front 54 found in this file, and
+// the one front 35 could not delete because `Gap` is this front's section. The
+// two spellings are compared to EACH OTHER rather than each to its own expected
+// string, so they cannot drift apart again.
+test "`.Flex.Gap.N` and `.Gap.All.N` are one declaration by two names" {
+    assert tokenDeclarations(.Flex.Gap.1) == tokenDeclarations(.Gap.All.1);
+    assert tokenDeclarations(.Flex.Gap.2) == tokenDeclarations(.Gap.All.2);
+    assert tokenDeclarations(.Flex.Gap.4) == tokenDeclarations(.Gap.All.4);
+    assert tokenDeclarations(.Flex.Gap.8) == tokenDeclarations(.Gap.All.8);
+    assert tokenDeclarations(.Flex.Gap.4) == "gap:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Flex.Gap.4).indexOf("1rem") == -1;
+    assert tokenDeclarations(.Flex.Gap.1).indexOf("0.25rem") == -1;
+    assert tokenDeclarations(.Flex.Gap.8).indexOf("2rem") == -1;
+}
+
+// `spacing` is CALLED, not copied: the same class comes out under a theme whose
+// `--spacing` is halved, because the rule references the variable instead of
+// resolving it.
+test "gap reads front 54's ladder, so halving `--spacing` moves no rule" {
+    val tokens: Token[] = [.Layout.Grid, .Grid.Cols.12, .Gap.All.4];
+    val tighter: ThemeEntry[] = [ThemeEntry(name: "--spacing", value: "0.125rem")];
+    val tight = extendTheme(defaultTheme(), tighter);
+    assert emiliaWith(tokens, defaultTheme()) == emiliaWith(tokens, tight);
+    val doc = await flushWith(bareOptions());
+    assert doc.indexOf("display:grid;grid-template-columns:repeat(12, minmax(0, 1fr));"
+        + "gap:calc(var(--spacing) * 4)") != -1;
+}
+
+// ── the front's regression ───────────────────────────────────────────────────
+//
+// THE WHOLE ARGUMENT OF THIS FRONT'S NUMERIC FAMILIES, walked rather than
+// sampled. Every leaf `Flex`, `Grid` and `Gap` declare — all 356 of them — is
+// mapped and the output is checked for the two shapes that would mean a value
+// was resolved here instead of referenced:
+//
+//   - a `rem` ANYWHERE. `Basis` and `Gap` must answer `calc(var(--spacing) * n)`;
+//     a `rem` in either is `flexGapScale` reopened, and it would make a
+//     project's `--spacing` override silently ineffective. `Grid` is not a
+//     length at all, so a `rem` there would be nonsense as well as wrong.
+//   - a CLASS FRAGMENT where a declaration belongs. `gap-4`, `basis-1/2`,
+//     `grid-cols-12`, `col-span-2`, `flex-1` and `order-first` are UTILITY
+//     names, not CSS; what reaches the document is `property:value`, so every
+//     leaf carries a `:` and none carries the hyphenated utility spelling.
+//
+// THE CONTROL. `.Border.Rounded.Lg` is asserted to DO carry a `rem` — it is
+// front 41's and spells `0.5rem` — so the probe is known to discriminate rather
+// than to pass vacuously. A `0.25rem` planted in one `gapScaleAll` arm was
+// confirmed to fail the walk before it was taken out again.
+fn flexLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Flex.Row, .Flex.RowReverse, .Flex.Col, .Flex.ColReverse, .Flex.Wrap,
+        .Flex.WrapReverse, .Flex.NoWrap, .Flex.Value.One, .Flex.Value.Auto,
+        .Flex.Value.Initial, .Flex.Value.None, .Flex.Grow.0, .Flex.Grow.1, .Flex.Shrink.0,
+        .Flex.Shrink.1, .Flex.Basis.0, .Flex.Basis.1, .Flex.Basis.2, .Flex.Basis.3,
+        .Flex.Basis.4, .Flex.Basis.5, .Flex.Basis.6, .Flex.Basis.7, .Flex.Basis.8,
+        .Flex.Basis.9, .Flex.Basis.10, .Flex.Basis.11, .Flex.Basis.12, .Flex.Basis.14,
+        .Flex.Basis.16, .Flex.Basis.20, .Flex.Basis.24, .Flex.Basis.28, .Flex.Basis.32,
+        .Flex.Basis.36, .Flex.Basis.40, .Flex.Basis.44, .Flex.Basis.48, .Flex.Basis.52,
+        .Flex.Basis.56, .Flex.Basis.60, .Flex.Basis.64, .Flex.Basis.72, .Flex.Basis.80,
+        .Flex.Basis.96, .Flex.Basis.Px, .Flex.Basis.Auto, .Flex.Basis.Full,
+        .Flex.Basis.Frac.Half, .Flex.Basis.Frac.Third, .Flex.Basis.Frac.TwoThirds,
+        .Flex.Basis.Half.0, .Flex.Basis.Half.1, .Flex.Basis.Half.2, .Flex.Basis.Half.3,
+        .Flex.Order.1, .Flex.Order.2, .Flex.Order.3, .Flex.Order.4, .Flex.Order.5,
+        .Flex.Order.6, .Flex.Order.7, .Flex.Order.8, .Flex.Order.9, .Flex.Order.10,
+        .Flex.Order.11, .Flex.Order.12, .Flex.Order.First, .Flex.Order.Last,
+        .Flex.Order.None, .Flex.Items.Start, .Flex.Items.Center, .Flex.Items.End,
+        .Flex.Items.Stretch, .Flex.Items.Baseline, .Flex.Justify.Normal,
+        .Flex.Justify.Start, .Flex.Justify.Center, .Flex.Justify.End, .Flex.Justify.Between,
+        .Flex.Justify.Around, .Flex.Justify.Evenly, .Flex.Justify.Stretch,
+        .Flex.JustifyItems.Start, .Flex.JustifyItems.End, .Flex.JustifyItems.Center,
+        .Flex.JustifyItems.Stretch, .Flex.JustifySelf.Auto, .Flex.JustifySelf.Start,
+        .Flex.JustifySelf.End, .Flex.JustifySelf.Center, .Flex.JustifySelf.Stretch,
+        .Flex.AlignSelf.Auto, .Flex.AlignSelf.Start, .Flex.AlignSelf.End,
+        .Flex.AlignSelf.Center, .Flex.AlignSelf.Stretch, .Flex.AlignSelf.Baseline,
+        .Flex.Content.Normal, .Flex.Content.Center, .Flex.Content.Start, .Flex.Content.End,
+        .Flex.Content.Between, .Flex.Content.Around, .Flex.Content.Evenly,
+        .Flex.Content.Stretch, .Flex.PlaceContent.Center, .Flex.PlaceContent.Start,
+        .Flex.PlaceContent.End, .Flex.PlaceContent.Between, .Flex.PlaceContent.Around,
+        .Flex.PlaceContent.Evenly, .Flex.PlaceContent.Stretch, .Flex.PlaceItems.Start,
+        .Flex.PlaceItems.End, .Flex.PlaceItems.Center, .Flex.PlaceItems.Stretch,
+        .Flex.PlaceSelf.Auto, .Flex.PlaceSelf.Start, .Flex.PlaceSelf.End,
+        .Flex.PlaceSelf.Center, .Flex.PlaceSelf.Stretch, .Flex.Gap.1, .Flex.Gap.2,
+        .Flex.Gap.4, .Flex.Gap.8,
+    ];
+    return leaves;
+}
+
+fn gridLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Grid.Cols.1, .Grid.Cols.2, .Grid.Cols.3, .Grid.Cols.4, .Grid.Cols.5, .Grid.Cols.6,
+        .Grid.Cols.7, .Grid.Cols.8, .Grid.Cols.9, .Grid.Cols.10, .Grid.Cols.11,
+        .Grid.Cols.12, .Grid.Cols.None, .Grid.Cols.Subgrid, .Grid.Rows.1, .Grid.Rows.2,
+        .Grid.Rows.3, .Grid.Rows.4, .Grid.Rows.5, .Grid.Rows.6, .Grid.Rows.7, .Grid.Rows.8,
+        .Grid.Rows.9, .Grid.Rows.10, .Grid.Rows.11, .Grid.Rows.12, .Grid.Rows.None,
+        .Grid.Rows.Subgrid, .Grid.Col.Auto, .Grid.Col.Span.1, .Grid.Col.Span.2,
+        .Grid.Col.Span.3, .Grid.Col.Span.4, .Grid.Col.Span.5, .Grid.Col.Span.6,
+        .Grid.Col.Span.7, .Grid.Col.Span.8, .Grid.Col.Span.9, .Grid.Col.Span.10,
+        .Grid.Col.Span.11, .Grid.Col.Span.12, .Grid.Col.Span.Full, .Grid.Col.Start.1,
+        .Grid.Col.Start.2, .Grid.Col.Start.3, .Grid.Col.Start.4, .Grid.Col.Start.5,
+        .Grid.Col.Start.6, .Grid.Col.Start.7, .Grid.Col.Start.8, .Grid.Col.Start.9,
+        .Grid.Col.Start.10, .Grid.Col.Start.11, .Grid.Col.Start.12, .Grid.Col.Start.13,
+        .Grid.Col.Start.Auto, .Grid.Col.End.1, .Grid.Col.End.2, .Grid.Col.End.3,
+        .Grid.Col.End.4, .Grid.Col.End.5, .Grid.Col.End.6, .Grid.Col.End.7, .Grid.Col.End.8,
+        .Grid.Col.End.9, .Grid.Col.End.10, .Grid.Col.End.11, .Grid.Col.End.12,
+        .Grid.Col.End.13, .Grid.Col.End.Auto, .Grid.Row.Auto, .Grid.Row.Span.1,
+        .Grid.Row.Span.2, .Grid.Row.Span.3, .Grid.Row.Span.4, .Grid.Row.Span.5,
+        .Grid.Row.Span.6, .Grid.Row.Span.7, .Grid.Row.Span.8, .Grid.Row.Span.9,
+        .Grid.Row.Span.10, .Grid.Row.Span.11, .Grid.Row.Span.12, .Grid.Row.Span.Full,
+        .Grid.Row.Start.1, .Grid.Row.Start.2, .Grid.Row.Start.3, .Grid.Row.Start.4,
+        .Grid.Row.Start.5, .Grid.Row.Start.6, .Grid.Row.Start.7, .Grid.Row.Start.8,
+        .Grid.Row.Start.9, .Grid.Row.Start.10, .Grid.Row.Start.11, .Grid.Row.Start.12,
+        .Grid.Row.Start.13, .Grid.Row.Start.Auto, .Grid.Row.End.1, .Grid.Row.End.2,
+        .Grid.Row.End.3, .Grid.Row.End.4, .Grid.Row.End.5, .Grid.Row.End.6, .Grid.Row.End.7,
+        .Grid.Row.End.8, .Grid.Row.End.9, .Grid.Row.End.10, .Grid.Row.End.11,
+        .Grid.Row.End.12, .Grid.Row.End.13, .Grid.Row.End.Auto, .Grid.Flow.Row,
+        .Grid.Flow.Col, .Grid.Flow.Dense, .Grid.Flow.RowDense, .Grid.Flow.ColDense,
+        .Grid.AutoCols.Auto, .Grid.AutoCols.Min, .Grid.AutoCols.Max, .Grid.AutoCols.Fr,
+        .Grid.AutoRows.Auto, .Grid.AutoRows.Min, .Grid.AutoRows.Max, .Grid.AutoRows.Fr,
+    ];
+    return leaves;
+}
+
+fn gapLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Gap.All.0, .Gap.All.1, .Gap.All.2, .Gap.All.3, .Gap.All.4, .Gap.All.5, .Gap.All.6,
+        .Gap.All.7, .Gap.All.8, .Gap.All.9, .Gap.All.10, .Gap.All.11, .Gap.All.12,
+        .Gap.All.14, .Gap.All.16, .Gap.All.20, .Gap.All.24, .Gap.All.28, .Gap.All.32,
+        .Gap.All.36, .Gap.All.40, .Gap.All.44, .Gap.All.48, .Gap.All.52, .Gap.All.56,
+        .Gap.All.60, .Gap.All.64, .Gap.All.72, .Gap.All.80, .Gap.All.96, .Gap.All.Px,
+        .Gap.All.Half.0, .Gap.All.Half.1, .Gap.All.Half.2, .Gap.All.Half.3, .Gap.X.0,
+        .Gap.X.1, .Gap.X.2, .Gap.X.3, .Gap.X.4, .Gap.X.5, .Gap.X.6, .Gap.X.7, .Gap.X.8,
+        .Gap.X.9, .Gap.X.10, .Gap.X.11, .Gap.X.12, .Gap.X.14, .Gap.X.16, .Gap.X.20,
+        .Gap.X.24, .Gap.X.28, .Gap.X.32, .Gap.X.36, .Gap.X.40, .Gap.X.44, .Gap.X.48,
+        .Gap.X.52, .Gap.X.56, .Gap.X.60, .Gap.X.64, .Gap.X.72, .Gap.X.80, .Gap.X.96,
+        .Gap.X.Px, .Gap.X.Half.0, .Gap.X.Half.1, .Gap.X.Half.2, .Gap.X.Half.3, .Gap.Y.0,
+        .Gap.Y.1, .Gap.Y.2, .Gap.Y.3, .Gap.Y.4, .Gap.Y.5, .Gap.Y.6, .Gap.Y.7, .Gap.Y.8,
+        .Gap.Y.9, .Gap.Y.10, .Gap.Y.11, .Gap.Y.12, .Gap.Y.14, .Gap.Y.16, .Gap.Y.20,
+        .Gap.Y.24, .Gap.Y.28, .Gap.Y.32, .Gap.Y.36, .Gap.Y.40, .Gap.Y.44, .Gap.Y.48,
+        .Gap.Y.52, .Gap.Y.56, .Gap.Y.60, .Gap.Y.64, .Gap.Y.72, .Gap.Y.80, .Gap.Y.96,
+        .Gap.Y.Px, .Gap.Y.Half.0, .Gap.Y.Half.1, .Gap.Y.Half.2, .Gap.Y.Half.3,
+    ];
+    return leaves;
+}
+
+fn front37Leaves() -> Token[] {
+    return flexLeaves().append(gridLeaves()).append(gapLeaves());
+}
+
+test "regression — no leaf of this front resolves a length; all 356 declare" {
+    val leaves = front37Leaves();
+    assert flexLeaves().length == 126;
+    assert gridLeaves().length == 125;
+    assert gapLeaves().length == 105;
+    assert leaves.length == 356;
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("rem") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf(":") != -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).length > 0 });
+    assert tokenDeclarations(.Border.Rounded.Lg).indexOf("rem") != -1;
+}
+
+test "regression — no leaf of this front emits a Tailwind class fragment" {
+    val leaves = front37Leaves();
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("gap-1") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("gap-x-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("basis-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("order-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("flex-1") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("grid-cols-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("col-span-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("auto-cols-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("grid-flow-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("place-content-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("items-start") == -1 });
+}
+
+// The spacing families of this front ARE front 35's spacing family. Comparing
+// them to each other rather than to expected strings is what makes them one
+// ladder instead of three that agree today.
+test "regression — `Gap` and `Basis` are the ladder `Pad` is, property aside" {
+    val gap4 = tokenDeclarations(.Gap.All.4).split(":").at(1) ?? "";
+    val pad4 = tokenDeclarations(.Pad.All.4).split(":").at(1) ?? "";
+    val gapX12 = tokenDeclarations(.Gap.X.12).split(":").at(1) ?? "";
+    val padT12 = tokenDeclarations(.Pad.T.12).split(":").at(1) ?? "";
+    val basis8 = tokenDeclarations(.Flex.Basis.8).split(":").at(1) ?? "";
+    val pad8 = tokenDeclarations(.Pad.All.8).split(":").at(1) ?? "";
+    val gapHalf3 = tokenDeclarations(.Gap.All.Half.3).split(":").at(1) ?? "";
+    val padHalf3 = tokenDeclarations(.Pad.All.Half.3).split(":").at(1) ?? "";
+    assert gap4 == pad4;
+    assert gapX12 == padT12;
+    assert basis8 == pad8;
+    assert gapHalf3 == padHalf3;
+    assert tokenDeclarations(.Gap.All.Px) == "gap:1px";
+    assert tokenDeclarations(.Pad.All.Px) == "padding:1px";
+}
+
+// ── end front 37 ─────────────────────────────────────────────────────────────
 
 fn borderTokenToCss(t: Token.Border) -> string {
     val out = case t {
