@@ -2,6 +2,25 @@
 
 ## Unreleased — v0.beta.22
 
+- **`examples/emilia-grid/` — the worked example** (1.0.10-beta front
+  `37-emilia-grid`). The new workspace member composes the two shapes the gap
+  was blocking: a toolbar that is a row from `sm` up and a stack below it, whose
+  heading takes the remaining space (`flex:1 1 0%` beside `flex-basis:0`) and
+  whose action neither shrinks nor leaves the end of the order; and a
+  twelve-column dashboard that reflows one → six → twelve across `md` and `lg`,
+  with a chart panel spanning eight of the twelve and a sidebar whose rows size
+  to content. Neither was expressible before — a flex item could not grow and
+  grid had no token at all. Its last two tests are the front's argument: halving
+  `--spacing` gives the same class with the same declarations, and no token in
+  the example resolves a length. The two compositions sit outside that walk ON
+  PURPOSE and the file says why: a BREAKPOINT QUERY reads `--breakpoint-md`,
+  which IS a `rem`, and that at-rule is front 34's and front 54's, not a
+  declaration this front writes. 13 in-file tests, green on commonJS and on
+  erlang; it builds and runs.
+  **The spec named two flat files, `examples/flex-example.bp` and
+  `examples/grid-example.bp`.** emilia is a workspace since decision 75 and an
+  example is a MEMBER with its own manifest, so the two are one member,
+  `examples/emilia-grid/`, covering both — the same resolution front 36 made.
 - **The dispatchers, the walk, and the SEVENTH `rem` ladder** (1.0.10-beta front
   `37-emilia-grid`, steps 4–5). `Gap` is a TOP-LEVEL section — `gap`,
   `column-gap` and `row-gap` separate the items of a grid exactly as they

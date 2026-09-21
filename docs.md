@@ -671,6 +671,10 @@ order, a column count, a span and a line number are bare integers. The same
 test asserts `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
 discriminate rather than to pass vacuously.
 
+`examples/emilia-grid/` is the worked example: a toolbar whose heading takes the
+remaining space and which stacks under `sm`, and a twelve-column dashboard that
+reflows one → six → twelve across `md` and `lg`.
+
 ### Modifiers — the variant table
 
 A modifier is the only way a token reaches a state, a breakpoint or a
