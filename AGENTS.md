@@ -35,6 +35,43 @@ Front 54 adds the **theme** and the **spacing ladder** (`theme.bp`,
 `tokenToCss` to `spacing()` and to the theme is fronts 33–47's work, which is
 why the seven drifted `rem` ladders are still in `emilia.bp`.
 
+Front 56 adds the **rule model, the codec and the renderer** (`output.bp`) —
+see `docs.md` § The cascade and the output. It is the interface fronts 33, 34
+and 35 consume, so it is stated here in one line each:
+
+| Name | What 33/34/35 see |
+| --- | --- |
+| `Rule(layer, atRules, selector, declarations, important)` | one style rule; `atRules` outermost-first, `declarations` `;`-joined with no braces |
+| `Block(header, body)` | a rule that is not a style rule — `@keyframes spin` + its brace-balanced body |
+| `Sheet(rules, blocks)` | what a token list produces, and what a `…TokenToSheet` arm returns |
+| `Variant(atRule, selector)` | what a modifier is — **front 34 writes one `Variant`-returning fn per variant name and nothing else about emission** |
+| `selector` | a nesting template with **exactly one `&`**; no `&` means a literal selector; two or more is refused, with no argument that permits it |
+| `emptySheet()` / `declSheet(decls)` | the one-line adapter for a section dispatcher; `declSheet("")` is `emptySheet()` |
+| `staticSheet(layer, selector, decls)` | a rule whose selector is literal — 54's `:root`, 55's reset |
+| `blockSheet(header, body)` | a `@keyframes` sheet — front 44's `animate-*` |
+| `mergeSheet(a, b)` / `declarationsOf(s)` / `layerNames()` | concatenate rules then blocks; read every declaration back; the cascade order, written once |
+| `nestVariant(s, v)` / `markImportant(s)` | wrap a sheet in a variant; set `important` on every rule — front 34's `Important(inner)` is one line on top |
+| `encodeSheet(s)` / `decodeSheet(raw)` / `carriesSeparator(s)` | the codec that carries a `Sheet` through a string-keyed host cell, and the check its assumption rests on |
+| `Options(theme, base, prefix, important, layers)` + `defaultOptions()` + the five `with…` | the build-level knobs; `withBase` is how front 55 turns preflight on |
+| `renderRule(className, r, o)` / `renderDocument(raw, o)` | one rule; the whole `<style>` document |
+
+**Fronts 33–47 never see `Rule`, `Sheet` or `Variant`.** A section dispatcher
+keeps returning a declaration string and the shared `case` in `emilia.bp`
+adapts it — `Text(_inner) -> declSheet(textTokenToCss(_inner))`. A front whose
+tokens genuinely need a selector (`space-x-*`, `divide-*`) writes a
+`…TokenToSheet(t, th) -> Sheet` instead and says so in its own README. Two
+shapes, one line each in the shared `case`.
+
+**The `Theme` reaches the shared dispatcher, not the sub-dispatchers.**
+`tokenToSheet(t, th)` carries it and every modifier arm already uses it
+(`Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th))`). The ten
+section sub-dispatchers still have their front-54 signature
+(`fn textTokenToCss(t: Token.Text) -> string`): front 56 owns the shared
+dispatcher and the public entry points, **not** the per-section ones, so a
+front that needs the theme adds the parameter to its own function and to its
+own one line of the shared `case` — still one line each, and no front-56 commit
+touching a file two other fronts are editing.
+
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
 DSL); both forms need the two generic jhonstart hooks (`F0` second
@@ -146,6 +183,14 @@ emilia/
 │           │                resolves a spacing value — the seven `rem`
 │           │                ladders still in `emilia.bp` are front 35's
 │           │                to delete
+│           ├── output.bp  ← front 56: the rule model (`Rule`, `Block`,
+│           │                `Sheet`, `Variant`), `nestVariant` /
+│           │                `markImportant`, the `\t`/`\n`/`\r` codec that
+│           │                carries a `Sheet` through the string-keyed host
+│           │                cell, `Options` + the five `with…`, and
+│           │                `renderRule` / `renderDocument`. It declares NO
+│           │                external and imports only `theme` — the cells
+│           │                cannot move here (see "Gotchas")
 │           ├── tokens.bp  ← the `Token` enum-shaped `type`
 │           │                (`pub type Token { … }`, 1.0.3 surface): every
 │           │                section + the modifier variants. Section
@@ -255,6 +300,14 @@ to the commonJS row and runs once.
   resolved inside the lambda; a direct receiver (`s.contains(…)`) and a record
   field outside a lambda both work. Hoist to a typed `val`, or use `endsWith` /
   `indexOf(…) != -1`.
+- **`Array.reverse()` mutates its receiver on commonJS and does not on erlang.**
+  `val rev = xs.reverse();` leaves `xs` reversed on commonJS (native
+  `Array.prototype.reverse` is in-place and the codegen calls it directly) and
+  leaves it untouched on erlang (`lists:reverse/1` is pure), so any code that
+  reads the receiver again after reversing it answers differently per target —
+  the suite is green on one and silently wrong on the other. Never call
+  `reverse()` for its return value: `output.bp`'s `wrapAtRules` maps the list
+  twice instead. Reported to botopink-lang as a codegen defect.
 - **A sibling-module import always names its module** — `import { Token } from
   "tokens";`, never the bare `import { Token };`. Both type-check, but commonJS
   lowers the bare form to `require("../module")`: a path that resolves while

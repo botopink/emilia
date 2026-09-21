@@ -2,6 +2,65 @@
 
 ## Unreleased — v0.beta.22
 
+- **The rule model** (1.0.10-beta front `56-emilia-cascade-and-output`, steps 1–3). New
+  module `modules/emilia/src/output.bp`, declared `pub mod output;` in `root.bp` and
+  listed in the member manifest's `files`. It declares **no external** and touches no
+  host cell. `Rule(layer, atRules, selector, declarations, important)` replaces the
+  declaration string a token used to lower to; `Block(header, body)` carries a rule that
+  is not a style rule (today only `@keyframes`); `Sheet(rules, blocks)` is what a token
+  list produces; `Variant(atRule, selector)` is what a modifier is. A `selector` is a
+  **nesting template** carrying exactly one `&`, so every row of the variant reference
+  is one template — `&:hover`, `[dir="rtl"] &`, `:is(& > *)`,
+  `&:is(:where(.group):hover *)` — and a selector with **no** `&` is a literal selector,
+  which is how the theme writes `:root` and front 55 writes its reset. Constructors:
+  `emptySheet()`, `declSheet(decls)` (empty string → empty sheet), `staticSheet(layer,
+  selector, decls)`, `blockSheet(header, body)`, `mergeSheet(a, b)`, `declarationsOf(s)`,
+  `layerNames()`. `nestVariant(s, v)` wraps a sheet in a variant and `markImportant(s)`
+  sets the flag on every rule; both return new values, records being immutable.
+  `nestVariant` **refuses** a variant selector that does not carry exactly one `&`,
+  naming the selector: with none the variant replaces the rule it was meant to wrap,
+  with two it duplicates it. There is no argument that relaxes it.
+
+- **CSS nesting runs inner-`&`-first, and the front's own spec had it backwards**
+  (front `56-emilia-cascade-and-output`, step 2). `&:hover { &::before { … } }`
+  flattens to `&:hover::before`: the **inner** rule's `&` is what the **outer**
+  variant's selector replaces. The spec's Mechanism says the opposite ("the new
+  selector is `v.selector` with its single `&` replaced by the rule's current
+  selector"), which renders every nested pair backwards and contradicts the spec's
+  own acceptance list. `nestRule` implements the acceptance list, and the two nesting
+  tests pin both orders so it cannot drift back.
+
+- **The codec** (front `56-emilia-cascade-and-output`, step 4). A host cell stores one
+  string per class, so `encodeSheet(s)`/`decodeSheet(raw)` carry a `Sheet` through it:
+  records joined by `"\n"` and tagged `R`/`B`, fields by `"\t"`, the `atRules` list by
+  `"\r"`. `encodeSheet(emptySheet())` is `""` and `decodeSheet("")` is `emptySheet()`.
+  That no rendered declaration carries one of the three is the assumption the codec
+  rests on, so it is **checked** rather than assumed: `carriesSeparator(s)` is a value,
+  and a test walks the dispatcher output and the theme's own strings through it.
+
+- **Options and the render** (front `56-emilia-cascade-and-output`, step 6).
+  `Options(theme, base, prefix, important, layers)` with `defaultOptions()` and the five
+  `withTheme`/`withBase`/`withPrefix`/`withImportant`/`withLayers` updaters.
+  `renderRule(className, r, o)` substitutes `"." + prefix + className` for the rule's
+  `&`, wraps the declarations in the rule's at-rules **outermost-first**, and appends
+  `!important` **per declaration** when either the rule or the options say so; a literal
+  selector renders literally and the prefix never reaches it. `renderDocument(raw, o)`
+  emits `@layer theme, base, components, utilities;` first when `layers == true` and **no
+  `@layer` token at all** when it is false, then each non-empty layer in that order — the
+  theme as a `:root` rule, `o.base` (front 55's reset, **opt-in** here rather than
+  opt-out), the components layer, then the registered classes in registration order with,
+  inside one class, the unconditioned rules before the conditioned ones — and finally the
+  `@keyframes` blocks, outside every layer and deduplicated by header. Measured: 42/42
+  (`output.bp`) + 37/37 (`theme.bp`) + 6/6 (`spacing.bp`) + 17/17 (`emilia.bp`) on
+  commonJS and on erlang.
+
+- **`Array.reverse()` mutates its receiver on commonJS and does not on erlang** (found
+  by front `56-emilia-cascade-and-output`). `val rev = xs.reverse();` leaves `xs`
+  reversed on commonJS and untouched on erlang, so any fold over a reversed list is a
+  silent target divergence. `wrapAtRules` therefore maps the list twice — the opening
+  braces in order, the closing braces after the body — instead of folding a reversed
+  copy. Reported to botopink-lang as a codegen defect alongside the two front 54 found.
+
 - **The theme** (1.0.10-beta front `54-emilia-theme`, step 1). New module
   `modules/emilia/src/theme.bp`, declared `pub mod theme;` in `root.bp` and listed in
   the member manifest's `files`. A theme is a **flat `ThemeEntry[]`**, not nineteen

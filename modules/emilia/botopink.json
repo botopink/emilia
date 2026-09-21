@@ -11,6 +11,7 @@
     "tokens.bp",
     "theme.bp",
     "spacing.bp",
+    "output.bp",
     "emilia.bp"
   ]
 }

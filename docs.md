@@ -306,6 +306,121 @@ assert themeValue(composed, "--radius-pill") == "9999px";   // the vendor's
 assert themeValue(composed, "--radius-lg") == "0.5rem";     // emilia's
 ```
 
+## The cascade and the output
+
+A token used to lower to a **declaration string**, and a modifier wrapped that
+string in braces, so a whole class was one nested block. That shape can only
+express what fits inside one class body. A token lowers to a **`Sheet`** now, and
+a sheet is a list of rules that can sit anywhere in the document.
+
+```bp
+import { Rule, Block, Sheet, Variant, Options,
+         emptySheet, declSheet, staticSheet, blockSheet, mergeSheet,
+         declarationsOf, layerNames, nestVariant, markImportant,
+         encodeSheet, decodeSheet, carriesSeparator,
+         defaultOptions, withTheme, withBase, withPrefix, withImportant, withLayers,
+         renderRule, renderDocument } from "emilia";
+```
+
+| Type | What it is |
+| --- | --- |
+| `Rule(layer, atRules, selector, declarations, important)` | one style rule — `atRules` outermost-first, `declarations` `;`-joined with no braces around it |
+| `Block(header, body)` | a rule that is **not** a style rule: `@keyframes spin` plus its brace-balanced body |
+| `Sheet(rules, blocks)` | what a token list produces |
+| `Variant(atRule, selector)` | what a modifier is — an at-rule and a selector template, either of which may be empty |
+| `Options(theme, base, prefix, important, layers)` | the build-level knobs |
+
+### A selector is a nesting template
+
+`selector` carries **exactly one `&`**, and `&` stands for the class. That one
+field covers every variant there is, because each is a template with one `&`:
+
+```bp
+Variant(atRule: "@media (hover: hover)", selector: "&:hover")     // hover
+Variant(atRule: "", selector: "[dir=\"rtl\"] &")                    // rtl
+Variant(atRule: "@media (width >= 48rem)", selector: "&")         // md
+Variant(atRule: "", selector: "&:is(:where(.group):hover *)")     // group-hover
+```
+
+A selector with **no** `&` is a **literal** selector — that is how the theme
+writes `:root` and how a reset writes `html` — and the class name, and therefore
+the prefix, never reaches it. A selector with **two or more** `&` is **refused**,
+naming the selector. There is no permissive mode and no argument that relaxes it:
+with none the variant replaces the rule it was meant to wrap, and with two it
+duplicates it, and both are stylesheets that are silently wrong in a browser.
+
+### Nesting runs inner-`&`-first
+
+`nestVariant(s, v)` wraps a sheet in a variant, exactly as CSS nesting does:
+the **inner** rule's `&` is what the **outer** variant's selector replaces, and
+the outer variant's at-rule is prepended, so the outer modifier is outermost on
+both halves.
+
+```bp
+val hover  = Variant(atRule: "", selector: "&:hover");
+val before = Variant(atRule: "", selector: "&::before");
+
+nestVariant(nestVariant(declSheet("content:\"\""), before), hover);  // &:hover::before
+nestVariant(nestVariant(declSheet("content:\"\""), hover), before);  // &::before:hover
+```
+
+Blocks pass through untouched — an at-rule does not wrap a keyframes rule.
+
+### Building a sheet
+
+| Function | What it answers |
+| --- | --- |
+| `emptySheet()` | no rules, no blocks |
+| `declSheet(decls)` | one `utilities` rule on the bare `&`; **`declSheet("")` is `emptySheet()`** |
+| `staticSheet(layer, selector, decls)` | one rule whose selector is literal |
+| `blockSheet(header, body)` | one `@keyframes` block and no rule |
+| `mergeSheet(a, b)` | rules then blocks, order preserved — token order is class identity |
+| `declarationsOf(s)` | every rule's declaration string, in order |
+| `markImportant(s)` | set `important` on every rule; rendering appends `!important` per **declaration** |
+| `layerNames()` | `["theme", "base", "components", "utilities"]` — the cascade order, written once |
+
+### Options, and what wins
+
+`renderRule(className, r, o)` renders one rule and `renderDocument(raw, o)` the
+whole `<style>` document. The last rule in the stylesheet wins, so the order is
+pinned rather than inherited from a `Map`:
+
+1. `@layer theme, base, components, utilities;` when `layers` is on;
+2. the **theme** layer — the custom-property block as a `:root` rule;
+3. the **base** layer — `o.base`, front 55's reset. It is **opt-in**: the
+   default is `withBase(o, [])`, a deliberate inversion of upstream's default;
+4. the **components** layer;
+5. the **utilities** layer — registered classes in **registration** order;
+   within one class, the tokens in the order they were listed, and within one
+   class the rules with **no at-rules before** the rules with at-rules, so a
+   `md:` override beats the unconditioned utility on a mobile-first read;
+6. the `@keyframes` blocks, **outside every layer**, deduplicated by header.
+   Keyframes are not subject to the cascade, so their placement is a formatting
+   choice; it is written down so it is not re-litigated.
+
+`withLayers(o, false)` emits **no `@layer` token at all** and the same rules in
+the same order, so the cascade then rests on document order alone.
+
+`withPrefix(o, "tw_")` renders `.tw_e_1{…}`. emilia's class names are content
+hashes over `[a-z0-9_]`, so a prefix is a plain concatenation: upstream's escaped
+`.tw\:text-red-500` form has no analogue here, because emilia has no literal
+class names to escape. That divergence is intentional.
+
+`withImportant(o, true)` appends `!important` to every declaration of every rule,
+the same thing `markImportant` does to one sheet.
+
+### The codec
+
+A host cell stores one string per class, and a `Sheet` is a record tree, so
+`encodeSheet`/`decodeSheet` carry it through: records joined by `"\n"` and tagged
+`R`/`B`, fields by `"\t"`, the `atRules` list by `"\r"`. The encoding is also what
+gets hashed, so a class name is a pure function of its sheet.
+
+None of the three characters can appear in a rendered declaration. That is an
+assumption, so it is **checked** and not assumed: `carriesSeparator(s)` is an
+ordinary value, and the suite walks the dispatcher output and the theme's own
+strings through it.
+
 ## What's coming (v0.beta.21+)
 
 The spec authors a richer surface that v0 does not yet ship:
