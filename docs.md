@@ -274,6 +274,61 @@ emilia will not write a second `calc(var(--spacing) * …)` of its own to reach
 one value. Closing it is front 54's (a signed half step); until then `-mt-0.5`
 has no token, and no wrong token either.
 
+### Size
+
+Thirteen sub-sections: `W`, `H`, `Both`, `MinW`, `MaxW`, `MinH`, `MaxH`, and the
+six logical forms `Inline`, `Block`, `MinInline`, `MaxInline`, `MinBlock`,
+`MaxBlock`. Four kinds of leaf.
+
+```bp
+.Size.W.64            // width:calc(var(--spacing) * 64)   — the spacing ladder again
+.Size.W.Px            // width:1px
+.Size.W.Frac.Half     // width:50%
+.Size.W.Frac.Third    // width:33.333333%
+.Size.W.Full          // width:100%
+.Size.W.Min           // width:min-content
+.Size.W.Auto          // width:auto
+```
+
+`1/2` is neither an identifier nor a run of digits, so a fraction cannot be a
+leaf; `Frac` carries the eleven upstream fractions by name — `Half`, `Third`,
+`TwoThirds`, `Quarter`, `ThreeQuarters`, `Fifth`, `TwoFifths`, `ThreeFifths`,
+`FourFifths`, `Sixth`, `FiveSixths`.
+
+**The viewport unit differs by axis** and the tests say so:
+
+```bp
+.Size.W.Screen        // width:100vw
+.Size.H.Screen        // height:100vh
+.Size.H.Dvh           // height:100dvh
+.Size.MinH.Screen     // min-height:100vh
+```
+
+`Both` is upstream's `size-*` — two declarations from one leaf:
+
+```bp
+.Size.Both.12         // width:calc(var(--spacing) * 12);height:calc(var(--spacing) * 12)
+.Size.Both.Full       // width:100%;height:100%
+```
+
+#### The named widths are the theme's, not emilia's
+
+`max-w-md` is `max-width:var(--container-md)` upstream and here. The `rem`
+behind each name is written once, in the theme, so a project that redefines
+`--container-md` moves every `max-w-md` in the build — which a literal ladder in
+the dispatcher would have made impossible.
+
+```bp
+.Size.MaxW.Md            // max-width:var(--container-md)        (--container-md is 28rem)
+.Size.MaxW.X3xl          // max-width:var(--container-3xl)        (48rem)
+.Size.MaxW.Screen.X2xl   // max-width:var(--breakpoint-2xl)       (96rem)
+.Size.MaxInline.Md       // max-inline-size:var(--container-md)
+```
+
+`MaxW` carries all thirteen container names, `X3xs` and `X2xs` through `X7xl`,
+and `MaxW.Screen` the five breakpoints. No `Size` leaf emits a `rem` of its own;
+a test walks all 566 of them and asserts it.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

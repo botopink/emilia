@@ -41,6 +41,16 @@
 ////              `spacingHalf(-0)` is `spacingHalf(0)`, so the -0.5 rung is the
 ////              one front 54's ladder cannot spell and emilia will not spell a
 ////              second `calc(var(--spacing) * …)` to reach it
+////   Size     — front 35: thirteen sub-sections over §8.1-§8.7 — W, H, Both
+////              (upstream's size-*, two properties from one leaf), MinW, MaxW,
+////              MinH, MaxH and the six logical Inline/Block forms. Four kinds
+////              of leaf: a NUMBER is the spacing ladder, a Frac is a
+////              percentage carried by name (`1/2` is no identifier), a KEYWORD
+////              is an intrinsic size or a viewport unit (which differs by
+////              axis — w-screen is 100vw, h-screen is 100vh), and a NAMED
+////              width is the theme's container ladder
+////              (`.Size.MaxW.Md` → `max-width:var(--container-md)`), with
+////              MaxW.Screen.* reading the breakpoint ladder the same way
 ////   Layout   — Block/InlineBlock/Inline/Hidden/Flex/Grid
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
@@ -365,6 +375,110 @@ pub type Token {
                 Px,
                 Half { 1, 2, 3 }
             }
+        }
+    }
+
+    Size {
+        W {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Frac {
+                Half, Third, TwoThirds, Quarter, ThreeQuarters, Fifth, TwoFifths,
+                ThreeFifths, FourFifths, Sixth, FiveSixths,
+            }
+            Full, Screen, Svw, Lvw, Dvw, Min, Max, Fit, Auto,
+        }
+        H {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Frac {
+                Half, Third, TwoThirds, Quarter, ThreeQuarters, Fifth, TwoFifths,
+                ThreeFifths, FourFifths, Sixth, FiveSixths,
+            }
+            Full, Screen, Svh, Lvh, Dvh, Min, Max, Fit, Auto,
+        }
+        Both {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Frac {
+                Half, Third, TwoThirds, Quarter, ThreeQuarters, Fifth, TwoFifths,
+                ThreeFifths, FourFifths, Sixth, FiveSixths,
+            }
+            Full, Min, Max, Fit, Auto,
+        }
+        MinW {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Full, Min, Max, Fit,
+        }
+        MaxW {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            X3xs, X2xs, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, X5xl, X6xl, X7xl,
+            Screen { Sm, Md, Lg, Xl, X2xl }
+            None, Full, Min, Max, Fit,
+        }
+        MinH {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Full, Screen, Svh, Lvh, Dvh, Min, Max, Fit,
+        }
+        MaxH {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            None, Full, Screen, Svh, Lvh, Dvh, Min, Max, Fit,
+        }
+        Inline {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Frac {
+                Half, Third, TwoThirds, Quarter, ThreeQuarters, Fifth, TwoFifths,
+                ThreeFifths, FourFifths, Sixth, FiveSixths,
+            }
+            Full, Min, Max, Fit, Auto,
+        }
+        Block {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Frac {
+                Half, Third, TwoThirds, Quarter, ThreeQuarters, Fifth, TwoFifths,
+                ThreeFifths, FourFifths, Sixth, FiveSixths,
+            }
+            Full, Min, Max, Fit, Auto,
+        }
+        MinInline {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Full, Min, Max, Fit,
+        }
+        MaxInline {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            X3xs, X2xs, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, X5xl, X6xl, X7xl,
+            None, Full, Min, Max, Fit,
+        }
+        MinBlock {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Full, Min, Max, Fit,
+        }
+        MaxBlock {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            None, Full, Min, Max, Fit,
         }
     }
 

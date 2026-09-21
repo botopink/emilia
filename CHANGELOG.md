@@ -2,6 +2,29 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Size` — a component can be given a width** (1.0.10-beta front
+  `35-emilia-spacing-sizing`, step 3). There was no sizing section at all: no
+  width, height, min or max token of any kind. `Token.Size` carries thirteen
+  sub-sections over `§ 8.1`–`§ 8.7` — `W`, `H`, `Both` (upstream's `size-*`, two
+  declarations from one leaf), `MinW`, `MaxW`, `MinH`, `MaxH` and the six
+  logical `Inline`/`Block` forms — 566 leaves of four kinds. A NUMBER is the
+  spacing ladder again (`w-64` is `width:calc(var(--spacing) * 64)`); a `Frac`
+  is a percentage carried by name, because `1/2` is neither an identifier nor a
+  run of digits; a KEYWORD is an intrinsic size or a viewport unit, and **the
+  viewport unit differs by axis** — `w-screen` is `100vw` where `h-screen` is
+  `100vh`, asserted directly.
+  **The named container widths are the theme's**: `.Size.MaxW.Md` is
+  `max-width:var(--container-md)`, not `max-width:28rem`, built through a
+  `containerVar` over front 54's `nsPrefix(Ns.Container)` and `themeVar` — the
+  same shape as front 33's `paletteVar`. `MaxW.Screen.*` reads `--breakpoint-*`
+  the same way. Front 54's theme already carried all thirteen container sizes
+  and five breakpoints with exactly the lengths `§ 8.3` prints, so the front
+  spells no `rem` of its own: a walk over all 566 leaves asserts the output
+  carries none, and a second test reads every name back through `themeValue` so
+  the reference AND the length are both pinned. `MaxW` carries all thirteen
+  container names — `X3xs` and `X2xs` as well as the `Xs`..`X7xl` the spec
+  lists — because the theme carries them and upstream has the utilities.
+
 - **Nine directions for padding and margin, over a 35-leaf scale** (1.0.10-beta
   front `35-emilia-spacing-sizing`, step 2). `Pad` and `Margin` had three
   directions (`X`, `Y`, `All`) over five values and no `p-0` at all; they now

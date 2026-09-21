@@ -140,6 +140,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Bg(_inner) -> declSheet(bgTokenToCss(_inner, th));
         Pad(_inner) -> declSheet(padTokenToCss(_inner, th));
         Margin(_inner) -> declSheet(marginTokenToCss(_inner, th));
+        Size(_inner) -> declSheet(sizeTokenToCss(_inner, th));
         Layout(_inner) -> declSheet(layoutTokenToCss(_inner));
         Flex(_inner) -> declSheet(flexTokenToCss(_inner));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
@@ -1018,6 +1019,342 @@ fn marginNegHalfE(h: Token.Margin.E.Neg.Half, th: Theme) -> string {
     return out;
 }
 
+// THE THIRTEEN SUB-SECTIONS OF SIZE — `§ 8.1`-`§ 8.7`. `W`/`H` and their min
+// and max forms, `Both` (upstream's `size-*`, two properties from one leaf),
+// and the six logical forms `inline-size` / `block-size` with their own min and
+// max, which follow the writing direction where width and height do not.
+//
+// Four kinds of leaf. A NUMBER is the spacing ladder again, so `w-64` is
+// `width:calc(var(--spacing) * 64)` and a project's `--spacing` moves it. A
+// FRACTION is a percentage — `1/2` is not an identifier and not a digit run, so
+// it cannot be a leaf and `Frac { Half, Third, … }` carries it by name. A
+// KEYWORD is an intrinsic size or a viewport unit, and the viewport unit
+// DIFFERS BY AXIS: `w-screen` is `100vw` where `h-screen` is `100vh`. A NAMED
+// WIDTH is the theme's container ladder, not this front's — `max-w-md` is
+// `max-width:var(--container-md)` — and `MaxW.Screen.*` reads the breakpoint
+// ladder the same way, so a project that redefines `--container-md` or
+// `--breakpoint-lg` moves every utility that names it. The `rem` values behind
+// those two ladders are written once, in `theme.bp`, and never here.
+
+// `containerVar("md")` is `var(--container-md)`, built from front 54's
+// namespace prefix and front 54's `themeVar` — the same shape as front 33's
+// `paletteVar`, and for the same reason: the prefix has one author.
+fn containerVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.Container) + name);
+}
+
+fn breakpointVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.Breakpoint) + name);
+}
+
+fn sizeTokenToCss(t: Token.Size, th: Theme) -> string {
+    val out = case t {
+        W(_inner) -> oneDecl("width", sizeWToCss(_inner, th));
+        H(_inner) -> oneDecl("height", sizeHToCss(_inner, th));
+        Both(_inner) -> axisDecl("width", "height", sizeBothToCss(_inner, th));
+        MinW(_inner) -> oneDecl("min-width", sizeMinWToCss(_inner, th));
+        MaxW(_inner) -> oneDecl("max-width", sizeMaxWToCss(_inner, th));
+        MinH(_inner) -> oneDecl("min-height", sizeMinHToCss(_inner, th));
+        MaxH(_inner) -> oneDecl("max-height", sizeMaxHToCss(_inner, th));
+        Inline(_inner) -> oneDecl("inline-size", sizeInlineToCss(_inner, th));
+        Block(_inner) -> oneDecl("block-size", sizeBlockToCss(_inner, th));
+        MinInline(_inner) -> oneDecl("min-inline-size", sizeMinInlineToCss(_inner, th));
+        MaxInline(_inner) -> oneDecl("max-inline-size", sizeMaxInlineToCss(_inner, th));
+        MinBlock(_inner) -> oneDecl("min-block-size", sizeMinBlockToCss(_inner, th));
+        MaxBlock(_inner) -> oneDecl("max-block-size", sizeMaxBlockToCss(_inner, th));
+    };
+    return out;
+}
+
+fn sizeMaxWScreenToCss(s: Token.Size.MaxW.Screen, th: Theme) -> string {
+    val out = case s {
+        Sm -> breakpointVar("sm"); Md -> breakpointVar("md"); Lg -> breakpointVar("lg");
+        Xl -> breakpointVar("xl"); X2xl -> breakpointVar("2xl");
+    };
+    return out;
+}
+
+fn sizeWToCss(s: Token.Size.W, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Frac(_inner) -> sizeWFracToCss(_inner, th);
+        Full -> "100%"; Screen -> "100vw"; Svw -> "100svw"; Lvw -> "100lvw";
+        Dvw -> "100dvw"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn sizeWFracToCss(f: Token.Size.W.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%"; Quarter -> "25%";
+        ThreeQuarters -> "75%"; Fifth -> "20%"; TwoFifths -> "40%"; ThreeFifths -> "60%";
+        FourFifths -> "80%"; Sixth -> "16.666667%"; FiveSixths -> "83.333333%";
+    };
+    return out;
+}
+
+fn sizeHToCss(s: Token.Size.H, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Frac(_inner) -> sizeHFracToCss(_inner, th);
+        Full -> "100%"; Screen -> "100vh"; Svh -> "100svh"; Lvh -> "100lvh";
+        Dvh -> "100dvh"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn sizeHFracToCss(f: Token.Size.H.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%"; Quarter -> "25%";
+        ThreeQuarters -> "75%"; Fifth -> "20%"; TwoFifths -> "40%"; ThreeFifths -> "60%";
+        FourFifths -> "80%"; Sixth -> "16.666667%"; FiveSixths -> "83.333333%";
+    };
+    return out;
+}
+
+fn sizeBothToCss(s: Token.Size.Both, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Frac(_inner) -> sizeBothFracToCss(_inner, th);
+        Full -> "100%"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn sizeBothFracToCss(f: Token.Size.Both.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%"; Quarter -> "25%";
+        ThreeQuarters -> "75%"; Fifth -> "20%"; TwoFifths -> "40%"; ThreeFifths -> "60%";
+        FourFifths -> "80%"; Sixth -> "16.666667%"; FiveSixths -> "83.333333%";
+    };
+    return out;
+}
+
+fn sizeMinWToCss(s: Token.Size.MinW, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Full -> "100%"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+    };
+    return out;
+}
+
+fn sizeMaxWToCss(s: Token.Size.MaxW, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        X3xs -> containerVar("3xs"); X2xs -> containerVar("2xs"); Xs -> containerVar("xs");
+        Sm -> containerVar("sm"); Md -> containerVar("md"); Lg -> containerVar("lg");
+        Xl -> containerVar("xl"); X2xl -> containerVar("2xl"); X3xl -> containerVar("3xl");
+        X4xl -> containerVar("4xl"); X5xl -> containerVar("5xl");
+        X6xl -> containerVar("6xl"); X7xl -> containerVar("7xl");
+        Screen(_inner) -> sizeMaxWScreenToCss(_inner, th);
+        None -> "none"; Full -> "100%"; Min -> "min-content"; Max -> "max-content";
+        Fit -> "fit-content";
+    };
+    return out;
+}
+
+fn sizeMinHToCss(s: Token.Size.MinH, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Full -> "100%"; Screen -> "100vh"; Svh -> "100svh"; Lvh -> "100lvh";
+        Dvh -> "100dvh"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+    };
+    return out;
+}
+
+fn sizeMaxHToCss(s: Token.Size.MaxH, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        None -> "none"; Full -> "100%"; Screen -> "100vh"; Svh -> "100svh"; Lvh -> "100lvh";
+        Dvh -> "100dvh"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+    };
+    return out;
+}
+
+fn sizeInlineToCss(s: Token.Size.Inline, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Frac(_inner) -> sizeInlineFracToCss(_inner, th);
+        Full -> "100%"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn sizeInlineFracToCss(f: Token.Size.Inline.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%"; Quarter -> "25%";
+        ThreeQuarters -> "75%"; Fifth -> "20%"; TwoFifths -> "40%"; ThreeFifths -> "60%";
+        FourFifths -> "80%"; Sixth -> "16.666667%"; FiveSixths -> "83.333333%";
+    };
+    return out;
+}
+
+fn sizeBlockToCss(s: Token.Size.Block, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Frac(_inner) -> sizeBlockFracToCss(_inner, th);
+        Full -> "100%"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+        Auto -> "auto";
+    };
+    return out;
+}
+
+fn sizeBlockFracToCss(f: Token.Size.Block.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%"; Quarter -> "25%";
+        ThreeQuarters -> "75%"; Fifth -> "20%"; TwoFifths -> "40%"; ThreeFifths -> "60%";
+        FourFifths -> "80%"; Sixth -> "16.666667%"; FiveSixths -> "83.333333%";
+    };
+    return out;
+}
+
+fn sizeMinInlineToCss(s: Token.Size.MinInline, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Full -> "100%"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+    };
+    return out;
+}
+
+fn sizeMaxInlineToCss(s: Token.Size.MaxInline, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        X3xs -> containerVar("3xs"); X2xs -> containerVar("2xs"); Xs -> containerVar("xs");
+        Sm -> containerVar("sm"); Md -> containerVar("md"); Lg -> containerVar("lg");
+        Xl -> containerVar("xl"); X2xl -> containerVar("2xl"); X3xl -> containerVar("3xl");
+        X4xl -> containerVar("4xl"); X5xl -> containerVar("5xl");
+        X6xl -> containerVar("6xl"); X7xl -> containerVar("7xl");
+        None -> "none"; Full -> "100%"; Min -> "min-content"; Max -> "max-content";
+        Fit -> "fit-content";
+    };
+    return out;
+}
+
+fn sizeMinBlockToCss(s: Token.Size.MinBlock, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Full -> "100%"; Min -> "min-content"; Max -> "max-content"; Fit -> "fit-content";
+    };
+    return out;
+}
+
+fn sizeMaxBlockToCss(s: Token.Size.MaxBlock, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        None -> "none"; Full -> "100%"; Min -> "min-content"; Max -> "max-content";
+        Fit -> "fit-content";
+    };
+    return out;
+}
+
 // ── tests · front 35 ─────────────────────────────────────────────────────────
 //
 // The front's own block of assertions lives HERE, beside the dispatchers it
@@ -1309,6 +1646,273 @@ test "the paths that compiled before this front still compile" {
     assert tokenDeclarations(.Pad.All.16).indexOf("padding:") == 0;
     assert tokenDeclarations(.Margin.Y.8).indexOf("margin-top") == 0;
     assert tokenDeclarations(.Margin.X.Auto).indexOf("margin-left:auto") == 0;
+}
+
+test "Size — the numeric leaf is the spacing ladder again, on any axis" {
+    assert tokenDeclarations(.Size.W.0) == "width:0";
+    assert tokenDeclarations(.Size.W.1) == "width:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Size.W.64) == "width:calc(var(--spacing) * 64)";
+    assert tokenDeclarations(.Size.W.Px) == "width:1px";
+    assert tokenDeclarations(.Size.H.0) == "height:0";
+    assert tokenDeclarations(.Size.H.1) == "height:calc(var(--spacing) * 1)";
+}
+
+test "Size — the viewport unit differs by axis, and both halves are pinned" {
+    assert tokenDeclarations(.Size.W.Screen) == "width:100vw";
+    assert tokenDeclarations(.Size.H.Screen) == "height:100vh";
+    assert tokenDeclarations(.Size.W.Svw) == "width:100svw";
+    assert tokenDeclarations(.Size.W.Lvw) == "width:100lvw";
+    assert tokenDeclarations(.Size.W.Dvw) == "width:100dvw";
+    assert tokenDeclarations(.Size.H.Svh) == "height:100svh";
+    assert tokenDeclarations(.Size.H.Lvh) == "height:100lvh";
+    assert tokenDeclarations(.Size.H.Dvh) == "height:100dvh";
+    assert tokenDeclarations(.Size.MinH.Screen) == "min-height:100vh";
+    assert tokenDeclarations(.Size.MaxH.Screen) == "max-height:100vh";
+}
+
+test "Size — intrinsic sizes, `auto`, `none` and `full`" {
+    assert tokenDeclarations(.Size.W.Full) == "width:100%";
+    assert tokenDeclarations(.Size.H.Full) == "height:100%";
+    assert tokenDeclarations(.Size.W.Min) == "width:min-content";
+    assert tokenDeclarations(.Size.W.Max) == "width:max-content";
+    assert tokenDeclarations(.Size.W.Fit) == "width:fit-content";
+    assert tokenDeclarations(.Size.W.Auto) == "width:auto";
+    assert tokenDeclarations(.Size.H.Auto) == "height:auto";
+    assert tokenDeclarations(.Size.MinW.0) == "min-width:0";
+    assert tokenDeclarations(.Size.MinW.Full) == "min-width:100%";
+    assert tokenDeclarations(.Size.MinW.Min) == "min-width:min-content";
+    assert tokenDeclarations(.Size.MinW.Max) == "min-width:max-content";
+    assert tokenDeclarations(.Size.MinW.Fit) == "min-width:fit-content";
+    assert tokenDeclarations(.Size.MaxW.None) == "max-width:none";
+    assert tokenDeclarations(.Size.MaxH.None) == "max-height:none";
+    assert tokenDeclarations(.Size.MinH.Fit) == "min-height:fit-content";
+    assert tokenDeclarations(.Size.MaxH.Full) == "max-height:100%";
+}
+
+// `1/2` is neither an identifier nor a digit run, so a fraction cannot be a
+// leaf: `Frac` carries the eleven upstream fractions by name. The six-decimal
+// forms are the ones `§ 8.1` prints.
+test "Size — the eleven fractions, to the decimal place upstream prints" {
+    assert tokenDeclarations(.Size.W.Frac.Half) == "width:50%";
+    assert tokenDeclarations(.Size.W.Frac.Third) == "width:33.333333%";
+    assert tokenDeclarations(.Size.W.Frac.TwoThirds) == "width:66.666667%";
+    assert tokenDeclarations(.Size.W.Frac.Quarter) == "width:25%";
+    assert tokenDeclarations(.Size.W.Frac.ThreeQuarters) == "width:75%";
+    assert tokenDeclarations(.Size.W.Frac.Fifth) == "width:20%";
+    assert tokenDeclarations(.Size.W.Frac.TwoFifths) == "width:40%";
+    assert tokenDeclarations(.Size.W.Frac.ThreeFifths) == "width:60%";
+    assert tokenDeclarations(.Size.W.Frac.FourFifths) == "width:80%";
+    assert tokenDeclarations(.Size.W.Frac.Sixth) == "width:16.666667%";
+    assert tokenDeclarations(.Size.W.Frac.FiveSixths) == "width:83.333333%";
+    assert tokenDeclarations(.Size.H.Frac.Half) == "height:50%";
+}
+
+// `max-w-md` is `max-width:var(--container-md)` upstream and here. The `rem`
+// behind each name is the THEME's, written once in `theme.bp`, so a project
+// that redefines `--container-md` moves every `max-w-md` in the build — which
+// a literal ladder in this file would have made impossible. The second half of
+// each assertion reads the value back through the theme, so the reference and
+// the length `§ 8.3` prints are both pinned.
+test "Size — the named container widths are theme references, not lengths" {
+    assert tokenDeclarations(.Size.MaxW.X3xs) == "max-width:var(--container-3xs)";
+    assert tokenDeclarations(.Size.MaxW.X2xs) == "max-width:var(--container-2xs)";
+    assert tokenDeclarations(.Size.MaxW.Xs) == "max-width:var(--container-xs)";
+    assert tokenDeclarations(.Size.MaxW.Sm) == "max-width:var(--container-sm)";
+    assert tokenDeclarations(.Size.MaxW.Md) == "max-width:var(--container-md)";
+    assert tokenDeclarations(.Size.MaxW.Lg) == "max-width:var(--container-lg)";
+    assert tokenDeclarations(.Size.MaxW.Xl) == "max-width:var(--container-xl)";
+    assert tokenDeclarations(.Size.MaxW.X2xl) == "max-width:var(--container-2xl)";
+    assert tokenDeclarations(.Size.MaxW.X3xl) == "max-width:var(--container-3xl)";
+    assert tokenDeclarations(.Size.MaxW.X4xl) == "max-width:var(--container-4xl)";
+    assert tokenDeclarations(.Size.MaxW.X5xl) == "max-width:var(--container-5xl)";
+    assert tokenDeclarations(.Size.MaxW.X6xl) == "max-width:var(--container-6xl)";
+    assert tokenDeclarations(.Size.MaxW.X7xl) == "max-width:var(--container-7xl)";
+}
+
+test "Size — and each of those names resolves to the width `§ 8.3` prints" {
+    val th = defaultTheme();
+    assert themeValue(th, "--container-3xs") == "16rem";
+    assert themeValue(th, "--container-2xs") == "18rem";
+    assert themeValue(th, "--container-xs") == "20rem";
+    assert themeValue(th, "--container-sm") == "24rem";
+    assert themeValue(th, "--container-md") == "28rem";
+    assert themeValue(th, "--container-lg") == "32rem";
+    assert themeValue(th, "--container-xl") == "36rem";
+    assert themeValue(th, "--container-2xl") == "42rem";
+    assert themeValue(th, "--container-3xl") == "48rem";
+    assert themeValue(th, "--container-4xl") == "56rem";
+    assert themeValue(th, "--container-5xl") == "64rem";
+    assert themeValue(th, "--container-6xl") == "72rem";
+    assert themeValue(th, "--container-7xl") == "80rem";
+}
+
+test "Size — `max-w-screen-*` reads the breakpoint ladder, the same way" {
+    val th = defaultTheme();
+    assert tokenDeclarations(.Size.MaxW.Screen.Sm) == "max-width:var(--breakpoint-sm)";
+    assert tokenDeclarations(.Size.MaxW.Screen.Md) == "max-width:var(--breakpoint-md)";
+    assert tokenDeclarations(.Size.MaxW.Screen.Lg) == "max-width:var(--breakpoint-lg)";
+    assert tokenDeclarations(.Size.MaxW.Screen.Xl) == "max-width:var(--breakpoint-xl)";
+    assert tokenDeclarations(.Size.MaxW.Screen.X2xl) == "max-width:var(--breakpoint-2xl)";
+    assert themeValue(th, "--breakpoint-sm") == "40rem";
+    assert themeValue(th, "--breakpoint-md") == "48rem";
+    assert themeValue(th, "--breakpoint-lg") == "64rem";
+    assert themeValue(th, "--breakpoint-xl") == "80rem";
+    assert themeValue(th, "--breakpoint-2xl") == "96rem";
+}
+
+test "Size.Both — upstream's `size-*`, two declarations from one leaf" {
+    assert tokenDeclarations(.Size.Both.12) == "width:calc(var(--spacing) * 12);height:calc(var(--spacing) * 12)";
+    assert tokenDeclarations(.Size.Both.Full) == "width:100%;height:100%";
+    assert tokenDeclarations(.Size.Both.Frac.Half) == "width:50%;height:50%";
+    assert tokenDeclarations(.Size.Both.Auto) == "width:auto;height:auto";
+}
+
+test "Size — the six logical forms, which follow the writing direction" {
+    assert tokenDeclarations(.Size.Inline.4) == "inline-size:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Size.Block.4) == "block-size:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Size.MinInline.Full) == "min-inline-size:100%";
+    assert tokenDeclarations(.Size.MaxInline.Md) == "max-inline-size:var(--container-md)";
+    assert tokenDeclarations(.Size.MinBlock.Full) == "min-block-size:100%";
+    assert tokenDeclarations(.Size.MaxBlock.Full) == "max-block-size:100%";
+}
+
+// EVERY LEAF OF `Size`, walked through the public dispatcher.
+fn everySizeToken() -> Token[] {
+    val out: Token[] = [
+        .Size.W.0, .Size.W.1, .Size.W.2, .Size.W.3, .Size.W.4, .Size.W.5, .Size.W.6, .Size.W.7,
+        .Size.W.8, .Size.W.9, .Size.W.10, .Size.W.11, .Size.W.12, .Size.W.14, .Size.W.16,
+        .Size.W.20, .Size.W.24, .Size.W.28, .Size.W.32, .Size.W.36, .Size.W.40, .Size.W.44,
+        .Size.W.48, .Size.W.52, .Size.W.56, .Size.W.60, .Size.W.64, .Size.W.72, .Size.W.80,
+        .Size.W.96, .Size.W.Px, .Size.W.Frac.Half, .Size.W.Frac.Third, .Size.W.Frac.TwoThirds,
+        .Size.W.Frac.Quarter, .Size.W.Frac.ThreeQuarters, .Size.W.Frac.Fifth,
+        .Size.W.Frac.TwoFifths, .Size.W.Frac.ThreeFifths, .Size.W.Frac.FourFifths,
+        .Size.W.Frac.Sixth, .Size.W.Frac.FiveSixths, .Size.W.Full, .Size.W.Screen, .Size.W.Svw,
+        .Size.W.Lvw, .Size.W.Dvw, .Size.W.Min, .Size.W.Max, .Size.W.Fit, .Size.W.Auto,
+        .Size.H.0, .Size.H.1, .Size.H.2, .Size.H.3, .Size.H.4, .Size.H.5, .Size.H.6, .Size.H.7,
+        .Size.H.8, .Size.H.9, .Size.H.10, .Size.H.11, .Size.H.12, .Size.H.14, .Size.H.16,
+        .Size.H.20, .Size.H.24, .Size.H.28, .Size.H.32, .Size.H.36, .Size.H.40, .Size.H.44,
+        .Size.H.48, .Size.H.52, .Size.H.56, .Size.H.60, .Size.H.64, .Size.H.72, .Size.H.80,
+        .Size.H.96, .Size.H.Px, .Size.H.Frac.Half, .Size.H.Frac.Third, .Size.H.Frac.TwoThirds,
+        .Size.H.Frac.Quarter, .Size.H.Frac.ThreeQuarters, .Size.H.Frac.Fifth,
+        .Size.H.Frac.TwoFifths, .Size.H.Frac.ThreeFifths, .Size.H.Frac.FourFifths,
+        .Size.H.Frac.Sixth, .Size.H.Frac.FiveSixths, .Size.H.Full, .Size.H.Screen, .Size.H.Svh,
+        .Size.H.Lvh, .Size.H.Dvh, .Size.H.Min, .Size.H.Max, .Size.H.Fit, .Size.H.Auto,
+        .Size.Both.0, .Size.Both.1, .Size.Both.2, .Size.Both.3, .Size.Both.4, .Size.Both.5,
+        .Size.Both.6, .Size.Both.7, .Size.Both.8, .Size.Both.9, .Size.Both.10, .Size.Both.11,
+        .Size.Both.12, .Size.Both.14, .Size.Both.16, .Size.Both.20, .Size.Both.24,
+        .Size.Both.28, .Size.Both.32, .Size.Both.36, .Size.Both.40, .Size.Both.44,
+        .Size.Both.48, .Size.Both.52, .Size.Both.56, .Size.Both.60, .Size.Both.64,
+        .Size.Both.72, .Size.Both.80, .Size.Both.96, .Size.Both.Px, .Size.Both.Frac.Half,
+        .Size.Both.Frac.Third, .Size.Both.Frac.TwoThirds, .Size.Both.Frac.Quarter,
+        .Size.Both.Frac.ThreeQuarters, .Size.Both.Frac.Fifth, .Size.Both.Frac.TwoFifths,
+        .Size.Both.Frac.ThreeFifths, .Size.Both.Frac.FourFifths, .Size.Both.Frac.Sixth,
+        .Size.Both.Frac.FiveSixths, .Size.Both.Full, .Size.Both.Min, .Size.Both.Max,
+        .Size.Both.Fit, .Size.Both.Auto, .Size.MinW.0, .Size.MinW.1, .Size.MinW.2, .Size.MinW.3,
+        .Size.MinW.4, .Size.MinW.5, .Size.MinW.6, .Size.MinW.7, .Size.MinW.8, .Size.MinW.9,
+        .Size.MinW.10, .Size.MinW.11, .Size.MinW.12, .Size.MinW.14, .Size.MinW.16,
+        .Size.MinW.20, .Size.MinW.24, .Size.MinW.28, .Size.MinW.32, .Size.MinW.36,
+        .Size.MinW.40, .Size.MinW.44, .Size.MinW.48, .Size.MinW.52, .Size.MinW.56,
+        .Size.MinW.60, .Size.MinW.64, .Size.MinW.72, .Size.MinW.80, .Size.MinW.96,
+        .Size.MinW.Px, .Size.MinW.Full, .Size.MinW.Min, .Size.MinW.Max, .Size.MinW.Fit,
+        .Size.MaxW.0, .Size.MaxW.1, .Size.MaxW.2, .Size.MaxW.3, .Size.MaxW.4, .Size.MaxW.5,
+        .Size.MaxW.6, .Size.MaxW.7, .Size.MaxW.8, .Size.MaxW.9, .Size.MaxW.10, .Size.MaxW.11,
+        .Size.MaxW.12, .Size.MaxW.14, .Size.MaxW.16, .Size.MaxW.20, .Size.MaxW.24,
+        .Size.MaxW.28, .Size.MaxW.32, .Size.MaxW.36, .Size.MaxW.40, .Size.MaxW.44,
+        .Size.MaxW.48, .Size.MaxW.52, .Size.MaxW.56, .Size.MaxW.60, .Size.MaxW.64,
+        .Size.MaxW.72, .Size.MaxW.80, .Size.MaxW.96, .Size.MaxW.Px, .Size.MaxW.X3xs,
+        .Size.MaxW.X2xs, .Size.MaxW.Xs, .Size.MaxW.Sm, .Size.MaxW.Md, .Size.MaxW.Lg,
+        .Size.MaxW.Xl, .Size.MaxW.X2xl, .Size.MaxW.X3xl, .Size.MaxW.X4xl, .Size.MaxW.X5xl,
+        .Size.MaxW.X6xl, .Size.MaxW.X7xl, .Size.MaxW.Screen.Sm, .Size.MaxW.Screen.Md,
+        .Size.MaxW.Screen.Lg, .Size.MaxW.Screen.Xl, .Size.MaxW.Screen.X2xl, .Size.MaxW.None,
+        .Size.MaxW.Full, .Size.MaxW.Min, .Size.MaxW.Max, .Size.MaxW.Fit, .Size.MinH.0,
+        .Size.MinH.1, .Size.MinH.2, .Size.MinH.3, .Size.MinH.4, .Size.MinH.5, .Size.MinH.6,
+        .Size.MinH.7, .Size.MinH.8, .Size.MinH.9, .Size.MinH.10, .Size.MinH.11, .Size.MinH.12,
+        .Size.MinH.14, .Size.MinH.16, .Size.MinH.20, .Size.MinH.24, .Size.MinH.28,
+        .Size.MinH.32, .Size.MinH.36, .Size.MinH.40, .Size.MinH.44, .Size.MinH.48,
+        .Size.MinH.52, .Size.MinH.56, .Size.MinH.60, .Size.MinH.64, .Size.MinH.72,
+        .Size.MinH.80, .Size.MinH.96, .Size.MinH.Px, .Size.MinH.Full, .Size.MinH.Screen,
+        .Size.MinH.Svh, .Size.MinH.Lvh, .Size.MinH.Dvh, .Size.MinH.Min, .Size.MinH.Max,
+        .Size.MinH.Fit, .Size.MaxH.0, .Size.MaxH.1, .Size.MaxH.2, .Size.MaxH.3, .Size.MaxH.4,
+        .Size.MaxH.5, .Size.MaxH.6, .Size.MaxH.7, .Size.MaxH.8, .Size.MaxH.9, .Size.MaxH.10,
+        .Size.MaxH.11, .Size.MaxH.12, .Size.MaxH.14, .Size.MaxH.16, .Size.MaxH.20,
+        .Size.MaxH.24, .Size.MaxH.28, .Size.MaxH.32, .Size.MaxH.36, .Size.MaxH.40,
+        .Size.MaxH.44, .Size.MaxH.48, .Size.MaxH.52, .Size.MaxH.56, .Size.MaxH.60,
+        .Size.MaxH.64, .Size.MaxH.72, .Size.MaxH.80, .Size.MaxH.96, .Size.MaxH.Px,
+        .Size.MaxH.None, .Size.MaxH.Full, .Size.MaxH.Screen, .Size.MaxH.Svh, .Size.MaxH.Lvh,
+        .Size.MaxH.Dvh, .Size.MaxH.Min, .Size.MaxH.Max, .Size.MaxH.Fit, .Size.Inline.0,
+        .Size.Inline.1, .Size.Inline.2, .Size.Inline.3, .Size.Inline.4, .Size.Inline.5,
+        .Size.Inline.6, .Size.Inline.7, .Size.Inline.8, .Size.Inline.9, .Size.Inline.10,
+        .Size.Inline.11, .Size.Inline.12, .Size.Inline.14, .Size.Inline.16, .Size.Inline.20,
+        .Size.Inline.24, .Size.Inline.28, .Size.Inline.32, .Size.Inline.36, .Size.Inline.40,
+        .Size.Inline.44, .Size.Inline.48, .Size.Inline.52, .Size.Inline.56, .Size.Inline.60,
+        .Size.Inline.64, .Size.Inline.72, .Size.Inline.80, .Size.Inline.96, .Size.Inline.Px,
+        .Size.Inline.Frac.Half, .Size.Inline.Frac.Third, .Size.Inline.Frac.TwoThirds,
+        .Size.Inline.Frac.Quarter, .Size.Inline.Frac.ThreeQuarters, .Size.Inline.Frac.Fifth,
+        .Size.Inline.Frac.TwoFifths, .Size.Inline.Frac.ThreeFifths,
+        .Size.Inline.Frac.FourFifths, .Size.Inline.Frac.Sixth, .Size.Inline.Frac.FiveSixths,
+        .Size.Inline.Full, .Size.Inline.Min, .Size.Inline.Max, .Size.Inline.Fit,
+        .Size.Inline.Auto, .Size.Block.0, .Size.Block.1, .Size.Block.2, .Size.Block.3,
+        .Size.Block.4, .Size.Block.5, .Size.Block.6, .Size.Block.7, .Size.Block.8,
+        .Size.Block.9, .Size.Block.10, .Size.Block.11, .Size.Block.12, .Size.Block.14,
+        .Size.Block.16, .Size.Block.20, .Size.Block.24, .Size.Block.28, .Size.Block.32,
+        .Size.Block.36, .Size.Block.40, .Size.Block.44, .Size.Block.48, .Size.Block.52,
+        .Size.Block.56, .Size.Block.60, .Size.Block.64, .Size.Block.72, .Size.Block.80,
+        .Size.Block.96, .Size.Block.Px, .Size.Block.Frac.Half, .Size.Block.Frac.Third,
+        .Size.Block.Frac.TwoThirds, .Size.Block.Frac.Quarter, .Size.Block.Frac.ThreeQuarters,
+        .Size.Block.Frac.Fifth, .Size.Block.Frac.TwoFifths, .Size.Block.Frac.ThreeFifths,
+        .Size.Block.Frac.FourFifths, .Size.Block.Frac.Sixth, .Size.Block.Frac.FiveSixths,
+        .Size.Block.Full, .Size.Block.Min, .Size.Block.Max, .Size.Block.Fit, .Size.Block.Auto,
+        .Size.MinInline.0, .Size.MinInline.1, .Size.MinInline.2, .Size.MinInline.3,
+        .Size.MinInline.4, .Size.MinInline.5, .Size.MinInline.6, .Size.MinInline.7,
+        .Size.MinInline.8, .Size.MinInline.9, .Size.MinInline.10, .Size.MinInline.11,
+        .Size.MinInline.12, .Size.MinInline.14, .Size.MinInline.16, .Size.MinInline.20,
+        .Size.MinInline.24, .Size.MinInline.28, .Size.MinInline.32, .Size.MinInline.36,
+        .Size.MinInline.40, .Size.MinInline.44, .Size.MinInline.48, .Size.MinInline.52,
+        .Size.MinInline.56, .Size.MinInline.60, .Size.MinInline.64, .Size.MinInline.72,
+        .Size.MinInline.80, .Size.MinInline.96, .Size.MinInline.Px, .Size.MinInline.Full,
+        .Size.MinInline.Min, .Size.MinInline.Max, .Size.MinInline.Fit, .Size.MaxInline.0,
+        .Size.MaxInline.1, .Size.MaxInline.2, .Size.MaxInline.3, .Size.MaxInline.4,
+        .Size.MaxInline.5, .Size.MaxInline.6, .Size.MaxInline.7, .Size.MaxInline.8,
+        .Size.MaxInline.9, .Size.MaxInline.10, .Size.MaxInline.11, .Size.MaxInline.12,
+        .Size.MaxInline.14, .Size.MaxInline.16, .Size.MaxInline.20, .Size.MaxInline.24,
+        .Size.MaxInline.28, .Size.MaxInline.32, .Size.MaxInline.36, .Size.MaxInline.40,
+        .Size.MaxInline.44, .Size.MaxInline.48, .Size.MaxInline.52, .Size.MaxInline.56,
+        .Size.MaxInline.60, .Size.MaxInline.64, .Size.MaxInline.72, .Size.MaxInline.80,
+        .Size.MaxInline.96, .Size.MaxInline.Px, .Size.MaxInline.X3xs, .Size.MaxInline.X2xs,
+        .Size.MaxInline.Xs, .Size.MaxInline.Sm, .Size.MaxInline.Md, .Size.MaxInline.Lg,
+        .Size.MaxInline.Xl, .Size.MaxInline.X2xl, .Size.MaxInline.X3xl, .Size.MaxInline.X4xl,
+        .Size.MaxInline.X5xl, .Size.MaxInline.X6xl, .Size.MaxInline.X7xl, .Size.MaxInline.None,
+        .Size.MaxInline.Full, .Size.MaxInline.Min, .Size.MaxInline.Max, .Size.MaxInline.Fit,
+        .Size.MinBlock.0, .Size.MinBlock.1, .Size.MinBlock.2, .Size.MinBlock.3,
+        .Size.MinBlock.4, .Size.MinBlock.5, .Size.MinBlock.6, .Size.MinBlock.7,
+        .Size.MinBlock.8, .Size.MinBlock.9, .Size.MinBlock.10, .Size.MinBlock.11,
+        .Size.MinBlock.12, .Size.MinBlock.14, .Size.MinBlock.16, .Size.MinBlock.20,
+        .Size.MinBlock.24, .Size.MinBlock.28, .Size.MinBlock.32, .Size.MinBlock.36,
+        .Size.MinBlock.40, .Size.MinBlock.44, .Size.MinBlock.48, .Size.MinBlock.52,
+        .Size.MinBlock.56, .Size.MinBlock.60, .Size.MinBlock.64, .Size.MinBlock.72,
+        .Size.MinBlock.80, .Size.MinBlock.96, .Size.MinBlock.Px, .Size.MinBlock.Full,
+        .Size.MinBlock.Min, .Size.MinBlock.Max, .Size.MinBlock.Fit, .Size.MaxBlock.0,
+        .Size.MaxBlock.1, .Size.MaxBlock.2, .Size.MaxBlock.3, .Size.MaxBlock.4,
+        .Size.MaxBlock.5, .Size.MaxBlock.6, .Size.MaxBlock.7, .Size.MaxBlock.8,
+        .Size.MaxBlock.9, .Size.MaxBlock.10, .Size.MaxBlock.11, .Size.MaxBlock.12,
+        .Size.MaxBlock.14, .Size.MaxBlock.16, .Size.MaxBlock.20, .Size.MaxBlock.24,
+        .Size.MaxBlock.28, .Size.MaxBlock.32, .Size.MaxBlock.36, .Size.MaxBlock.40,
+        .Size.MaxBlock.44, .Size.MaxBlock.48, .Size.MaxBlock.52, .Size.MaxBlock.56,
+        .Size.MaxBlock.60, .Size.MaxBlock.64, .Size.MaxBlock.72, .Size.MaxBlock.80,
+        .Size.MaxBlock.96, .Size.MaxBlock.Px, .Size.MaxBlock.None, .Size.MaxBlock.Full,
+        .Size.MaxBlock.Min, .Size.MaxBlock.Max, .Size.MaxBlock.Fit,
+    ];
+    return out;
+}
+
+test "every Size leaf declares a property, and none of them resolves a rem" {
+    val s = tokensToSheet(everySizeToken(), defaultTheme());
+    assert s.rules.length == 566;
+    val css = declarationsOf(s).join(";");
+    assert declarationsOf(s).any({ d -> d == "" }) == false;
+    assert css.indexOf("rem") == -1;
+    assert css.indexOf("padding") == -1;
+    assert css.indexOf("margin") == -1;
 }
 
 // ── end front 35 ─────────────────────────────────────────────────────────────
