@@ -1,4 +1,3 @@
 # Examples allowed to fail the examples gate — one `examples/<name>  <reason>` per line.
 # The list cannot rot: a listed example that builds, or a listed path that no longer
 # exists, fails the gate. Delete the line in the same commit as the fix.
-examples/emilia-card  jhonstart feat (13d1672) does not compile against botopink-lang feat (361d255d): hooks.bp:109 use-without-context-effect, router.d.bp:25 / server.d.bp:26 unknown type — jhonstart's fix/context branch; emilia-card's own 4 tests pass once jhonstart compiles

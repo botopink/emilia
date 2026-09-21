@@ -229,15 +229,12 @@ to the commonJS row and runs once.
     `test {…}` future context shipped in bot-lang's `test-runner-async`
     commit.
 - `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
-  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …). Its
-  own four pass, then the build stops inside **jhonstart**, not inside emilia:
-  at jhonstart `feat` `13d1672` against botopink-lang `feat`,
-  `jhonstart/hooks.bp:109 use-without-context-effect` (plus
-  `router.bp:25` / `server.bp:26 unknown type`). jhonstart's own
-  `fix/context` front owns that red; here the example is listed in
-  `scripts/known-broken-examples.txt` so the gate reports it as
-  `known broken` instead of refusing the commit. Delete the line in the same
-  commit as the jhonstart fix.
+  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …). It
+  **builds again**: jhonstart's `fix/context` front landed on its `feat`, so the
+  `hooks.bp:109 use-without-context-effect` red that used to stop the build
+  inside **jhonstart** (never inside emilia) is gone, and the example's line was
+  deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
+  a listed example that builds fails the gate just as a red one does.
 
 ## Spec / phase status
 
@@ -291,11 +288,11 @@ into a throwaway `--out`); CI runs the same function once per workflow.
 that builds, or a listed path that no longer exists, fails the gate too.
 When a fix makes an example build, delete its line in the same commit. The list may be absent,
 empty or hold only `#` comments — each means no example is allowed to fail.
-`examples/emilia-card` is listed today — not for anything of its own, but because
-jhonstart `feat` does not compile against botopink-lang `feat` (see § Test
-surface). It used to build **and run** (`botopink run` prints the tree, the three
-`e_<hash>` class names and the `<style>` block) and will again once jhonstart's
-`fix/context` front lands; it depends on jhonstart, so CI checks jhonstart out
+The list is empty today: `examples/emilia-card` was listed while jhonstart `feat`
+did not compile against botopink-lang `feat`, and its line came out once
+jhonstart's `fix/context` front landed (see § Test surface). It builds **and runs**
+again (`botopink run` prints the tree, the three `e_<hash>` class names and the
+`<style>` block); it depends on jhonstart, so CI checks jhonstart out
 beside emilia before the examples gate. Its builder calls pass `attrs`
 explicitly (`h1([…], [])`) — parameter defaults are not applied by the compiler
 yet (botopink-lang 1.0.4-beta 06 N1) — and its `main` is
