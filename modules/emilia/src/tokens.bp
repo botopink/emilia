@@ -128,7 +128,48 @@
 ////              row. All/X/Y over front 35's full scale, answering front
 ////              54's `spacing(n)`/`spacingHalf(n)`, so `.Gap.All.4` and
 ////              `.Pad.All.4` are the same length by construction
-////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
+////   Border   — front 40: the whole of `§ 11.1`-`§ 11.4`. W carries five
+////              widths (0,1,2,4,8) on the shorthand AND on eight directional
+////              sub-sections — the axes X/Y, the sides T/R/B/L and the
+////              logical pair S/E, which is `border-inline-start-width`. Style
+////              is the six `border-style` values. Color is front 33's full
+////              26 x 11 grid plus White/Black/Transparent/Current/Inherit and
+////              the Hex(string) escape, every cell through paletteVar — the
+////              pre-40 stub carried two families at three shades and its
+////              dispatcher DISCARDED THE SHADE. Rounded is the ten-leaf
+////              radius ladder {None,Xs,Sm,Md,Lg,Xl,X2xl,X3xl,X4xl,Full} on
+////              the shorthand and on fourteen directional sub-sections — the
+////              four sides, the four physical corners Tl/Tr/Br/Bl and the six
+////              logical ones S/E/Ss/Se/Es/Ee. A side form emits TWO corner
+////              properties and a corner form ONE. Every radius but None and
+////              Full REFERENCES front 54's `--radius-*` ladder; the two that
+////              stay literal (`0`, `9999px`) are the two upstream prints
+////              literally. 492 leaves
+////   Outline  — front 40: `§ 11.5`-`§ 11.8` — W{0,1,2,4,8},
+////              Style{Solid,Dashed,Dotted,Double,None}, Color over the full
+////              grid, and Offset{0,1,2,4,8} with Neg{1,2,4,8} for upstream's
+////              `-outline-offset-N`. An outline is painted outside the border
+////              box and TAKES NO SPACE, which is why it and not a border is
+////              how a focus ring is drawn. `Outline.Style.None` is the trap:
+////              it emits `outline:2px solid transparent;outline-offset:2px`,
+////              a TRANSPARENT outline rather than an absent one, and never
+////              `outline-style:none`. 310 leaves
+////   Ring     — front 40: the box-shadow half of the focus story.
+////              W{0,1,2,4,8} sets `--tw-ring-shadow` AND the composed
+////              `box-shadow` that lists it beside `var(--tw-shadow)`, so a
+////              ring COMPOSES with Effect.Shadow instead of overwriting it.
+////              Color and Offset.Color are the full grid through paletteVar;
+////              Offset.W is `--tw-ring-offset-width`; Inset is the
+////              `--tw-ring-inset` flag. Its dispatcher is `ringTokenToSheet`,
+////              front 56's second shape. 593 leaves
+////   Divide   — front 40: `divide-*`, which declares on the element's
+////              CHILDREN rather than on the element — a border on every child
+////              but the last. X/Y carry the five widths as the zero-then-width
+////              pair upstream emits; Color and Style join the SAME child rule;
+////              XReverse/YReverse set the reverse custom properties. Its
+////              dispatcher is `divideTokenToSheet`, and its selector is front
+////              35's `siblingSelector()` — CALLED, never re-spelled, because
+////              `space-*` separates the same children the same way. 309 leaves
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
@@ -1063,33 +1104,262 @@ pub type Token {
     }
     // ── end front 37 ────────────────────────────────────────────────────────
 
+    // ── front 40 — borders, outlines, rings and divides ──────────────────────
+    //
+    // `Border`, `Outline`, `Ring` and `Divide`: the four families of § 11. The
+    // rule fronts 35, 36 and 37 wrote holds here too — NO LEAF RESOLVES A
+    // COLOUR OR A RADIUS. Every colour cell answers front 33's `paletteVar`
+    // and every radius answers front 54's `--radius-*` ladder, so a project
+    // that overrides either moves these tokens with it.
+    //
+    // `Divide` declares on the element's CHILDREN and `Ring` composes a
+    // box-shadow, so neither is a bare declaration: both answer a `Sheet`
+    // (front 56's second shape). `Divide`'s selector is front 35's
+    // `siblingSelector()` — the same children `space-x-*` separates, spelled
+    // in ONE place for both fronts.
     Border {
         W {
-            0,
-            1,
-            2,
-            4,
+            0, 1, 2, 4, 8,
+            X { 0, 1, 2, 4, 8 }
+            Y { 0, 1, 2, 4, 8 }
+            T { 0, 1, 2, 4, 8 }
+            R { 0, 1, 2, 4, 8 }
+            B { 0, 1, 2, 4, 8 }
+            L { 0, 1, 2, 4, 8 }
+            S { 0, 1, 2, 4, 8 }
+            E { 0, 1, 2, 4, 8 }
+        }
+        Style {
+            Solid,
+            Dashed,
+            Dotted,
+            Double,
+            Hidden,
+            None,
         }
         Color {
-            Red {
-                100,
-                500,
-                700,
-            }
-            Gray {
-                100,
-                500,
-                700,
-            }
+            Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Orange  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Amber   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Yellow  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Lime    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Green   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Emerald { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Teal    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Cyan    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Sky     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Blue    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Indigo  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Violet  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Purple  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Fuchsia { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Pink    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Rose    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Slate   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Gray    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Zinc    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Neutral { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Stone   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mauve   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Olive   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mist    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Taupe   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            White,
+            Black,
+            Transparent,
+            Current,
+            Inherit,
             Hex(value: string),
         }
         Rounded {
-            Sm,
-            Md,
-            Lg,
-            Full,
+            None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full,
+            T  { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            R  { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            B  { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            L  { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Tl { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Tr { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Br { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Bl { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            S  { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            E  { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Ss { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Se { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Es { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
+            Ee { None, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, Full }
         }
     }
+
+    Outline {
+        W { 0, 1, 2, 4, 8 }
+        Style {
+            Solid,
+            Dashed,
+            Dotted,
+            Double,
+            None,
+        }
+        Color {
+            Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Orange  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Amber   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Yellow  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Lime    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Green   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Emerald { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Teal    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Cyan    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Sky     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Blue    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Indigo  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Violet  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Purple  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Fuchsia { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Pink    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Rose    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Slate   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Gray    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Zinc    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Neutral { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Stone   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mauve   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Olive   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mist    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Taupe   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            White,
+            Black,
+            Transparent,
+            Current,
+            Inherit,
+        }
+        Offset {
+            0, 1, 2, 4, 8,
+            Neg { 1, 2, 4, 8 }
+        }
+    }
+
+    Ring {
+        W { 0, 1, 2, 4, 8 }
+        Color {
+            Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Orange  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Amber   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Yellow  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Lime    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Green   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Emerald { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Teal    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Cyan    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Sky     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Blue    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Indigo  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Violet  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Purple  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Fuchsia { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Pink    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Rose    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Slate   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Gray    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Zinc    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Neutral { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Stone   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mauve   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Olive   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mist    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Taupe   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            White,
+            Black,
+            Transparent,
+            Current,
+            Inherit,
+        }
+        Offset {
+            W { 0, 1, 2, 4, 8 }
+            Color {
+                Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Orange  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Amber   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Yellow  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Lime    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Green   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Emerald { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Teal    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Cyan    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Sky     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Blue    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Indigo  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Violet  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Purple  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Fuchsia { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Pink    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Rose    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Slate   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Gray    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Zinc    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Neutral { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Stone   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Mauve   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Olive   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Mist    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Taupe   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                White,
+                Black,
+                Transparent,
+                Current,
+                Inherit,
+            }
+        }
+        Inset,
+    }
+
+    Divide {
+        X { 0, 1, 2, 4, 8 }
+        Y { 0, 1, 2, 4, 8 }
+        Color {
+            Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Orange  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Amber   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Yellow  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Lime    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Green   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Emerald { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Teal    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Cyan    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Sky     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Blue    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Indigo  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Violet  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Purple  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Fuchsia { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Pink    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Rose    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Slate   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Gray    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Zinc    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Neutral { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Stone   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mauve   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Olive   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Mist    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            Taupe   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+            White,
+            Black,
+            Transparent,
+            Current,
+            Inherit,
+        }
+        Style {
+            Solid,
+            Dashed,
+            Dotted,
+            Double,
+            Hidden,
+            None,
+        }
+        XReverse,
+        YReverse,
+    }
+    // ── end front 40 ─────────────────────────────────────────────────────────
 
     Effect {
         Shadow {

@@ -240,10 +240,12 @@ test "the input's four form states are four sibling rules of one class" {
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls + "::placeholder{color:var(--color-gray-500)}") != -1;
     assert doc.indexOf("." + cls + ":disabled{opacity:0.5}") != -1;
-    // `border-color:red` and not the palette reference: `Border.Color` is the
-    // pre-front-33 section and front 40 owns the rewrite. What this test pins
-    // is the SELECTOR, which is this front's.
-    assert doc.indexOf("." + cls + ":invalid{border-color:red}") != -1;
+    // The palette reference and not `border-color:red`: front 40 rewrote
+    // `Border.Color` onto front 33's grid, so the shade this token always
+    // carried finally reaches the output. What this test pins is the SELECTOR,
+    // which is this front's.
+    assert doc.indexOf("." + cls
+        + ":invalid{border-color:var(--color-red-500)}") != -1;
     assert doc.indexOf("." + cls + ":required{border-width:2px}") != -1;
 }
 

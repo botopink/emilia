@@ -29,8 +29,8 @@ Three named imports from `from "emilia"`:
    `flushWith(defaultOptions())`.
 3. **`Token` enum** — the typed authored surface (see `tokens.bp`).
    Sections: Text, Font, Color, Bg, Pad, Margin, Size, Space, Layout, Flex,
-   Grid, Gap, Border,
-   Effect + the 83 modifier variants of front 34, each carrying a nested
+   Grid, Gap, Border, Outline, Ring, Divide,
+   Effect, Gradient + the 83 modifier variants of front 34, each carrying a nested
    `Token[]` (see below and `docs.md` § Modifiers). Front 33 widened **`Color`** to the
    26-family x 11-shade grid (17 chromatic Red..Rose + 9 neutral
    Slate..Taupe, each `50 100 … 900 950`) plus
@@ -160,6 +160,49 @@ call it rather than re-spell it**: `divide-*` separates the same children the
 same way, and two fronts writing the same selector by hand are two fronts that
 will eventually write it differently.
 
+Front 40 owns **borders, outlines, rings and divided lists** — the `Border`,
+`Outline`, `Ring` and `Divide` sections of `tokens.bp` and `borderTokenToCss`,
+`outlineTokenToCss`, `ringTokenToSheet` and `divideTokenToSheet` with their
+sub-dispatchers in `emilia.bp`, fenced by the
+`// ── front 40 — borders, outlines, rings and divides ──` banner in both files.
+**1704 leaves** over the whole of `§ 11`. Its rule is fronts 35's, 36's and
+37's, one level up: **no leaf resolves a COLOUR or a RADIUS**. All five colour
+sub-sections — `Border.Color`, `Outline.Color`, `Ring.Color`,
+`Ring.Offset.Color` and `Divide.Color` — answer front 33's `paletteVar`, and
+this front holds no colour table; every radius answers `radiusVar`, which is
+front 54's `--radius-*` ladder and the only place the front spells one.
+
+**Two of the four are `…ToSheet` dispatchers**, front 56's second shape, and
+they are the only two this front adds. `divideTokenToSheet` needs a selector
+outside the class because `divide-*` declares on the element's CHILDREN, and it
+CALLS front 35's `siblingSelector()` rather than re-spelling
+`& > :not(:last-child)` — the test front 35 could not write, comparing the two
+families' selectors byte for byte, is now in `emilia.bp`.
+`ringTokenToSheet` needs several ordered declarations because a ring is a
+box-shadow: its `box-shadow` LISTS `var(--tw-shadow)` rather than writing a
+shadow of its own, so front 41's `Effect.Shadow` composes with it instead of
+being overwritten.
+
+**What front 40 changed under other fronts.** `.Border.Color.<family>.<shade>`
+used to emit `border-color:red` — the shade was discarded — and now emits the
+palette reference; `examples/emilia-modifiers` pinned the old text and was
+updated. `.Border.Rounded.{Sm,Md,Lg}` used to resolve a literal `rem` and now
+reference `var(--radius-*)`; `Full` and `None` still do not, because upstream
+prints those two literally. That last change cost three other fronts their walk
+CONTROL: fronts 36, 37 and 39 all asserted `.Border.Rounded.Lg` DOES carry a
+`rem`, to prove their probes discriminated. All three now point at
+`.Text.Size.Lg`, which is front 42's and still spells `1.125rem`. **A front
+that makes a literal into a reference must grep for its own tokens in other
+fronts' controls** — the README said no existing assertion covered `Sm`, `Md`
+or `Lg`, and three did.
+
+**One convention is deliberately not uniform.** `.Border.W.0` emits
+`border-width:0` and not `0px`, because the front's acceptance says the four
+pre-40 leaves emit exactly what they emitted before; the eight directional
+sub-sections follow the shorthand so that one section speaks one way.
+`Outline.W.0` and `Divide.{X,Y}.0` emit `0px`, the first from the README and
+the second VERIFIED against upstream.
+
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
 DSL); both forms need the two generic jhonstart hooks (`F0` second
@@ -228,7 +271,8 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   commonJS and an ordered `[{Name, Body}]` list in the process dictionary on
   erlang (same `register`/`flush` contract); `hashHex` folds the same djb2 on
   both, so class names agree for ASCII bodies. `botopink test --target erlang`
-  runs the suite (17/17). beam/wasm are not ported.
+  runs the suite, and it is the gate that catches a per-target divergence — see
+  `Array.lastIndexOf` under § Maintainer rules. beam/wasm are not ported.
 
 ## Tree
 
@@ -537,6 +581,24 @@ to the commonJS row and runs once.
   workaround in `output.bp`'s `wrapAtRules` (mapping the list twice) is no
   longer required and may be simplified by whichever front next touches it.
   Kept as the reason a per-target divergence is worth a cell rather than a note.
+- **`Array.lastIndexOf` does not lower on erlang.** `xs.lastIndexOf(x)` compiles
+  and runs on commonJS and reds the erlang build with `function lastIndexOf/2
+  undefined` — a HARD error, not a warning, so it cannot reach a green suite
+  unsuspected, but it is invisible until the second target is run. Front 40 hit
+  it in a duplicate check over 288 declarations; the replacement counts
+  occurrences (`decls.filter({ x -> x == d }).length > 1`). `indexOf`, `filter`,
+  `map`, `all` and `append` all lower on both. **Run `botopink test --target
+  erlang` before every commit**, not only at the end of a front.
+- **A front that turns a LITERAL into a REFERENCE must grep for its own tokens
+  in other fronts' CONTROLS.** A "no leaf resolves a length" walk is paired with
+  a control asserting some real token DOES carry one, so the probe is known to
+  discriminate. Fronts 36, 37 and 39 all chose `.Border.Rounded.Lg` for that,
+  because it spelled `0.5rem` — and front 40's whole job was to make it
+  `var(--radius-lg)`. Three tests in two other fronts went red at once, and the
+  front's own README had stated that no existing assertion covered `Sm`, `Md` or
+  `Lg`. The controls now point at `.Text.Size.Lg` (front 42's, `1.125rem`), and
+  the next front to theme the type scale will have to move them again. Prefer a
+  control from a family YOUR front does not own and no near-term front does.
 - **A SECTION HEAD may not be named like a TOP-LEVEL payload variant.** A
   section named `After` beside the top-level `After(inner: Token[])` does not
   red — it silently breaks the TOP-LEVEL variant's payload projection, so
@@ -823,6 +885,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 37 — flexbox, grid and gap | DONE — steps 1–5 + the worked example. `Flex` is the flex container AND the flex item (direction and wrap with the three reverse rows, the `Value` shorthand, `Grow`, `Shrink`, `Basis`, `Order`) plus the WHOLE alignment family of `§ 6.16`–`§ 6.24` — nine property groups, seven of which had no token at all; `Grid` is `§ 6.8`–`§ 6.14` (templates, spans, starts and ends to line 13, flow, implicit tracks); `Gap` is a TOP-LEVEL section because `gap` applies to grid as much as to flex. **356 leaves**, walked by one test, none of which resolves a length: `Flex.Basis` and all of `Gap` answer front 54's `spacing(n)`/`spacingHalf(n)` over front 35's scale, and everything else is a bare integer. `gridRepeat`/`gridFr` spell `repeat(N, minmax(0, 1fr))` and `minmax(0, 1fr)` once each. **The seventh `rem` ladder is deleted** — `flexGapScale` was `__4 -> "1rem"`, the one front 35 left because `Gap` is this front's, and `.Flex.Gap.N` now emits what `.Gap.All.N` emits, asserted side by side; `spacing.bp`'s docblock was corrected with it. **`AlignSelf` and the flat `PlaceContent`/`PlaceItems`/`PlaceSelf`**, not the spec's `.Flex.Self` / `.Flex.Place.Self`: `Self` is a language keyword and neither spelling parses (§ Maintainer rules). The alignment family stays under `Flex` although it applies to grid, because renaming `Items`/`Justify` is what the milestone forbids. `examples/emilia-grid/` is the showcase (13 tests). +27 inline tests in `modules/emilia`, which is **340** on commonJS and on erlang. **Reference gaps left undeclared**: `basis-*` fractions below thirds, and every arbitrary-value form (`grid-cols-[200px_1fr]`, `z-[999]`-style) — the escape-hatch front's. **Reference extents declared by interpolation and still to confirm upstream**: `grid-cols-7`…`11`, `col-span-3`…`12`, `col-start-2`…`13`, `order-3`…`12` |
 | 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). +30 inline tests in `modules/emilia`, which is **313** on commonJS and on erlang with front 34 merged in. **`Break` is FLAT** — `BreakAfter`/`BreakBefore`/`BreakInside`, not the spec's `Break { After, Before, Inside }`: a section head named like a top-level payload variant shadows that variant's payload projection, and front 34 carries `After`/`Before` (§ Maintainer rules). **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
 | 1.0.10-beta front 39 — backgrounds | DONE — steps 1–4. Step 1: the seven keyword sub-sections of `Bg` (`Attachment`, `Clip`, `Origin`, `Pos`, `Repeat`, `Size`, `Image.None`), 29 leaves appended after front 33's `Bg.Color` block and the legacy leaves. `Pos` not `Position` (so `.Bg.Pos.*` reads apart from `.Layout.Position.*`), `Repeat.None` not `NoRepeat`, `Clip.Text` the one clip value that is not a `*-box`. The legacy `Bg` leaves are byte-identical and pinned; this front does NOT fold them into `background-color`. Step 2: `Gradient` is a TOP-LEVEL section (a stop sets a custom property, not `background-image`), `Gradient.To` the eight directions — the phrases spelled in one place, `to top right` and never `to top-right`. Steps 3–4: `From` / `Via` / `Stop` each carry front 33's whole grid (291 leaves each) through `paletteVar(family, shade)`, so a stop and a background reference ONE custom property; token ORDER is load-bearing (`Via`'s three-stop list beats `From`'s two-stop one, and `Stop` writes no list so it cannot overwrite `Via`'s). **The stop composition diverges from the spec after the upstream check the spec demanded** — upstream's position variables and `--tw-gradient-via-stops` rest on `@property` registration emilia does not emit, so the registered `#0000` default is written as a `var(…, transparent)` fallback instead. 910 leaves walked for a literal, a length and a class fragment, each walk with a control that fails. `examples/emilia-backgrounds/` is the showcase (12 tests). +35 inline tests in `modules/emilia`, which is **375** on commonJS and on erlang with front 37 merged in. **Reference gaps left undeclared**: colour-stop positions (`from-10%`), radial and conic gradients, gradient interpolation (`bg-linear-to-r/oklch`) and every arbitrary-value form (`bg-[url(…)]`, `bg-size-[…]`) — the escape-hatch front's |
+| 1.0.10-beta front 40 — borders, outlines, rings and divides | DONE — steps 1–6. **1704 leaves** over the whole of `§ 11`. `Border.W` gains the fifth width and eight directional sub-sections (an AXIS is two declarations, a SIDE one, and `S`/`E` are `border-inline-*-width`); `Border.Style` is new; `Border.Color` goes from a two-family stub whose dispatcher DISCARDED THE SHADE (`border-color:red` for every cell) to front 33's full 26 x 11 grid through `paletteVar`; `Border.Rounded` goes from four literal `rem` leaves to a ten-leaf ladder of `var(--radius-*)` on the shorthand and on fourteen directional sub-sections. `Outline`, `Ring` and `Divide` are three new TOP-LEVEL sections — head-audited against the 84 payload variants, the fifteen section heads and the lexer's keyword table before a dispatcher was written, with no collision. **`Outline.Style.None` is the trap**: `outline:2px solid transparent;outline-offset:2px`, asserted BOTH for what it emits and for the `outline-style:none` it must never emit. `ringTokenToSheet` and `divideTokenToSheet` are the two `…ToSheet` dispatchers; `Divide` CALLS front 35's `siblingSelector()`, and the byte-identity test front 35 could not write (because `Divide` did not exist) is now in `emilia.bp`. **Upstream VERIFIED while writing**: the divide child selector really is `& > :not(:last-child)`, the zero-then-width pair, the reverse custom properties, `--tw-ring-color`, `--tw-ring-inset`, and the v4 default ring width of **1px** (v3's was 3px), so `--tw-ring-shadow` is `0 0 0 Npx` and NOT the spec's v3-shaped `calc(…)` form. **Still unverified and recorded**: the composed `box-shadow` list, and the whole `ring-offset-*` family, which v4's documentation no longer carries — declared because the spec asks for it, not because it was confirmed. 1704 leaves walked for a literal, a class fragment and well-formedness, each walk with a control that fails, plus a colour-reference walk over all 1440 cells and a 288-way distinctness walk — the literal probe alone does NOT catch a discarded shade, which is this front's own historical defect. Three planted defects were watched redden and removed. **Blast radius outside the front**: `.Border.Rounded.Lg` was fronts 36/37/39's walk CONTROL and is no longer a literal, so all three now use `.Text.Size.Lg`; `examples/emilia-modifiers` pinned `border-color:red` and `examples/emilia-layout` pinned `border-radius:0.5rem`, both updated. +44 inline tests in `modules/emilia`, which is **419** on commonJS and on erlang. **Reference gaps left undeclared**: `outline-hidden`, and every arbitrary-value form — the escape-hatch front's |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

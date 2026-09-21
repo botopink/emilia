@@ -147,7 +147,12 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Flex(_inner) -> declSheet(flexTokenToCss(_inner, th));
         Grid(_inner) -> declSheet(gridTokenToCss(_inner, th));
         Gap(_inner) -> declSheet(gapTokenToCss(_inner, th));
-        Border(_inner) -> declSheet(borderTokenToCss(_inner));
+        // ── front 40 — borders, outlines, rings and divides ────
+        Border(_inner) -> declSheet(borderTokenToCss(_inner, th));
+        Outline(_inner) -> declSheet(outlineTokenToCss(_inner, th));
+        Ring(_inner) -> ringTokenToSheet(_inner, th);
+        Divide(_inner) -> divideTokenToSheet(_inner, th);
+        // ── end front 40 ───────────────────────────────────────
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
         // ── front 39 — backgrounds ─────────────────────────
         Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
@@ -4635,8 +4640,10 @@ test "aspect-ratio — the slash keeps its spaces" {
 //     `property:value`, so every leaf carries a `:` and none carries the
 //     hyphenated utility spelling of its own scale.
 //
-// `Border.Rounded` and `Text.Size` DO spell `rem` — they are fronts 41's and
-// 42's and are not walked here.
+// `Text.Size` DOES spell `rem` — it is front 42's and is not walked here, and
+// it is THE CONTROL below. `Border.Rounded` used to be the control and is no
+// longer one: front 40 rewrote it to `var(--radius-*)`, so it would now pass
+// the probe vacuously.
 fn layoutLeaves() -> Token[] {
     val leaves: Token[] = [
         .Layout.Block, .Layout.InlineBlock, .Layout.Inline, .Layout.InlineFlex,
@@ -4880,7 +4887,7 @@ test "regression — no `Layout` leaf resolves a length; all 776 reference the t
     assert leaves.all({ t -> tokenDeclarations(t).indexOf("rem") == -1 });
     assert leaves.all({ t -> tokenDeclarations(t).indexOf(":") != -1 });
     assert leaves.all({ t -> tokenDeclarations(t).length > 0 });
-    assert tokenDeclarations(.Border.Rounded.Lg).indexOf("rem") != -1;
+    assert tokenDeclarations(.Text.Size.Lg).indexOf("rem") != -1;
 }
 
 test "regression — no `Layout` leaf emits a Tailwind class fragment" {
@@ -4965,7 +4972,7 @@ test "end to end — a media card that crops its image and clips its overflow" {
     val cardCls = emilia(card);
     val mediaCls = emilia(media);
     val styles = await flushWith(bareOptions());
-    assert styles.indexOf("." + cardCls + "{overflow:hidden;isolation:isolate;border-radius:0.5rem}") != -1;
+    assert styles.indexOf("." + cardCls + "{overflow:hidden;isolation:isolate;border-radius:var(--radius-lg)}") != -1;
     assert styles.indexOf("." + mediaCls + "{aspect-ratio:16 / 9;object-fit:cover;object-position:center}") != -1;
 }
 
@@ -5832,9 +5839,10 @@ test "gap reads front 54's ladder, so halving `--spacing` moves no rule" {
 //     names, not CSS; what reaches the document is `property:value`, so every
 //     leaf carries a `:` and none carries the hyphenated utility spelling.
 //
-// THE CONTROL. `.Border.Rounded.Lg` is asserted to DO carry a `rem` — it is
-// front 41's and spells `0.5rem` — so the probe is known to discriminate rather
-// than to pass vacuously. A `0.25rem` planted in one `gapScaleAll` arm was
+// THE CONTROL. `.Text.Size.Lg` is asserted to DO carry a `rem` — it is front
+// 42's and spells `1.125rem` — so the probe is known to discriminate rather
+// than to pass vacuously. It was `.Border.Rounded.Lg` until front 40 rewrote
+// that leaf to `var(--radius-lg)`, which would have made the probe vacuous. A `0.25rem` planted in one `gapScaleAll` arm was
 // confirmed to fail the walk before it was taken out again.
 fn flexLeaves() -> Token[] {
     val leaves: Token[] = [
@@ -5945,7 +5953,7 @@ test "regression — no leaf of this front resolves a length; all 356 declare" {
     assert leaves.all({ t -> tokenDeclarations(t).indexOf("rem") == -1 });
     assert leaves.all({ t -> tokenDeclarations(t).indexOf(":") != -1 });
     assert leaves.all({ t -> tokenDeclarations(t).length > 0 });
-    assert tokenDeclarations(.Border.Rounded.Lg).indexOf("rem") != -1;
+    assert tokenDeclarations(.Text.Size.Lg).indexOf("rem") != -1;
 }
 
 test "regression — no leaf of this front emits a Tailwind class fragment" {
@@ -5985,43 +5993,3185 @@ test "regression — `Gap` and `Basis` are the ladder `Pad` is, property aside" 
 
 // ── end front 37 ─────────────────────────────────────────────────────────────
 
-fn borderTokenToCss(t: Token.Border) -> string {
+// ── front 40 — borders, outlines, rings and divides ──────────────────────────
+//
+// `§ 11` in four families. Two shapes, exactly as front 56 defines them:
+// `borderTokenToCss` and `outlineTokenToCss` answer a DECLARATION STRING and
+// the shared `case` adapts them with `declSheet`; `ringTokenToSheet` and
+// `divideTokenToSheet` answer a `SHEET`, because neither family is a bare
+// declaration. Those two are the only `…ToSheet` dispatchers this front adds.
+//
+// NO LEAF RESOLVES A COLOUR OR A RADIUS — fronts 35/36/37's rule, one level
+// up. All five colour sub-sections (`Border.Color`, `Outline.Color`,
+// `Ring.Color`, `Ring.Offset.Color` and `Divide.Color`) go through front 33's
+// `paletteVar`, and this front holds NO COLOUR TABLE: four — five — tables
+// would be five chances to drift. Every radius answers `radiusVar`, which is
+// front 54's `--radius-*` ladder and the only place this front spells one.
+//
+// `.Border.Color.Red.500` USED TO DISCARD ITS SHADE (`border-color:red`), and
+// this front's own stub — Red and Gray at 100/500/700 — is what collided with
+// `Token.Color` and made six of front 33's cells unreachable in every
+// spelling. botopink-lang `f01c508a` fixed the resolver (the expected type
+// decides, the fully qualified spelling resolves, an ambiguous path is
+// refused naming both candidates), so the grid below is the FULL one and
+// nothing was renamed to dodge a hash.
+//
+// HEAD AUDIT, the rule fronts 36 and 37 paid for. The three new section heads
+// — `Outline`, `Ring`, `Divide` — were checked against the 84 top-level
+// payload variants, against the fifteen existing section heads, and against
+// the lexer's keyword table. No collision. `Ring.Inset`, `Divide.XReverse`
+// and `Divide.YReverse` are LEAVES, which are safe by the same rule.
+//
+// REFERENCE GAPS, recorded rather than hidden — see the front's README.
+//   VERIFIED against upstream v4 while writing this: the `divide` child
+//     selector IS `& > :not(:last-child)` (so front 35's `siblingSelector()`
+//     is right and is called here rather than re-spelled); `divide-x-N` is
+//     `border-inline-start-width:0px;border-inline-end-width:Npx` and
+//     `divide-y-N` the block pair; `--tw-divide-x-reverse`/`-y-reverse` are
+//     the reverse properties; `ring-<color>` is `--tw-ring-color`;
+//     `ring-inset` is `--tw-ring-inset:inset`; and the DEFAULT RING WIDTH IN
+//     V4 IS 1px, not v3's 3px — which the README told us to read rather than
+//     remember, and which is why `.Ring.W.1` is upstream's bare `ring`.
+//   NOT VERIFIED, and left as the README specifies them: the composed
+//     `box-shadow` list, and the whole `ring-offset-*` family, which v4's
+//     documentation no longer carries at all (it is a v3 carry-over). The
+//     `--tw-ring-shadow` VALUE follows what v4 documents — `0 0 0 Npx` — and
+//     not the README's v3-shaped `calc(...)` form.
+
+// The only place this front spells a radius reference. Front 54's ladder
+// carries `--radius-xs` through `--radius-4xl`; `rounded-none` and
+// `rounded-full` are literals upstream and stay literals here.
+fn radiusVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.Radius) + name);
+}
+
+fn borderTokenToCss(t: Token.Border, th: Theme) -> string {
     val out = case t {
         W(_inner) -> borderWidthToCss(_inner);
-        Color(_inner) -> borderColorToCss(_inner);
-        Rounded(_inner) -> borderRoundedToCss(_inner);
+        Style(_inner) -> borderStyleToCss(_inner);
+        Color(_inner) -> borderColorToCss(_inner, th);
+        Rounded(_inner) -> borderRoundedToCss(_inner, th);
     };
     return out;
 }
 
+// THE SHORTHAND KEEPS ITS PRE-40 OUTPUT. `.Border.W.0` is `border-width:0`
+// and not `0px`: the README's own acceptance bullet says the four existing
+// leaves emit exactly what they emit today, and its table says `0px`. The
+// bullet wins, and the eight directional sub-sections follow the shorthand so
+// that one section speaks one way.
 fn borderWidthToCss(s: Token.Border.W) -> string {
     val out = case s {
         __0 -> "border-width:0";
         __1 -> "border-width:1px";
         __2 -> "border-width:2px";
         __4 -> "border-width:4px";
+        __8 -> "border-width:8px";
+        X(_inner) -> axisDecl("border-left-width", "border-right-width", borderWidthXValue(_inner));
+        Y(_inner) -> axisDecl("border-top-width", "border-bottom-width", borderWidthYValue(_inner));
+        T(_inner) -> oneDecl("border-top-width", borderWidthTValue(_inner));
+        R(_inner) -> oneDecl("border-right-width", borderWidthRValue(_inner));
+        B(_inner) -> oneDecl("border-bottom-width", borderWidthBValue(_inner));
+        L(_inner) -> oneDecl("border-left-width", borderWidthLValue(_inner));
+        S(_inner) -> oneDecl("border-inline-start-width", borderWidthSValue(_inner));
+        E(_inner) -> oneDecl("border-inline-end-width", borderWidthEValue(_inner));
     };
     return out;
 }
 
-fn borderColorToCss(c: Token.Border.Color) -> string {
+fn borderWidthXValue(s: Token.Border.W.X) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderWidthYValue(s: Token.Border.W.Y) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderWidthTValue(s: Token.Border.W.T) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderWidthRValue(s: Token.Border.W.R) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderWidthBValue(s: Token.Border.W.B) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderWidthLValue(s: Token.Border.W.L) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderWidthSValue(s: Token.Border.W.S) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderWidthEValue(s: Token.Border.W.E) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn borderStyleToCss(s: Token.Border.Style) -> string {
+    val out = case s {
+        Solid -> "border-style:solid";
+        Dashed -> "border-style:dashed";
+        Dotted -> "border-style:dotted";
+        Double -> "border-style:double";
+        Hidden -> "border-style:hidden";
+        None -> "border-style:none";
+    };
+    return out;
+}
+
+fn borderColorToCss(c: Token.Border.Color, th: Theme) -> string {
     val out = case c {
-        Red(_inner) -> "border-color:red";
-        Gray(_inner) -> "border-color:gray";
+        Red(_inner) -> "border-color:" + paletteVar("red", borderColorRedShade(_inner));
+        Orange(_inner) -> "border-color:" + paletteVar("orange", borderColorOrangeShade(_inner));
+        Amber(_inner) -> "border-color:" + paletteVar("amber", borderColorAmberShade(_inner));
+        Yellow(_inner) -> "border-color:" + paletteVar("yellow", borderColorYellowShade(_inner));
+        Lime(_inner) -> "border-color:" + paletteVar("lime", borderColorLimeShade(_inner));
+        Green(_inner) -> "border-color:" + paletteVar("green", borderColorGreenShade(_inner));
+        Emerald(_inner) -> "border-color:" + paletteVar("emerald", borderColorEmeraldShade(_inner));
+        Teal(_inner) -> "border-color:" + paletteVar("teal", borderColorTealShade(_inner));
+        Cyan(_inner) -> "border-color:" + paletteVar("cyan", borderColorCyanShade(_inner));
+        Sky(_inner) -> "border-color:" + paletteVar("sky", borderColorSkyShade(_inner));
+        Blue(_inner) -> "border-color:" + paletteVar("blue", borderColorBlueShade(_inner));
+        Indigo(_inner) -> "border-color:" + paletteVar("indigo", borderColorIndigoShade(_inner));
+        Violet(_inner) -> "border-color:" + paletteVar("violet", borderColorVioletShade(_inner));
+        Purple(_inner) -> "border-color:" + paletteVar("purple", borderColorPurpleShade(_inner));
+        Fuchsia(_inner) -> "border-color:" + paletteVar("fuchsia", borderColorFuchsiaShade(_inner));
+        Pink(_inner) -> "border-color:" + paletteVar("pink", borderColorPinkShade(_inner));
+        Rose(_inner) -> "border-color:" + paletteVar("rose", borderColorRoseShade(_inner));
+        Slate(_inner) -> "border-color:" + paletteVar("slate", borderColorSlateShade(_inner));
+        Gray(_inner) -> "border-color:" + paletteVar("gray", borderColorGrayShade(_inner));
+        Zinc(_inner) -> "border-color:" + paletteVar("zinc", borderColorZincShade(_inner));
+        Neutral(_inner) -> "border-color:" + paletteVar("neutral", borderColorNeutralShade(_inner));
+        Stone(_inner) -> "border-color:" + paletteVar("stone", borderColorStoneShade(_inner));
+        Mauve(_inner) -> "border-color:" + paletteVar("mauve", borderColorMauveShade(_inner));
+        Olive(_inner) -> "border-color:" + paletteVar("olive", borderColorOliveShade(_inner));
+        Mist(_inner) -> "border-color:" + paletteVar("mist", borderColorMistShade(_inner));
+        Taupe(_inner) -> "border-color:" + paletteVar("taupe", borderColorTaupeShade(_inner));
+        White -> "border-color:" + themeVar(nsPrefix(Ns.Color) + "white");
+        Black -> "border-color:" + themeVar(nsPrefix(Ns.Color) + "black");
+        Transparent -> "border-color:transparent";
+        Current -> "border-color:currentColor";
+        Inherit -> "border-color:inherit";
         Hex(value) -> "border-color:" + value;
     };
     return out;
 }
 
-fn borderRoundedToCss(r: Token.Border.Rounded) -> string {
-    val out = case r {
-        Sm -> "border-radius:0.125rem";
-        Md -> "border-radius:0.375rem";
-        Lg -> "border-radius:0.5rem";
-        Full -> "border-radius:9999px";
+fn borderColorRedShade(s: Token.Border.Color.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
     };
     return out;
 }
+
+fn borderColorOrangeShade(s: Token.Border.Color.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorAmberShade(s: Token.Border.Color.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorYellowShade(s: Token.Border.Color.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorLimeShade(s: Token.Border.Color.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorGreenShade(s: Token.Border.Color.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorEmeraldShade(s: Token.Border.Color.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorTealShade(s: Token.Border.Color.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorCyanShade(s: Token.Border.Color.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorSkyShade(s: Token.Border.Color.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorBlueShade(s: Token.Border.Color.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorIndigoShade(s: Token.Border.Color.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorVioletShade(s: Token.Border.Color.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorPurpleShade(s: Token.Border.Color.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorFuchsiaShade(s: Token.Border.Color.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorPinkShade(s: Token.Border.Color.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorRoseShade(s: Token.Border.Color.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorSlateShade(s: Token.Border.Color.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorGrayShade(s: Token.Border.Color.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorZincShade(s: Token.Border.Color.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorNeutralShade(s: Token.Border.Color.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorStoneShade(s: Token.Border.Color.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorMauveShade(s: Token.Border.Color.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorOliveShade(s: Token.Border.Color.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorMistShade(s: Token.Border.Color.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn borderColorTaupeShade(s: Token.Border.Color.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+// A SIDE FORM IS TWO CORNERS AND A CORNER FORM IS ONE. The logical eight
+// (`S`/`E`/`Ss`/`Se`/`Es`/`Ee`) follow the writing direction where the
+// physical four do not — `border-start-start-radius` is to `Tl` what
+// `padding-inline-start` is to `padding-left`.
+//
+// `Sm`, `Md` and `Lg` CHANGE WHAT THEY EMIT — from a literal `rem` to
+// `var(--radius-*)`. `Full` does not, because upstream prints `rounded-full`
+// as the literal `9999px`, and `None` does not, for the same reason.
+fn borderRoundedToCss(r: Token.Border.Rounded, th: Theme) -> string {
+    val out = case r {
+        None -> "border-radius:0";
+        Xs -> oneDecl("border-radius", radiusVar("xs"));
+        Sm -> oneDecl("border-radius", radiusVar("sm"));
+        Md -> oneDecl("border-radius", radiusVar("md"));
+        Lg -> oneDecl("border-radius", radiusVar("lg"));
+        Xl -> oneDecl("border-radius", radiusVar("xl"));
+        X2xl -> oneDecl("border-radius", radiusVar("2xl"));
+        X3xl -> oneDecl("border-radius", radiusVar("3xl"));
+        X4xl -> oneDecl("border-radius", radiusVar("4xl"));
+        Full -> "border-radius:9999px";
+        T(_inner) -> axisDecl("border-top-left-radius", "border-top-right-radius", borderRoundedTValue(_inner));
+        R(_inner) -> axisDecl("border-top-right-radius", "border-bottom-right-radius", borderRoundedRValue(_inner));
+        B(_inner) -> axisDecl("border-bottom-right-radius", "border-bottom-left-radius", borderRoundedBValue(_inner));
+        L(_inner) -> axisDecl("border-top-left-radius", "border-bottom-left-radius", borderRoundedLValue(_inner));
+        Tl(_inner) -> oneDecl("border-top-left-radius", borderRoundedTlValue(_inner));
+        Tr(_inner) -> oneDecl("border-top-right-radius", borderRoundedTrValue(_inner));
+        Br(_inner) -> oneDecl("border-bottom-right-radius", borderRoundedBrValue(_inner));
+        Bl(_inner) -> oneDecl("border-bottom-left-radius", borderRoundedBlValue(_inner));
+        S(_inner) -> axisDecl("border-start-start-radius", "border-end-start-radius", borderRoundedSValue(_inner));
+        E(_inner) -> axisDecl("border-start-end-radius", "border-end-end-radius", borderRoundedEValue(_inner));
+        Ss(_inner) -> oneDecl("border-start-start-radius", borderRoundedSsValue(_inner));
+        Se(_inner) -> oneDecl("border-start-end-radius", borderRoundedSeValue(_inner));
+        Es(_inner) -> oneDecl("border-end-start-radius", borderRoundedEsValue(_inner));
+        Ee(_inner) -> oneDecl("border-end-end-radius", borderRoundedEeValue(_inner));
+    };
+    return out;
+}
+
+fn borderRoundedTValue(r: Token.Border.Rounded.T) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedRValue(r: Token.Border.Rounded.R) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedBValue(r: Token.Border.Rounded.B) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedLValue(r: Token.Border.Rounded.L) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedTlValue(r: Token.Border.Rounded.Tl) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedTrValue(r: Token.Border.Rounded.Tr) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedBrValue(r: Token.Border.Rounded.Br) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedBlValue(r: Token.Border.Rounded.Bl) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedSValue(r: Token.Border.Rounded.S) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedEValue(r: Token.Border.Rounded.E) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedSsValue(r: Token.Border.Rounded.Ss) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedSeValue(r: Token.Border.Rounded.Se) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedEsValue(r: Token.Border.Rounded.Es) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+
+fn borderRoundedEeValue(r: Token.Border.Rounded.Ee) -> string {
+    val out = case r {
+        None -> "0";
+        Xs -> radiusVar("xs");
+        Sm -> radiusVar("sm");
+        Md -> radiusVar("md");
+        Lg -> radiusVar("lg");
+        Xl -> radiusVar("xl");
+        X2xl -> radiusVar("2xl");
+        X3xl -> radiusVar("3xl");
+        X4xl -> radiusVar("4xl");
+        Full -> "9999px";
+    };
+    return out;
+}
+// `outline-none` IS THE TRAP IN THIS FAMILY. Upstream prints it as two
+// declarations of the SHORTHAND and an offset — a TRANSPARENT outline rather
+// than an absent one, so a high-contrast mode still shows it — and never as
+// `outline-style:none`. The token lives under `Style` because that is where
+// upstream puts it; only the emission is special.
+fn outlineTokenToCss(t: Token.Outline, th: Theme) -> string {
+    val out = case t {
+        W(_inner) -> oneDecl("outline-width", outlineWidthValue(_inner));
+        Style(_inner) -> outlineStyleToCss(_inner);
+        Color(_inner) -> outlineColorToCss(_inner, th);
+        Offset(_inner) -> outlineOffsetToCss(_inner);
+    };
+    return out;
+}
+
+fn outlineWidthValue(s: Token.Outline.W) -> string {
+    val out = case s {
+        __0 -> "0px";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn outlineStyleToCss(s: Token.Outline.Style) -> string {
+    val out = case s {
+        Solid -> "outline-style:solid";
+        Dashed -> "outline-style:dashed";
+        Dotted -> "outline-style:dotted";
+        Double -> "outline-style:double";
+        None -> "outline:2px solid transparent;outline-offset:2px";
+    };
+    return out;
+}
+
+fn outlineColorToCss(c: Token.Outline.Color, th: Theme) -> string {
+    val out = case c {
+        Red(_inner) -> "outline-color:" + paletteVar("red", outlineColorRedShade(_inner));
+        Orange(_inner) -> "outline-color:" + paletteVar("orange", outlineColorOrangeShade(_inner));
+        Amber(_inner) -> "outline-color:" + paletteVar("amber", outlineColorAmberShade(_inner));
+        Yellow(_inner) -> "outline-color:" + paletteVar("yellow", outlineColorYellowShade(_inner));
+        Lime(_inner) -> "outline-color:" + paletteVar("lime", outlineColorLimeShade(_inner));
+        Green(_inner) -> "outline-color:" + paletteVar("green", outlineColorGreenShade(_inner));
+        Emerald(_inner) -> "outline-color:" + paletteVar("emerald", outlineColorEmeraldShade(_inner));
+        Teal(_inner) -> "outline-color:" + paletteVar("teal", outlineColorTealShade(_inner));
+        Cyan(_inner) -> "outline-color:" + paletteVar("cyan", outlineColorCyanShade(_inner));
+        Sky(_inner) -> "outline-color:" + paletteVar("sky", outlineColorSkyShade(_inner));
+        Blue(_inner) -> "outline-color:" + paletteVar("blue", outlineColorBlueShade(_inner));
+        Indigo(_inner) -> "outline-color:" + paletteVar("indigo", outlineColorIndigoShade(_inner));
+        Violet(_inner) -> "outline-color:" + paletteVar("violet", outlineColorVioletShade(_inner));
+        Purple(_inner) -> "outline-color:" + paletteVar("purple", outlineColorPurpleShade(_inner));
+        Fuchsia(_inner) -> "outline-color:" + paletteVar("fuchsia", outlineColorFuchsiaShade(_inner));
+        Pink(_inner) -> "outline-color:" + paletteVar("pink", outlineColorPinkShade(_inner));
+        Rose(_inner) -> "outline-color:" + paletteVar("rose", outlineColorRoseShade(_inner));
+        Slate(_inner) -> "outline-color:" + paletteVar("slate", outlineColorSlateShade(_inner));
+        Gray(_inner) -> "outline-color:" + paletteVar("gray", outlineColorGrayShade(_inner));
+        Zinc(_inner) -> "outline-color:" + paletteVar("zinc", outlineColorZincShade(_inner));
+        Neutral(_inner) -> "outline-color:" + paletteVar("neutral", outlineColorNeutralShade(_inner));
+        Stone(_inner) -> "outline-color:" + paletteVar("stone", outlineColorStoneShade(_inner));
+        Mauve(_inner) -> "outline-color:" + paletteVar("mauve", outlineColorMauveShade(_inner));
+        Olive(_inner) -> "outline-color:" + paletteVar("olive", outlineColorOliveShade(_inner));
+        Mist(_inner) -> "outline-color:" + paletteVar("mist", outlineColorMistShade(_inner));
+        Taupe(_inner) -> "outline-color:" + paletteVar("taupe", outlineColorTaupeShade(_inner));
+        White -> "outline-color:" + themeVar(nsPrefix(Ns.Color) + "white");
+        Black -> "outline-color:" + themeVar(nsPrefix(Ns.Color) + "black");
+        Transparent -> "outline-color:transparent";
+        Current -> "outline-color:currentColor";
+        Inherit -> "outline-color:inherit";
+    };
+    return out;
+}
+
+fn outlineColorRedShade(s: Token.Outline.Color.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorOrangeShade(s: Token.Outline.Color.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorAmberShade(s: Token.Outline.Color.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorYellowShade(s: Token.Outline.Color.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorLimeShade(s: Token.Outline.Color.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorGreenShade(s: Token.Outline.Color.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorEmeraldShade(s: Token.Outline.Color.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorTealShade(s: Token.Outline.Color.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorCyanShade(s: Token.Outline.Color.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorSkyShade(s: Token.Outline.Color.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorBlueShade(s: Token.Outline.Color.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorIndigoShade(s: Token.Outline.Color.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorVioletShade(s: Token.Outline.Color.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorPurpleShade(s: Token.Outline.Color.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorFuchsiaShade(s: Token.Outline.Color.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorPinkShade(s: Token.Outline.Color.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorRoseShade(s: Token.Outline.Color.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorSlateShade(s: Token.Outline.Color.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorGrayShade(s: Token.Outline.Color.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorZincShade(s: Token.Outline.Color.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorNeutralShade(s: Token.Outline.Color.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorStoneShade(s: Token.Outline.Color.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorMauveShade(s: Token.Outline.Color.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorOliveShade(s: Token.Outline.Color.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorMistShade(s: Token.Outline.Color.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineColorTaupeShade(s: Token.Outline.Color.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn outlineOffsetToCss(o: Token.Outline.Offset) -> string {
+    val out = case o {
+        __0 -> "outline-offset:0px";
+        __1 -> "outline-offset:1px";
+        __2 -> "outline-offset:2px";
+        __4 -> "outline-offset:4px";
+        __8 -> "outline-offset:8px";
+        Neg(_inner) -> oneDecl("outline-offset", outlineOffsetNegValue(_inner));
+    };
+    return out;
+}
+
+fn outlineOffsetNegValue(o: Token.Outline.Offset.Neg) -> string {
+    val out = case o {
+        __1 -> "-1px";
+        __2 -> "-2px";
+        __4 -> "-4px";
+        __8 -> "-8px";
+    };
+    return out;
+}
+
+// `ringTokenToSheet` IS A `…ToSheet`, front 56's second shape — the first of
+// the two this front adds. A ring is a BOX-SHADOW, not a border, so a width
+// leaf is not one declaration but two that must arrive in order: the custom
+// property that carries the ring, and the composed `box-shadow` that lists
+// it beside `var(--tw-shadow)`. Listing rather than overwriting is the whole
+// point — front 41's `Effect.Shadow` sets `--tw-shadow` and the two compose
+// instead of the later one winning.
+//
+// The `--tw-ring-shadow` VALUE is what v4 documents, `0 0 0 Npx`, and not the
+// README's `var(--tw-ring-inset) 0 0 0 calc(Npx + var(--tw-ring-offset-width))
+// var(--tw-ring-color)`, which is the v3 shape. The composed list itself is
+// still unverified — see the banner's reference-gap note.
+fn ringTokenToSheet(t: Token.Ring, th: Theme) -> Sheet {
+    val out = case t {
+        W(_inner) -> declSheet(ringWidthDecls(ringWidthValue(_inner)));
+        Color(_inner) -> declSheet(ringColorToCss(_inner, th));
+        Offset(_inner) -> declSheet(ringOffsetToCss(_inner, th));
+        Inset -> declSheet(oneDecl("--tw-ring-inset", "inset"));
+    };
+    return out;
+}
+
+// The composed shadow list, spelled ONCE. `--tw-shadow` is front 41's channel
+// and this front never writes it — which is what makes the two compose.
+fn ringShadowList() -> string {
+    return "var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)";
+}
+
+fn ringWidthDecls(w: string) -> string {
+    return oneDecl("--tw-ring-shadow", "0 0 0 " + w) + ";"
+        + oneDecl("box-shadow", ringShadowList());
+}
+
+fn ringWidthValue(s: Token.Ring.W) -> string {
+    val out = case s {
+        __0 -> "0px";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn ringColorToCss(c: Token.Ring.Color, th: Theme) -> string {
+    val out = case c {
+        Red(_inner) -> "--tw-ring-color:" + paletteVar("red", ringColorRedShade(_inner));
+        Orange(_inner) -> "--tw-ring-color:" + paletteVar("orange", ringColorOrangeShade(_inner));
+        Amber(_inner) -> "--tw-ring-color:" + paletteVar("amber", ringColorAmberShade(_inner));
+        Yellow(_inner) -> "--tw-ring-color:" + paletteVar("yellow", ringColorYellowShade(_inner));
+        Lime(_inner) -> "--tw-ring-color:" + paletteVar("lime", ringColorLimeShade(_inner));
+        Green(_inner) -> "--tw-ring-color:" + paletteVar("green", ringColorGreenShade(_inner));
+        Emerald(_inner) -> "--tw-ring-color:" + paletteVar("emerald", ringColorEmeraldShade(_inner));
+        Teal(_inner) -> "--tw-ring-color:" + paletteVar("teal", ringColorTealShade(_inner));
+        Cyan(_inner) -> "--tw-ring-color:" + paletteVar("cyan", ringColorCyanShade(_inner));
+        Sky(_inner) -> "--tw-ring-color:" + paletteVar("sky", ringColorSkyShade(_inner));
+        Blue(_inner) -> "--tw-ring-color:" + paletteVar("blue", ringColorBlueShade(_inner));
+        Indigo(_inner) -> "--tw-ring-color:" + paletteVar("indigo", ringColorIndigoShade(_inner));
+        Violet(_inner) -> "--tw-ring-color:" + paletteVar("violet", ringColorVioletShade(_inner));
+        Purple(_inner) -> "--tw-ring-color:" + paletteVar("purple", ringColorPurpleShade(_inner));
+        Fuchsia(_inner) -> "--tw-ring-color:" + paletteVar("fuchsia", ringColorFuchsiaShade(_inner));
+        Pink(_inner) -> "--tw-ring-color:" + paletteVar("pink", ringColorPinkShade(_inner));
+        Rose(_inner) -> "--tw-ring-color:" + paletteVar("rose", ringColorRoseShade(_inner));
+        Slate(_inner) -> "--tw-ring-color:" + paletteVar("slate", ringColorSlateShade(_inner));
+        Gray(_inner) -> "--tw-ring-color:" + paletteVar("gray", ringColorGrayShade(_inner));
+        Zinc(_inner) -> "--tw-ring-color:" + paletteVar("zinc", ringColorZincShade(_inner));
+        Neutral(_inner) -> "--tw-ring-color:" + paletteVar("neutral", ringColorNeutralShade(_inner));
+        Stone(_inner) -> "--tw-ring-color:" + paletteVar("stone", ringColorStoneShade(_inner));
+        Mauve(_inner) -> "--tw-ring-color:" + paletteVar("mauve", ringColorMauveShade(_inner));
+        Olive(_inner) -> "--tw-ring-color:" + paletteVar("olive", ringColorOliveShade(_inner));
+        Mist(_inner) -> "--tw-ring-color:" + paletteVar("mist", ringColorMistShade(_inner));
+        Taupe(_inner) -> "--tw-ring-color:" + paletteVar("taupe", ringColorTaupeShade(_inner));
+        White -> "--tw-ring-color:" + themeVar(nsPrefix(Ns.Color) + "white");
+        Black -> "--tw-ring-color:" + themeVar(nsPrefix(Ns.Color) + "black");
+        Transparent -> "--tw-ring-color:transparent";
+        Current -> "--tw-ring-color:currentColor";
+        Inherit -> "--tw-ring-color:inherit";
+    };
+    return out;
+}
+
+fn ringColorRedShade(s: Token.Ring.Color.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorOrangeShade(s: Token.Ring.Color.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorAmberShade(s: Token.Ring.Color.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorYellowShade(s: Token.Ring.Color.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorLimeShade(s: Token.Ring.Color.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorGreenShade(s: Token.Ring.Color.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorEmeraldShade(s: Token.Ring.Color.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorTealShade(s: Token.Ring.Color.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorCyanShade(s: Token.Ring.Color.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorSkyShade(s: Token.Ring.Color.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorBlueShade(s: Token.Ring.Color.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorIndigoShade(s: Token.Ring.Color.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorVioletShade(s: Token.Ring.Color.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorPurpleShade(s: Token.Ring.Color.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorFuchsiaShade(s: Token.Ring.Color.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorPinkShade(s: Token.Ring.Color.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorRoseShade(s: Token.Ring.Color.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorSlateShade(s: Token.Ring.Color.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorGrayShade(s: Token.Ring.Color.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorZincShade(s: Token.Ring.Color.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorNeutralShade(s: Token.Ring.Color.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorStoneShade(s: Token.Ring.Color.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorMauveShade(s: Token.Ring.Color.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorOliveShade(s: Token.Ring.Color.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorMistShade(s: Token.Ring.Color.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringColorTaupeShade(s: Token.Ring.Color.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+// `ring-offset-*` IS A V3 CARRY-OVER: v4's documentation no longer carries the
+// family at all. It is declared because the front's README specifies it and
+// its acceptance asks that `Ring.Offset.Color` go through `paletteVar`; it is
+// recorded as unverified rather than quietly dropped.
+fn ringOffsetToCss(o: Token.Ring.Offset, th: Theme) -> string {
+    val out = case o {
+        W(_inner) -> oneDecl("--tw-ring-offset-width", ringOffsetWidthValue(_inner));
+        Color(_inner) -> ringOffsetColorToCss(_inner, th);
+    };
+    return out;
+}
+
+fn ringOffsetWidthValue(s: Token.Ring.Offset.W) -> string {
+    val out = case s {
+        __0 -> "0px";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn ringOffsetColorToCss(c: Token.Ring.Offset.Color, th: Theme) -> string {
+    val out = case c {
+        Red(_inner) -> "--tw-ring-offset-color:" + paletteVar("red", ringOffsetColorRedShade(_inner));
+        Orange(_inner) -> "--tw-ring-offset-color:" + paletteVar("orange", ringOffsetColorOrangeShade(_inner));
+        Amber(_inner) -> "--tw-ring-offset-color:" + paletteVar("amber", ringOffsetColorAmberShade(_inner));
+        Yellow(_inner) -> "--tw-ring-offset-color:" + paletteVar("yellow", ringOffsetColorYellowShade(_inner));
+        Lime(_inner) -> "--tw-ring-offset-color:" + paletteVar("lime", ringOffsetColorLimeShade(_inner));
+        Green(_inner) -> "--tw-ring-offset-color:" + paletteVar("green", ringOffsetColorGreenShade(_inner));
+        Emerald(_inner) -> "--tw-ring-offset-color:" + paletteVar("emerald", ringOffsetColorEmeraldShade(_inner));
+        Teal(_inner) -> "--tw-ring-offset-color:" + paletteVar("teal", ringOffsetColorTealShade(_inner));
+        Cyan(_inner) -> "--tw-ring-offset-color:" + paletteVar("cyan", ringOffsetColorCyanShade(_inner));
+        Sky(_inner) -> "--tw-ring-offset-color:" + paletteVar("sky", ringOffsetColorSkyShade(_inner));
+        Blue(_inner) -> "--tw-ring-offset-color:" + paletteVar("blue", ringOffsetColorBlueShade(_inner));
+        Indigo(_inner) -> "--tw-ring-offset-color:" + paletteVar("indigo", ringOffsetColorIndigoShade(_inner));
+        Violet(_inner) -> "--tw-ring-offset-color:" + paletteVar("violet", ringOffsetColorVioletShade(_inner));
+        Purple(_inner) -> "--tw-ring-offset-color:" + paletteVar("purple", ringOffsetColorPurpleShade(_inner));
+        Fuchsia(_inner) -> "--tw-ring-offset-color:" + paletteVar("fuchsia", ringOffsetColorFuchsiaShade(_inner));
+        Pink(_inner) -> "--tw-ring-offset-color:" + paletteVar("pink", ringOffsetColorPinkShade(_inner));
+        Rose(_inner) -> "--tw-ring-offset-color:" + paletteVar("rose", ringOffsetColorRoseShade(_inner));
+        Slate(_inner) -> "--tw-ring-offset-color:" + paletteVar("slate", ringOffsetColorSlateShade(_inner));
+        Gray(_inner) -> "--tw-ring-offset-color:" + paletteVar("gray", ringOffsetColorGrayShade(_inner));
+        Zinc(_inner) -> "--tw-ring-offset-color:" + paletteVar("zinc", ringOffsetColorZincShade(_inner));
+        Neutral(_inner) -> "--tw-ring-offset-color:" + paletteVar("neutral", ringOffsetColorNeutralShade(_inner));
+        Stone(_inner) -> "--tw-ring-offset-color:" + paletteVar("stone", ringOffsetColorStoneShade(_inner));
+        Mauve(_inner) -> "--tw-ring-offset-color:" + paletteVar("mauve", ringOffsetColorMauveShade(_inner));
+        Olive(_inner) -> "--tw-ring-offset-color:" + paletteVar("olive", ringOffsetColorOliveShade(_inner));
+        Mist(_inner) -> "--tw-ring-offset-color:" + paletteVar("mist", ringOffsetColorMistShade(_inner));
+        Taupe(_inner) -> "--tw-ring-offset-color:" + paletteVar("taupe", ringOffsetColorTaupeShade(_inner));
+        White -> "--tw-ring-offset-color:" + themeVar(nsPrefix(Ns.Color) + "white");
+        Black -> "--tw-ring-offset-color:" + themeVar(nsPrefix(Ns.Color) + "black");
+        Transparent -> "--tw-ring-offset-color:transparent";
+        Current -> "--tw-ring-offset-color:currentColor";
+        Inherit -> "--tw-ring-offset-color:inherit";
+    };
+    return out;
+}
+
+fn ringOffsetColorRedShade(s: Token.Ring.Offset.Color.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorOrangeShade(s: Token.Ring.Offset.Color.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorAmberShade(s: Token.Ring.Offset.Color.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorYellowShade(s: Token.Ring.Offset.Color.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorLimeShade(s: Token.Ring.Offset.Color.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorGreenShade(s: Token.Ring.Offset.Color.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorEmeraldShade(s: Token.Ring.Offset.Color.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorTealShade(s: Token.Ring.Offset.Color.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorCyanShade(s: Token.Ring.Offset.Color.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorSkyShade(s: Token.Ring.Offset.Color.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorBlueShade(s: Token.Ring.Offset.Color.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorIndigoShade(s: Token.Ring.Offset.Color.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorVioletShade(s: Token.Ring.Offset.Color.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorPurpleShade(s: Token.Ring.Offset.Color.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorFuchsiaShade(s: Token.Ring.Offset.Color.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorPinkShade(s: Token.Ring.Offset.Color.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorRoseShade(s: Token.Ring.Offset.Color.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorSlateShade(s: Token.Ring.Offset.Color.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorGrayShade(s: Token.Ring.Offset.Color.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorZincShade(s: Token.Ring.Offset.Color.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorNeutralShade(s: Token.Ring.Offset.Color.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorStoneShade(s: Token.Ring.Offset.Color.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorMauveShade(s: Token.Ring.Offset.Color.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorOliveShade(s: Token.Ring.Offset.Color.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorMistShade(s: Token.Ring.Offset.Color.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn ringOffsetColorTaupeShade(s: Token.Ring.Offset.Color.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+// `divideTokenToSheet` IS THE SECOND `…ToSheet`. `divide-*` declares on the
+// element's CHILDREN — a border on every child but the last — so it needs a
+// selector outside the class, exactly as front 35's `space-*` does. It calls
+// front 35's `childSheet`, which calls front 35's `siblingSelector()`: the
+// child selector is spelled in ONE place for both fronts, and a test below
+// asserts the two families emit byte-identical selectors. Writing
+// `& > :not(:last-child)` again here is the one thing this front must not do.
+//
+// The pair is ordered zero-then-width, as upstream emits it: `divide-x-2` is
+// `border-inline-start-width:0px;border-inline-end-width:2px`. Both the
+// selector and the pair were VERIFIED against upstream v4 while writing this.
+fn divideTokenToSheet(t: Token.Divide, th: Theme) -> Sheet {
+    val out = case t {
+        X(_inner) -> childSheet(dividePair("border-inline-start-width",
+            "border-inline-end-width", divideXValue(_inner)));
+        Y(_inner) -> childSheet(dividePair("border-top-width",
+            "border-bottom-width", divideYValue(_inner)));
+        Color(_inner) -> childSheet(divideColorToCss(_inner, th));
+        Style(_inner) -> childSheet(divideStyleToCss(_inner));
+        XReverse -> childSheet(oneDecl("--tw-divide-x-reverse", "1"));
+        YReverse -> childSheet(oneDecl("--tw-divide-y-reverse", "1"));
+    };
+    return out;
+}
+
+// The leading edge is zeroed and the trailing edge carries the width, so a
+// run of children shows exactly one rule between each pair.
+fn dividePair(zeroProp: string, widthProp: string, w: string) -> string {
+    return oneDecl(zeroProp, "0px") + ";" + oneDecl(widthProp, w);
+}
+
+fn divideXValue(s: Token.Divide.X) -> string {
+    val out = case s {
+        __0 -> "0px";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn divideYValue(s: Token.Divide.Y) -> string {
+    val out = case s {
+        __0 -> "0px";
+        __1 -> "1px";
+        __2 -> "2px";
+        __4 -> "4px";
+        __8 -> "8px";
+    };
+    return out;
+}
+
+fn divideColorToCss(c: Token.Divide.Color, th: Theme) -> string {
+    val out = case c {
+        Red(_inner) -> "border-color:" + paletteVar("red", divideColorRedShade(_inner));
+        Orange(_inner) -> "border-color:" + paletteVar("orange", divideColorOrangeShade(_inner));
+        Amber(_inner) -> "border-color:" + paletteVar("amber", divideColorAmberShade(_inner));
+        Yellow(_inner) -> "border-color:" + paletteVar("yellow", divideColorYellowShade(_inner));
+        Lime(_inner) -> "border-color:" + paletteVar("lime", divideColorLimeShade(_inner));
+        Green(_inner) -> "border-color:" + paletteVar("green", divideColorGreenShade(_inner));
+        Emerald(_inner) -> "border-color:" + paletteVar("emerald", divideColorEmeraldShade(_inner));
+        Teal(_inner) -> "border-color:" + paletteVar("teal", divideColorTealShade(_inner));
+        Cyan(_inner) -> "border-color:" + paletteVar("cyan", divideColorCyanShade(_inner));
+        Sky(_inner) -> "border-color:" + paletteVar("sky", divideColorSkyShade(_inner));
+        Blue(_inner) -> "border-color:" + paletteVar("blue", divideColorBlueShade(_inner));
+        Indigo(_inner) -> "border-color:" + paletteVar("indigo", divideColorIndigoShade(_inner));
+        Violet(_inner) -> "border-color:" + paletteVar("violet", divideColorVioletShade(_inner));
+        Purple(_inner) -> "border-color:" + paletteVar("purple", divideColorPurpleShade(_inner));
+        Fuchsia(_inner) -> "border-color:" + paletteVar("fuchsia", divideColorFuchsiaShade(_inner));
+        Pink(_inner) -> "border-color:" + paletteVar("pink", divideColorPinkShade(_inner));
+        Rose(_inner) -> "border-color:" + paletteVar("rose", divideColorRoseShade(_inner));
+        Slate(_inner) -> "border-color:" + paletteVar("slate", divideColorSlateShade(_inner));
+        Gray(_inner) -> "border-color:" + paletteVar("gray", divideColorGrayShade(_inner));
+        Zinc(_inner) -> "border-color:" + paletteVar("zinc", divideColorZincShade(_inner));
+        Neutral(_inner) -> "border-color:" + paletteVar("neutral", divideColorNeutralShade(_inner));
+        Stone(_inner) -> "border-color:" + paletteVar("stone", divideColorStoneShade(_inner));
+        Mauve(_inner) -> "border-color:" + paletteVar("mauve", divideColorMauveShade(_inner));
+        Olive(_inner) -> "border-color:" + paletteVar("olive", divideColorOliveShade(_inner));
+        Mist(_inner) -> "border-color:" + paletteVar("mist", divideColorMistShade(_inner));
+        Taupe(_inner) -> "border-color:" + paletteVar("taupe", divideColorTaupeShade(_inner));
+        White -> "border-color:" + themeVar(nsPrefix(Ns.Color) + "white");
+        Black -> "border-color:" + themeVar(nsPrefix(Ns.Color) + "black");
+        Transparent -> "border-color:transparent";
+        Current -> "border-color:currentColor";
+        Inherit -> "border-color:inherit";
+    };
+    return out;
+}
+
+fn divideColorRedShade(s: Token.Divide.Color.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorOrangeShade(s: Token.Divide.Color.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorAmberShade(s: Token.Divide.Color.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorYellowShade(s: Token.Divide.Color.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorLimeShade(s: Token.Divide.Color.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorGreenShade(s: Token.Divide.Color.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorEmeraldShade(s: Token.Divide.Color.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorTealShade(s: Token.Divide.Color.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorCyanShade(s: Token.Divide.Color.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorSkyShade(s: Token.Divide.Color.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorBlueShade(s: Token.Divide.Color.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorIndigoShade(s: Token.Divide.Color.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorVioletShade(s: Token.Divide.Color.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorPurpleShade(s: Token.Divide.Color.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorFuchsiaShade(s: Token.Divide.Color.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorPinkShade(s: Token.Divide.Color.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorRoseShade(s: Token.Divide.Color.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorSlateShade(s: Token.Divide.Color.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorGrayShade(s: Token.Divide.Color.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorZincShade(s: Token.Divide.Color.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorNeutralShade(s: Token.Divide.Color.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorStoneShade(s: Token.Divide.Color.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorMauveShade(s: Token.Divide.Color.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorOliveShade(s: Token.Divide.Color.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorMistShade(s: Token.Divide.Color.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideColorTaupeShade(s: Token.Divide.Color.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn divideStyleToCss(s: Token.Divide.Style) -> string {
+    val out = case s {
+        Solid -> "border-style:solid";
+        Dashed -> "border-style:dashed";
+        Dotted -> "border-style:dotted";
+        Double -> "border-style:double";
+        Hidden -> "border-style:hidden";
+        None -> "border-style:none";
+    };
+    return out;
+}
+// ── tests · front 40 ────────────────────────────────────────────────────────
+//
+// THE WALK, in the shape fronts 36, 37 and 39 used: every leaf of this front
+// in one list, a probe over all of them, and A CONTROL THAT MUST FAIL so the
+// probe is known to discriminate rather than to pass vacuously. `Hex(value)`
+// is absent from the lists because it CANNOT BE CONSTRUCTED — a payload leaf
+// nested in a section has no spelling (§ Maintainer rules); its arm is
+// retained and reachable by a `case` and by nothing else.
+fn borderLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Border.W.0, .Border.W.1, .Border.W.2, .Border.W.4, .Border.W.8, .Border.W.X.0,
+        .Border.W.X.1, .Border.W.X.2, .Border.W.X.4, .Border.W.X.8, .Border.W.Y.0,
+        .Border.W.Y.1, .Border.W.Y.2, .Border.W.Y.4, .Border.W.Y.8, .Border.W.T.0,
+        .Border.W.T.1, .Border.W.T.2, .Border.W.T.4, .Border.W.T.8, .Border.W.R.0,
+        .Border.W.R.1, .Border.W.R.2, .Border.W.R.4, .Border.W.R.8, .Border.W.B.0,
+        .Border.W.B.1, .Border.W.B.2, .Border.W.B.4, .Border.W.B.8, .Border.W.L.0,
+        .Border.W.L.1, .Border.W.L.2, .Border.W.L.4, .Border.W.L.8, .Border.W.S.0,
+        .Border.W.S.1, .Border.W.S.2, .Border.W.S.4, .Border.W.S.8, .Border.W.E.0,
+        .Border.W.E.1, .Border.W.E.2, .Border.W.E.4, .Border.W.E.8, .Border.Style.Solid,
+        .Border.Style.Dashed, .Border.Style.Dotted, .Border.Style.Double,
+        .Border.Style.Hidden, .Border.Style.None, .Border.Color.Red.50,
+        .Border.Color.Red.100, .Border.Color.Red.200, .Border.Color.Red.300,
+        .Border.Color.Red.400, .Border.Color.Red.500, .Border.Color.Red.600,
+        .Border.Color.Red.700, .Border.Color.Red.800, .Border.Color.Red.900,
+        .Border.Color.Red.950, .Border.Color.Orange.50, .Border.Color.Orange.100,
+        .Border.Color.Orange.200, .Border.Color.Orange.300, .Border.Color.Orange.400,
+        .Border.Color.Orange.500, .Border.Color.Orange.600, .Border.Color.Orange.700,
+        .Border.Color.Orange.800, .Border.Color.Orange.900, .Border.Color.Orange.950,
+        .Border.Color.Amber.50, .Border.Color.Amber.100, .Border.Color.Amber.200,
+        .Border.Color.Amber.300, .Border.Color.Amber.400, .Border.Color.Amber.500,
+        .Border.Color.Amber.600, .Border.Color.Amber.700, .Border.Color.Amber.800,
+        .Border.Color.Amber.900, .Border.Color.Amber.950, .Border.Color.Yellow.50,
+        .Border.Color.Yellow.100, .Border.Color.Yellow.200, .Border.Color.Yellow.300,
+        .Border.Color.Yellow.400, .Border.Color.Yellow.500, .Border.Color.Yellow.600,
+        .Border.Color.Yellow.700, .Border.Color.Yellow.800, .Border.Color.Yellow.900,
+        .Border.Color.Yellow.950, .Border.Color.Lime.50, .Border.Color.Lime.100,
+        .Border.Color.Lime.200, .Border.Color.Lime.300, .Border.Color.Lime.400,
+        .Border.Color.Lime.500, .Border.Color.Lime.600, .Border.Color.Lime.700,
+        .Border.Color.Lime.800, .Border.Color.Lime.900, .Border.Color.Lime.950,
+        .Border.Color.Green.50, .Border.Color.Green.100, .Border.Color.Green.200,
+        .Border.Color.Green.300, .Border.Color.Green.400, .Border.Color.Green.500,
+        .Border.Color.Green.600, .Border.Color.Green.700, .Border.Color.Green.800,
+        .Border.Color.Green.900, .Border.Color.Green.950, .Border.Color.Emerald.50,
+        .Border.Color.Emerald.100, .Border.Color.Emerald.200, .Border.Color.Emerald.300,
+        .Border.Color.Emerald.400, .Border.Color.Emerald.500, .Border.Color.Emerald.600,
+        .Border.Color.Emerald.700, .Border.Color.Emerald.800, .Border.Color.Emerald.900,
+        .Border.Color.Emerald.950, .Border.Color.Teal.50, .Border.Color.Teal.100,
+        .Border.Color.Teal.200, .Border.Color.Teal.300, .Border.Color.Teal.400,
+        .Border.Color.Teal.500, .Border.Color.Teal.600, .Border.Color.Teal.700,
+        .Border.Color.Teal.800, .Border.Color.Teal.900, .Border.Color.Teal.950,
+        .Border.Color.Cyan.50, .Border.Color.Cyan.100, .Border.Color.Cyan.200,
+        .Border.Color.Cyan.300, .Border.Color.Cyan.400, .Border.Color.Cyan.500,
+        .Border.Color.Cyan.600, .Border.Color.Cyan.700, .Border.Color.Cyan.800,
+        .Border.Color.Cyan.900, .Border.Color.Cyan.950, .Border.Color.Sky.50,
+        .Border.Color.Sky.100, .Border.Color.Sky.200, .Border.Color.Sky.300,
+        .Border.Color.Sky.400, .Border.Color.Sky.500, .Border.Color.Sky.600,
+        .Border.Color.Sky.700, .Border.Color.Sky.800, .Border.Color.Sky.900,
+        .Border.Color.Sky.950, .Border.Color.Blue.50, .Border.Color.Blue.100,
+        .Border.Color.Blue.200, .Border.Color.Blue.300, .Border.Color.Blue.400,
+        .Border.Color.Blue.500, .Border.Color.Blue.600, .Border.Color.Blue.700,
+        .Border.Color.Blue.800, .Border.Color.Blue.900, .Border.Color.Blue.950,
+        .Border.Color.Indigo.50, .Border.Color.Indigo.100, .Border.Color.Indigo.200,
+        .Border.Color.Indigo.300, .Border.Color.Indigo.400, .Border.Color.Indigo.500,
+        .Border.Color.Indigo.600, .Border.Color.Indigo.700, .Border.Color.Indigo.800,
+        .Border.Color.Indigo.900, .Border.Color.Indigo.950, .Border.Color.Violet.50,
+        .Border.Color.Violet.100, .Border.Color.Violet.200, .Border.Color.Violet.300,
+        .Border.Color.Violet.400, .Border.Color.Violet.500, .Border.Color.Violet.600,
+        .Border.Color.Violet.700, .Border.Color.Violet.800, .Border.Color.Violet.900,
+        .Border.Color.Violet.950, .Border.Color.Purple.50, .Border.Color.Purple.100,
+        .Border.Color.Purple.200, .Border.Color.Purple.300, .Border.Color.Purple.400,
+        .Border.Color.Purple.500, .Border.Color.Purple.600, .Border.Color.Purple.700,
+        .Border.Color.Purple.800, .Border.Color.Purple.900, .Border.Color.Purple.950,
+        .Border.Color.Fuchsia.50, .Border.Color.Fuchsia.100, .Border.Color.Fuchsia.200,
+        .Border.Color.Fuchsia.300, .Border.Color.Fuchsia.400, .Border.Color.Fuchsia.500,
+        .Border.Color.Fuchsia.600, .Border.Color.Fuchsia.700, .Border.Color.Fuchsia.800,
+        .Border.Color.Fuchsia.900, .Border.Color.Fuchsia.950, .Border.Color.Pink.50,
+        .Border.Color.Pink.100, .Border.Color.Pink.200, .Border.Color.Pink.300,
+        .Border.Color.Pink.400, .Border.Color.Pink.500, .Border.Color.Pink.600,
+        .Border.Color.Pink.700, .Border.Color.Pink.800, .Border.Color.Pink.900,
+        .Border.Color.Pink.950, .Border.Color.Rose.50, .Border.Color.Rose.100,
+        .Border.Color.Rose.200, .Border.Color.Rose.300, .Border.Color.Rose.400,
+        .Border.Color.Rose.500, .Border.Color.Rose.600, .Border.Color.Rose.700,
+        .Border.Color.Rose.800, .Border.Color.Rose.900, .Border.Color.Rose.950,
+        .Border.Color.Slate.50, .Border.Color.Slate.100, .Border.Color.Slate.200,
+        .Border.Color.Slate.300, .Border.Color.Slate.400, .Border.Color.Slate.500,
+        .Border.Color.Slate.600, .Border.Color.Slate.700, .Border.Color.Slate.800,
+        .Border.Color.Slate.900, .Border.Color.Slate.950, .Border.Color.Gray.50,
+        .Border.Color.Gray.100, .Border.Color.Gray.200, .Border.Color.Gray.300,
+        .Border.Color.Gray.400, .Border.Color.Gray.500, .Border.Color.Gray.600,
+        .Border.Color.Gray.700, .Border.Color.Gray.800, .Border.Color.Gray.900,
+        .Border.Color.Gray.950, .Border.Color.Zinc.50, .Border.Color.Zinc.100,
+        .Border.Color.Zinc.200, .Border.Color.Zinc.300, .Border.Color.Zinc.400,
+        .Border.Color.Zinc.500, .Border.Color.Zinc.600, .Border.Color.Zinc.700,
+        .Border.Color.Zinc.800, .Border.Color.Zinc.900, .Border.Color.Zinc.950,
+        .Border.Color.Neutral.50, .Border.Color.Neutral.100, .Border.Color.Neutral.200,
+        .Border.Color.Neutral.300, .Border.Color.Neutral.400, .Border.Color.Neutral.500,
+        .Border.Color.Neutral.600, .Border.Color.Neutral.700, .Border.Color.Neutral.800,
+        .Border.Color.Neutral.900, .Border.Color.Neutral.950, .Border.Color.Stone.50,
+        .Border.Color.Stone.100, .Border.Color.Stone.200, .Border.Color.Stone.300,
+        .Border.Color.Stone.400, .Border.Color.Stone.500, .Border.Color.Stone.600,
+        .Border.Color.Stone.700, .Border.Color.Stone.800, .Border.Color.Stone.900,
+        .Border.Color.Stone.950, .Border.Color.Mauve.50, .Border.Color.Mauve.100,
+        .Border.Color.Mauve.200, .Border.Color.Mauve.300, .Border.Color.Mauve.400,
+        .Border.Color.Mauve.500, .Border.Color.Mauve.600, .Border.Color.Mauve.700,
+        .Border.Color.Mauve.800, .Border.Color.Mauve.900, .Border.Color.Mauve.950,
+        .Border.Color.Olive.50, .Border.Color.Olive.100, .Border.Color.Olive.200,
+        .Border.Color.Olive.300, .Border.Color.Olive.400, .Border.Color.Olive.500,
+        .Border.Color.Olive.600, .Border.Color.Olive.700, .Border.Color.Olive.800,
+        .Border.Color.Olive.900, .Border.Color.Olive.950, .Border.Color.Mist.50,
+        .Border.Color.Mist.100, .Border.Color.Mist.200, .Border.Color.Mist.300,
+        .Border.Color.Mist.400, .Border.Color.Mist.500, .Border.Color.Mist.600,
+        .Border.Color.Mist.700, .Border.Color.Mist.800, .Border.Color.Mist.900,
+        .Border.Color.Mist.950, .Border.Color.Taupe.50, .Border.Color.Taupe.100,
+        .Border.Color.Taupe.200, .Border.Color.Taupe.300, .Border.Color.Taupe.400,
+        .Border.Color.Taupe.500, .Border.Color.Taupe.600, .Border.Color.Taupe.700,
+        .Border.Color.Taupe.800, .Border.Color.Taupe.900, .Border.Color.Taupe.950,
+        .Border.Color.White, .Border.Color.Black, .Border.Color.Transparent,
+        .Border.Color.Current, .Border.Color.Inherit, .Border.Rounded.None,
+        .Border.Rounded.Xs, .Border.Rounded.Sm, .Border.Rounded.Md, .Border.Rounded.Lg,
+        .Border.Rounded.Xl, .Border.Rounded.X2xl, .Border.Rounded.X3xl,
+        .Border.Rounded.X4xl, .Border.Rounded.Full, .Border.Rounded.T.None,
+        .Border.Rounded.T.Xs, .Border.Rounded.T.Sm, .Border.Rounded.T.Md,
+        .Border.Rounded.T.Lg, .Border.Rounded.T.Xl, .Border.Rounded.T.X2xl,
+        .Border.Rounded.T.X3xl, .Border.Rounded.T.X4xl, .Border.Rounded.T.Full,
+        .Border.Rounded.R.None, .Border.Rounded.R.Xs, .Border.Rounded.R.Sm,
+        .Border.Rounded.R.Md, .Border.Rounded.R.Lg, .Border.Rounded.R.Xl,
+        .Border.Rounded.R.X2xl, .Border.Rounded.R.X3xl, .Border.Rounded.R.X4xl,
+        .Border.Rounded.R.Full, .Border.Rounded.B.None, .Border.Rounded.B.Xs,
+        .Border.Rounded.B.Sm, .Border.Rounded.B.Md, .Border.Rounded.B.Lg,
+        .Border.Rounded.B.Xl, .Border.Rounded.B.X2xl, .Border.Rounded.B.X3xl,
+        .Border.Rounded.B.X4xl, .Border.Rounded.B.Full, .Border.Rounded.L.None,
+        .Border.Rounded.L.Xs, .Border.Rounded.L.Sm, .Border.Rounded.L.Md,
+        .Border.Rounded.L.Lg, .Border.Rounded.L.Xl, .Border.Rounded.L.X2xl,
+        .Border.Rounded.L.X3xl, .Border.Rounded.L.X4xl, .Border.Rounded.L.Full,
+        .Border.Rounded.Tl.None, .Border.Rounded.Tl.Xs, .Border.Rounded.Tl.Sm,
+        .Border.Rounded.Tl.Md, .Border.Rounded.Tl.Lg, .Border.Rounded.Tl.Xl,
+        .Border.Rounded.Tl.X2xl, .Border.Rounded.Tl.X3xl, .Border.Rounded.Tl.X4xl,
+        .Border.Rounded.Tl.Full, .Border.Rounded.Tr.None, .Border.Rounded.Tr.Xs,
+        .Border.Rounded.Tr.Sm, .Border.Rounded.Tr.Md, .Border.Rounded.Tr.Lg,
+        .Border.Rounded.Tr.Xl, .Border.Rounded.Tr.X2xl, .Border.Rounded.Tr.X3xl,
+        .Border.Rounded.Tr.X4xl, .Border.Rounded.Tr.Full, .Border.Rounded.Br.None,
+        .Border.Rounded.Br.Xs, .Border.Rounded.Br.Sm, .Border.Rounded.Br.Md,
+        .Border.Rounded.Br.Lg, .Border.Rounded.Br.Xl, .Border.Rounded.Br.X2xl,
+        .Border.Rounded.Br.X3xl, .Border.Rounded.Br.X4xl, .Border.Rounded.Br.Full,
+        .Border.Rounded.Bl.None, .Border.Rounded.Bl.Xs, .Border.Rounded.Bl.Sm,
+        .Border.Rounded.Bl.Md, .Border.Rounded.Bl.Lg, .Border.Rounded.Bl.Xl,
+        .Border.Rounded.Bl.X2xl, .Border.Rounded.Bl.X3xl, .Border.Rounded.Bl.X4xl,
+        .Border.Rounded.Bl.Full, .Border.Rounded.S.None, .Border.Rounded.S.Xs,
+        .Border.Rounded.S.Sm, .Border.Rounded.S.Md, .Border.Rounded.S.Lg,
+        .Border.Rounded.S.Xl, .Border.Rounded.S.X2xl, .Border.Rounded.S.X3xl,
+        .Border.Rounded.S.X4xl, .Border.Rounded.S.Full, .Border.Rounded.E.None,
+        .Border.Rounded.E.Xs, .Border.Rounded.E.Sm, .Border.Rounded.E.Md,
+        .Border.Rounded.E.Lg, .Border.Rounded.E.Xl, .Border.Rounded.E.X2xl,
+        .Border.Rounded.E.X3xl, .Border.Rounded.E.X4xl, .Border.Rounded.E.Full,
+        .Border.Rounded.Ss.None, .Border.Rounded.Ss.Xs, .Border.Rounded.Ss.Sm,
+        .Border.Rounded.Ss.Md, .Border.Rounded.Ss.Lg, .Border.Rounded.Ss.Xl,
+        .Border.Rounded.Ss.X2xl, .Border.Rounded.Ss.X3xl, .Border.Rounded.Ss.X4xl,
+        .Border.Rounded.Ss.Full, .Border.Rounded.Se.None, .Border.Rounded.Se.Xs,
+        .Border.Rounded.Se.Sm, .Border.Rounded.Se.Md, .Border.Rounded.Se.Lg,
+        .Border.Rounded.Se.Xl, .Border.Rounded.Se.X2xl, .Border.Rounded.Se.X3xl,
+        .Border.Rounded.Se.X4xl, .Border.Rounded.Se.Full, .Border.Rounded.Es.None,
+        .Border.Rounded.Es.Xs, .Border.Rounded.Es.Sm, .Border.Rounded.Es.Md,
+        .Border.Rounded.Es.Lg, .Border.Rounded.Es.Xl, .Border.Rounded.Es.X2xl,
+        .Border.Rounded.Es.X3xl, .Border.Rounded.Es.X4xl, .Border.Rounded.Es.Full,
+        .Border.Rounded.Ee.None, .Border.Rounded.Ee.Xs, .Border.Rounded.Ee.Sm,
+        .Border.Rounded.Ee.Md, .Border.Rounded.Ee.Lg, .Border.Rounded.Ee.Xl,
+        .Border.Rounded.Ee.X2xl, .Border.Rounded.Ee.X3xl, .Border.Rounded.Ee.X4xl,
+        .Border.Rounded.Ee.Full,
+    ];
+    return leaves;
+}
+
+
+fn outlineLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Outline.W.0, .Outline.W.1, .Outline.W.2, .Outline.W.4, .Outline.W.8,
+        .Outline.Style.Solid, .Outline.Style.Dashed, .Outline.Style.Dotted,
+        .Outline.Style.Double, .Outline.Style.None, .Outline.Color.Red.50,
+        .Outline.Color.Red.100, .Outline.Color.Red.200, .Outline.Color.Red.300,
+        .Outline.Color.Red.400, .Outline.Color.Red.500, .Outline.Color.Red.600,
+        .Outline.Color.Red.700, .Outline.Color.Red.800, .Outline.Color.Red.900,
+        .Outline.Color.Red.950, .Outline.Color.Orange.50, .Outline.Color.Orange.100,
+        .Outline.Color.Orange.200, .Outline.Color.Orange.300, .Outline.Color.Orange.400,
+        .Outline.Color.Orange.500, .Outline.Color.Orange.600, .Outline.Color.Orange.700,
+        .Outline.Color.Orange.800, .Outline.Color.Orange.900, .Outline.Color.Orange.950,
+        .Outline.Color.Amber.50, .Outline.Color.Amber.100, .Outline.Color.Amber.200,
+        .Outline.Color.Amber.300, .Outline.Color.Amber.400, .Outline.Color.Amber.500,
+        .Outline.Color.Amber.600, .Outline.Color.Amber.700, .Outline.Color.Amber.800,
+        .Outline.Color.Amber.900, .Outline.Color.Amber.950, .Outline.Color.Yellow.50,
+        .Outline.Color.Yellow.100, .Outline.Color.Yellow.200, .Outline.Color.Yellow.300,
+        .Outline.Color.Yellow.400, .Outline.Color.Yellow.500, .Outline.Color.Yellow.600,
+        .Outline.Color.Yellow.700, .Outline.Color.Yellow.800, .Outline.Color.Yellow.900,
+        .Outline.Color.Yellow.950, .Outline.Color.Lime.50, .Outline.Color.Lime.100,
+        .Outline.Color.Lime.200, .Outline.Color.Lime.300, .Outline.Color.Lime.400,
+        .Outline.Color.Lime.500, .Outline.Color.Lime.600, .Outline.Color.Lime.700,
+        .Outline.Color.Lime.800, .Outline.Color.Lime.900, .Outline.Color.Lime.950,
+        .Outline.Color.Green.50, .Outline.Color.Green.100, .Outline.Color.Green.200,
+        .Outline.Color.Green.300, .Outline.Color.Green.400, .Outline.Color.Green.500,
+        .Outline.Color.Green.600, .Outline.Color.Green.700, .Outline.Color.Green.800,
+        .Outline.Color.Green.900, .Outline.Color.Green.950, .Outline.Color.Emerald.50,
+        .Outline.Color.Emerald.100, .Outline.Color.Emerald.200,
+        .Outline.Color.Emerald.300, .Outline.Color.Emerald.400,
+        .Outline.Color.Emerald.500, .Outline.Color.Emerald.600,
+        .Outline.Color.Emerald.700, .Outline.Color.Emerald.800,
+        .Outline.Color.Emerald.900, .Outline.Color.Emerald.950, .Outline.Color.Teal.50,
+        .Outline.Color.Teal.100, .Outline.Color.Teal.200, .Outline.Color.Teal.300,
+        .Outline.Color.Teal.400, .Outline.Color.Teal.500, .Outline.Color.Teal.600,
+        .Outline.Color.Teal.700, .Outline.Color.Teal.800, .Outline.Color.Teal.900,
+        .Outline.Color.Teal.950, .Outline.Color.Cyan.50, .Outline.Color.Cyan.100,
+        .Outline.Color.Cyan.200, .Outline.Color.Cyan.300, .Outline.Color.Cyan.400,
+        .Outline.Color.Cyan.500, .Outline.Color.Cyan.600, .Outline.Color.Cyan.700,
+        .Outline.Color.Cyan.800, .Outline.Color.Cyan.900, .Outline.Color.Cyan.950,
+        .Outline.Color.Sky.50, .Outline.Color.Sky.100, .Outline.Color.Sky.200,
+        .Outline.Color.Sky.300, .Outline.Color.Sky.400, .Outline.Color.Sky.500,
+        .Outline.Color.Sky.600, .Outline.Color.Sky.700, .Outline.Color.Sky.800,
+        .Outline.Color.Sky.900, .Outline.Color.Sky.950, .Outline.Color.Blue.50,
+        .Outline.Color.Blue.100, .Outline.Color.Blue.200, .Outline.Color.Blue.300,
+        .Outline.Color.Blue.400, .Outline.Color.Blue.500, .Outline.Color.Blue.600,
+        .Outline.Color.Blue.700, .Outline.Color.Blue.800, .Outline.Color.Blue.900,
+        .Outline.Color.Blue.950, .Outline.Color.Indigo.50, .Outline.Color.Indigo.100,
+        .Outline.Color.Indigo.200, .Outline.Color.Indigo.300, .Outline.Color.Indigo.400,
+        .Outline.Color.Indigo.500, .Outline.Color.Indigo.600, .Outline.Color.Indigo.700,
+        .Outline.Color.Indigo.800, .Outline.Color.Indigo.900, .Outline.Color.Indigo.950,
+        .Outline.Color.Violet.50, .Outline.Color.Violet.100, .Outline.Color.Violet.200,
+        .Outline.Color.Violet.300, .Outline.Color.Violet.400, .Outline.Color.Violet.500,
+        .Outline.Color.Violet.600, .Outline.Color.Violet.700, .Outline.Color.Violet.800,
+        .Outline.Color.Violet.900, .Outline.Color.Violet.950, .Outline.Color.Purple.50,
+        .Outline.Color.Purple.100, .Outline.Color.Purple.200, .Outline.Color.Purple.300,
+        .Outline.Color.Purple.400, .Outline.Color.Purple.500, .Outline.Color.Purple.600,
+        .Outline.Color.Purple.700, .Outline.Color.Purple.800, .Outline.Color.Purple.900,
+        .Outline.Color.Purple.950, .Outline.Color.Fuchsia.50,
+        .Outline.Color.Fuchsia.100, .Outline.Color.Fuchsia.200,
+        .Outline.Color.Fuchsia.300, .Outline.Color.Fuchsia.400,
+        .Outline.Color.Fuchsia.500, .Outline.Color.Fuchsia.600,
+        .Outline.Color.Fuchsia.700, .Outline.Color.Fuchsia.800,
+        .Outline.Color.Fuchsia.900, .Outline.Color.Fuchsia.950, .Outline.Color.Pink.50,
+        .Outline.Color.Pink.100, .Outline.Color.Pink.200, .Outline.Color.Pink.300,
+        .Outline.Color.Pink.400, .Outline.Color.Pink.500, .Outline.Color.Pink.600,
+        .Outline.Color.Pink.700, .Outline.Color.Pink.800, .Outline.Color.Pink.900,
+        .Outline.Color.Pink.950, .Outline.Color.Rose.50, .Outline.Color.Rose.100,
+        .Outline.Color.Rose.200, .Outline.Color.Rose.300, .Outline.Color.Rose.400,
+        .Outline.Color.Rose.500, .Outline.Color.Rose.600, .Outline.Color.Rose.700,
+        .Outline.Color.Rose.800, .Outline.Color.Rose.900, .Outline.Color.Rose.950,
+        .Outline.Color.Slate.50, .Outline.Color.Slate.100, .Outline.Color.Slate.200,
+        .Outline.Color.Slate.300, .Outline.Color.Slate.400, .Outline.Color.Slate.500,
+        .Outline.Color.Slate.600, .Outline.Color.Slate.700, .Outline.Color.Slate.800,
+        .Outline.Color.Slate.900, .Outline.Color.Slate.950, .Outline.Color.Gray.50,
+        .Outline.Color.Gray.100, .Outline.Color.Gray.200, .Outline.Color.Gray.300,
+        .Outline.Color.Gray.400, .Outline.Color.Gray.500, .Outline.Color.Gray.600,
+        .Outline.Color.Gray.700, .Outline.Color.Gray.800, .Outline.Color.Gray.900,
+        .Outline.Color.Gray.950, .Outline.Color.Zinc.50, .Outline.Color.Zinc.100,
+        .Outline.Color.Zinc.200, .Outline.Color.Zinc.300, .Outline.Color.Zinc.400,
+        .Outline.Color.Zinc.500, .Outline.Color.Zinc.600, .Outline.Color.Zinc.700,
+        .Outline.Color.Zinc.800, .Outline.Color.Zinc.900, .Outline.Color.Zinc.950,
+        .Outline.Color.Neutral.50, .Outline.Color.Neutral.100,
+        .Outline.Color.Neutral.200, .Outline.Color.Neutral.300,
+        .Outline.Color.Neutral.400, .Outline.Color.Neutral.500,
+        .Outline.Color.Neutral.600, .Outline.Color.Neutral.700,
+        .Outline.Color.Neutral.800, .Outline.Color.Neutral.900,
+        .Outline.Color.Neutral.950, .Outline.Color.Stone.50, .Outline.Color.Stone.100,
+        .Outline.Color.Stone.200, .Outline.Color.Stone.300, .Outline.Color.Stone.400,
+        .Outline.Color.Stone.500, .Outline.Color.Stone.600, .Outline.Color.Stone.700,
+        .Outline.Color.Stone.800, .Outline.Color.Stone.900, .Outline.Color.Stone.950,
+        .Outline.Color.Mauve.50, .Outline.Color.Mauve.100, .Outline.Color.Mauve.200,
+        .Outline.Color.Mauve.300, .Outline.Color.Mauve.400, .Outline.Color.Mauve.500,
+        .Outline.Color.Mauve.600, .Outline.Color.Mauve.700, .Outline.Color.Mauve.800,
+        .Outline.Color.Mauve.900, .Outline.Color.Mauve.950, .Outline.Color.Olive.50,
+        .Outline.Color.Olive.100, .Outline.Color.Olive.200, .Outline.Color.Olive.300,
+        .Outline.Color.Olive.400, .Outline.Color.Olive.500, .Outline.Color.Olive.600,
+        .Outline.Color.Olive.700, .Outline.Color.Olive.800, .Outline.Color.Olive.900,
+        .Outline.Color.Olive.950, .Outline.Color.Mist.50, .Outline.Color.Mist.100,
+        .Outline.Color.Mist.200, .Outline.Color.Mist.300, .Outline.Color.Mist.400,
+        .Outline.Color.Mist.500, .Outline.Color.Mist.600, .Outline.Color.Mist.700,
+        .Outline.Color.Mist.800, .Outline.Color.Mist.900, .Outline.Color.Mist.950,
+        .Outline.Color.Taupe.50, .Outline.Color.Taupe.100, .Outline.Color.Taupe.200,
+        .Outline.Color.Taupe.300, .Outline.Color.Taupe.400, .Outline.Color.Taupe.500,
+        .Outline.Color.Taupe.600, .Outline.Color.Taupe.700, .Outline.Color.Taupe.800,
+        .Outline.Color.Taupe.900, .Outline.Color.Taupe.950, .Outline.Color.White,
+        .Outline.Color.Black, .Outline.Color.Transparent, .Outline.Color.Current,
+        .Outline.Color.Inherit, .Outline.Offset.0, .Outline.Offset.1, .Outline.Offset.2,
+        .Outline.Offset.4, .Outline.Offset.8, .Outline.Offset.Neg.1,
+        .Outline.Offset.Neg.2, .Outline.Offset.Neg.4, .Outline.Offset.Neg.8,
+    ];
+    return leaves;
+}
+
+
+fn ringLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Ring.W.0, .Ring.W.1, .Ring.W.2, .Ring.W.4, .Ring.W.8, .Ring.Color.Red.50,
+        .Ring.Color.Red.100, .Ring.Color.Red.200, .Ring.Color.Red.300,
+        .Ring.Color.Red.400, .Ring.Color.Red.500, .Ring.Color.Red.600,
+        .Ring.Color.Red.700, .Ring.Color.Red.800, .Ring.Color.Red.900,
+        .Ring.Color.Red.950, .Ring.Color.Orange.50, .Ring.Color.Orange.100,
+        .Ring.Color.Orange.200, .Ring.Color.Orange.300, .Ring.Color.Orange.400,
+        .Ring.Color.Orange.500, .Ring.Color.Orange.600, .Ring.Color.Orange.700,
+        .Ring.Color.Orange.800, .Ring.Color.Orange.900, .Ring.Color.Orange.950,
+        .Ring.Color.Amber.50, .Ring.Color.Amber.100, .Ring.Color.Amber.200,
+        .Ring.Color.Amber.300, .Ring.Color.Amber.400, .Ring.Color.Amber.500,
+        .Ring.Color.Amber.600, .Ring.Color.Amber.700, .Ring.Color.Amber.800,
+        .Ring.Color.Amber.900, .Ring.Color.Amber.950, .Ring.Color.Yellow.50,
+        .Ring.Color.Yellow.100, .Ring.Color.Yellow.200, .Ring.Color.Yellow.300,
+        .Ring.Color.Yellow.400, .Ring.Color.Yellow.500, .Ring.Color.Yellow.600,
+        .Ring.Color.Yellow.700, .Ring.Color.Yellow.800, .Ring.Color.Yellow.900,
+        .Ring.Color.Yellow.950, .Ring.Color.Lime.50, .Ring.Color.Lime.100,
+        .Ring.Color.Lime.200, .Ring.Color.Lime.300, .Ring.Color.Lime.400,
+        .Ring.Color.Lime.500, .Ring.Color.Lime.600, .Ring.Color.Lime.700,
+        .Ring.Color.Lime.800, .Ring.Color.Lime.900, .Ring.Color.Lime.950,
+        .Ring.Color.Green.50, .Ring.Color.Green.100, .Ring.Color.Green.200,
+        .Ring.Color.Green.300, .Ring.Color.Green.400, .Ring.Color.Green.500,
+        .Ring.Color.Green.600, .Ring.Color.Green.700, .Ring.Color.Green.800,
+        .Ring.Color.Green.900, .Ring.Color.Green.950, .Ring.Color.Emerald.50,
+        .Ring.Color.Emerald.100, .Ring.Color.Emerald.200, .Ring.Color.Emerald.300,
+        .Ring.Color.Emerald.400, .Ring.Color.Emerald.500, .Ring.Color.Emerald.600,
+        .Ring.Color.Emerald.700, .Ring.Color.Emerald.800, .Ring.Color.Emerald.900,
+        .Ring.Color.Emerald.950, .Ring.Color.Teal.50, .Ring.Color.Teal.100,
+        .Ring.Color.Teal.200, .Ring.Color.Teal.300, .Ring.Color.Teal.400,
+        .Ring.Color.Teal.500, .Ring.Color.Teal.600, .Ring.Color.Teal.700,
+        .Ring.Color.Teal.800, .Ring.Color.Teal.900, .Ring.Color.Teal.950,
+        .Ring.Color.Cyan.50, .Ring.Color.Cyan.100, .Ring.Color.Cyan.200,
+        .Ring.Color.Cyan.300, .Ring.Color.Cyan.400, .Ring.Color.Cyan.500,
+        .Ring.Color.Cyan.600, .Ring.Color.Cyan.700, .Ring.Color.Cyan.800,
+        .Ring.Color.Cyan.900, .Ring.Color.Cyan.950, .Ring.Color.Sky.50,
+        .Ring.Color.Sky.100, .Ring.Color.Sky.200, .Ring.Color.Sky.300,
+        .Ring.Color.Sky.400, .Ring.Color.Sky.500, .Ring.Color.Sky.600,
+        .Ring.Color.Sky.700, .Ring.Color.Sky.800, .Ring.Color.Sky.900,
+        .Ring.Color.Sky.950, .Ring.Color.Blue.50, .Ring.Color.Blue.100,
+        .Ring.Color.Blue.200, .Ring.Color.Blue.300, .Ring.Color.Blue.400,
+        .Ring.Color.Blue.500, .Ring.Color.Blue.600, .Ring.Color.Blue.700,
+        .Ring.Color.Blue.800, .Ring.Color.Blue.900, .Ring.Color.Blue.950,
+        .Ring.Color.Indigo.50, .Ring.Color.Indigo.100, .Ring.Color.Indigo.200,
+        .Ring.Color.Indigo.300, .Ring.Color.Indigo.400, .Ring.Color.Indigo.500,
+        .Ring.Color.Indigo.600, .Ring.Color.Indigo.700, .Ring.Color.Indigo.800,
+        .Ring.Color.Indigo.900, .Ring.Color.Indigo.950, .Ring.Color.Violet.50,
+        .Ring.Color.Violet.100, .Ring.Color.Violet.200, .Ring.Color.Violet.300,
+        .Ring.Color.Violet.400, .Ring.Color.Violet.500, .Ring.Color.Violet.600,
+        .Ring.Color.Violet.700, .Ring.Color.Violet.800, .Ring.Color.Violet.900,
+        .Ring.Color.Violet.950, .Ring.Color.Purple.50, .Ring.Color.Purple.100,
+        .Ring.Color.Purple.200, .Ring.Color.Purple.300, .Ring.Color.Purple.400,
+        .Ring.Color.Purple.500, .Ring.Color.Purple.600, .Ring.Color.Purple.700,
+        .Ring.Color.Purple.800, .Ring.Color.Purple.900, .Ring.Color.Purple.950,
+        .Ring.Color.Fuchsia.50, .Ring.Color.Fuchsia.100, .Ring.Color.Fuchsia.200,
+        .Ring.Color.Fuchsia.300, .Ring.Color.Fuchsia.400, .Ring.Color.Fuchsia.500,
+        .Ring.Color.Fuchsia.600, .Ring.Color.Fuchsia.700, .Ring.Color.Fuchsia.800,
+        .Ring.Color.Fuchsia.900, .Ring.Color.Fuchsia.950, .Ring.Color.Pink.50,
+        .Ring.Color.Pink.100, .Ring.Color.Pink.200, .Ring.Color.Pink.300,
+        .Ring.Color.Pink.400, .Ring.Color.Pink.500, .Ring.Color.Pink.600,
+        .Ring.Color.Pink.700, .Ring.Color.Pink.800, .Ring.Color.Pink.900,
+        .Ring.Color.Pink.950, .Ring.Color.Rose.50, .Ring.Color.Rose.100,
+        .Ring.Color.Rose.200, .Ring.Color.Rose.300, .Ring.Color.Rose.400,
+        .Ring.Color.Rose.500, .Ring.Color.Rose.600, .Ring.Color.Rose.700,
+        .Ring.Color.Rose.800, .Ring.Color.Rose.900, .Ring.Color.Rose.950,
+        .Ring.Color.Slate.50, .Ring.Color.Slate.100, .Ring.Color.Slate.200,
+        .Ring.Color.Slate.300, .Ring.Color.Slate.400, .Ring.Color.Slate.500,
+        .Ring.Color.Slate.600, .Ring.Color.Slate.700, .Ring.Color.Slate.800,
+        .Ring.Color.Slate.900, .Ring.Color.Slate.950, .Ring.Color.Gray.50,
+        .Ring.Color.Gray.100, .Ring.Color.Gray.200, .Ring.Color.Gray.300,
+        .Ring.Color.Gray.400, .Ring.Color.Gray.500, .Ring.Color.Gray.600,
+        .Ring.Color.Gray.700, .Ring.Color.Gray.800, .Ring.Color.Gray.900,
+        .Ring.Color.Gray.950, .Ring.Color.Zinc.50, .Ring.Color.Zinc.100,
+        .Ring.Color.Zinc.200, .Ring.Color.Zinc.300, .Ring.Color.Zinc.400,
+        .Ring.Color.Zinc.500, .Ring.Color.Zinc.600, .Ring.Color.Zinc.700,
+        .Ring.Color.Zinc.800, .Ring.Color.Zinc.900, .Ring.Color.Zinc.950,
+        .Ring.Color.Neutral.50, .Ring.Color.Neutral.100, .Ring.Color.Neutral.200,
+        .Ring.Color.Neutral.300, .Ring.Color.Neutral.400, .Ring.Color.Neutral.500,
+        .Ring.Color.Neutral.600, .Ring.Color.Neutral.700, .Ring.Color.Neutral.800,
+        .Ring.Color.Neutral.900, .Ring.Color.Neutral.950, .Ring.Color.Stone.50,
+        .Ring.Color.Stone.100, .Ring.Color.Stone.200, .Ring.Color.Stone.300,
+        .Ring.Color.Stone.400, .Ring.Color.Stone.500, .Ring.Color.Stone.600,
+        .Ring.Color.Stone.700, .Ring.Color.Stone.800, .Ring.Color.Stone.900,
+        .Ring.Color.Stone.950, .Ring.Color.Mauve.50, .Ring.Color.Mauve.100,
+        .Ring.Color.Mauve.200, .Ring.Color.Mauve.300, .Ring.Color.Mauve.400,
+        .Ring.Color.Mauve.500, .Ring.Color.Mauve.600, .Ring.Color.Mauve.700,
+        .Ring.Color.Mauve.800, .Ring.Color.Mauve.900, .Ring.Color.Mauve.950,
+        .Ring.Color.Olive.50, .Ring.Color.Olive.100, .Ring.Color.Olive.200,
+        .Ring.Color.Olive.300, .Ring.Color.Olive.400, .Ring.Color.Olive.500,
+        .Ring.Color.Olive.600, .Ring.Color.Olive.700, .Ring.Color.Olive.800,
+        .Ring.Color.Olive.900, .Ring.Color.Olive.950, .Ring.Color.Mist.50,
+        .Ring.Color.Mist.100, .Ring.Color.Mist.200, .Ring.Color.Mist.300,
+        .Ring.Color.Mist.400, .Ring.Color.Mist.500, .Ring.Color.Mist.600,
+        .Ring.Color.Mist.700, .Ring.Color.Mist.800, .Ring.Color.Mist.900,
+        .Ring.Color.Mist.950, .Ring.Color.Taupe.50, .Ring.Color.Taupe.100,
+        .Ring.Color.Taupe.200, .Ring.Color.Taupe.300, .Ring.Color.Taupe.400,
+        .Ring.Color.Taupe.500, .Ring.Color.Taupe.600, .Ring.Color.Taupe.700,
+        .Ring.Color.Taupe.800, .Ring.Color.Taupe.900, .Ring.Color.Taupe.950,
+        .Ring.Color.White, .Ring.Color.Black, .Ring.Color.Transparent,
+        .Ring.Color.Current, .Ring.Color.Inherit, .Ring.Offset.W.0, .Ring.Offset.W.1,
+        .Ring.Offset.W.2, .Ring.Offset.W.4, .Ring.Offset.W.8, .Ring.Offset.Color.Red.50,
+        .Ring.Offset.Color.Red.100, .Ring.Offset.Color.Red.200,
+        .Ring.Offset.Color.Red.300, .Ring.Offset.Color.Red.400,
+        .Ring.Offset.Color.Red.500, .Ring.Offset.Color.Red.600,
+        .Ring.Offset.Color.Red.700, .Ring.Offset.Color.Red.800,
+        .Ring.Offset.Color.Red.900, .Ring.Offset.Color.Red.950,
+        .Ring.Offset.Color.Orange.50, .Ring.Offset.Color.Orange.100,
+        .Ring.Offset.Color.Orange.200, .Ring.Offset.Color.Orange.300,
+        .Ring.Offset.Color.Orange.400, .Ring.Offset.Color.Orange.500,
+        .Ring.Offset.Color.Orange.600, .Ring.Offset.Color.Orange.700,
+        .Ring.Offset.Color.Orange.800, .Ring.Offset.Color.Orange.900,
+        .Ring.Offset.Color.Orange.950, .Ring.Offset.Color.Amber.50,
+        .Ring.Offset.Color.Amber.100, .Ring.Offset.Color.Amber.200,
+        .Ring.Offset.Color.Amber.300, .Ring.Offset.Color.Amber.400,
+        .Ring.Offset.Color.Amber.500, .Ring.Offset.Color.Amber.600,
+        .Ring.Offset.Color.Amber.700, .Ring.Offset.Color.Amber.800,
+        .Ring.Offset.Color.Amber.900, .Ring.Offset.Color.Amber.950,
+        .Ring.Offset.Color.Yellow.50, .Ring.Offset.Color.Yellow.100,
+        .Ring.Offset.Color.Yellow.200, .Ring.Offset.Color.Yellow.300,
+        .Ring.Offset.Color.Yellow.400, .Ring.Offset.Color.Yellow.500,
+        .Ring.Offset.Color.Yellow.600, .Ring.Offset.Color.Yellow.700,
+        .Ring.Offset.Color.Yellow.800, .Ring.Offset.Color.Yellow.900,
+        .Ring.Offset.Color.Yellow.950, .Ring.Offset.Color.Lime.50,
+        .Ring.Offset.Color.Lime.100, .Ring.Offset.Color.Lime.200,
+        .Ring.Offset.Color.Lime.300, .Ring.Offset.Color.Lime.400,
+        .Ring.Offset.Color.Lime.500, .Ring.Offset.Color.Lime.600,
+        .Ring.Offset.Color.Lime.700, .Ring.Offset.Color.Lime.800,
+        .Ring.Offset.Color.Lime.900, .Ring.Offset.Color.Lime.950,
+        .Ring.Offset.Color.Green.50, .Ring.Offset.Color.Green.100,
+        .Ring.Offset.Color.Green.200, .Ring.Offset.Color.Green.300,
+        .Ring.Offset.Color.Green.400, .Ring.Offset.Color.Green.500,
+        .Ring.Offset.Color.Green.600, .Ring.Offset.Color.Green.700,
+        .Ring.Offset.Color.Green.800, .Ring.Offset.Color.Green.900,
+        .Ring.Offset.Color.Green.950, .Ring.Offset.Color.Emerald.50,
+        .Ring.Offset.Color.Emerald.100, .Ring.Offset.Color.Emerald.200,
+        .Ring.Offset.Color.Emerald.300, .Ring.Offset.Color.Emerald.400,
+        .Ring.Offset.Color.Emerald.500, .Ring.Offset.Color.Emerald.600,
+        .Ring.Offset.Color.Emerald.700, .Ring.Offset.Color.Emerald.800,
+        .Ring.Offset.Color.Emerald.900, .Ring.Offset.Color.Emerald.950,
+        .Ring.Offset.Color.Teal.50, .Ring.Offset.Color.Teal.100,
+        .Ring.Offset.Color.Teal.200, .Ring.Offset.Color.Teal.300,
+        .Ring.Offset.Color.Teal.400, .Ring.Offset.Color.Teal.500,
+        .Ring.Offset.Color.Teal.600, .Ring.Offset.Color.Teal.700,
+        .Ring.Offset.Color.Teal.800, .Ring.Offset.Color.Teal.900,
+        .Ring.Offset.Color.Teal.950, .Ring.Offset.Color.Cyan.50,
+        .Ring.Offset.Color.Cyan.100, .Ring.Offset.Color.Cyan.200,
+        .Ring.Offset.Color.Cyan.300, .Ring.Offset.Color.Cyan.400,
+        .Ring.Offset.Color.Cyan.500, .Ring.Offset.Color.Cyan.600,
+        .Ring.Offset.Color.Cyan.700, .Ring.Offset.Color.Cyan.800,
+        .Ring.Offset.Color.Cyan.900, .Ring.Offset.Color.Cyan.950,
+        .Ring.Offset.Color.Sky.50, .Ring.Offset.Color.Sky.100,
+        .Ring.Offset.Color.Sky.200, .Ring.Offset.Color.Sky.300,
+        .Ring.Offset.Color.Sky.400, .Ring.Offset.Color.Sky.500,
+        .Ring.Offset.Color.Sky.600, .Ring.Offset.Color.Sky.700,
+        .Ring.Offset.Color.Sky.800, .Ring.Offset.Color.Sky.900,
+        .Ring.Offset.Color.Sky.950, .Ring.Offset.Color.Blue.50,
+        .Ring.Offset.Color.Blue.100, .Ring.Offset.Color.Blue.200,
+        .Ring.Offset.Color.Blue.300, .Ring.Offset.Color.Blue.400,
+        .Ring.Offset.Color.Blue.500, .Ring.Offset.Color.Blue.600,
+        .Ring.Offset.Color.Blue.700, .Ring.Offset.Color.Blue.800,
+        .Ring.Offset.Color.Blue.900, .Ring.Offset.Color.Blue.950,
+        .Ring.Offset.Color.Indigo.50, .Ring.Offset.Color.Indigo.100,
+        .Ring.Offset.Color.Indigo.200, .Ring.Offset.Color.Indigo.300,
+        .Ring.Offset.Color.Indigo.400, .Ring.Offset.Color.Indigo.500,
+        .Ring.Offset.Color.Indigo.600, .Ring.Offset.Color.Indigo.700,
+        .Ring.Offset.Color.Indigo.800, .Ring.Offset.Color.Indigo.900,
+        .Ring.Offset.Color.Indigo.950, .Ring.Offset.Color.Violet.50,
+        .Ring.Offset.Color.Violet.100, .Ring.Offset.Color.Violet.200,
+        .Ring.Offset.Color.Violet.300, .Ring.Offset.Color.Violet.400,
+        .Ring.Offset.Color.Violet.500, .Ring.Offset.Color.Violet.600,
+        .Ring.Offset.Color.Violet.700, .Ring.Offset.Color.Violet.800,
+        .Ring.Offset.Color.Violet.900, .Ring.Offset.Color.Violet.950,
+        .Ring.Offset.Color.Purple.50, .Ring.Offset.Color.Purple.100,
+        .Ring.Offset.Color.Purple.200, .Ring.Offset.Color.Purple.300,
+        .Ring.Offset.Color.Purple.400, .Ring.Offset.Color.Purple.500,
+        .Ring.Offset.Color.Purple.600, .Ring.Offset.Color.Purple.700,
+        .Ring.Offset.Color.Purple.800, .Ring.Offset.Color.Purple.900,
+        .Ring.Offset.Color.Purple.950, .Ring.Offset.Color.Fuchsia.50,
+        .Ring.Offset.Color.Fuchsia.100, .Ring.Offset.Color.Fuchsia.200,
+        .Ring.Offset.Color.Fuchsia.300, .Ring.Offset.Color.Fuchsia.400,
+        .Ring.Offset.Color.Fuchsia.500, .Ring.Offset.Color.Fuchsia.600,
+        .Ring.Offset.Color.Fuchsia.700, .Ring.Offset.Color.Fuchsia.800,
+        .Ring.Offset.Color.Fuchsia.900, .Ring.Offset.Color.Fuchsia.950,
+        .Ring.Offset.Color.Pink.50, .Ring.Offset.Color.Pink.100,
+        .Ring.Offset.Color.Pink.200, .Ring.Offset.Color.Pink.300,
+        .Ring.Offset.Color.Pink.400, .Ring.Offset.Color.Pink.500,
+        .Ring.Offset.Color.Pink.600, .Ring.Offset.Color.Pink.700,
+        .Ring.Offset.Color.Pink.800, .Ring.Offset.Color.Pink.900,
+        .Ring.Offset.Color.Pink.950, .Ring.Offset.Color.Rose.50,
+        .Ring.Offset.Color.Rose.100, .Ring.Offset.Color.Rose.200,
+        .Ring.Offset.Color.Rose.300, .Ring.Offset.Color.Rose.400,
+        .Ring.Offset.Color.Rose.500, .Ring.Offset.Color.Rose.600,
+        .Ring.Offset.Color.Rose.700, .Ring.Offset.Color.Rose.800,
+        .Ring.Offset.Color.Rose.900, .Ring.Offset.Color.Rose.950,
+        .Ring.Offset.Color.Slate.50, .Ring.Offset.Color.Slate.100,
+        .Ring.Offset.Color.Slate.200, .Ring.Offset.Color.Slate.300,
+        .Ring.Offset.Color.Slate.400, .Ring.Offset.Color.Slate.500,
+        .Ring.Offset.Color.Slate.600, .Ring.Offset.Color.Slate.700,
+        .Ring.Offset.Color.Slate.800, .Ring.Offset.Color.Slate.900,
+        .Ring.Offset.Color.Slate.950, .Ring.Offset.Color.Gray.50,
+        .Ring.Offset.Color.Gray.100, .Ring.Offset.Color.Gray.200,
+        .Ring.Offset.Color.Gray.300, .Ring.Offset.Color.Gray.400,
+        .Ring.Offset.Color.Gray.500, .Ring.Offset.Color.Gray.600,
+        .Ring.Offset.Color.Gray.700, .Ring.Offset.Color.Gray.800,
+        .Ring.Offset.Color.Gray.900, .Ring.Offset.Color.Gray.950,
+        .Ring.Offset.Color.Zinc.50, .Ring.Offset.Color.Zinc.100,
+        .Ring.Offset.Color.Zinc.200, .Ring.Offset.Color.Zinc.300,
+        .Ring.Offset.Color.Zinc.400, .Ring.Offset.Color.Zinc.500,
+        .Ring.Offset.Color.Zinc.600, .Ring.Offset.Color.Zinc.700,
+        .Ring.Offset.Color.Zinc.800, .Ring.Offset.Color.Zinc.900,
+        .Ring.Offset.Color.Zinc.950, .Ring.Offset.Color.Neutral.50,
+        .Ring.Offset.Color.Neutral.100, .Ring.Offset.Color.Neutral.200,
+        .Ring.Offset.Color.Neutral.300, .Ring.Offset.Color.Neutral.400,
+        .Ring.Offset.Color.Neutral.500, .Ring.Offset.Color.Neutral.600,
+        .Ring.Offset.Color.Neutral.700, .Ring.Offset.Color.Neutral.800,
+        .Ring.Offset.Color.Neutral.900, .Ring.Offset.Color.Neutral.950,
+        .Ring.Offset.Color.Stone.50, .Ring.Offset.Color.Stone.100,
+        .Ring.Offset.Color.Stone.200, .Ring.Offset.Color.Stone.300,
+        .Ring.Offset.Color.Stone.400, .Ring.Offset.Color.Stone.500,
+        .Ring.Offset.Color.Stone.600, .Ring.Offset.Color.Stone.700,
+        .Ring.Offset.Color.Stone.800, .Ring.Offset.Color.Stone.900,
+        .Ring.Offset.Color.Stone.950, .Ring.Offset.Color.Mauve.50,
+        .Ring.Offset.Color.Mauve.100, .Ring.Offset.Color.Mauve.200,
+        .Ring.Offset.Color.Mauve.300, .Ring.Offset.Color.Mauve.400,
+        .Ring.Offset.Color.Mauve.500, .Ring.Offset.Color.Mauve.600,
+        .Ring.Offset.Color.Mauve.700, .Ring.Offset.Color.Mauve.800,
+        .Ring.Offset.Color.Mauve.900, .Ring.Offset.Color.Mauve.950,
+        .Ring.Offset.Color.Olive.50, .Ring.Offset.Color.Olive.100,
+        .Ring.Offset.Color.Olive.200, .Ring.Offset.Color.Olive.300,
+        .Ring.Offset.Color.Olive.400, .Ring.Offset.Color.Olive.500,
+        .Ring.Offset.Color.Olive.600, .Ring.Offset.Color.Olive.700,
+        .Ring.Offset.Color.Olive.800, .Ring.Offset.Color.Olive.900,
+        .Ring.Offset.Color.Olive.950, .Ring.Offset.Color.Mist.50,
+        .Ring.Offset.Color.Mist.100, .Ring.Offset.Color.Mist.200,
+        .Ring.Offset.Color.Mist.300, .Ring.Offset.Color.Mist.400,
+        .Ring.Offset.Color.Mist.500, .Ring.Offset.Color.Mist.600,
+        .Ring.Offset.Color.Mist.700, .Ring.Offset.Color.Mist.800,
+        .Ring.Offset.Color.Mist.900, .Ring.Offset.Color.Mist.950,
+        .Ring.Offset.Color.Taupe.50, .Ring.Offset.Color.Taupe.100,
+        .Ring.Offset.Color.Taupe.200, .Ring.Offset.Color.Taupe.300,
+        .Ring.Offset.Color.Taupe.400, .Ring.Offset.Color.Taupe.500,
+        .Ring.Offset.Color.Taupe.600, .Ring.Offset.Color.Taupe.700,
+        .Ring.Offset.Color.Taupe.800, .Ring.Offset.Color.Taupe.900,
+        .Ring.Offset.Color.Taupe.950, .Ring.Offset.Color.White,
+        .Ring.Offset.Color.Black, .Ring.Offset.Color.Transparent,
+        .Ring.Offset.Color.Current, .Ring.Offset.Color.Inherit, .Ring.Inset,
+    ];
+    return leaves;
+}
+
+
+fn divideLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Divide.X.0, .Divide.X.1, .Divide.X.2, .Divide.X.4, .Divide.X.8, .Divide.Y.0,
+        .Divide.Y.1, .Divide.Y.2, .Divide.Y.4, .Divide.Y.8, .Divide.Color.Red.50,
+        .Divide.Color.Red.100, .Divide.Color.Red.200, .Divide.Color.Red.300,
+        .Divide.Color.Red.400, .Divide.Color.Red.500, .Divide.Color.Red.600,
+        .Divide.Color.Red.700, .Divide.Color.Red.800, .Divide.Color.Red.900,
+        .Divide.Color.Red.950, .Divide.Color.Orange.50, .Divide.Color.Orange.100,
+        .Divide.Color.Orange.200, .Divide.Color.Orange.300, .Divide.Color.Orange.400,
+        .Divide.Color.Orange.500, .Divide.Color.Orange.600, .Divide.Color.Orange.700,
+        .Divide.Color.Orange.800, .Divide.Color.Orange.900, .Divide.Color.Orange.950,
+        .Divide.Color.Amber.50, .Divide.Color.Amber.100, .Divide.Color.Amber.200,
+        .Divide.Color.Amber.300, .Divide.Color.Amber.400, .Divide.Color.Amber.500,
+        .Divide.Color.Amber.600, .Divide.Color.Amber.700, .Divide.Color.Amber.800,
+        .Divide.Color.Amber.900, .Divide.Color.Amber.950, .Divide.Color.Yellow.50,
+        .Divide.Color.Yellow.100, .Divide.Color.Yellow.200, .Divide.Color.Yellow.300,
+        .Divide.Color.Yellow.400, .Divide.Color.Yellow.500, .Divide.Color.Yellow.600,
+        .Divide.Color.Yellow.700, .Divide.Color.Yellow.800, .Divide.Color.Yellow.900,
+        .Divide.Color.Yellow.950, .Divide.Color.Lime.50, .Divide.Color.Lime.100,
+        .Divide.Color.Lime.200, .Divide.Color.Lime.300, .Divide.Color.Lime.400,
+        .Divide.Color.Lime.500, .Divide.Color.Lime.600, .Divide.Color.Lime.700,
+        .Divide.Color.Lime.800, .Divide.Color.Lime.900, .Divide.Color.Lime.950,
+        .Divide.Color.Green.50, .Divide.Color.Green.100, .Divide.Color.Green.200,
+        .Divide.Color.Green.300, .Divide.Color.Green.400, .Divide.Color.Green.500,
+        .Divide.Color.Green.600, .Divide.Color.Green.700, .Divide.Color.Green.800,
+        .Divide.Color.Green.900, .Divide.Color.Green.950, .Divide.Color.Emerald.50,
+        .Divide.Color.Emerald.100, .Divide.Color.Emerald.200, .Divide.Color.Emerald.300,
+        .Divide.Color.Emerald.400, .Divide.Color.Emerald.500, .Divide.Color.Emerald.600,
+        .Divide.Color.Emerald.700, .Divide.Color.Emerald.800, .Divide.Color.Emerald.900,
+        .Divide.Color.Emerald.950, .Divide.Color.Teal.50, .Divide.Color.Teal.100,
+        .Divide.Color.Teal.200, .Divide.Color.Teal.300, .Divide.Color.Teal.400,
+        .Divide.Color.Teal.500, .Divide.Color.Teal.600, .Divide.Color.Teal.700,
+        .Divide.Color.Teal.800, .Divide.Color.Teal.900, .Divide.Color.Teal.950,
+        .Divide.Color.Cyan.50, .Divide.Color.Cyan.100, .Divide.Color.Cyan.200,
+        .Divide.Color.Cyan.300, .Divide.Color.Cyan.400, .Divide.Color.Cyan.500,
+        .Divide.Color.Cyan.600, .Divide.Color.Cyan.700, .Divide.Color.Cyan.800,
+        .Divide.Color.Cyan.900, .Divide.Color.Cyan.950, .Divide.Color.Sky.50,
+        .Divide.Color.Sky.100, .Divide.Color.Sky.200, .Divide.Color.Sky.300,
+        .Divide.Color.Sky.400, .Divide.Color.Sky.500, .Divide.Color.Sky.600,
+        .Divide.Color.Sky.700, .Divide.Color.Sky.800, .Divide.Color.Sky.900,
+        .Divide.Color.Sky.950, .Divide.Color.Blue.50, .Divide.Color.Blue.100,
+        .Divide.Color.Blue.200, .Divide.Color.Blue.300, .Divide.Color.Blue.400,
+        .Divide.Color.Blue.500, .Divide.Color.Blue.600, .Divide.Color.Blue.700,
+        .Divide.Color.Blue.800, .Divide.Color.Blue.900, .Divide.Color.Blue.950,
+        .Divide.Color.Indigo.50, .Divide.Color.Indigo.100, .Divide.Color.Indigo.200,
+        .Divide.Color.Indigo.300, .Divide.Color.Indigo.400, .Divide.Color.Indigo.500,
+        .Divide.Color.Indigo.600, .Divide.Color.Indigo.700, .Divide.Color.Indigo.800,
+        .Divide.Color.Indigo.900, .Divide.Color.Indigo.950, .Divide.Color.Violet.50,
+        .Divide.Color.Violet.100, .Divide.Color.Violet.200, .Divide.Color.Violet.300,
+        .Divide.Color.Violet.400, .Divide.Color.Violet.500, .Divide.Color.Violet.600,
+        .Divide.Color.Violet.700, .Divide.Color.Violet.800, .Divide.Color.Violet.900,
+        .Divide.Color.Violet.950, .Divide.Color.Purple.50, .Divide.Color.Purple.100,
+        .Divide.Color.Purple.200, .Divide.Color.Purple.300, .Divide.Color.Purple.400,
+        .Divide.Color.Purple.500, .Divide.Color.Purple.600, .Divide.Color.Purple.700,
+        .Divide.Color.Purple.800, .Divide.Color.Purple.900, .Divide.Color.Purple.950,
+        .Divide.Color.Fuchsia.50, .Divide.Color.Fuchsia.100, .Divide.Color.Fuchsia.200,
+        .Divide.Color.Fuchsia.300, .Divide.Color.Fuchsia.400, .Divide.Color.Fuchsia.500,
+        .Divide.Color.Fuchsia.600, .Divide.Color.Fuchsia.700, .Divide.Color.Fuchsia.800,
+        .Divide.Color.Fuchsia.900, .Divide.Color.Fuchsia.950, .Divide.Color.Pink.50,
+        .Divide.Color.Pink.100, .Divide.Color.Pink.200, .Divide.Color.Pink.300,
+        .Divide.Color.Pink.400, .Divide.Color.Pink.500, .Divide.Color.Pink.600,
+        .Divide.Color.Pink.700, .Divide.Color.Pink.800, .Divide.Color.Pink.900,
+        .Divide.Color.Pink.950, .Divide.Color.Rose.50, .Divide.Color.Rose.100,
+        .Divide.Color.Rose.200, .Divide.Color.Rose.300, .Divide.Color.Rose.400,
+        .Divide.Color.Rose.500, .Divide.Color.Rose.600, .Divide.Color.Rose.700,
+        .Divide.Color.Rose.800, .Divide.Color.Rose.900, .Divide.Color.Rose.950,
+        .Divide.Color.Slate.50, .Divide.Color.Slate.100, .Divide.Color.Slate.200,
+        .Divide.Color.Slate.300, .Divide.Color.Slate.400, .Divide.Color.Slate.500,
+        .Divide.Color.Slate.600, .Divide.Color.Slate.700, .Divide.Color.Slate.800,
+        .Divide.Color.Slate.900, .Divide.Color.Slate.950, .Divide.Color.Gray.50,
+        .Divide.Color.Gray.100, .Divide.Color.Gray.200, .Divide.Color.Gray.300,
+        .Divide.Color.Gray.400, .Divide.Color.Gray.500, .Divide.Color.Gray.600,
+        .Divide.Color.Gray.700, .Divide.Color.Gray.800, .Divide.Color.Gray.900,
+        .Divide.Color.Gray.950, .Divide.Color.Zinc.50, .Divide.Color.Zinc.100,
+        .Divide.Color.Zinc.200, .Divide.Color.Zinc.300, .Divide.Color.Zinc.400,
+        .Divide.Color.Zinc.500, .Divide.Color.Zinc.600, .Divide.Color.Zinc.700,
+        .Divide.Color.Zinc.800, .Divide.Color.Zinc.900, .Divide.Color.Zinc.950,
+        .Divide.Color.Neutral.50, .Divide.Color.Neutral.100, .Divide.Color.Neutral.200,
+        .Divide.Color.Neutral.300, .Divide.Color.Neutral.400, .Divide.Color.Neutral.500,
+        .Divide.Color.Neutral.600, .Divide.Color.Neutral.700, .Divide.Color.Neutral.800,
+        .Divide.Color.Neutral.900, .Divide.Color.Neutral.950, .Divide.Color.Stone.50,
+        .Divide.Color.Stone.100, .Divide.Color.Stone.200, .Divide.Color.Stone.300,
+        .Divide.Color.Stone.400, .Divide.Color.Stone.500, .Divide.Color.Stone.600,
+        .Divide.Color.Stone.700, .Divide.Color.Stone.800, .Divide.Color.Stone.900,
+        .Divide.Color.Stone.950, .Divide.Color.Mauve.50, .Divide.Color.Mauve.100,
+        .Divide.Color.Mauve.200, .Divide.Color.Mauve.300, .Divide.Color.Mauve.400,
+        .Divide.Color.Mauve.500, .Divide.Color.Mauve.600, .Divide.Color.Mauve.700,
+        .Divide.Color.Mauve.800, .Divide.Color.Mauve.900, .Divide.Color.Mauve.950,
+        .Divide.Color.Olive.50, .Divide.Color.Olive.100, .Divide.Color.Olive.200,
+        .Divide.Color.Olive.300, .Divide.Color.Olive.400, .Divide.Color.Olive.500,
+        .Divide.Color.Olive.600, .Divide.Color.Olive.700, .Divide.Color.Olive.800,
+        .Divide.Color.Olive.900, .Divide.Color.Olive.950, .Divide.Color.Mist.50,
+        .Divide.Color.Mist.100, .Divide.Color.Mist.200, .Divide.Color.Mist.300,
+        .Divide.Color.Mist.400, .Divide.Color.Mist.500, .Divide.Color.Mist.600,
+        .Divide.Color.Mist.700, .Divide.Color.Mist.800, .Divide.Color.Mist.900,
+        .Divide.Color.Mist.950, .Divide.Color.Taupe.50, .Divide.Color.Taupe.100,
+        .Divide.Color.Taupe.200, .Divide.Color.Taupe.300, .Divide.Color.Taupe.400,
+        .Divide.Color.Taupe.500, .Divide.Color.Taupe.600, .Divide.Color.Taupe.700,
+        .Divide.Color.Taupe.800, .Divide.Color.Taupe.900, .Divide.Color.Taupe.950,
+        .Divide.Color.White, .Divide.Color.Black, .Divide.Color.Transparent,
+        .Divide.Color.Current, .Divide.Color.Inherit, .Divide.Style.Solid,
+        .Divide.Style.Dashed, .Divide.Style.Dotted, .Divide.Style.Double,
+        .Divide.Style.Hidden, .Divide.Style.None, .Divide.XReverse, .Divide.YReverse,
+    ];
+    return leaves;
+}
+
+fn front40Leaves() -> Token[] {
+    return borderLeaves().append(outlineLeaves())
+        .append(ringLeaves()).append(divideLeaves());
+}
+
+// WHERE a token declares and WHAT it declares. `tokenDeclarations` above
+// answers the second and flattens the first away, which is right for the
+// fourteen sections that declare on the element — but `Divide` declares on the
+// element's CHILDREN, so its tests read the rule. Both go through front 56's
+// `firstRuleOf`, which is already the house helper for this.
+fn tokenSelector(t: Token) -> string {
+    return firstRuleOf(tokenToSheet(t, defaultTheme())).selector;
+}
+
+fn firstDeclaration(t: Token) -> string {
+    return firstRuleOf(tokenToSheet(t, defaultTheme())).declarations;
+}
+
+// ── width ────────────────────────────────────────────────────────────────────
+
+test "Border.W — the four pre-40 leaves emit exactly what they emitted before" {
+    assert tokenDeclarations(.Border.W.0) == "border-width:0";
+    assert tokenDeclarations(.Border.W.1) == "border-width:1px";
+    assert tokenDeclarations(.Border.W.2) == "border-width:2px";
+    assert tokenDeclarations(.Border.W.4) == "border-width:4px";
+}
+
+test "Border.W.8 — the fifth width the section did not have" {
+    assert tokenDeclarations(.Border.W.8) == "border-width:8px";
+}
+
+test "Border.W — an AXIS is two declarations and a SIDE is one" {
+    assert tokenDeclarations(.Border.W.X.1)
+        == "border-left-width:1px;border-right-width:1px";
+    assert tokenDeclarations(.Border.W.Y.1)
+        == "border-top-width:1px;border-bottom-width:1px";
+    assert tokenDeclarations(.Border.W.T.1) == "border-top-width:1px";
+    assert tokenDeclarations(.Border.W.R.1) == "border-right-width:1px";
+    assert tokenDeclarations(.Border.W.B.1) == "border-bottom-width:1px";
+    assert tokenDeclarations(.Border.W.L.1) == "border-left-width:1px";
+}
+
+test "Border.W — the logical pair follows the writing direction" {
+    assert tokenDeclarations(.Border.W.S.1) == "border-inline-start-width:1px";
+    assert tokenDeclarations(.Border.W.E.1) == "border-inline-end-width:1px";
+}
+
+test "Border.W — every directional sub-section answers all five widths" {
+    assert tokenDeclarations(.Border.W.T.0) == "border-top-width:0";
+    assert tokenDeclarations(.Border.W.T.2) == "border-top-width:2px";
+    assert tokenDeclarations(.Border.W.T.4) == "border-top-width:4px";
+    assert tokenDeclarations(.Border.W.T.8) == "border-top-width:8px";
+    assert tokenDeclarations(.Border.W.X.4)
+        == "border-left-width:4px;border-right-width:4px";
+    assert tokenDeclarations(.Border.W.E.8) == "border-inline-end-width:8px";
+}
+
+// ── style ────────────────────────────────────────────────────────────────────
+
+test "Border.Style — six values, and `Hidden` is not `None`" {
+    assert tokenDeclarations(.Border.Style.Solid) == "border-style:solid";
+    assert tokenDeclarations(.Border.Style.Dashed) == "border-style:dashed";
+    assert tokenDeclarations(.Border.Style.Dotted) == "border-style:dotted";
+    assert tokenDeclarations(.Border.Style.Double) == "border-style:double";
+    assert tokenDeclarations(.Border.Style.Hidden) == "border-style:hidden";
+    assert tokenDeclarations(.Border.Style.None) == "border-style:none";
+}
+
+// ── colour ───────────────────────────────────────────────────────────────────
+
+test "Border.Color — THE SHADE IS NO LONGER DISCARDED" {
+    assert tokenDeclarations(.Border.Color.Slate.200)
+        == "border-color:var(--color-slate-200)";
+    assert tokenDeclarations(.Border.Color.Red.500)
+        == "border-color:var(--color-red-500)";
+    assert tokenDeclarations(.Border.Color.Red.100)
+        != tokenDeclarations(.Border.Color.Red.900);
+}
+
+test "Border.Color — the named colours and the two CSS-wide keywords" {
+    assert tokenDeclarations(.Border.Color.White) == "border-color:var(--color-white)";
+    assert tokenDeclarations(.Border.Color.Transparent) == "border-color:transparent";
+    assert tokenDeclarations(.Border.Color.Current) == "border-color:currentColor";
+}
+
+// THE SIX CELLS THE STUB MADE UNREACHABLE. `Border.Color`'s Red and Gray ran
+// 100/500/700, which is exactly the set `Token.Color` also carries, and the
+// resolver picked between the two enums by HASH ORDER — so every spelling of
+// `.Color.Red.500` red, the fully qualified one included. botopink-lang
+// `f01c508a` made the expected type decide. Both sections are asserted here,
+// in the plain and the fully qualified spelling, because the defect was that
+// ONE of them captured the other.
+test "regression — the six cells the Border stub used to capture all resolve" {
+    assert tokenDeclarations(.Color.Red.100) == "color:var(--color-red-100)";
+    assert tokenDeclarations(.Color.Red.500) == "color:var(--color-red-500)";
+    assert tokenDeclarations(.Color.Red.700) == "color:var(--color-red-700)";
+    assert tokenDeclarations(.Color.Gray.100) == "color:var(--color-gray-100)";
+    assert tokenDeclarations(.Color.Gray.500) == "color:var(--color-gray-500)";
+    assert tokenDeclarations(.Color.Gray.700) == "color:var(--color-gray-700)";
+    assert tokenDeclarations(.Border.Color.Red.100) == "border-color:var(--color-red-100)";
+    assert tokenDeclarations(.Border.Color.Red.500) == "border-color:var(--color-red-500)";
+    assert tokenDeclarations(.Border.Color.Red.700) == "border-color:var(--color-red-700)";
+    assert tokenDeclarations(.Border.Color.Gray.100) == "border-color:var(--color-gray-100)";
+    assert tokenDeclarations(.Border.Color.Gray.500) == "border-color:var(--color-gray-500)";
+    assert tokenDeclarations(.Border.Color.Gray.700) == "border-color:var(--color-gray-700)";
+}
+
+test "regression — the fully qualified spelling resolves in both enums" {
+    val a: Token = Token.Color.Red.500;
+    val b: Token = Token.Border.Color.Red.500;
+    assert tokenDeclarations(a) == "color:var(--color-red-500)";
+    assert tokenDeclarations(b) == "border-color:var(--color-red-500)";
+}
+
+// ONE PALETTE, FIVE CONSUMERS. The five colour sub-sections differ only in the
+// PROPERTY they name; the reference itself is `paletteVar`'s and is therefore
+// the same text in all five. Five colour tables would be five chances to drift,
+// which is what this assert exists to catch.
+test "the five colour sub-sections agree, because all five call paletteVar" {
+    val want = "var(--color-emerald-600)";
+    assert tokenDeclarations(.Border.Color.Emerald.600) == "border-color:" + want;
+    assert tokenDeclarations(.Outline.Color.Emerald.600) == "outline-color:" + want;
+    assert tokenDeclarations(.Ring.Color.Emerald.600) == "--tw-ring-color:" + want;
+    assert tokenDeclarations(.Ring.Offset.Color.Emerald.600)
+        == "--tw-ring-offset-color:" + want;
+    assert firstDeclaration(.Divide.Color.Emerald.600) == "border-color:" + want;
+}
+
+// ── radius ───────────────────────────────────────────────────────────────────
+
+test "Border.Rounded — ten leaves, eight of them theme references" {
+    assert tokenDeclarations(.Border.Rounded.None) == "border-radius:0";
+    assert tokenDeclarations(.Border.Rounded.Xs) == "border-radius:var(--radius-xs)";
+    assert tokenDeclarations(.Border.Rounded.Sm) == "border-radius:var(--radius-sm)";
+    assert tokenDeclarations(.Border.Rounded.Md) == "border-radius:var(--radius-md)";
+    assert tokenDeclarations(.Border.Rounded.Lg) == "border-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Xl) == "border-radius:var(--radius-xl)";
+    assert tokenDeclarations(.Border.Rounded.X2xl) == "border-radius:var(--radius-2xl)";
+    assert tokenDeclarations(.Border.Rounded.X3xl) == "border-radius:var(--radius-3xl)";
+    assert tokenDeclarations(.Border.Rounded.X4xl) == "border-radius:var(--radius-4xl)";
+    assert tokenDeclarations(.Border.Rounded.Full) == "border-radius:9999px";
+}
+
+// The regression the README asks for in both directions: `Full` is still the
+// literal upstream prints, and `Lg` is no longer the literal it used to be.
+test "regression — Full stays 9999px and Lg stops being a rem" {
+    assert tokenDeclarations(.Border.Rounded.Full) == "border-radius:9999px";
+    assert tokenDeclarations(.Border.Rounded.Lg).indexOf("rem") == -1;
+    assert tokenDeclarations(.Border.Rounded.Lg).indexOf("0.5rem") == -1;
+    assert tokenDeclarations(.Border.Rounded.Lg) == "border-radius:var(--radius-lg)";
+}
+
+test "Border.Rounded — a SIDE form is two corner properties" {
+    assert tokenDeclarations(.Border.Rounded.T.Lg)
+        == "border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.R.Lg)
+        == "border-top-right-radius:var(--radius-lg);border-bottom-right-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.B.Lg)
+        == "border-bottom-right-radius:var(--radius-lg);border-bottom-left-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.L.Lg)
+        == "border-top-left-radius:var(--radius-lg);border-bottom-left-radius:var(--radius-lg)";
+}
+
+test "Border.Rounded — a CORNER form is one corner property" {
+    assert tokenDeclarations(.Border.Rounded.Tl.Lg)
+        == "border-top-left-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Tr.Lg)
+        == "border-top-right-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Br.Lg)
+        == "border-bottom-right-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Bl.Lg)
+        == "border-bottom-left-radius:var(--radius-lg)";
+}
+
+test "Border.Rounded — the eight logical corners follow the writing direction" {
+    assert tokenDeclarations(.Border.Rounded.S.Lg)
+        == "border-start-start-radius:var(--radius-lg);border-end-start-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.E.Lg)
+        == "border-start-end-radius:var(--radius-lg);border-end-end-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Ss.Lg)
+        == "border-start-start-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Se.Lg)
+        == "border-start-end-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Es.Lg)
+        == "border-end-start-radius:var(--radius-lg)";
+    assert tokenDeclarations(.Border.Rounded.Ee.Lg)
+        == "border-end-end-radius:var(--radius-lg)";
+}
+
+test "Border.Rounded — every directional sub-section carries the FULL ladder" {
+    assert tokenDeclarations(.Border.Rounded.Tl.Full) == "border-top-left-radius:9999px";
+    assert tokenDeclarations(.Border.Rounded.Tl.None) == "border-top-left-radius:0";
+    assert tokenDeclarations(.Border.Rounded.Ee.X4xl)
+        == "border-end-end-radius:var(--radius-4xl)";
+    assert tokenDeclarations(.Border.Rounded.B.Xs)
+        == "border-bottom-right-radius:var(--radius-xs);border-bottom-left-radius:var(--radius-xs)";
+}
+
+// The ladder is front 54's and this front does not restate it — but a radius
+// token that referenced a name the theme does not carry would emit a `var()`
+// that resolves to nothing, so the eight are read back here.
+test "the eight --radius-* names this front references are all in the theme" {
+    val es = defaultTheme();
+    assert themeValue(es, "--radius-xs") != "";
+    assert themeValue(es, "--radius-sm") != "";
+    assert themeValue(es, "--radius-md") != "";
+    assert themeValue(es, "--radius-lg") != "";
+    assert themeValue(es, "--radius-xl") != "";
+    assert themeValue(es, "--radius-2xl") != "";
+    assert themeValue(es, "--radius-3xl") != "";
+    assert themeValue(es, "--radius-4xl") != "";
+}
+
+// ── outline ──────────────────────────────────────────────────────────────────
+
+test "Outline.W and Outline.Style — five widths and four real styles" {
+    assert tokenDeclarations(.Outline.W.0) == "outline-width:0px";
+    assert tokenDeclarations(.Outline.W.1) == "outline-width:1px";
+    assert tokenDeclarations(.Outline.W.2) == "outline-width:2px";
+    assert tokenDeclarations(.Outline.W.4) == "outline-width:4px";
+    assert tokenDeclarations(.Outline.W.8) == "outline-width:8px";
+    assert tokenDeclarations(.Outline.Style.Solid) == "outline-style:solid";
+    assert tokenDeclarations(.Outline.Style.Dashed) == "outline-style:dashed";
+    assert tokenDeclarations(.Outline.Style.Dotted) == "outline-style:dotted";
+    assert tokenDeclarations(.Outline.Style.Double) == "outline-style:double";
+}
+
+// `outline-none` IS NOT `outline-style:none`. Upstream prints it as the
+// shorthand at two pixels of TRANSPARENT outline plus an offset, so a
+// high-contrast mode still renders a ring where the design removed one. A
+// transcription that wrote `outline-style:none` would be silently
+// inaccessible, which is why the absence is asserted and not only the presence.
+test "Outline.Style.None — two declarations, and never outline-style:none" {
+    val decl = tokenDeclarations(.Outline.Style.None);
+    assert decl == "outline:2px solid transparent;outline-offset:2px";
+    assert decl.indexOf("outline-style:none") == -1;
+    assert decl.indexOf("outline-style") == -1;
+}
+
+test "Outline.Offset — five positive offsets and four negative ones" {
+    assert tokenDeclarations(.Outline.Offset.0) == "outline-offset:0px";
+    assert tokenDeclarations(.Outline.Offset.1) == "outline-offset:1px";
+    assert tokenDeclarations(.Outline.Offset.2) == "outline-offset:2px";
+    assert tokenDeclarations(.Outline.Offset.4) == "outline-offset:4px";
+    assert tokenDeclarations(.Outline.Offset.8) == "outline-offset:8px";
+    assert tokenDeclarations(.Outline.Offset.Neg.1) == "outline-offset:-1px";
+    assert tokenDeclarations(.Outline.Offset.Neg.2) == "outline-offset:-2px";
+    assert tokenDeclarations(.Outline.Offset.Neg.4) == "outline-offset:-4px";
+    assert tokenDeclarations(.Outline.Offset.Neg.8) == "outline-offset:-8px";
+}
+
+test "Outline.Color goes through paletteVar, like the other four" {
+    assert tokenDeclarations(.Outline.Color.Blue.500)
+        == "outline-color:var(--color-blue-500)";
+    assert tokenDeclarations(.Outline.Color.Transparent) == "outline-color:transparent";
+}
+
+// A FOCUS RING THAT DOES NOT MOVE LAYOUT, composed with front 34's modifier —
+// the acceptance bullet of Step 3. The outline is the ring; `focus-visible` is
+// the keyboard-only state; and the two declarations land in ONE sibling rule
+// under the modifier's selector, not in the class body.
+test "end to end — a focus-visible outline ring is one modified rule" {
+    val ring: Token[] = [.Outline.W.2, .Outline.Color.Indigo.500];
+    val tokens: Token[] = [Token.FocusVisible(ring)];
+    val cls = emilia(tokens);
+    val doc = await flushWith(bareOptions());
+    assert doc.indexOf("." + cls + ":focus-visible{outline-width:2px;"
+        + "outline-color:var(--color-indigo-500)}") != -1;
+    // The ring does not move layout: no `border-*` and no `box-shadow` reached
+    // the document, which is the whole reason `outline-*` exists beside them.
+    assert doc.indexOf("border-width") == -1;
+    assert doc.indexOf("box-shadow") == -1;
+}
+
+// ── ring ─────────────────────────────────────────────────────────────────────
+
+test "Ring.W — the custom property AND the composed box-shadow" {
+    val decl = tokenDeclarations(.Ring.W.2);
+    assert decl == "--tw-ring-shadow:0 0 0 2px;box-shadow:"
+        + "var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)";
+    assert decl.indexOf("--tw-ring-shadow:") != -1;
+    assert decl.indexOf("box-shadow:") != -1;
+}
+
+// UPSTREAM V4'S DEFAULT RING IS 1px, NOT V3'S 3px. The README's reference-gap
+// table said to read this rather than remember it; it was read, and `.Ring.W.1`
+// is upstream's bare `ring`.
+test "Ring.W — the ladder, and the v4 default the README told us to verify" {
+    assert tokenDeclarations(.Ring.W.0).indexOf("--tw-ring-shadow:0 0 0 0px") != -1;
+    assert tokenDeclarations(.Ring.W.1).indexOf("--tw-ring-shadow:0 0 0 1px") != -1;
+    assert tokenDeclarations(.Ring.W.4).indexOf("--tw-ring-shadow:0 0 0 4px") != -1;
+    assert tokenDeclarations(.Ring.W.8).indexOf("--tw-ring-shadow:0 0 0 8px") != -1;
+    assert tokenDeclarations(.Ring.W.1).indexOf("3px") == -1;
+}
+
+test "Ring.Inset and Ring.Offset — the inset flag and the two offset families" {
+    assert tokenDeclarations(.Ring.Inset) == "--tw-ring-inset:inset";
+    assert tokenDeclarations(.Ring.Offset.W.2) == "--tw-ring-offset-width:2px";
+    assert tokenDeclarations(.Ring.Offset.Color.White)
+        == "--tw-ring-offset-color:var(--color-white)";
+}
+
+// COMPOSITION, NOT CLOBBERING. The ring's `box-shadow` LISTS `var(--tw-shadow)`
+// rather than writing a shadow of its own, so front 41's `Effect.Shadow` — once
+// it sets `--tw-shadow` — flows through the same declaration instead of being
+// overwritten by it. That is the whole reason `ringTokenToSheet` exists.
+test "Ring composes with Effect.Shadow rather than overwriting it" {
+    val decl = tokenDeclarations(.Ring.W.2);
+    assert decl.indexOf("var(--tw-shadow)") != -1;
+    assert decl.indexOf("var(--tw-ring-shadow)") != -1;
+    val shadow = tokenDeclarations(.Effect.Shadow.Md);
+    assert shadow.indexOf("box-shadow") != -1;
+    assert decl.indexOf(shadow) == -1;
+}
+
+// CONTRACT 4 — the class name is a pure function of the token list AND token
+// ORDER IS CLASS IDENTITY. The ring and the shadow both reach `box-shadow`, so
+// swapping them is the sharpest case the contract has: two different classes,
+// and the declarations in the order they were written.
+test "contract 4 — swapping Ring and Effect.Shadow changes the class" {
+    val a: Token[] = [.Ring.W.2, .Effect.Shadow.Md];
+    val b: Token[] = [.Effect.Shadow.Md, .Ring.W.2];
+    val clsA = emilia(a);
+    val clsB = emilia(b);
+    assert clsA != clsB;
+    assert emilia(a) == clsA;
+    val doc = await flushWith(bareOptions());
+    assert doc.indexOf("." + clsA) != -1;
+    assert doc.indexOf("." + clsB) != -1;
+}
+
+// ── divide ───────────────────────────────────────────────────────────────────
+
+test "Divide.Y — a rule on the CHILDREN, zero-then-width" {
+    assert firstDeclaration(.Divide.Y.2)
+        == "border-top-width:0px;border-bottom-width:2px";
+    assert firstDeclaration(.Divide.Y.1)
+        == "border-top-width:0px;border-bottom-width:1px";
+    assert tokenSelector(.Divide.Y.2) == "& > :not(:last-child)";
+}
+
+test "Divide.X — the logical pair, as upstream emits it" {
+    assert firstDeclaration(.Divide.X.2)
+        == "border-inline-start-width:0px;border-inline-end-width:2px";
+    assert firstDeclaration(.Divide.X.1)
+        == "border-inline-start-width:0px;border-inline-end-width:1px";
+}
+
+test "Divide.Color, Divide.Style and the two reverse flags" {
+    assert firstDeclaration(.Divide.Color.Slate.200)
+        == "border-color:var(--color-slate-200)";
+    assert firstDeclaration(.Divide.Style.Dashed) == "border-style:dashed";
+    assert firstDeclaration(.Divide.XReverse) == "--tw-divide-x-reverse:1";
+    assert firstDeclaration(.Divide.YReverse) == "--tw-divide-y-reverse:1";
+}
+
+// A width, a colour and a style TARGET THE SAME SELECTOR, which is what lets
+// them compose on ONE set of children rather than three. The renderer merges
+// rules that share a selector and an at-rule, so "same selector" and "one child
+// rule" are the same statement — the end-to-end test below reads the merged
+// rule back out of the document and proves it.
+test "Divide — width, colour and style all target the same child selector" {
+    val want = siblingSelector();
+    assert tokenSelector(.Divide.Y.2) == want;
+    assert tokenSelector(.Divide.Color.Slate.200) == want;
+    assert tokenSelector(.Divide.Style.Dashed) == want;
+    assert tokenSelector(.Divide.X.4) == want;
+    assert tokenSelector(.Divide.XReverse) == want;
+    assert tokenSelector(.Divide.YReverse) == want;
+}
+
+// ── THE CROSS-FRONT ASSERT front 35 could not write ──────────────────────────
+//
+// Front 35 shipped `siblingSelector()` and said front 40 must CALL it rather
+// than re-spell `& > :not(:last-child)`, but it could not prove the two agreed
+// because `Divide` did not exist yet. It exists now, so the proof is written
+// here: the two families' selectors are compared BYTE FOR BYTE. Two fronts
+// writing the same selector by hand are two fronts that will eventually write
+// it differently, and this is the test that would catch it.
+//
+// The selector itself was VERIFIED against upstream v4 while writing this
+// front: `divide-*` does use `& > :not(:last-child)` — not a `:where()`-wrapped
+// form and not the v3 `& > :not([hidden]) ~ :not([hidden])`.
+test "Divide and front 35's Space emit BYTE-IDENTICAL child selectors" {
+    assert tokenSelector(.Divide.Y.2) == tokenSelector(.Space.Y.2);
+    assert tokenSelector(.Divide.X.2) == tokenSelector(.Space.X.2);
+    assert tokenSelector(.Divide.Color.Slate.200) == tokenSelector(.Space.Y.4);
+    assert tokenSelector(.Divide.Y.2) == siblingSelector();
+    assert tokenSelector(.Space.Y.2) == siblingSelector();
+}
+
+test "the child selector is a one-`&` template and is spelled in ONE place" {
+    val sel = siblingSelector();
+    assert sel == "& > :not(:last-child)";
+    assert sel.split("&").length == 2;
+}
+
+// ── end to end ───────────────────────────────────────────────────────────────
+
+test "end to end — a card with a rounded top, a square bottom and a border" {
+    val card: Token[] = [.Border.W.1, .Border.Color.Slate.200, .Border.Rounded.T.Lg];
+    val cls = emilia(card);
+    val doc = await flushWith(bareOptions());
+    assert doc.indexOf("." + cls + "{border-width:1px;"
+        + "border-color:var(--color-slate-200);"
+        + "border-top-left-radius:var(--radius-lg);"
+        + "border-top-right-radius:var(--radius-lg)}") != -1;
+}
+
+test "end to end — a divided list is a rule on the children of the class" {
+    val list: Token[] = [.Divide.Y.1, .Divide.Color.Gray.200];
+    val cls = emilia(list);
+    val doc = await flushWith(bareOptions());
+    // ONE child rule, not three: the width and the colour share a selector, so
+    // the renderer merges them into a single rule on the same children.
+    assert doc.indexOf("." + cls + " > :not(:last-child){"
+        + "border-top-width:0px;border-bottom-width:1px;"
+        + "border-color:var(--color-gray-200)}") != -1;
+    // and the class itself declares NOTHING — every declaration is on a child.
+    assert doc.indexOf("." + cls + "{") == -1;
+}
+
+// ── the walk, and the control that must fail ─────────────────────────────────
+
+// No leaf of this front RESOLVES a colour or a radius: every colour is a
+// `var(--color-*)` and every radius a `var(--radius-*)`, so a project that
+// overrides either moves these tokens with it. The two literals that survive
+// are upstream's own — `9999px` for `rounded-full` and `0` for `rounded-none` —
+// and neither is a `rem`, a hex or a colour function.
+fn f40CarriesNoLiteral(decl: string) -> bool {
+    return decl.indexOf("#") == -1 && decl.indexOf("oklch(") == -1
+        && decl.indexOf("rgb(") == -1 && decl.indexOf("rem") == -1;
+}
+
+// No leaf emits a Tailwind CLASS NAME where a CSS value belongs — the failure
+// mode of transcribing a reference table into the value column. `rounded-`,
+// `border-x-` and `border-y-` name no CSS property and appear in no custom
+// property this front writes.
+fn f40CarriesNoClassFragment(decl: string) -> bool {
+    return decl.indexOf("rounded-") == -1 && decl.indexOf("border-x-") == -1
+        && decl.indexOf("border-y-") == -1 && decl.indexOf("outline-w-") == -1;
+}
+
+fn f40IsWellFormed(decl: string) -> bool {
+    return decl.length > 0 && decl.indexOf(":") != -1;
+}
+
+test "regression — every one of the 1704 leaves of this front declares something" {
+    val leaves = front40Leaves();
+    assert borderLeaves().length == 492;
+    assert outlineLeaves().length == 310;
+    assert ringLeaves().length == 593;
+    assert divideLeaves().length == 309;
+    assert leaves.length == 1704;
+    assert leaves.all({ t -> f40IsWellFormed(firstDeclaration(t)) });
+}
+
+test "regression — no leaf of this front resolves a colour or a radius" {
+    val leaves = front40Leaves();
+    assert leaves.all({ t -> f40CarriesNoLiteral(firstDeclaration(t)) });
+}
+
+test "regression — no leaf of this front emits a Tailwind class fragment" {
+    val leaves = front40Leaves();
+    assert leaves.all({ t -> f40CarriesNoClassFragment(firstDeclaration(t)) });
+}
+
+// THE DEFECT THIS FRONT EXISTS TO FIX, walked rather than sampled. The pre-40
+// `borderColorToCss` answered `"border-color:red"` for every shade — the arm
+// TYPE-CHECKED, the section looked complete, and the shade level did nothing.
+// A literal probe does NOT catch that: `red` is not a hex, not an `oklch(` and
+// not a `rem`. So every one of the 1430 colour cells is asserted to carry a
+// `var(--color-` reference, and a section's cells are asserted to be that many
+// DISTINCT strings — which is the assert a discarded payload cannot survive.
+// A section contributes 288: the 26 x 11 grid plus `White` and `Black`, which
+// reference the theme too. `Transparent`, `Current` and `Inherit` are CSS-wide
+// keywords with no theme entry and are deliberately not references.
+test "regression — every colour cell of this front is a theme reference" {
+    val leaves = front40Leaves();
+    val cells = leaves.filter({ t -> firstDeclaration(t).indexOf("var(--color-") != -1 });
+    assert cells.length == 1440;
+}
+
+test "regression — a section's 288 colour cells are 288 DISTINCT declarations" {
+    val leaves = borderLeaves();
+    val cells = leaves.filter({ t -> firstDeclaration(t).indexOf("var(--color-") != -1 });
+    assert cells.length == 288;
+    val decls = cells.map({ t -> firstDeclaration(t) });
+    // `Array.lastIndexOf` does NOT lower on erlang (`function lastIndexOf/2
+    // undefined`), so the duplicate check counts occurrences instead — the
+    // per-target divergence § Maintainer rules warns about, caught by running
+    // both backends rather than one.
+    val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
+    assert dupes.length == 0;
+}
+
+// The same walk on the other four sub-sections, so a discarded shade in any one
+// of them reddens here and not in some other front's test months later.
+test "regression — the other four colour sub-sections are distinct too" {
+    assert outlineLeaves().filter({ t ->
+        firstDeclaration(t).indexOf("var(--color-") != -1 }).length == 288;
+    assert ringLeaves().filter({ t ->
+        firstDeclaration(t).indexOf("var(--color-") != -1 }).length == 576;
+    assert divideLeaves().filter({ t ->
+        firstDeclaration(t).indexOf("var(--color-") != -1 }).length == 288;
+}
+
+// THE CONTROL THAT MUST FAIL. A walk that cannot fail proves nothing, so each
+// probe is shown to discriminate on a REAL token: `.Text.Size.Lg` is front 42's
+// and spells `1.125rem`, `.Bg.White` spells a hex, and an empty string is not a
+// declaration. `.Border.Rounded.Lg` was the control the three earlier fronts
+// used, and this front is exactly why it can no longer be one — it now answers
+// `var(--radius-lg)` and would pass the probe vacuously.
+test "regression — the three probes discriminate, on real tokens" {
+    assert f40CarriesNoLiteral(tokenDeclarations(.Text.Size.Lg)) == false;
+    assert f40CarriesNoLiteral(tokenDeclarations(.Bg.White)) == false;
+    assert f40CarriesNoLiteral(tokenDeclarations(.Border.Rounded.Lg));
+    assert f40IsWellFormed("") == false;
+    assert f40IsWellFormed("border-width") == false;
+    assert f40IsWellFormed("border-width:1px");
+    assert f40CarriesNoClassFragment("border-radius:rounded-lg") == false;
+    assert f40CarriesNoClassFragment("border-radius:var(--radius-lg)");
+    // and the colour-reference probe discriminates too: a shade-discarding arm
+    // emits a bare keyword, which carries no `var(--color-` at all.
+    assert "border-color:teal".indexOf("var(--color-") == -1;
+    assert firstDeclaration(.Border.Color.Teal.500).indexOf("var(--color-") != -1;
+}
+
+// THE PLANTED DEFECT, run rather than described: one stray literal token is
+// appended to the real list and the whole walk is asserted to FAIL. This is the
+// same shape front 39 used, and it is what proves the `all` over 1704 leaves is
+// not passing because the list is empty or the probe is inert.
+test "regression — the walk fails when a literal is planted in it" {
+    val strays: Token[] = [.Text.Size.Lg];
+    val planted: Token[] = front40Leaves().append(strays);
+    assert planted.length == 1705;
+    assert planted.all({ t -> f40CarriesNoLiteral(firstDeclaration(t)) }) == false;
+    assert front40Leaves().all({ t -> f40CarriesNoLiteral(firstDeclaration(t)) });
+}
+
+// ── end front 40 ─────────────────────────────────────────────────────────────
 
 fn effectTokenToCss(t: Token.Effect) -> string {
     val out = case t {
@@ -10221,7 +13371,7 @@ test "regression — no background leaf resolves a colour or a length" {
 
 test "regression — the literal walk discriminates, on real tokens" {
     assert bgCarriesNoLiteral(tokenDeclarations(.Bg.White)) == false;
-    assert bgCarriesNoLiteral(tokenDeclarations(.Border.Rounded.Lg)) == false;
+    assert bgCarriesNoLiteral(tokenDeclarations(.Text.Size.Lg)) == false;
     assert bgCarriesNoLiteral(tokenDeclarations(.Bg.Color.Red.500));
     val strays: Token[] = [.Bg.White];
     val planted: Token[] = backgroundLeaves().append(strays);

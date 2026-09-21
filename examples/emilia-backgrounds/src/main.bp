@@ -299,9 +299,10 @@ test "a project's indigo reaches the gradient stop and the background alike" {
 
 // THE SECOND HALF. Nothing this example emits resolves a colour or a length,
 // and nothing carries a Tailwind class name where a CSS value belongs. The two
-// `rem` allowances are front 41's `Border.Rounded` and front 35's type scale,
-// neither of which is this front's, so this walk drops them by using only this
-// front's tokens.
+// `rem` allowance is front 42's type scale, which is not this front's, so this
+// walk drops it by using only this front's tokens. `Border.Rounded` used to be
+// the second allowance and no longer is: front 40 rewrote it to
+// `var(--radius-*)`.
 test "no background token in this example resolves a colour or a length" {
     val _a = emilia(attachmentValues());
     val _b = emilia(clipValues());

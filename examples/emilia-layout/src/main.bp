@@ -285,7 +285,7 @@ test "the media card clips and isolates; its image is cropped, not squashed" {
     val imageCls = mediaImage();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cardCls + "{overflow:hidden;isolation:isolate;"
-        + "border-radius:0.5rem}") != -1;
+        + "border-radius:var(--radius-lg)}") != -1;
     assert doc.indexOf("." + imageCls + "{aspect-ratio:16 / 9;object-fit:cover;"
         + "object-position:center;width:100%}") != -1;
 }
@@ -326,8 +326,10 @@ test "halving the spacing base moves the theme and not one byte of the rule" {
         + "z-index:50}") != -1;
 }
 
-// The one length in this document belongs to `Border.Rounded`, which is front
-// 41's and not this front's. Every `Layout` token above references the theme.
+// EVERY token in this document references the theme, this front's and the one
+// `Border.Rounded.Lg` beside them: front 40 rewrote the radius ladder from a
+// literal `rem` to `var(--radius-*)`, so the card that used to be this walk's
+// one allowed length no longer is one.
 test "no layout token in this example resolves a length" {
     val _a = emilia(displayValues());
     val _b = emilia(insetDirections());

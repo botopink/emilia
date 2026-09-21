@@ -2,6 +2,104 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Border` widened, and `Outline` / `Ring` / `Divide` added** (1.0.10-beta
+  front `40-emilia-borders`). The whole of `§ 11`, 1704 leaves, in four
+  families. `Border.W` gains the fifth width and eight directional
+  sub-sections — an AXIS is two declarations, a SIDE is one, and `S`/`E` are
+  `border-inline-start-width`/`-end-width`, which follow the writing direction
+  where `L`/`R` do not. `Border.Style` is new: a dashed or dotted border was
+  inexpressible. `Border.Rounded` goes from four leaves to a ten-leaf ladder on
+  the shorthand AND on fourteen directional sub-sections — the four sides, the
+  four physical corners and the six logical ones — so a card with a rounded top
+  and a square bottom can finally be described.
+
+  **Two things changed meaning for paths that already compiled.**
+  `.Border.Color.<family>.<shade>` used to emit `border-color:red` for every
+  cell: the shade level existed in the type and did nothing, so three shades of
+  one family were ONE class, because the class name hashes the body. It now
+  emits the palette reference. And `.Border.Rounded.{Sm,Md,Lg}` used to resolve
+  a literal `rem` and now reference `var(--radius-*)`, so a project that
+  overrides `--radius-lg` moves every rounded corner with it. `Full` and `None`
+  do not change — upstream prints `rounded-full` as `9999px` and `rounded-none`
+  as `0`, and neither is a theme entry.
+
+  That second change cost three OTHER fronts their walk control. Fronts 36, 37
+  and 39 each assert "no leaf of this front resolves a length" beside a control
+  asserting that some real token DOES — and all three had chosen
+  `.Border.Rounded.Lg`, precisely because it spelled `0.5rem`. All three now
+  point at `.Text.Size.Lg`. The front's README had said that no existing
+  assertion covered `Sm`, `Md` or `Lg`; three did, in two other fronts, and the
+  rule that came out of it is in `AGENTS.md`.
+
+- **The stub that broke front 33 is gone, and the grid it blocked is asserted
+  from both sides.** `Border.Color`'s two families at 100/500/700 are what
+  collided with `Token.Color`'s own grid and made six of front 33's cells
+  unreachable in EVERY spelling, the fully qualified one included, because the
+  compiler resolved a leading-dot section path by hash order over a map that
+  held the synthesised section enums beside the real ones. botopink-lang
+  `f01c508a` fixed it — the expected type decides, the fully qualified spelling
+  resolves, an ambiguous path is refused naming both candidates — so this front
+  declares the FULL grid rather than keeping the narrow shades out of caution,
+  and nothing was renamed to dodge a hash. Two tests pin all six cells in both
+  sections and in both spellings.
+
+- **`Outline`, `Ring` and `Divide`** — three families that had no token at all,
+  and two of them are how a real component shows focus and separation. An
+  outline is painted outside the border box and takes no space, which is why a
+  focus ring is an outline and not a border; the example asserts that focusing
+  a control adds no `border-*` and no `box-shadow`, so nothing reflows.
+  **`Outline.Style.None` is the trap**: upstream prints it as
+  `outline:2px solid transparent;outline-offset:2px` — a TRANSPARENT outline
+  rather than an absent one, so a high-contrast mode still shows it — and never
+  as `outline-style:none`. It is asserted in both directions, because only the
+  absence assert catches a regression to the obvious-but-wrong transcription.
+
+  `Ring` and `Divide` are the front's two **`…ToSheet`** dispatchers, front 56's
+  second shape. A ring is a box-shadow whose `box-shadow` LISTS
+  `var(--tw-shadow)` rather than writing a shadow of its own, so front 41's
+  `Effect.Shadow` composes with it instead of being overwritten; swapping the
+  two in one list gives a different class, which is contract 4 exercised at its
+  sharpest. `Divide` declares on the element's CHILDREN, so its class body is
+  EMPTY and every declaration lands under a sibling selector — and that
+  selector is front 35's **`siblingSelector()`, CALLED and not re-spelled**. The
+  byte-identity test front 35 could not write, because `Divide` did not exist,
+  is now written twice: inside the library and from a consumer package.
+
+- **What was verified against upstream, and what was not.** The front's spec
+  specified `ring-*` and `divide-*` from memory rather than from the local
+  reference, and told implementation to check. Checked and CONFIRMED: the divide
+  child selector really is `& > :not(:last-child)` (not `:where()`-wrapped, not
+  v3's `~ :not([hidden])` form), so front 35's spelling was right; the
+  zero-then-width pair; the reverse custom properties; `--tw-ring-color`;
+  `--tw-ring-inset`; and **the v4 default ring width is 1px, where v3's was
+  3px**, which is the one the spec explicitly said to read rather than
+  remember. Checked and NOT confirmed, recorded rather than hidden: the composed
+  `box-shadow` list, and the whole `ring-offset-*` family, which v4's
+  documentation no longer carries at all — it is declared because the spec asks
+  for it and its acceptance depends on it, not because it was verified. The
+  `--tw-ring-shadow` VALUE follows what v4 documents (`0 0 0 Npx`) and not the
+  spec's v3-shaped `calc(…)` form.
+
+- **The walk, and the probe that was not enough.** 1704 leaves are walked for a
+  resolved literal, for a Tailwind class fragment and for well-formedness, each
+  with a control that must fail. A literal probe alone does **not** catch this
+  front's own historical defect: `border-color:teal` is not a hex, not an
+  `oklch(` and not a `rem`, so a dispatcher that discarded its shade would walk
+  clean. Two further walks close that — all 1440 colour cells must carry a
+  `var(--color-` reference, and a section's 288 cells must be 288 DISTINCT
+  declarations. Three defects were planted and watched redden before being
+  removed: a radius resolving `0.125rem`, a colour arm discarding its shade, and
+  a re-spelled child selector. The third reddened front 35's `Space` tests as
+  well as this front's, which is the single-spelling contract working in both
+  directions.
+
+- **`Array.lastIndexOf` does not lower on erlang** (`function lastIndexOf/2
+  undefined`). Found by running the second target, not the first. Recorded in
+  `AGENTS.md`; the duplicate check counts occurrences instead.
+
+  `modules/emilia` is **419** on commonJS and on erlang, up from 375; every
+  workspace member is green on both targets.
+
 - **Two `AGENTS.md` rules corrected against a rebuilt compiler** (1.0.10-beta
   front `39-emilia-backgrounds`, follow-up). Front 39 measured its baseline
   against a binary built BEFORE botopink-lang's shared-name `case` fix and

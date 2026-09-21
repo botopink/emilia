@@ -122,6 +122,12 @@ rather than emitting the wrong CSS. The resolver now prefers the enum the
 expected type names, accepts the fully qualified `Token.Color.Red.500`, and
 refuses an ambiguous path instead of guessing.
 
+`Token.Border.Color` has since been widened to this same full grid (front 40),
+so the two sections now carry the same 286 cells and the same eleven shades.
+That is **not** what fixed the collision, and it would not have: the resolver
+fix is what makes both reachable, and the standing rule is that a collision
+like this is never resolved by adding or renaming a type to flip a hash.
+
 ### Bg.Color — the same palette on `background-color`
 
 ```bp
@@ -813,12 +819,192 @@ every one of them asserting the emitted declaration carries no `rem`, carries a
 `:`, and carries no Tailwind class fragment. Only `Flex.Basis` and `Gap` are
 lengths and both go through `spacing(n)` / `spacingHalf(n)`; a grow factor, an
 order, a column count, a span and a line number are bare integers. The same
-test asserts `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
-discriminate rather than to pass vacuously.
+test asserts `.Text.Size.Lg` DOES carry a `rem`, so the probe is known to
+discriminate rather than to pass vacuously. It used to assert that of
+`.Border.Rounded.Lg`, until front 40 rewrote the radius ladder to reference the
+theme.
 
 `examples/emilia-grid/` is the worked example: a toolbar whose heading takes the
 remaining space and which stacks under `sm`, and a twelve-column dashboard that
 reflows one → six → twelve across `md` and `lg`.
+
+### Border — `§ 11.1`–`§ 11.4`
+
+```bp
+.Border.W.1                 // border-width:1px
+.Border.W.0                 // border-width:0
+.Border.W.8                 // border-width:8px
+.Border.W.X.1               // border-left-width:1px;border-right-width:1px
+.Border.W.Y.2               // border-top-width:2px;border-bottom-width:2px
+.Border.W.T.4               // border-top-width:4px
+.Border.W.S.1               // border-inline-start-width:1px
+.Border.W.E.1               // border-inline-end-width:1px
+
+.Border.Style.Solid         // border-style:solid
+.Border.Style.Dashed        // border-style:dashed
+.Border.Style.Hidden        // border-style:hidden
+.Border.Style.None          // border-style:none
+
+.Border.Color.Slate.200     // border-color:var(--color-slate-200)
+.Border.Color.White         // border-color:var(--color-white)
+.Border.Color.Transparent   // border-color:transparent
+.Border.Color.Current       // border-color:currentColor
+```
+
+An **axis** is two declarations and a **side** is one, because CSS has no
+`border-x-width`. The logical pair `S`/`E` is
+`border-inline-start-width`/`-end-width`, which follows the writing direction
+where `L`/`R` do not — the same distinction `Pad.S`/`Pad.E` draws.
+
+`Border.Color` carries the whole of [the palette](#color--the-palette): 26
+families × 11 shades, plus `White`/`Black`/`Transparent`/`Current`/`Inherit`.
+Every cell goes through the same `paletteVar(family, shade)` that `Color`,
+`Bg.Color`, `Outline.Color`, `Ring.Color` and `Divide.Color` use, so
+`.Border.Color.Emerald.600` and `.Color.Emerald.600` reference **one** custom
+property and cannot drift apart.
+
+> **This changed what a compiling path means.** Before front 40 the dispatcher
+> DISCARDED the shade — every cell emitted `border-color:red` or
+> `border-color:gray`. Three shades of one family were therefore ONE class,
+> since the class name is a hash of the body. If you pinned that text, it moved.
+
+`.Border.Color.Hex(value)` is declared and, like every payload leaf nested in a
+section, **cannot be constructed** — see
+[`Color.Hex` is declared and unconstructible](#colorhexabc-is-declared-and-unconstructible).
+
+#### Border radius — `§ 11.1`, `§ 21.5`
+
+```bp
+.Border.Rounded.None        // border-radius:0
+.Border.Rounded.Sm          // border-radius:var(--radius-sm)
+.Border.Rounded.Lg          // border-radius:var(--radius-lg)
+.Border.Rounded.X2xl        // border-radius:var(--radius-2xl)
+.Border.Rounded.Full        // border-radius:9999px
+
+.Border.Rounded.T.Lg        // border-top-left-radius:var(--radius-lg);
+                            // border-top-right-radius:var(--radius-lg)
+.Border.Rounded.Tl.Lg       // border-top-left-radius:var(--radius-lg)
+.Border.Rounded.B.None      // border-bottom-right-radius:0;
+                            // border-bottom-left-radius:0
+.Border.Rounded.Ss.Md       // border-start-start-radius:var(--radius-md)
+```
+
+Ten leaves — `None`, `Xs`, `Sm`, `Md`, `Lg`, `Xl`, `X2xl`, `X3xl`, `X4xl`,
+`Full` — on the shorthand **and on each of fourteen directional sub-sections**:
+the four sides `T`/`R`/`B`/`L`, the four physical corners `Tl`/`Tr`/`Br`/`Bl`,
+and the six logical ones `S`/`E`/`Ss`/`Se`/`Es`/`Ee`. A **side** form emits two
+corner properties and a **corner** form emits one, so `.Border.Rounded.Tl.Full`
+is as much a path as `.Border.Rounded.Tl.Lg` is.
+
+> **This changed too.** `Sm`, `Md` and `Lg` used to resolve a literal `rem`;
+> they reference `var(--radius-*)` now, so overriding `--radius-lg` moves every
+> rounded corner. `Full` and `None` do **not** change — upstream prints those two
+> literally, and neither is a theme entry.
+
+### Outline — `§ 11.5`–`§ 11.8`
+
+```bp
+.Outline.W.2                // outline-width:2px
+.Outline.Style.Solid        // outline-style:solid
+.Outline.Style.Dashed       // outline-style:dashed
+.Outline.Color.Blue.500     // outline-color:var(--color-blue-500)
+.Outline.Offset.2           // outline-offset:2px
+.Outline.Offset.Neg.1       // outline-offset:-1px
+
+.Outline.Style.None         // outline:2px solid transparent;outline-offset:2px
+```
+
+An outline is painted **outside** the border box and **takes no space**, which
+is why a focus ring is an outline and not a border: focusing a control moves
+nothing beside it.
+
+```bp
+val focus: Token[] = [.Outline.W.2, .Outline.Color.Indigo.500];
+val tokens: Token[] = [.Border.W.1, Token.FocusVisible(focus)];
+emilia(tokens);
+// .e_x{border-width:1px}
+// .e_x:focus-visible{outline-width:2px;outline-color:var(--color-indigo-500)}
+```
+
+> **`.Outline.Style.None` is the trap.** It is **not** `outline-style:none`.
+> Upstream prints it as a *transparent* outline plus an offset, so a
+> high-contrast mode still renders a ring where the design removed one. The
+> token sits under `Style` because that is where upstream puts it; only the
+> emission is special.
+
+A negative offset is a leaf on a `Neg` sub-section and not a sign on a number,
+because a numeric enum leaf is a run of digits.
+
+### Ring — the box-shadow half of a focus ring
+
+```bp
+.Ring.W.2                   // --tw-ring-shadow:0 0 0 2px;
+                            // box-shadow:var(--tw-ring-offset-shadow),
+                            //            var(--tw-ring-shadow), var(--tw-shadow)
+.Ring.Color.Indigo.500      // --tw-ring-color:var(--color-indigo-500)
+.Ring.Offset.W.2            // --tw-ring-offset-width:2px
+.Ring.Offset.Color.White    // --tw-ring-offset-color:var(--color-white)
+.Ring.Inset                 // --tw-ring-inset:inset
+```
+
+A ring **composes with a shadow rather than overwriting it**: the `box-shadow`
+declaration *lists* `var(--tw-shadow)` instead of writing a shadow of its own,
+so a `Ring` token and an `Effect.Shadow` token in the same list both reach the
+output. Token order is class identity, so swapping the two is a different class
+— which is the sharpest case [contract 4](#stable-hashes--sites-collapse) has.
+
+`.Ring.W.1` is upstream's bare `ring`. **The v4 default is 1px**, where v3's was
+3px.
+
+> **Verified and unverified.** The custom property names, the inset flag and the
+> v4 default width were checked against upstream. The composed `box-shadow`
+> list and the whole `ring-offset-*` family were **not** confirmed — v4's
+> documentation no longer carries `ring-offset-*` at all. Both are declared
+> because the surface asks for them, and both are recorded here rather than
+> presented as transcribed.
+
+### Divide — borders between children
+
+```bp
+.Divide.Y.1                 // & > :not(:last-child) {
+                            //   border-top-width:0px;border-bottom-width:1px }
+.Divide.X.2                 // & > :not(:last-child) {
+                            //   border-inline-start-width:0px;
+                            //   border-inline-end-width:2px }
+.Divide.Color.Slate.200     // & > :not(:last-child) {
+                            //   border-color:var(--color-slate-200) }
+.Divide.Style.Dashed        // & > :not(:last-child) { border-style:dashed }
+.Divide.XReverse            // & > :not(:last-child) { --tw-divide-x-reverse:1 }
+```
+
+`divide-*` declares on the element's **children**, not on the element — a
+border on every child but the last — so the class body itself is **empty**:
+
+```bp
+val list: Token[] = [.Divide.Y.1, .Divide.Color.Gray.200];
+emilia(list);
+// .e_x > :not(:last-child){border-top-width:0px;border-bottom-width:1px;
+//                          border-color:var(--color-gray-200)}
+```
+
+A width, a colour and a style all target the **same** selector, so they merge
+into one child rule rather than three.
+
+That selector is the same one [`Space`](#space--spacing-between-children) uses,
+and it is spelled in exactly one place in the library — `siblingSelector()`.
+`divide-*` and `space-y-*` separate the same children, and a test compares the
+two families' output **byte for byte** so that the two can never be written
+differently.
+
+#### Nothing in `Border`, `Outline`, `Ring` or `Divide` resolves a colour or a radius
+
+The four sections declare **1704 leaves** (492 + 310 + 593 + 309), and a test
+walks every one of them asserting the declaration carries no `rem`, no hex and
+no colour function; carries a `:`; and carries no Tailwind class fragment. Each
+walk has a control that must fail, and one further walk asserts that all 1440
+colour cells carry a `var(--color-` reference and that a section's 288 are 288
+**distinct** strings — because a literal probe alone does not catch a dispatcher
+that discards its shade, which is exactly the defect this section used to have.
 
 ### Modifiers — the variant table
 
