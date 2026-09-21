@@ -144,7 +144,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Size(_inner) -> declSheet(sizeTokenToCss(_inner, th));
         Space(_inner) -> spaceTokenToSheet(_inner, th);
         Layout(_inner) -> declSheet(layoutTokenToCss(_inner, th));
-        Flex(_inner) -> declSheet(flexTokenToCss(_inner));
+        Flex(_inner) -> declSheet(flexTokenToCss(_inner, th));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
         Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
@@ -4977,20 +4977,133 @@ test "end to end — a badge pinned to the corner of a relative card" {
 
 // ── end front 36 ─────────────────────────────────────────────────────────────
 
-fn flexTokenToCss(t: Token.Flex) -> string {
+// ── front 37 — flexbox, grid and gap ─────────────────────────────────────────
+//
+// FRONT 37 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the `Flex`,
+// `Grid` and `Gap` sections of `tokens.bp` and `flexTokenToCss`,
+// `gridTokenToCss` and `gapTokenToCss` with their sub-dispatchers. Front 36's
+// `display:flex` and `display:grid` stay where they are — they are display
+// values; this block is everything a box that already declares one can say
+// next.
+//
+// EMILIA NEVER RESOLVES A LENGTH. `Basis` and the whole of `Gap` answer
+// `spacing(n)` / `spacingHalf(n)` from `spacing.bp`, the same two functions
+// front 35's `Pad`/`Margin` and front 36's `Inset` answer, so `.Flex.Basis.4`,
+// `.Gap.All.4` and `.Pad.All.4` carry identical length text BY CONSTRUCTION.
+// `Grow`, `Shrink`, `Order` and `Grid`'s spans, starts and ends are BARE
+// NUMBERS and reach `spacing` never — `order-1` is `order:1`, a count and not
+// a length.
+//
+// THE SEVENTH LADDER. Front 54 found seven hand-written `rem` ladders in this
+// file and front 35 deleted six of them; `flexGapScale` — `__4 -> "1rem"` —
+// was the seventh and was left alone because `Gap` is this front's section
+// under a hard ownership rule. It is gone here: `.Flex.Gap.4` now emits what
+// `.Gap.All.4` emits, and a walk over every leaf this front declares asserts
+// no `rem` survives.
+
+fn flexTokenToCss(t: Token.Flex, th: Theme) -> string {
     val out = case t {
         Row -> "flex-direction:row";
+        RowReverse -> "flex-direction:row-reverse";
         Col -> "flex-direction:column";
+        ColReverse -> "flex-direction:column-reverse";
         Wrap -> "flex-wrap:wrap";
+        WrapReverse -> "flex-wrap:wrap-reverse";
         NoWrap -> "flex-wrap:nowrap";
-        Items(_inner) -> flexItemsToCss(_inner);
-        Justify(_inner) -> flexJustifyToCss(_inner);
-        Gap(_inner) -> "gap:" + flexGapScale(_inner);
+        Value(_inner) -> oneDecl("flex", flexValueToCss(_inner, th));
+        Grow(_inner) -> oneDecl("flex-grow", flexGrowToCss(_inner, th));
+        Shrink(_inner) -> oneDecl("flex-shrink", flexShrinkToCss(_inner, th));
+        Basis(_inner) -> oneDecl("flex-basis", flexBasisScale(_inner, th));
+        Order(_inner) -> oneDecl("order", flexOrderToCss(_inner, th));
+        Items(_inner) -> flexItemsToCss(_inner, th);
+        Justify(_inner) -> flexJustifyToCss(_inner, th);
+        Gap(_inner) -> oneDecl("gap", legacyGapScale(_inner, th));
     };
     return out;
 }
 
-fn flexItemsToCss(p: Token.Flex.Items) -> string {
+// `§ 6.4`'s shorthand, printed the way upstream prints it: three components
+// separated by single spaces, except `flex-none`, which is the one row whose
+// value is the keyword and NOT `0 0 auto`.
+fn flexValueToCss(v: Token.Flex.Value, th: Theme) -> string {
+    val out = case v {
+        One -> "1 1 0%";
+        Auto -> "1 1 auto";
+        Initial -> "0 1 auto";
+        None -> "none";
+    };
+    return out;
+}
+
+fn flexGrowToCss(g: Token.Flex.Grow, th: Theme) -> string {
+    val out = case g {
+        __0 -> "0";
+        __1 -> "1";
+    };
+    return out;
+}
+
+fn flexShrinkToCss(s: Token.Flex.Shrink, th: Theme) -> string {
+    val out = case s {
+        __0 -> "0";
+        __1 -> "1";
+    };
+    return out;
+}
+
+// `basis-1` is `calc(var(--spacing) * 1)` — the SAME string `p-1` is — because
+// `§ 6.1` and `§ 6.15` print it the same way. The fractions are carried by
+// name, `1/3` being no identifier, and their percentages are front 35's to the
+// last decimal: a test compares `.Flex.Basis.Frac.Third` to `.Size.W.Frac.Third`
+// rather than to a literal.
+fn flexBasisScale(s: Token.Flex.Basis, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> flexBasisFracToCss(_inner, th);
+        Half(_inner) -> flexBasisHalfToCss(_inner, th);
+    };
+    return out;
+}
+
+fn flexBasisFracToCss(f: Token.Flex.Basis.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn flexBasisHalfToCss(h: Token.Flex.Basis.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+// `order-first` and `order-last` are SENTINEL INTEGERS, not keywords, and
+// `order-none` is `0` — `order:none` is not a value at all.
+fn flexOrderToCss(o: Token.Flex.Order, th: Theme) -> string {
+    val out = case o {
+        __1 -> "1"; __2 -> "2"; __3 -> "3"; __4 -> "4"; __5 -> "5"; __6 -> "6";
+        __7 -> "7"; __8 -> "8"; __9 -> "9"; __10 -> "10"; __11 -> "11"; __12 -> "12";
+        First -> "-9999";
+        Last -> "9999";
+        None -> "0";
+    };
+    return out;
+}
+
+fn flexItemsToCss(p: Token.Flex.Items, th: Theme) -> string {
     val out = case p {
         Start -> "align-items:flex-start";
         Center -> "align-items:center";
@@ -5000,7 +5113,7 @@ fn flexItemsToCss(p: Token.Flex.Items) -> string {
     return out;
 }
 
-fn flexJustifyToCss(p: Token.Flex.Justify) -> string {
+fn flexJustifyToCss(p: Token.Flex.Justify, th: Theme) -> string {
     val out = case p {
         Start -> "justify-content:flex-start";
         Center -> "justify-content:center";
@@ -5011,14 +5124,80 @@ fn flexJustifyToCss(p: Token.Flex.Justify) -> string {
     return out;
 }
 
-fn flexGapScale(s: Token.Flex.Gap) -> string {
+// The pre-37 `.Flex.Gap.{1,2,4,8}` paths. They keep compiling and they now
+// answer `spacing(n)` — the same declaration `.Gap.All.N` answers, by a
+// narrower name. This replaced `flexGapScale`, the seventh and last of the
+// hand-written `rem` ladders front 54 found.
+fn legacyGapScale(s: Token.Flex.Gap, th: Theme) -> string {
     val out = case s {
-        __1 -> "0.25rem";
-        __2 -> "0.5rem";
-        __4 -> "1rem";
-        __8 -> "2rem";
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
     };
     return out;
+}
+
+// ── tests · the flex item ────────────────────────────────────────────────────
+
+test "flex direction and wrap — the four that compile today, unchanged" {
+    assert tokenDeclarations(.Flex.Row) == "flex-direction:row";
+    assert tokenDeclarations(.Flex.Col) == "flex-direction:column";
+    assert tokenDeclarations(.Flex.Wrap) == "flex-wrap:wrap";
+    assert tokenDeclarations(.Flex.NoWrap) == "flex-wrap:nowrap";
+}
+
+test "flex direction and wrap — the three reverse rows `§ 6.2`/`§ 6.3` add" {
+    assert tokenDeclarations(.Flex.RowReverse) == "flex-direction:row-reverse";
+    assert tokenDeclarations(.Flex.ColReverse) == "flex-direction:column-reverse";
+    assert tokenDeclarations(.Flex.WrapReverse) == "flex-wrap:wrap-reverse";
+}
+
+test "the flex shorthand keeps all three components, and `none` is a keyword" {
+    assert tokenDeclarations(.Flex.Value.One) == "flex:1 1 0%";
+    assert tokenDeclarations(.Flex.Value.Auto) == "flex:1 1 auto";
+    assert tokenDeclarations(.Flex.Value.Initial) == "flex:0 1 auto";
+    assert tokenDeclarations(.Flex.Value.None) == "flex:none";
+    assert tokenDeclarations(.Flex.Value.None).indexOf("0 0 auto") == -1;
+}
+
+test "grow and shrink are bare numbers on their own properties" {
+    assert tokenDeclarations(.Flex.Grow.1) == "flex-grow:1";
+    assert tokenDeclarations(.Flex.Grow.0) == "flex-grow:0";
+    assert tokenDeclarations(.Flex.Shrink.1) == "flex-shrink:1";
+    assert tokenDeclarations(.Flex.Shrink.0) == "flex-shrink:0";
+}
+
+test "basis is the spacing ladder, not a second one" {
+    assert tokenDeclarations(.Flex.Basis.0) == "flex-basis:0";
+    assert tokenDeclarations(.Flex.Basis.1) == "flex-basis:" + spacing(1);
+    assert tokenDeclarations(.Flex.Basis.4) == "flex-basis:" + spacing(4);
+    assert tokenDeclarations(.Flex.Basis.96) == "flex-basis:" + spacing(96);
+    assert tokenDeclarations(.Flex.Basis.Half.2) == "flex-basis:" + spacingHalf(2);
+    assert tokenDeclarations(.Flex.Basis.Px) == "flex-basis:1px";
+    assert tokenDeclarations(.Flex.Basis.Auto) == "flex-basis:auto";
+    assert tokenDeclarations(.Flex.Basis.Full) == "flex-basis:100%";
+}
+
+// The percentages are compared to front 35's rather than to a literal: `basis-1/3`
+// and `w-1/3` are the same fraction, so they must be the same string.
+test "a basis fraction and a width fraction are the same percentage" {
+    val basisThird = tokenDeclarations(.Flex.Basis.Frac.Third).split(":").at(1) ?? "";
+    val widthThird = tokenDeclarations(.Size.W.Frac.Third).split(":").at(1) ?? "";
+    assert basisThird == widthThird;
+    assert tokenDeclarations(.Flex.Basis.Frac.Third) == "flex-basis:33.333333%";
+    assert tokenDeclarations(.Flex.Basis.Frac.Half) == "flex-basis:50%";
+    assert tokenDeclarations(.Flex.Basis.Frac.TwoThirds) == "flex-basis:66.666667%";
+}
+
+test "order — a count, the two sentinels, and the one that is not a keyword" {
+    assert tokenDeclarations(.Flex.Order.1) == "order:1";
+    assert tokenDeclarations(.Flex.Order.2) == "order:2";
+    assert tokenDeclarations(.Flex.Order.12) == "order:12";
+    assert tokenDeclarations(.Flex.Order.First) == "order:-9999";
+    assert tokenDeclarations(.Flex.Order.Last) == "order:9999";
+    assert tokenDeclarations(.Flex.Order.None) == "order:0";
+    assert tokenDeclarations(.Flex.Order.None).indexOf("none") == -1;
 }
 
 fn borderTokenToCss(t: Token.Border) -> string {

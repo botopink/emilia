@@ -538,10 +538,11 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **313/313** on
+  refuses) runs every module's in-file `test {}` blocks, **320/320** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 225 (`emilia.bp`). `emilia.bp`'s 225 are front 56's 33
-  (below) plus front 33's 81 plus front 35's 31 plus front 34's 50 — two per
+  (`output.bp`) + 232 (`emilia.bp`). `emilia.bp`'s 232 are front 56's 33
+  (below) plus front 33's 81 plus front 35's 31 plus front 37's 7 plus front
+  34's 50 — two per
   variant family (the `Variant` halves and the CSS the row renders), the three
   dark-mode strategies a cell each, the ranges, a three-deep chain, the indexed
   rows, `Important`, the empty inner list, six walks over the whole table, and

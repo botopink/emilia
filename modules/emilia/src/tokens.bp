@@ -857,11 +857,43 @@ pub type Token {
     }
     // ── end front 36 ─────────────────────────────────────────────────────────
 
+    // ── front 37 — flexbox, grid and gap ─────────────────────────────────────
+    //
+    // `Flex` is the flex CONTAINER and the flex ITEM: direction and wrap, the
+    // `flex` shorthand, grow, shrink, basis and order. `display:flex` is NOT
+    // here — it is a display value and front 36's; this section is what a box
+    // that already declares it can say next.
+    //
+    // The shorthand's sub-section is `Value` and not `Flex`, because a section
+    // cannot carry a sub-section of its own name.
+    //
+    // `Basis` is the one family here that is a LENGTH, and it answers front
+    // 54's `spacing(n)` / `spacingHalf(n)` over front 35's scale, so
+    // `.Flex.Basis.4` and `.Pad.All.4` carry the same length text BY
+    // CONSTRUCTION. `Grow`, `Shrink` and `Order` are bare numbers and reach
+    // `spacing` never: `order-1` is `order:1`, and `order-first` is the
+    // sentinel `-9999`, not a keyword.
     Flex {
         Row,
+        RowReverse,
         Col,
+        ColReverse,
         Wrap,
+        WrapReverse,
         NoWrap,
+        Value { One, Auto, Initial, None }
+        Grow { 0, 1 }
+        Shrink { 0, 1 }
+        Basis {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Auto,
+            Full,
+            Frac { Half, Third, TwoThirds }
+            Half { 0, 1, 2, 3 }
+        }
+        Order { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, First, Last, None }
         Items {
             Start,
             Center,

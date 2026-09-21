@@ -493,6 +493,66 @@ byte of any `Layout` rule.
 overflow, isolates a stacking context and crops a 16:9 image; and a sticky
 header over a one-axis scroll panel with a badge on a negative inset.
 
+### Flex — `§ 6`
+
+`Flex` is the flex CONTAINER and the flex ITEM. `display:flex` is not here — it
+is a display value and lives on `Layout` (`.Layout.Flex`); this section is
+everything a box that already declares it can say next.
+
+#### Direction and wrap
+
+```bp
+.Flex.Row          // flex-direction:row
+.Flex.RowReverse   // flex-direction:row-reverse
+.Flex.Col          // flex-direction:column
+.Flex.ColReverse   // flex-direction:column-reverse
+.Flex.Wrap         // flex-wrap:wrap
+.Flex.WrapReverse  // flex-wrap:wrap-reverse
+.Flex.NoWrap       // flex-wrap:nowrap
+```
+
+#### The shorthand, grow, shrink, basis and order
+
+```bp
+.Flex.Value.One       // flex:1 1 0%
+.Flex.Value.Auto      // flex:1 1 auto
+.Flex.Value.Initial   // flex:0 1 auto
+.Flex.Value.None      // flex:none      ← the keyword, not `0 0 auto`
+
+.Flex.Grow.1          // flex-grow:1
+.Flex.Grow.0          // flex-grow:0
+.Flex.Shrink.1        // flex-shrink:1
+.Flex.Shrink.0        // flex-shrink:0
+
+.Flex.Basis.0         // flex-basis:0
+.Flex.Basis.4         // flex-basis:calc(var(--spacing) * 4)
+.Flex.Basis.Half.1    // flex-basis:calc(var(--spacing) * 1.5)
+.Flex.Basis.Px        // flex-basis:1px
+.Flex.Basis.Auto      // flex-basis:auto
+.Flex.Basis.Full      // flex-basis:100%
+.Flex.Basis.Frac.Third // flex-basis:33.333333%
+
+.Flex.Order.1         // order:1
+.Flex.Order.12        // order:12
+.Flex.Order.First     // order:-9999
+.Flex.Order.Last      // order:9999
+.Flex.Order.None      // order:0        ← `order:none` is not a value
+```
+
+The sub-section is `Value` and not `Flex`, because a section cannot carry a
+sub-section of its own name.
+
+`Basis` is the only family here that is a **length**, and it is front 35's
+scale answering front 54's `spacing(n)` / `spacingHalf(n)` — `.Flex.Basis.4`
+and `.Pad.All.4` carry the same length text because they call the same
+function. Its fractions are front 35's percentages to the last decimal, and a
+test compares `.Flex.Basis.Frac.Third` to `.Size.W.Frac.Third` rather than to a
+literal.
+
+`Grow`, `Shrink` and `Order` are **bare numbers**: `order-1` is `order:1`, a
+count and not a length, so nothing in them reaches the theme. `order-first`
+and `order-last` are the sentinels `-9999` and `9999`, and `order-none` is `0`.
+
 ### Modifiers — the variant table
 
 A modifier is the only way a token reaches a state, a breakpoint or a

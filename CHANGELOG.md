@@ -2,6 +2,27 @@
 
 ## Unreleased — v0.beta.22
 
+- **A flex item can finally grow, shrink, reorder and set a basis**
+  (1.0.10-beta front `37-emilia-grid`, step 1). Before this, `Flex` was seven
+  paths — four direction/wrap leaves, `Items`, `Justify` and a four-value
+  `Gap` — so emilia could say `display:flex` and then almost nothing: no
+  `flex-1`, no `grow`, no `shrink`, no `basis`, no `order`, and not one of the
+  three REVERSE rows of `§ 6.2`/`§ 6.3`. `Flex.Value`, `Flex.Grow`,
+  `Flex.Shrink`, `Flex.Basis` and `Flex.Order` close `§ 6.1` and
+  `§ 6.4`–`§ 6.7`, and `RowReverse`/`ColReverse`/`WrapReverse` join the four
+  leaves that compiled before, which emit exactly what they emitted.
+  **The shorthand's sub-section is `Value`, not `Flex`** — a section cannot
+  carry a sub-section of its own name — and `flex-none` is the one row whose
+  value is the KEYWORD `none` and not `0 0 auto`, asserted both ways.
+  `Basis` is the only length in the step and it is front 35's scale answering
+  front 54's `spacing(n)`/`spacingHalf(n)`, so `.Flex.Basis.4` and `.Pad.All.4`
+  are the same length by construction; its fractions are compared to
+  `.Size.W.Frac.*` rather than to literals, because `basis-1/3` and `w-1/3` are
+  one fraction and must not drift into two. `Grow`, `Shrink` and `Order` are
+  BARE NUMBERS and reach `spacing` never — `order-first` is the sentinel
+  `-9999`, `order-last` `9999`, and `order-none` is `0`, with `order:none`
+  asserted absent. +7 in-file tests (225 → 232 in `emilia.bp`), green on
+  commonJS and on erlang.
 - **`examples/emilia-layout/` — the worked example** (1.0.10-beta front
   `36-emilia-layout`). The new workspace member composes what the front
   unblocked: a media card that CLIPS its overflow, isolates a stacking context
