@@ -535,6 +535,10 @@ emits the selector that reads them and never the class itself.
 no at-rule, it sets the `!important` flag on every rule it wraps, which is
 upstream's per-utility `!` suffix.
 
+`examples/emilia-modifiers/` is the worked example: a responsive navigation
+bar, a peer-driven form field, a self-striping table, and one panel rendered
+under all three dark-mode strategies.
+
 ## The runtime — `emilia(tokens)` and `flush()`
 
 - `emilia(tokens: Token[]) -> string`

@@ -2,6 +2,23 @@
 
 ## Unreleased — v0.beta.22
 
+- **`examples/emilia-modifiers/`, the front's worked example** (1.0.10-beta
+  front `34-emilia-modifiers`, § Examples). A new workspace member, and the
+  first thing in this repository that uses the table across a PACKAGE
+  BOUNDARY — which is where the commonJS `case`-over-a-unique-variant defect
+  used to bite, so it is worth a runnable example rather than an inline test.
+  A navigation bar stacked and dark-surfaced on a phone and a row from `md:`
+  up, whose links read the bar's hover through `.group` and their own through
+  `:hover`; a form field whose error message is shown by its SIBLING's invalid
+  state and by nothing else; a self-striping table that also carries
+  `Important`; and one panel rendered under all three `DarkMode` strategies,
+  which give three different classes because the strategy reaches the rule. Two
+  assertions pin other fronts' output and say so in place — `Margin.*.__0` is
+  `margin-left:0`, and `Border.Color.Red.__500` is still `border-color:red`
+  because that section is pre-front-33 and front 40 owns the rewrite; what the
+  example pins there is the SELECTOR. 16 in-file tests, green on commonJS and
+  on erlang; it builds and runs.
+
 - **`Important`, the walks, and the table closed at 83**
   (1.0.10-beta front `34-emilia-modifiers`, step 7). `Important(inner)` is
   decision 81's row and the one that is not a variant at all: it adds no

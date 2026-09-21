@@ -197,7 +197,7 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
 command inside one of its members: emilia, emilia-card, emilia-cascade,
-emilia-spacing, emilia-theme`. Every `modules/*/`
+emilia-modifiers, emilia-spacing, emilia-theme`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -522,6 +522,20 @@ to the commonJS row and runs once.
   inside **jhonstart** (never inside emilia) is gone, and the example's line was
   deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
   a listed example that builds fails the gate just as a red one does.
+
+- `examples/emilia-modifiers/` is the member `emilia-modifiers` and is front
+  34's worked example: a navigation bar that is stacked and dark-surfaced on a
+  phone and a row from `md:` up, whose links read the bar's hover through
+  `.group`; a form field whose error message is shown by its SIBLING's invalid
+  state and nothing else; a table that stripes itself with `Odd`/`Even`/`Nth`
+  and pins one declaration with `Important`; and the same panel rendered under
+  all three `DarkMode` strategies, which give three different classes because
+  the strategy reaches the rule. 16 in-file tests, green on commonJS and on
+  erlang; it builds and runs. Two of its assertions pin OTHER fronts' output
+  and say so — `Margin.*.__0` is `margin-left:0` rather than a `calc`, and
+  `Border.Color.Red.__500` is still `border-color:red` because `Border.Color`
+  is pre-front-33 and front 40 owns the rewrite; what this example pins there
+  is the selector, which is front 34's.
 
 - `examples/emilia-spacing/` is the member `emilia-spacing` and is front 35's
   worked example: the multiplier scale through `.Pad.All.*`, the nine padding
