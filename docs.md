@@ -111,17 +111,16 @@ rule emits, and it means a project that overrides `--color-red-500` moves every
 rule that names it. The numbers live in the theme, not in the rule — see
 [The colour palette](#the-colour-palette).
 
-**Six cells are declared and unreachable.** `.Color.Red.100`, `.Color.Red.500`,
-`.Color.Red.700`, `.Color.Gray.100`, `.Color.Gray.500` and `.Color.Gray.700`
-do not compile in any spelling: the compiler resolves a leading-dot section
-path by scanning every registered enum — the synthesised section enums
-included — and returning the first whose tree carries the path, without ever
-consulting the expected type. `Token` carries `Color.Red.500` and so does
-`Token.Border.Color`, whose Red and Gray also run 100/500/700, so the winner is
-decided by hash order. It reds at the call site (`type mismatch: expected
-Token, got __Token__Border`) rather than emitting the wrong CSS. Until the
-resolver is fixed, reach those six shades through `.Bg.Color.<Family>.<shade>`
-(whose head segment `Bg` is unique) or pick a neighbouring shade.
+**All 286 cells are reachable.** Six of them — `.Color.Red.{100,500,700}` and
+`.Color.Gray.{100,500,700}` — used to compile in no spelling, because the
+compiler resolved a leading-dot section path by scanning every registered enum
+(the synthesised section enums included) and returning the first whose tree
+carried the path, without consulting the expected type: `Token` carries
+`Color.Red.500` and so does `Token.Border.Color`, whose Red and Gray also run
+100/500/700, so the winner was decided by hash order. It red at the call site
+rather than emitting the wrong CSS. The resolver now prefers the enum the
+expected type names, accepts the fully qualified `Token.Color.Red.500`, and
+refuses an ambiguous path instead of guessing.
 
 ### Bg.Color — the same palette on `background-color`
 

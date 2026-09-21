@@ -432,6 +432,16 @@ pub fn targetVariant() -> Variant {
 // `checkVariantSelector` with no opt-out — correctly, since the two-`&` form
 // duplicates the rule it wraps. The two states go inside one `:is()` instead:
 // one `&`, the same match set, and no selector list for front 56 to split.
+//
+// AND THE ROW IS A VERSION BEHIND, confirmed by the maintainer rather than
+// guessed here: upstream v4 also carries the legacy `[open]` ATTRIBUTE
+// (`&:is([open], :popover-open, :open)`), because that is what matches
+// `<details open>` on an engine without `:open`. The local reference's table
+// does not, and this front transcribed the table it could read. **The next
+// front to touch this row with upstream in hand adds `[open]`** — it is
+// recorded on the milestone's reference-coverage row, not left as a
+// suspicion. The test below pins the current spelling, so the addition shows
+// up as a change and not as a drift.
 pub fn openVariant() -> Variant {
     return selectorVariant("&:is(:open, :popover-open)");
 }

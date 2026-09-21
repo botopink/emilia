@@ -328,6 +328,11 @@ to the commonJS row and runs once.
   selector, not an escape hatch: the two states go inside one `:is()`
   (`&:is(:open, :popover-open)`), which matches the same elements through one
   `&`. Any future row spelled as a selector LIST takes the same treatment.
+  Separately and confirmed by the maintainer: **upstream v4 also carries the
+  legacy `[open]` attribute in that row** (`&:is([open], :popover-open,
+  :open)`), which the local reference's table omits — the next front to touch
+  the row with upstream in hand adds it, and the test pinning today's spelling
+  is what makes that show up as a change.
 - **`markImportant` is not a `Variant`, so `Important` is not a variant arm.**
   Its arm answers `markImportant(tokensToSheet(inner, th))` and it adds no
   selector and no at-rule; it also produces ONE RULE PER INNER TOKEN, so a test
@@ -362,21 +367,25 @@ to the commonJS row and runs once.
   `examples/emilia-card/` prints `Formatted src/main.bp` — the formatter moved
   under the compiler since the last `style(src)` sweep. Reformatting is a
   source change and belongs to a `style(src)` commit, not to a packaging one.
-- **`.Color.Red.500` and five siblings are DECLARED AND UNREACHABLE.** The
-  compiler resolves a leading-dot section path (`tryResolveEnumSectionPath`,
-  compiler-core `comptime/infer.zig`) by iterating `env.typeDefs` — which holds
-  the synthesised section enums beside the real ones — and returning the first
-  enum whose section tree carries the path. The expected type is never
-  consulted. `Token` carries `Color.Red.500` and so does `__Token__Border`
-  (`Token.Border.Color`, whose Red and Gray run 100/500/700), so hash order
-  decides, and today it decides against us for `.Color.Red.{100,500,700}` and
-  `.Color.Gray.{100,500,700}`. Every spelling reds — the typed `val`, the typed
-  array literal, the call argument, and `Token.Color.Red.500`, which the
-  resolver does not accept at all. It is loud (`type mismatch: expected Token,
-  got __Token__Border`), never silently-wrong CSS. Reported to botopink-lang;
-  the fix is to prefer the enum the expected type names and to refuse rather
-  than guess when two match. **Do not "fix" it by adding or renaming a type to
-  flip the hash order** — that is invisible and the next front re-breaks it.
+- **FIXED — `.Color.Red.500` and five siblings used to be DECLARED AND
+  UNREACHABLE.** The compiler resolved a leading-dot section path
+  (`tryResolveEnumSectionPath`, compiler-core `comptime/infer.zig`) by iterating
+  `env.typeDefs` — which holds the synthesised section enums beside the real
+  ones — and returning the first enum whose section tree carried the path,
+  never consulting the expected type. `Token` carries `Color.Red.500` and so
+  does `__Token__Border` (`Token.Border.Color`, whose Red and Gray run
+  100/500/700), so hash order decided, and it decided against us for
+  `.Color.Red.{100,500,700}` and `.Color.Gray.{100,500,700}`: every spelling
+  red, including the fully qualified `Token.Color.Red.500`, which the resolver
+  did not accept at all. It failed loudly (`type mismatch: expected Token, got
+  __Token__Border`) rather than emitting the wrong CSS, and it flipped whenever
+  the typedef set grew. botopink-lang `f01c508a` now prefers the enum the
+  expected type names, accepts the fully qualified spelling, and refuses an
+  ambiguous path naming both candidates instead of picking one; emilia
+  `1cd39b2` asserts all six cells, and the two palette tests went from eight
+  shades to eleven. **The standing rule survives the fix**: never resolve a
+  collision like this by adding or renaming a type to flip the hash order —
+  that is invisible, and the next front re-breaks it.
 - **A section of `Token` is a type written by its path** — `Token.Text`,
   `Token.Text.Size`, `Token.Border.Color` (botopink-lang decision 8 §5.3b).
   The flat spelling (`TokenText`) names nothing and reds with a hint; a
@@ -478,8 +487,8 @@ to the commonJS row and runs once.
   leaves asserting the output carries no `rem`, none of `padding-x`,
   `padding-y`, `margin-x`, `margin-y`, and none of `m-0.25`, `m-0.5`, `m-1`,
   `m-2`, `margin-auto`; a fourth walks all **566** `Size` leaves for the same
-  `rem`. Front 33's 81: 26 one-per-family `Color` grid tests (280 of the 286
-  cells — the six unreachable ones are named in § Maintainer rules) and 26 for
+  `rem`. Front 33's 81: 26 one-per-family `Color` grid tests (all 286
+  cells since `1cd39b2` closed the resolver defect) and 26 for
   the `Bg.Color` mirror (all 286), plus `paletteVar`, the shade-survives pin,
   the named colours on both properties, the pre-33 paths, the legacy `Bg`
   leaves, the longhand/shorthand split, the rule shape of a colour token, and
@@ -579,7 +588,7 @@ to the commonJS row and runs once.
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 34 — modifiers | DONE — the variant table in `tokens.bp` + `emilia.bp` under the front's banner; 83 modifiers; steps 1-7. One `Variant`-returning fn per name and no wrapping logic: front 56's `nestVariant` applies them |
-| 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **Six cells — `.Color.Red.{100,500,700}`, `.Color.Gray.{100,500,700}` — are declared and unreachable** until the compiler's leading-dot resolver stops guessing between `Token` and `__Token__Border`; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
+| 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **All 286 cells are reachable since `1cd39b2`**: `.Color.Red.{100,500,700}` and `.Color.Gray.{100,500,700}` were declared and unreachable while the compiler's leading-dot resolver guessed between `Token` and `__Token__Border`, and botopink-lang `f01c508a` closed it; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
 | 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 

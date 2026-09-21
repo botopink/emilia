@@ -131,9 +131,9 @@
   them pinned is gone. Nothing in the library changed; `botopink test` in
   `examples/emilia-card` is 4/4 on its one declared target, commonJS. The
   example's 600 shades stay 600: front 33 moved them off 500 to dodge the
-  leading-dot section resolver, and **that defect is still live** —
-  `.Color.Red.500` and `.Color.Gray.500` still red with `type mismatch:
-  expected Token, got __Token__Border`. See the BLOCKED note in `emilia.bp`.
+  leading-dot section resolver. **That defect is closed since `1cd39b2`** —
+  `.Color.Red.500` and `.Color.Gray.500` resolve, and the note above
+  `colorTokenToCss` records it rather than blocking on it.
 
 - **`examples/emilia-spacing/`, and the front 35 block is fenced in both files**
   (1.0.10-beta front `35-emilia-spacing-sizing`, step 5). The
