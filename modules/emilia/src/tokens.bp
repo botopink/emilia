@@ -33,6 +33,18 @@
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
 ////
+//// WRAPPERS:
+////   .Alpha(percent, [Token]) → front 33: rewrites each inner declaration's
+////                              VALUE into `color-mix(in oklab, <value> N%,
+////                              transparent)`, which is upstream's `/N`
+////                              opacity suffix (`bg-red-500/50`). Opacity
+////                              cannot be a leaf under the family — the shade
+////                              is already the leaf and a second numeric level
+////                              would multiply 26 x 11 x 21 leaves — and a
+////                              payload leaf nested in a section cannot be
+////                              constructed, so it is a TOP-LEVEL variant with
+////                              a builtin-typed field.
+////
 //// MODIFIERS:
 ////   .Hover([Token])  → ":hover{…}"
 ////   .Focus([Token])  → ":focus{…}"
@@ -290,6 +302,7 @@ pub type Token {
         }
     }
 
+    Alpha(percent: i32, inner: Token[]),
     Hover(inner: Token[]),
     Focus(inner: Token[]),
     Active(inner: Token[]),

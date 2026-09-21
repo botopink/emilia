@@ -143,6 +143,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Flex(_inner) -> declSheet(flexTokenToCss(_inner));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
+        Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
         Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
         Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
         Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
@@ -2819,3 +2820,163 @@ test "end to end — a two-token list renders one rule of two theme references" 
         + cls + "{background-color:var(--color-slate-900);color:var(--color-slate-50)}}</style>";
 }
 
+// ── the `Alpha` wrapper · upstream's `/N` opacity suffix ─────────────────────
+//
+// `bg-red-500/50` is the most used colour form in real markup and v0 had no
+// token that expressed it. Upstream expands the suffix by MIXING the colour
+// with transparent, so `bg-red-500/50` is
+// `background-color: color-mix(in oklab, var(--color-red-500) 50%,
+// transparent)`; `oklab` is the mixing space, and it is the one piece of this
+// front the local reference does not print — `§ 3.6` shows the class form and
+// never its CSS. Checked against upstream before it was written here.
+//
+// WHY IT IS A WRAPPER AND NOT A LEAF. Opacity cannot hang under the family:
+// the shade is already the leaf, and a second numeric level would multiply the
+// grid to 26 x 11 x 21. It cannot be a payload leaf inside the section either
+// — a payload variant nested in a section has no constructible spelling
+// (`Tok.Color.Hex("#abc")` reds `'Hex' is not declared in any behavior
+// implemented for 'Tok'`). A TOP-LEVEL variant with a builtin-typed field is
+// the one shape that builds, which is the shape `Hover(inner: Token[])`
+// already has.
+//
+// IT REWRITES A SHEET, NOT A STRING. The spec's `alphaWrap(percent,
+// tokensToCss(inner))` predates front 56: a token list produces a `Sheet` now,
+// and folding it back to one string would flatten away the selector and the
+// at-rule of any modifier inside it. Mapping the rewrite over each rule's
+// declarations keeps both, which is what makes `Alpha` nest with a modifier in
+// EITHER order — `Hover([Alpha(…)])` and `Alpha([Hover(…)])` both work, and
+// the tests pin both.
+//
+// A NON-COLOUR TOKEN IS REWRITTEN TOO, and the result is meaningless CSS
+// (`font-weight:color-mix(in oklab, bold 50%, transparent)`). That is
+// deliberate: silently dropping the declaration would hide the mistake, and a
+// declaration a browser discards is visible in devtools the moment it is
+// looked for. The type system is where that gets refused, if it ever is.
+
+// Split one `prop:value` declaration at its FIRST colon and rebuild the value
+// as a mix with transparent. A declaration with no colon is returned
+// unchanged — there is nothing to rewrite and inventing one would be worse.
+//
+// `String.slice` is never called here, in this file or anywhere in this
+// library: the commonJS `String` prelude's `charCodeAt` patch is
+// self-recursive, and one `slice` installs the prelude and blows the stack
+// program-wide. `split` + `at` + the ARRAY `slice` do the same job.
+fn alphaDecl(percent: i32, d: string) -> string {
+    val parts = d.split(":");
+    val prop = parts.at(0) ?? "";
+    val value = parts.slice(1, parts.length).join(":");
+    val mixed = "color-mix(in oklab, " + value + " " + percent.toString() + "%, transparent)";
+    val out = if (parts.length < 2) d else prop + ":" + mixed;
+    return out;
+}
+
+// Rewrite every declaration of a `;`-joined declaration string. Public because
+// it takes and answers plain STRINGS — front 57's escape hatch can hand it a
+// declaration it did not get from a token and get the same rewrite.
+pub fn alphaWrap(percent: i32, css: string) -> string {
+    return css.split(";").map({ d -> alphaDecl(percent, d) }).join(";");
+}
+
+fn alphaRule(r: Rule, percent: i32) -> Rule {
+    return Rule(
+        layer: r.layer,
+        atRules: r.atRules,
+        selector: r.selector,
+        declarations: alphaWrap(percent, r.declarations),
+        important: r.important,
+    );
+}
+
+// The declarations change; the layer, the at-rules, the selector and the
+// important flag do not, so a variant wrapped inside an `Alpha` keeps
+// everything that made it a variant. Blocks pass through — a `@keyframes` body
+// is not a declaration list.
+fn alphaSheet(s: Sheet, percent: i32) -> Sheet {
+    return Sheet(rules: s.rules.map({ r -> alphaRule(r, percent) }), blocks: s.blocks);
+}
+
+// ── tests · the `Alpha` wrapper ──────────────────────────────────────────────
+
+test "Alpha — the two rows the reference shows as classes" {
+    val bg: Token[] = [.Bg.Color.Red.500];
+    assert tokenDeclarations(Token.Alpha(percent: 50, inner: bg))
+        == "background-color:color-mix(in oklab, var(--color-red-500) 50%, transparent)";
+    val fg: Token[] = [.Color.Blue.600];
+    assert tokenDeclarations(Token.Alpha(percent: 80, inner: fg))
+        == "color:color-mix(in oklab, var(--color-blue-600) 80%, transparent)";
+}
+
+test "Alpha — four percentages over the same colour" {
+    val inner: Token[] = [.Color.Sky.500];
+    assert tokenDeclarations(Token.Alpha(percent: 5, inner: inner))
+        == "color:color-mix(in oklab, var(--color-sky-500) 5%, transparent)";
+    assert tokenDeclarations(Token.Alpha(percent: 25, inner: inner))
+        == "color:color-mix(in oklab, var(--color-sky-500) 25%, transparent)";
+    assert tokenDeclarations(Token.Alpha(percent: 75, inner: inner))
+        == "color:color-mix(in oklab, var(--color-sky-500) 75%, transparent)";
+    assert tokenDeclarations(Token.Alpha(percent: 100, inner: inner))
+        == "color:color-mix(in oklab, var(--color-sky-500) 100%, transparent)";
+}
+
+test "Alpha — over two colour tokens, both declarations are rewritten" {
+    val inner: Token[] = [.Color.Blue.600, .Bg.Color.Red.500];
+    val s = tokenToSheet(Token.Alpha(percent: 40, inner: inner), defaultTheme());
+    assert s.rules.length == 2;
+    assert declarationsOf(s).join(";")
+        == "color:color-mix(in oklab, var(--color-blue-600) 40%, transparent);"
+         + "background-color:color-mix(in oklab, var(--color-red-500) 40%, transparent)";
+}
+
+test "Alpha — a non-colour token is rewritten too, and the result is meaningless CSS" {
+    val inner: Token[] = [.Text.Bold];
+    assert tokenDeclarations(Token.Alpha(percent: 50, inner: inner))
+        == "font-weight:color-mix(in oklab, bold 50%, transparent)";
+}
+
+test "Alpha — a keyword colour survives structurally, mixed with transparent" {
+    val inner: Token[] = [.Color.Current];
+    assert tokenDeclarations(Token.Alpha(percent: 60, inner: inner))
+        == "color:color-mix(in oklab, currentColor 60%, transparent)";
+}
+
+test "Alpha nests inside Hover, and the variant keeps its selector and at-rule" {
+    val deepest: Token[] = [.Color.Red.600];
+    val alpha: Token[] = [Token.Alpha(percent: 50, inner: deepest)];
+    val r = firstRuleOf(tokenToSheet(Token.Hover(alpha), defaultTheme()));
+    assert r.selector == "&:hover";
+    assert r.atRules.join("|") == "@media (hover: hover)";
+    assert r.declarations == "color:color-mix(in oklab, var(--color-red-600) 50%, transparent)";
+}
+
+test "Hover nests inside Alpha, and the rewrite reaches the varied rule" {
+    val deepest: Token[] = [.Color.Red.600];
+    val hover: Token[] = [Token.Hover(deepest)];
+    val r = firstRuleOf(tokenToSheet(Token.Alpha(percent: 50, inner: hover), defaultTheme()));
+    assert r.selector == "&:hover";
+    assert r.atRules.join("|") == "@media (hover: hover)";
+    assert r.declarations == "color:color-mix(in oklab, var(--color-red-600) 50%, transparent)";
+}
+
+test "alphaWrap — plain strings in, plain strings out, and a colonless one is untouched" {
+    assert alphaWrap(50, "color:red") == "color:color-mix(in oklab, red 50%, transparent)";
+    assert alphaWrap(50, "") == "";
+    assert alphaWrap(50, "nonsense") == "nonsense";
+    assert alphaWrap(50, "background-image:url(a:b)")
+        == "background-image:color-mix(in oklab, url(a:b) 50%, transparent)";
+}
+
+test "Alpha — the rewritten declaration carries no codec separator" {
+    val inner: Token[] = [.Bg.Color.Red.500];
+    val s = tokenToSheet(Token.Alpha(percent: 50, inner: inner), defaultTheme());
+    assert declarationsOf(s).any({ d -> carriesSeparator(d) }) == false;
+    assert encodeSheet(decodeSheet(encodeSheet(s))) == encodeSheet(s);
+}
+
+test "Alpha — end to end, the `bg-red-500/50` row as a document" {
+    val inner: Token[] = [.Bg.Color.Red.500];
+    val tokens: Token[] = [Token.Alpha(percent: 50, inner: inner)];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-color:color-mix(in oklab, var(--color-red-500) 50%, transparent)}}</style>";
+}

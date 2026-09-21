@@ -20,6 +20,24 @@
   (`var(--color-white)` / `var(--color-black)`), which rewrites five front-56
   assertions and the two examples that pinned the hex.
 
+- **`Alpha(percent, inner)` — upstream's `/N` opacity suffix** (front
+  `33-emilia-color-palette`, step 4). `bg-red-500/50` is the most used colour
+  form in real markup and v0 had no token for it. `Token.Alpha(percent: 50,
+  inner: [.Bg.Color.Red.500])` emits `background-color:color-mix(in oklab,
+  var(--color-red-500) 50%, transparent)`. A **top-level** variant with a
+  builtin-typed field, because opacity cannot be a leaf under the family (the
+  shade already is one) and a payload leaf nested in a section has no
+  constructible spelling. **It rewrites a `Sheet`, not a string** — the spec's
+  `alphaWrap(percent, tokensToCss(inner))` predates front 56, and folding the
+  inner tokens back to one string would flatten away the selector and at-rule
+  of any modifier inside, so `Hover([Alpha(…)])` and `Alpha([Hover(…)])` both
+  work and both are pinned. A non-colour token is rewritten too and the result
+  is meaningless CSS, deliberately: a silently dropped declaration hides the
+  mistake, one a browser discards does not. `alphaWrap(percent, css)` is `pub`
+  and takes plain strings, for front 57. No `String.slice` anywhere — `split` +
+  `at` + the ARRAY `slice` do the same job without installing the prelude whose
+  `charCodeAt` patch is self-recursive.
+
 - **`paletteEntries()` — the 286 numeric values, as data** (front
   `33-emilia-color-palette`, step 3). The other half of the mechanism: the
   utility emits `var(--color-red-500)` and this declares it. A plain

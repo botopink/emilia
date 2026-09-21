@@ -37,6 +37,9 @@ Three named imports from `from "emilia"`:
    escape, and added **`Bg.Color`** — the same grid on `background-color`,
    plus the five named colours. `Bg`'s legacy Red/Blue/Gray/White/Black/Hex
    leaves keep the `background` shorthand and their pre-33 output beside it.
+   The top-level **`Alpha(percent: i32, inner: Token[])`** wrapper is front
+   33's too — upstream's `/N` opacity suffix, rewriting each inner
+   declaration's value into `color-mix(in oklab, <value> N%, transparent)`.
 
 Front 54 adds the **theme** and the **spacing ladder** (`theme.bp`,
 `spacing.bp`): `ThemeEntry`, `Theme`, `DarkMode`, `Ns`, `nsPrefix`,
@@ -380,10 +383,10 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **189/189** on
+  refuses) runs every module's in-file `test {}` blocks, **199/199** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 101 (`emilia.bp`). `emilia.bp`'s 101 are front 56's 33 (below)
-  plus front 33's 68: 26 one-per-family `Color` grid tests (280 of the 286
+  (`output.bp`) + 111 (`emilia.bp`). `emilia.bp`'s 111 are front 56's 33 (below)
+  plus front 33's 78: 26 one-per-family `Color` grid tests (280 of the 286
   cells — the six unreachable ones are named in § Maintainer rules) and 26 for
   the `Bg.Color` mirror (all 286), plus `paletteVar`, the shade-survives pin,
   the named colours on both properties, the pre-33 paths, the legacy `Bg`
@@ -391,7 +394,11 @@ to the commonJS row and runs once.
   seven over `paletteEntries()` — its 286 entries, the two anchor values in
   upstream's spelling, white/black not duplicated, composition through
   `extendTheme`, the absence of an `@theme` block in emilia's own output and
-  the end-to-end two-token document. Front 56's 33:
+  the end-to-end two-token document, and ten over the `Alpha` wrapper — the
+  two rows the reference shows, four percentages, two tokens under one
+  wrapper, a non-colour token, a keyword colour, both nesting orders with a
+  modifier, `alphaWrap` on plain strings, the codec, and the end-to-end
+  `bg-red-500/50` document. Front 56's 33:
   - 8 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
     Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md,
     plus the shape of a section rule) — `Color.Black` reads
