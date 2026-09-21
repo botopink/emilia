@@ -1,15 +1,18 @@
 {
-    "name": "emilia-card",
-    "version": "0.0.1",
-    "target": "commonJS",
-    "dependencies": {
-        "jhonstart": {
-            "git": "https://github.com/botopink/jhonstart.git",
-            "branch": "feat"
-        },
-        "emilia": {
-            "git": "https://github.com/botopink/emilia.git",
-            "branch": "feat"
-        }
+  "name": "emilia-card",
+  "version": "0.0.1",
+  "description": "emilia showcase — one jhonstart card composed with three emilia class names and a Hover/Md modifier, rendered with renderToString + flush()",
+  "src": "src/",
+  "entry": "main.bp",
+  "target": "commonJS",
+  "targets": ["commonJS"],
+  "dependencies": {
+    "jhonstart": {
+      "git": "https://github.com/botopink/jhonstart.git",
+      "branch": "feat"
+    },
+    "emilia": {
+      "workspace": true
     }
+  }
 }

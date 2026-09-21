@@ -1,13 +1,7 @@
 {
   "name": "emilia",
   "version": "0.0.1",
-  "description": "Type-safe CSS-in-bp library for jhonstart — a `Token` enum surface (variants per CSS family + Hex(string) escape) walked at comptime, resolved to flat CSS declarations, registered on a per-render Stylesheet host cell, and flushed alongside renderToString",
-  "target": "commonJS",
+  "description": "The emilia libraries — type-safe CSS-in-bp for jhonstart; a workspace of modules/* and examples/*",
   "targets": ["commonJS", "erlang"],
-  "src": "src/",
-  "files": [
-    "root.bp",
-    "tokens.bp",
-    "emilia.bp"
-  ]
+  "workspaces": ["modules/*", "examples/*"]
 }

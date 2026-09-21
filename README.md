@@ -12,6 +12,28 @@ sub-language. Where `html` parses *string markup* and `erika` parses
 variants**. Unknown utilities are type errors at the call site, not
 runtime fall-throughs.
 
+## Layout
+
+`botopink.json` at the root is a **workspace** (`"workspaces": ["modules/*",
+"examples/*"]`, decision 75 of 1.0.10-beta): it compiles nothing and ships
+nothing, and `botopink build`/`botopink test` there is a refusal naming the
+members. The core is the member [`modules/emilia/`](modules/emilia/) — `from
+"emilia"` resolves to it, and its `files` (`root.bp`, `tokens.bp`,
+`emilia.bp`) is exactly what a consumer sees — beside the runnable example
+[`examples/emilia-card/`](examples/emilia-card/) (member `emilia-card`).
+`botopink test` runs inside a member, never at the root.
+
+## Install
+
+A sibling member of this workspace depends on the core with
+`{ "workspace": true }`; a project elsewhere in the ecosystem by `path`; a
+consumer outside it with the git form. `dependencies` is the object form only
+(decision 76):
+
+```json
+"dependencies": { "emilia": { "git": "https://github.com/botopink/emilia.git", "branch": "feat" } }
+```
+
 ## Today's surface (v0)
 
 ```bp

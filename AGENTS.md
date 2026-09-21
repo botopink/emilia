@@ -95,34 +95,75 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   both, so class names agree for ASCII bodies. `botopink test --target erlang`
   runs the suite (17/17). beam/wasm are not ported.
 
-## Files
+## Tree
 
-- `src/root.bp` — `pub mod tokens; pub default mod emilia;` (the
-  v0 build folded the `stylesheet` module into `emilia.bp` — see the
-  "Deferred" section of the README for the restoration follow-up).
-- `src/tokens.bp` — the `Token` enum-shaped `type` (`pub type Token { … }`,
-  1.0.3 surface): all v0 variants + the modifier variants. Section headers live in the docblock; v0 NEVER puts a
-  line comment inside the enum body (parser gotcha).
-- `src/emilia.bp` — the public `emilia(tokens) -> string` +
-  `flush() -> string` + the `tokenToCss`/`tokensToCss` dispatchers +
-  the `#\[@External\.node(…)]` host-cell expressions (`register`,
-  `flushSheet`). It imports `Token` as `import { Token } from "tokens";` —
-  naming the sibling module is **required**, see "Gotchas".
-- `botopink.json` — `files: ["root.bp", "tokens.bp", "emilia.bp"]`
-  (`.d.bp` are NOT in the module tree — memory:
-  `project_libs_module_migration_done`).
-- `examples/emilia-card/` — runnable smoke (4 in-file `test {}`)
-  composing three emilia class names + a Hover/Md modifier on a small
-  jhonstart page; depends on `jhonstart` + `emilia`.
-- `scripts/git-hooks/pre-commit` + `scripts/git-hooks/lib/runner-standalone.sh`
-  — the pre-commit gate, byte-identical to the sibling libraries' (see
-  "Local gate").
-- `.github/workflows/test.yml` — CI: `zig build test-libs -- --lib emilia
-  --target <t>` for `{commonJS, erlang}` on ubuntu and macos, plus `commonJS`
-  on windows (`escript` ships cleanly only on linux + macos), against
-  botopink-lang `vars.BOTOPINK_LANG_REF` (default `feat`). Both rows are hard
-  cells — no `allow_fail`. The examples stage reads each example's own manifest
-  target, so it is pinned to the commonJS row and runs once.
+The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
+`botopink.json` declares members and is never a package — no `src`, `files`,
+`entry` or `dependencies`; `botopink build`/`botopink test` there is the
+located refusal `botopink.json is a workspace, not a package — run this
+command inside one of its members: emilia, emilia-card`. Every `modules/*/`
+and `examples/*/` holding a `botopink.json` is a member, named by its own
+manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
+resolves to it, never to the umbrella.
+
+```text
+emilia/
+├── AGENTS.md          ← you are here
+├── docs.md            ← the user-facing token reference
+├── botopink.json      ← WORKSPACE: name emilia · version · targets
+│                        [commonJS, erlang] (the default every member
+│                        inherits and may only restrict) · workspaces
+│                        ["modules/*", "examples/*"]. Nothing importable.
+├── modules/
+│   └── emilia/        ← THE CORE — what `from "emilia"` gives a consumer
+│       ├── botopink.json  name emilia · src src/ · entry root.bp ·
+│       │                    target commonJS · targets [commonJS, erlang] ·
+│       │                    files: root.bp · tokens.bp · emilia.bp ·
+│       │                    no dependencies
+│       └── src/
+│           ├── root.bp    ← `pub mod tokens; pub default mod emilia;` (the
+│           │                v0 build folded the `stylesheet` module into
+│           │                `emilia.bp` — see the README's "Deferred")
+│           ├── tokens.bp  ← the `Token` enum-shaped `type`
+│           │                (`pub type Token { … }`, 1.0.3 surface): every
+│           │                section + the modifier variants. Section
+│           │                headers live in the docblock; NEVER a line
+│           │                comment inside the enum body (parser gotcha)
+│           └── emilia.bp  ← `emilia(tokens) -> string` + `flush()` + the
+│                            `tokenToCss`/`tokensToCss` dispatchers + the
+│                            `#\[@External\.<target>(…)]` host cells
+│                            (`register`, `flushSheet`) + the 17 inline
+│                            tests. It imports `Token` as
+│                            `import { Token } from "tokens";` — naming the
+│                            sibling module is **required**, see "Gotchas"
+├── examples/
+│   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
+│                        target commonJS, `emilia` via { "workspace": true },
+│                        `jhonstart` still by { git, branch } until jhonstart
+│                        is a workspace too): 4 in-file `test {}` composing
+│                        three class names + a Hover/Md modifier
+└── scripts/
+    ├── git-hooks/     ← the pre-commit gate (§ Local gate): `botopink test`
+    │                    per `modules/*/` member, then `botopink build` per
+    │                    example
+    └── known-broken-examples.txt ← the examples allowed to fail
+```
+
+There is **no `modules/emilia-test/` yet**: front `02-packaging` step 4 creates
+it once `01-std` steps 2–3 give it `std/asserts` and `std/snapshots` to stand on.
+
+`.d.bp` files are NOT in the module tree (memory:
+`project_libs_module_migration_done`); emilia has none today.
+
+`.github/workflows/test.yml` — CI: `zig build test-libs -- --lib emilia
+--target <t>` for `{commonJS, erlang}` on ubuntu and macos, plus `commonJS`
+on windows (`escript` ships cleanly only on linux + macos), against
+botopink-lang `vars.BOTOPINK_LANG_REF` (default `feat`). Both rows are hard
+cells — no `allow_fail`. Under the workspace, `--lib emilia` restricts the
+runner to the **core member** (the umbrella has no row); without `--lib` the
+runner discovers every member — one row each, the example as an application.
+The examples stage reads each example's own manifest target, so it is pinned
+to the commonJS row and runs once.
 
 ## Maintainer rules
 
@@ -141,7 +182,12 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   used to reorder the authored `Token` body — payload variants printed before
   the sections — which is why this line once excluded the file. botopink-lang
   `37d3dc7` records member positions and no longer reorders, and decision 34
-  withdrew the exemption; `botopink format --check` is green here.
+  withdrew the exemption. It is **red today** and was red before the workspace
+  migration: `botopink format --check` in `modules/emilia/` prints `Formatted
+  src/emilia.bp` (`root.bp` and `tokens.bp` unchanged) and
+  `examples/emilia-card/` prints `Formatted src/main.bp` — the formatter moved
+  under the compiler since the last `style(src)` sweep. Reformatting is a
+  source change and belongs to a `style(src)` commit, not to a packaging one.
 - **A section of `Token` is a type written by its path** — `Token.Text`,
   `Token.Text.Size`, `Token.Border.Color` (botopink-lang decision 8 §5.3b).
   The flat spelling (`TokenText`) names nothing and reds with a hint; a
@@ -149,8 +195,11 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   `case` stays exhaustive without a `_` and a new member reds it.
 - **Array type spelling is postfix** — `Token[]`, NOT `[Token]`. The
   prefix bracket parses only as an array literal (`[Token.PadX4]`).
-- **`from "emilia"` only**, never a relative module path. emilia is a
-  workspace-external lib and the consumer is jhonstart-based code.
+- **`from "emilia"` only**, never a relative module path and never the
+  directory. The name resolves to the member `modules/emilia/`, which is what
+  `emilia-card` reaches through `{ "emilia": { "workspace": true } }` and what
+  an outside consumer reaches through the git form — a member is reached by
+  its manifest `name`, never by its path (decision 75).
 - **Cross-module `#[@External.<targert>(...)]` symbol imports don't lower at v0** —
   `import { register };` from a sibling module resolves the type but
   the runtime symbol is `undefined`. Until the codegen path closes
@@ -167,8 +216,9 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 
 ## Test surface
 
-- `botopink test` inside `repository/emilia/` runs `src/emilia.bp`'s
-  17 in-file `test {}` blocks:
+- `botopink test` inside `modules/emilia/` (never at the root — the umbrella
+  refuses) runs `src/emilia.bp`'s 17 in-file `test {}` blocks, 17/17 on
+  commonJS and on erlang:
   - 7 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
     Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md);
   - 4 modifier composition tests (Hover / Md / multi-token / nested);
@@ -178,12 +228,16 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
     `@Future<string>`; tests `await flush()` via the implicit
     `test {…}` future context shipped in bot-lang's `test-runner-async`
     commit.
-- `examples/emilia-card/` carries 4 in-file tests on V1 enum-section
-  paths (`.Pad.All.__4`, `.Color.Red.__500`, …), but at botopink-lang
-  `feat` (2026-09-17) the example does not compile: `'h1' expects 2
-  argument(s), got 1` — jhonstart's element builders take a second
-  argument the example does not pass. Neither the gate nor CI runs it
-  (`test-libs` compiles the library root only).
+- `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
+  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …). Its
+  own four pass, then the build stops inside **jhonstart**, not inside emilia:
+  at jhonstart `feat` `13d1672` against botopink-lang `feat`,
+  `jhonstart/hooks.bp:109 use-without-context-effect` (plus
+  `router.bp:25` / `server.bp:26 unknown type`). jhonstart's own
+  `fix/context` front owns that red; here the example is listed in
+  `scripts/known-broken-examples.txt` so the gate reports it as
+  `known broken` instead of refusing the commit. Delete the line in the same
+  commit as the jhonstart fix.
 
 ## Spec / phase status
 
@@ -215,10 +269,14 @@ git config core.hooksPath scripts/git-hooks
 ```
 
 `core.hooksPath` is per clone and applies to every worktree of it. The
-gate checks staged files for conflict markers, then runs `botopink test`
-over `src/` (the 17 tests above), so a source file that does not parse —
-e.g. one carrying markdown escapes like `#\[@External\.node(` — fails
-the commit. The compiler binary is located via (in order)
+gate checks staged files for conflict markers, then — because the root
+`botopink.json` is a workspace — runs `botopink test` **inside every
+`modules/*/` that holds a `botopink.json`**, each on its own manifest
+target (`erl` and `node` on `PATH`); a red member fails the gate and names
+the re-run command. (A root manifest without `"workspaces"` keeps the old
+single `botopink test` over `src/` + `test/`.) So a source file that does not
+parse — e.g. one carrying markdown escapes like `#\[@External\.node(` —
+still fails the commit. The compiler binary is located via (in order)
 `$BOTOPINK_BIN`, the nearest ancestor
 `repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If none
 resolve, the gate prints a yellow warning and exits 0 — CI runs the full
@@ -233,9 +291,11 @@ into a throwaway `--out`); CI runs the same function once per workflow.
 that builds, or a listed path that no longer exists, fails the gate too.
 When a fix makes an example build, delete its line in the same commit. The list may be absent,
 empty or hold only `#` comments — each means no example is allowed to fail.
-No example is listed today, so the file is absent. `examples/emilia-card` builds
-**and runs** (`botopink run` prints the tree, the three `e_<hash>` class names
-and the `<style>` block); it depends on jhonstart, so CI checks jhonstart out
+`examples/emilia-card` is listed today — not for anything of its own, but because
+jhonstart `feat` does not compile against botopink-lang `feat` (see § Test
+surface). It used to build **and run** (`botopink run` prints the tree, the three
+`e_<hash>` class names and the `<style>` block) and will again once jhonstart's
+`fix/context` front lands; it depends on jhonstart, so CI checks jhonstart out
 beside emilia before the examples gate. Its builder calls pass `attrs`
 explicitly (`h1([…], [])`) — parameter defaults are not applied by the compiler
 yet (botopink-lang 1.0.4-beta 06 N1) — and its `main` is

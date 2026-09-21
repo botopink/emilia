@@ -2,6 +2,25 @@
 
 ## Unreleased — v0.beta.22
 
+- **The repository is a workspace** (`02-packaging` step 2; decisions 75 and 76 of
+  1.0.10-beta). `botopink.json` at the root is `{ name, version, description, targets
+  [commonJS, erlang], workspaces ["modules/*", "examples/*"] }` — no `src`, `files`,
+  `target` or `dependencies`; `botopink build/test` there is the located refusal naming
+  the members (`emilia, emilia-card`). The core moved with `git mv` to
+  `modules/emilia/` (the three `src/*.bp`; emilia has no `test/` — every test is inline)
+  and its manifest carries `name emilia`, `entry root.bp`, `target commonJS`,
+  `targets [commonJS, erlang]` and `files: [root.bp, tokens.bp, emilia.bp]` — a library
+  member without `files` is `✗ ships nothing`. `examples/emilia-card` is the member
+  `emilia-card`, depending on `emilia` via `{ "workspace": true }` instead of the git
+  form; `jhonstart` keeps `{ git, branch }` until jhonstart is a workspace too and a
+  `path` to `…/modules/jhonstart` exists. The pre-commit runner is workspace-aware:
+  `botopink test` in every `modules/*/` member, then the examples gate. Measured: the
+  core 17/17 on commonJS and on erlang at its new path; `botopink-lib-test` prints one
+  row per member and no umbrella row. `examples/emilia-card` joins
+  `scripts/known-broken-examples.txt` — jhonstart `feat` (`13d1672`) does not compile
+  against botopink-lang `feat` (`hooks.bp:109 use-without-context-effect`), which is
+  jhonstart's `fix/context` front, not emilia's; the example's own 4 tests still pass.
+
 - **Section types by path** (botopink-lang front 06 N28/C8): the 27
   sub-dispatcher annotations name their section by path — `TokenText` is
   `Token.Text`, `TokenTextSize` is `Token.Text.Size`, … The flat names were

@@ -7,12 +7,26 @@ and collects every class on a per-render `<style>` registry.
 
 ## Install
 
+`repository/emilia/botopink.json` is a **workspace** (decision 75 of
+1.0.10-beta): `from "emilia"` resolves to the member `modules/emilia/` —
+whose `files` (`root.bp`, `tokens.bp`, `emilia.bp`) is exactly what a
+consumer sees — and never to the umbrella, which ships nothing.
+`dependencies` is the object form only (decision 76); the string array is a
+located error in every tool:
+
 ```jsonc
 // botopink.json
 {
-  "dependencies": ["jhonstart", "emilia"]
+  "dependencies": {
+    "jhonstart": { "git": "https://github.com/botopink/jhonstart.git", "branch": "feat" },
+    "emilia": { "git": "https://github.com/botopink/emilia.git", "branch": "feat" }
+  }
 }
 ```
+
+A sibling member of emilia's own workspace writes `{ "emilia": { "workspace":
+true } }` instead — that is what [`examples/emilia-card/`](examples/emilia-card/)
+does — and a project elsewhere in the ecosystem `{ "path": "…/modules/emilia" }`.
 
 Bare `import { emilia, flush, Token } from "emilia"` resolves at v0;
 the `import emilia from "emilia"` package-handle form is a recorded
@@ -49,7 +63,7 @@ val html   = "<html><head>" + styles + "</head><body>" + markup + "</body></html
 Every utility is a typed enum variant. Unknown variants are type errors
 at the call site, not runtime fall-throughs. The full v0 surface (with
 the values each variant emits) lives in
-[`src/tokens.bp`](src/tokens.bp); the highlights:
+[`modules/emilia/src/tokens.bp`](modules/emilia/src/tokens.bp); the highlights:
 
 ### Text
 

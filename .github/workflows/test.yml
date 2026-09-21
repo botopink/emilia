@@ -1,10 +1,16 @@
 # Per-platform CI for emilia.
 #
 # emilia is a CSS-in-bp library for jhonstart; its host cells carry an erlang
-# form, so it ships on `commonJS` and on `erlang` (botopink.json `targets`).
+# form, so it ships on `commonJS` and on `erlang` (the workspace `targets`).
 # Bootstrap: check out this lib + botopink-lang, place this lib under
 # `botopink-lang/repository/emilia/`, run `zig build test-libs -- --lib
 # emilia --target <matrix.target>`.
+#
+# The repository root is a WORKSPACE (decision 75 of 1.0.10-beta): it compiles
+# nothing and has no runner row. `--lib emilia` resolves to the core member
+# `modules/emilia/`, whose `targets` this matrix mirrors; the example
+# `examples/emilia-card/` is the member `emilia-card` and is covered by the
+# examples stage below, not by a matrix row.
 name: test
 
 on:
@@ -122,10 +128,11 @@ jobs:
 
       # Every examples/*/ with a botopink.json builds (runExamplesGate, the same
       # stage as the pre-commit hook); scripts/known-broken-examples.txt lists
-      # the ones allowed to fail. Each example uses its own manifest target, so
-      # this runs once, not per target.
-      # examples/emilia-card depends on jhonstart; the compiler resolves it from
-      # botopink-lang/repository/jhonstart, so check it out there.
+      # the ones allowed to fail — examples/emilia-card is listed today, for a
+      # red that is jhonstart's (see AGENTS.md § Test surface). Each example uses
+      # its own manifest target, so this runs once, not per target.
+      # examples/emilia-card depends on jhonstart by { git, branch }; the compiler
+      # resolves it from botopink-lang/repository/jhonstart, so check it out there.
       - name: Checkout jhonstart (examples dependency)
         uses: actions/checkout@v5
         with:
