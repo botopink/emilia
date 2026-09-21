@@ -11,7 +11,8 @@
 //// leaves are valid inside a section (the language extension's two
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
-//// payload — siblings of section heads at the top level.
+//// payload — siblings of section heads at the top level. Front 34 widened
+//// them from six to 6; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -75,13 +76,23 @@
 ////                              constructed, so it is a TOP-LEVEL variant with
 ////                              a builtin-typed field.
 ////
-//// MODIFIERS:
-////   .Hover([Token])  → ":hover{…}"
-////   .Focus([Token])  → ":focus{…}"
-////   .Active([Token]) → ":active{…}"
-////   .Md([Token])     → "@media(min-width:768px){…}"
-////   .Lg([Token])     → "@media(min-width:1024px){…}"
-////   .Xl([Token])     → "@media(min-width:1280px){…}"
+//// MODIFIERS — front 34's table. A modifier is the only way a token reaches
+//// a state, a breakpoint or a pseudo-element. Each is a top-level variant
+//// carrying `inner: Token[]` and answers one `Variant` (an at-rule and a
+//// selector template with exactly one `&`); `nestVariant` in `output.bp`
+//// applies it, and nothing here builds a brace. `Nth`/`NthLast` carry an
+//// `i32` beside the list; `Important` is the one that is a FLAG, not a
+//// variant. `.group`/`.peer` are classes the CONSUMER's markup carries.
+////
+////   breakpoints — min-width, read from the theme's `--breakpoint-*` ladder
+////     .Md([Token])               md:              → @media (width >= <--breakpoint-md>){…}
+////     .Lg([Token])               lg:              → @media (width >= <--breakpoint-lg>){…}
+////     .Xl([Token])               xl:              → @media (width >= <--breakpoint-xl>){…}
+////
+////   interaction state
+////     .Hover([Token])            hover:           → @media (hover: hover){&:hover{…}}
+////     .Focus([Token])            focus:           → &:focus{…}
+////     .Active([Token])           active:          → &:active{…}
 
 pub type Token {
     Text {
@@ -609,10 +620,23 @@ pub type Token {
     }
 
     Alpha(percent: i32, inner: Token[]),
-    Hover(inner: Token[]),
-    Focus(inner: Token[]),
-    Active(inner: Token[]),
+
+    // ── front 34 — modifiers ─────────────────────────────────────────────────
+    //
+    // Every variant below wraps OTHER fronts' declarations; this front adds
+    // none of its own. Each answers one `Variant` — an at-rule and a selector
+    // template with exactly one `&` — and `nestVariant` in `output.bp` applies
+    // it. The map from a name to its emitted CSS is the table in the module
+    // docblock above; the functions are in `emilia.bp` under the same banner.
+    //
+    // breakpoints — min-width, read from the theme's `--breakpoint-*` ladder
     Md(inner: Token[]),
     Lg(inner: Token[]),
     Xl(inner: Token[]),
+    //
+    // interaction state
+    Hover(inner: Token[]),
+    Focus(inner: Token[]),
+    Active(inner: Token[]),
+    // ── end front 34 ─────────────────────────────────────────────────────────
 }

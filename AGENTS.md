@@ -29,8 +29,8 @@ Three named imports from `from "emilia"`:
    `flushWith(defaultOptions())`.
 3. **`Token` enum** — the typed authored surface (see `tokens.bp`).
    Sections: Text, Font, Color, Bg, Pad, Margin, Layout, Flex, Border,
-   Effect + modifier variants (`Hover`/`Focus`/`Active`/`Md`/`Lg`/`Xl`)
-   carrying a nested `Token[]`. Front 33 widened **`Color`** to the
+   Effect + the 6 modifier variants of front 34, each carrying a nested
+   `Token[]` (see below and `docs.md` § Modifiers). Front 33 widened **`Color`** to the
    26-family x 11-shade grid (17 chromatic Red..Rose + 9 neutral
    Slate..Taupe, each `50 100 … 900 950`) plus
    `White`/`Black`/`Transparent`/`Current`/`Inherit` and the `Hex(string)`
@@ -88,6 +88,22 @@ dispatcher and the public entry points, **not** the per-section ones, so a
 front that needs the theme adds the parameter to its own function and to its
 own one line of the shared `case` — still one line each, and no front-56 commit
 touching a file two other fronts are editing.
+
+Front 34 owns the **modifier table** — the variants under the
+`// ── front 34 — modifiers ──` banner in `tokens.bp`, the block of the same name
+in `emilia.bp` (one `Variant`-returning fn per name, plus its arms of the shared
+`case`), and nothing about emission. There are **6** of them, 6 variants and
+the one flag: five breakpoints and their five `max-` mirrors (all ten read the
+theme's `--breakpoint-*`, so an override moves the query AND the class hash),
+`Dark` and eight other media features, nine interaction states, sixteen form
+states, nine structural positions plus the indexed `Nth`/`NthLast`, nine
+pseudo-elements, six `Group*` and eight `Peer*`, `Rtl`/`Ltr`/`Children`/
+`Descendants`, and `Important` (decision 81), which is `markImportant` rather
+than a `Variant`. `Dark` consumes front 54's `darkAtRule`/`darkSelector` and
+never learns which `DarkMode` strategy is in force: `Media` puts the whole
+strategy in the at-rule, `Class` and `Attribute` in the selector, and a cell
+proves each. A RANGE is nesting, not a name — `md:max-xl:` is
+`Token.Md([Token.MaxXl([…])])`.
 
 Front 35 owns the **spacing and sizing sections** — `Pad`, `Margin`, `Size` and
 `Space` in `tokens.bp`, and `padTokenToCss`, `marginTokenToCss`,
@@ -437,7 +453,11 @@ to the commonJS row and runs once.
   refuses) runs every module's in-file `test {}` blocks, **233/233** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
   (`output.bp`) + 145 (`emilia.bp`). `emilia.bp`'s 145 are front 56's 33
-  (below) plus front 33's 81 plus front 35's 31. Front 35's 31 cover the scale
+  (below) plus front 33's 81 plus front 35's 31 plus front 34's 0 — two per
+  variant family (the `Variant` halves and the CSS the row renders), the three
+  dark-mode strategies a cell each, the ranges, a three-deep chain, the indexed
+  rows, `Important`, the empty inner list, six walks over the whole table, and
+  three end-to-end documents. Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
   the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
   named container and breakpoint widths read back through `themeValue`), the
@@ -532,6 +552,7 @@ to the commonJS row and runs once.
 | F4 — `flush()` per-render | DONE — async (`@Future<string>`); test bodies await via implicit future context (bot-lang `<test-runner-async>` commit) |
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
+| 1.0.10-beta front 34 — modifiers | steps 1-1 — the variant table in `tokens.bp` + `emilia.bp` under the front's banner; 6 modifiers; steps 1-1. One `Variant`-returning fn per name and no wrapping logic: front 56's `nestVariant` applies them |
 | 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **Six cells — `.Color.Red.{100,500,700}`, `.Color.Gray.{100,500,700}` — are declared and unreachable** until the compiler's leading-dot resolver stops guessing between `Token` and `__Token__Border`; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
 | 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |

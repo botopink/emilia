@@ -362,30 +362,56 @@ proposal rather than a transcription, and the `--tw-space-*-reverse` names are
 upstream-internal and unverified. Both are pinned by a test, so changing them
 is a visible change.
 
-### Modifiers — state + breakpoint variants
+### Modifiers — the variant table
 
-Each modifier carries a `Token[]` payload. A modifier is **not** a block
-nested inside the class body — it is a `Variant`, and the tokens it carries
-become **sibling rules** with their own selector and their own at-rule, hoisted
-out of the class. The table below is the pre-front-56 shape and is kept only
-because the token spellings are still current; the emitted CSS is in
-§ The cascade and the output.
-
-```bp
-Token.Hover([Token.BgRed700])           // :hover{background:#ef4444}        (BgRed700 maps if added)
-Token.Focus([Token.ColorBlue500])       // :focus{color:#3b82f6}
-Token.Active([Token.TextUnderline])     // :active{text-decoration:underline}
-Token.Md([Token.TextSizeLg])            // @media(min-width:768px){font-size:1.125rem}
-Token.Lg([.Pad.X.8])                    // padding-left:calc(var(--spacing) * 8);padding-right:…
-Token.Xl([.Pad.X.16])                   // padding-left:calc(var(--spacing) * 16);padding-right:…
-```
-
-Modifiers nest:
+A modifier is the only way a token reaches a state, a breakpoint or a
+pseudo-element. Each one carries a `Token[]` payload and is **not** a block
+nested inside the class body — it is a `Variant` (an at-rule and a selector
+template with exactly one `&`), and the tokens it carries become **sibling
+rules** hoisted out of the class with their own selector and at-rule.
 
 ```bp
-Token.Md([Token.Hover([Token.BgBlack])])
-// @media(min-width:768px){:hover{background:#000000}}
+emilia([.Bg.Color.White, Token.Dark([.Bg.Color.Slate.900])])
+// .e_x{background-color:var(--color-white)}
+// @media (prefers-color-scheme: dark){.e_x{background-color:var(--color-slate-900)}}
 ```
+
+Modifiers nest, and the OUTER one is outermost in the selector and in the
+at-rule list alike — which is how a `dark:md:hover:` chain reads upstream:
+
+```bp
+Token.Dark([Token.Md([Token.Hover([.Text.Bold])])])
+// @media (prefers-color-scheme: dark){@media (width >= 48rem){
+//   @media (hover: hover){.e_x:hover{font-weight:bold}}}}
+```
+
+A breakpoint RANGE is nesting too, not a variant of its own — upstream's
+`md:max-xl:` is `Token.Md([Token.MaxXl([…])])`. Every breakpoint reads the
+theme's `--breakpoint-*` entry, both ways round, so overriding the ladder
+moves the queries and the class hashes with it.
+
+**Breakpoints — min-width, read from the theme's `--breakpoint-*` ladder**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `md:` | `Token.Md(inner)` | `@media (width >= 48rem){…}` |
+| `lg:` | `Token.Lg(inner)` | `@media (width >= 64rem){…}` |
+| `xl:` | `Token.Xl(inner)` | `@media (width >= 80rem){…}` |
+
+**Interaction state**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `hover:` | `Token.Hover(inner)` | `@media (hover: hover){&:hover{…}}` |
+| `focus:` | `Token.Focus(inner)` | `&:focus{…}` |
+| `active:` | `Token.Active(inner)` | `&:active{…}` |
+
+`.group` and `.peer` are classes the **consumer's markup** carries: emilia
+emits the selector that reads them and never the class itself.
+
+`Important` is the one row that is not a variant — it adds no selector and
+no at-rule, it sets the `!important` flag on every rule it wraps, which is
+upstream's per-utility `!` suffix.
 
 ## The runtime — `emilia(tokens)` and `flush()`
 

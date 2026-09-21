@@ -2,6 +2,19 @@
 
 ## Unreleased — v0.beta.22
 
+- **The six modifiers move under front 34's banner, unchanged**
+  (1.0.10-beta front `34-emilia-modifiers`, step 1). Front 56 had already
+  corrected what they emit — `hover` is `@media (hover: hover){&:hover}` and a
+  breakpoint is `@media (width >= 48rem)` read from `--breakpoint-md`, not
+  `:hover` and `@media(min-width:768px)` — and had said so in a comment naming
+  front 34 as the owner. **Step 1 of the front's README is therefore already
+  landed**: the six `Variant`-returning fns and the four helper shapes move
+  into the `// ── front 34 — modifiers ──` block, the arms of `tokenToSheet`
+  are fenced by the same banner, and not one byte of CSS changes. The README's
+  step 1 also names five assertions in `src/emilia.bp` that the correction
+  breaks; front 56 updated them when it made the correction, and there is
+  nothing left to update. 233/233 on commonJS and on erlang, unchanged.
+
 - **`examples/emilia-card` stops pinning a compiler defect.** The commonJS
   `case`-over-a-uniquely-named-variant defect recorded further down this file
   is **fixed upstream**: such an arm now compares the `tag` string instead of

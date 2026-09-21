@@ -1,11 +1,12 @@
 import {Token} from "tokens";
 import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
+import {darkAtRule, darkSelector, withDarkMode} from "theme";
 import {Ns, nsPrefix, themeVar, namespace} from "theme";
 import {spacing, spacingHalf} from "spacing";
 import {Rule, Block, Sheet, Variant, Options} from "output";
-import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant} from "output";
+import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant, markImportant} from "output";
 import {encodeSheet, decodeSheet, carriesSeparator} from "output";
-import {defaultOptions, withTheme, renderDocument} from "output";
+import {defaultOptions, withTheme, renderRule, renderDocument} from "output";
 
 //// ═══ FRONT 56 · the host cells and the public entry points ═══════════════
 ////
@@ -147,12 +148,14 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
         Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
-        Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
-        Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
-        Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
+        // ── front 34 — modifiers ─────────────────────────────────────────
         Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th));
         Lg(inner) -> nestVariant(tokensToSheet(inner, th), lgVariant(th));
         Xl(inner) -> nestVariant(tokensToSheet(inner, th), xlVariant(th));
+        Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
+        Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
+        Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
+        // ── end front 34 ─────────────────────────────────────────────────
     };
     return out;
 }
@@ -164,34 +167,54 @@ fn tokensToSheet(tokens: Token[], th: Theme) -> Sheet {
     return tokens.fold(emptySheet(), { acc, t -> mergeSheet(acc, tokenToSheet(t, th)) });
 }
 
-// ── the six V1 modifiers, as variants ───────────────────────────────────
-//
-// FRONT 34 OWNS THE VARIANT TABLE. These six are the modifiers the V1 `Token`
-// enum already carries, written against the reference's variant table rather
-// than against the literals they used to emit: `hover` is
-// `@media (hover: hover) { &:hover }` and not a bare `:hover`, and a breakpoint
-// is `@media (width >= 48rem)` and not `@media(min-width:768px)`. Front 34
-// moves them into its own table and adds the other ninety.
-//
-// A breakpoint reads its width FROM THE THEME, so a project that overrides
-// `--breakpoint-md` gets its own media query rather than emilia's — and so the
-// theme is genuinely an input to the class hash, which is the clause of
-// contract 4 this front amends.
-pub fn hoverVariant() -> Variant {
-    return Variant(atRule: "@media (hover: hover)", selector: "&:hover");
+//// ═══ END FRONT 56 — everything below is fronts 33-47, 57 and 58 ═════════
+
+//// ═══ FRONT 34 · the modifier variant table ═══════════════════════════════
+////
+//// A modifier is the only way a token reaches a state, a breakpoint or a
+//// pseudo-element. There are eighty-three, and every one of them is the same
+//// two things: a top-level `Token` variant carrying `inner: Token[]`
+//// (`tokens.bp`, same banner), and ONE `Variant`-returning fn here.
+////
+//// THIS FRONT OWNS NO WRAPPING LOGIC. `Variant(atRule, selector)`,
+//// `nestVariant` and the one-`&` nesting template are front 56's, and no
+//// function below builds a `{` or a `}` or concatenates an inner sheet.
+//// Two consequences worth stating, because they are what makes the two
+//// fields enough for the whole reference table:
+////
+////   - a variant is nested by SUBSTITUTING the inner rule's `&` with the
+////     outer variant's selector, so `[dir="rtl"] &` and `:is(& > *)` — where
+////     the class is not leading — go through the same field as `&:focus`;
+////   - an empty `atRule` means the variant is purely a selector, and a `"&"`
+////     selector means it is purely an at-rule.
+////
+//// A BREAKPOINT READS THE THEME (decision 82), both ways round: `mdVariant`
+//// and `maxMdVariant` both resolve `--breakpoint-md`, so a project that
+//// overrides the ladder gets its own queries and its own class hashes.
+//// `darkVariant` likewise consumes front 54's `darkAtRule`/`darkSelector`
+//// rather than re-deciding the strategy: `DarkMode.Media` answers an at-rule
+//// and a bare `&`, `DarkMode.Class` and `DarkMode.Attribute` answer no
+//// at-rule and a `:where(…)` selector, and this front never learns which.
+////
+//// `Important` is the one row that is not a variant at all — decision 81
+//// gives front 34 upstream's per-utility `!`, and it is one line on top of
+//// front 56's `markImportant`.
+
+// ── the shapes a variant takes ────────────────────────────────────────────
+
+// Purely a selector — the reference's `focus`, `before`, `rtl`, `group-*` rows.
+fn selectorVariant(selector: string) -> Variant {
+    return Variant(atRule: "", selector: selector);
 }
 
-pub fn focusVariant() -> Variant {
-    return Variant(atRule: "", selector: "&:focus");
-}
-
-pub fn activeVariant() -> Variant {
-    return Variant(atRule: "", selector: "&:active");
-}
-
+// `sm:` … `2xl:`, upstream's `width >= <breakpoint>` form. The width is the
+// THEME's, never a literal: `--breakpoint-md` is `48rem` in the stock theme
+// and whatever the project says otherwise.
 fn breakpointVariant(th: Theme, name: string) -> Variant {
     return Variant(atRule: "@media (width >= " + themeValue(th, name) + ")", selector: "&");
 }
+
+// ── breakpoints — min-width, read from the theme's `--breakpoint-*` ladder ───
 
 pub fn mdVariant(th: Theme) -> Variant {
     return breakpointVariant(th, "--breakpoint-md");
@@ -205,7 +228,43 @@ pub fn xlVariant(th: Theme) -> Variant {
     return breakpointVariant(th, "--breakpoint-xl");
 }
 
-//// ═══ END FRONT 56 — everything below is fronts 33-47, 57 and 58 ═════════
+// ── interaction state ────────────────────────────────────────────────────
+
+pub fn hoverVariant() -> Variant {
+    return Variant(atRule: "@media (hover: hover)", selector: "&:hover");
+}
+
+pub fn focusVariant() -> Variant {
+    return selectorVariant("&:focus");
+}
+
+pub fn activeVariant() -> Variant {
+    return selectorVariant("&:active");
+}
+
+// ── front 34 · tests ─────────────────────────────────────────────────────
+//
+// Each family gets two: the `Variant` halves against the reference's two
+// columns, and the CSS the row renders once front 56's `nestVariant` and
+// `renderRule` have applied it. The rendered form is what a reader checks
+// against upstream; the halves are what this front actually writes.
+
+fn boldInner() -> Token[] {
+    val out: Token[] = [.Text.Bold];
+    return out;
+}
+
+// The CSS one modifier renders around `font-weight:bold`, on a class called
+// `x` and with the theme layer switched off, so the assertion is the row.
+fn modifierCssWith(t: Token, th: Theme) -> string {
+    return renderRule("x", firstRuleOf(tokenToSheet(t, th)), bareOptions());
+}
+
+fn modifierCss(t: Token) -> string {
+    return modifierCssWith(t, defaultTheme());
+}
+
+//// ═══ END FRONT 34 ═════════════════════════════════════════════════════════════════
 
 fn textTokenToCss(t: Token.Text) -> string {
     val out = case t {
