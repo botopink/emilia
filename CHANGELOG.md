@@ -14,6 +14,17 @@
   order. Measured: `botopink test` in `modules/emilia/` is 5/5 (`theme.bp`) + 17/17
   (`emilia.bp`) on commonJS and on erlang.
 
+- **`defaultTheme()`** (front `54-emilia-theme`, step 2). The stock theme, in declaration
+  order: `--spacing`, the five `--breakpoint-*` (rem, not px), the eight `--radius-*`,
+  `--color-black`/`--color-white`, the thirteen `--text-*` sizes each paired with its
+  `--text-*--line-height` (26 entries), the seven `--shadow-*` (`sm`–`xl` two-shadow), the
+  thirteen `--container-*`, the four `--animate-*`, and the four `keyframes` bodies (`spin`,
+  `ping`, `pulse`, `bounce`) in their own list, because a keyframes value is a rule body and
+  cannot live inside `:root`. Entry ORDER is a contract — emilia's class names are content
+  hashes, so a reordered theme is a different document. The palette is **front 33's**: only
+  black and white ship here, and front 33 hands over `paletteEntries() -> ThemeEntry[]` for
+  `extend(defaultTheme(), paletteEntries())`. Measured: 14/14 + 17/17 on both targets.
+
 - **The repository is a workspace** (`02-packaging` step 2; decisions 75 and 76 of
   1.0.10-beta). `botopink.json` at the root is `{ name, version, description, targets
   [commonJS, erlang], workspaces ["modules/*", "examples/*"] }` — no `src`, `files`,
