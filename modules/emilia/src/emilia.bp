@@ -159,6 +159,15 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         MaxLg(inner) -> nestVariant(tokensToSheet(inner, th), maxLgVariant(th));
         MaxXl(inner) -> nestVariant(tokensToSheet(inner, th), maxXlVariant(th));
         MaxX2xl(inner) -> nestVariant(tokensToSheet(inner, th), maxX2xlVariant(th));
+        Dark(inner) -> nestVariant(tokensToSheet(inner, th), darkVariant(th));
+        Print(inner) -> nestVariant(tokensToSheet(inner, th), printVariant());
+        Portrait(inner) -> nestVariant(tokensToSheet(inner, th), portraitVariant());
+        Landscape(inner) -> nestVariant(tokensToSheet(inner, th), landscapeVariant());
+        MotionSafe(inner) -> nestVariant(tokensToSheet(inner, th), motionSafeVariant());
+        MotionReduce(inner) -> nestVariant(tokensToSheet(inner, th), motionReduceVariant());
+        ContrastMore(inner) -> nestVariant(tokensToSheet(inner, th), contrastMoreVariant());
+        ContrastLess(inner) -> nestVariant(tokensToSheet(inner, th), contrastLessVariant());
+        ForcedColors(inner) -> nestVariant(tokensToSheet(inner, th), forcedColorsVariant());
         Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
         Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
         Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
@@ -212,6 +221,12 @@ fn tokensToSheet(tokens: Token[], th: Theme) -> Sheet {
 // Purely a selector — the reference's `focus`, `before`, `rtl`, `group-*` rows.
 fn selectorVariant(selector: string) -> Variant {
     return Variant(atRule: "", selector: selector);
+}
+
+// Purely an at-rule — the reference's `print`, `portrait`, `motion-*` rows.
+// The selector is the bare `&`, so the rule it wraps keeps its own.
+fn atRuleVariant(atRule: string) -> Variant {
+    return Variant(atRule: atRule, selector: "&");
 }
 
 // `sm:` … `2xl:`, upstream's `width >= <breakpoint>` form. The width is the
@@ -269,6 +284,44 @@ pub fn maxXlVariant(th: Theme) -> Variant {
 
 pub fn maxX2xlVariant(th: Theme) -> Variant {
     return maxBreakpointVariant(th, "--breakpoint-2xl");
+}
+
+// ── dark mode and the other media features ───────────────────────────────
+
+pub fn darkVariant(th: Theme) -> Variant {
+    return Variant(atRule: darkAtRule(th), selector: darkSelector(th));
+}
+
+pub fn printVariant() -> Variant {
+    return atRuleVariant("@media print");
+}
+
+pub fn portraitVariant() -> Variant {
+    return atRuleVariant("@media (orientation: portrait)");
+}
+
+pub fn landscapeVariant() -> Variant {
+    return atRuleVariant("@media (orientation: landscape)");
+}
+
+pub fn motionSafeVariant() -> Variant {
+    return atRuleVariant("@media (prefers-reduced-motion: no-preference)");
+}
+
+pub fn motionReduceVariant() -> Variant {
+    return atRuleVariant("@media (prefers-reduced-motion: reduce)");
+}
+
+pub fn contrastMoreVariant() -> Variant {
+    return atRuleVariant("@media (prefers-contrast: more)");
+}
+
+pub fn contrastLessVariant() -> Variant {
+    return atRuleVariant("@media (prefers-contrast: less)");
+}
+
+pub fn forcedColorsVariant() -> Variant {
+    return atRuleVariant("@media (forced-colors: active)");
 }
 
 // ── interaction state ────────────────────────────────────────────────────
@@ -353,6 +406,79 @@ test "breakpoints, max-width — the CSS each row renders around one declaration
     assert modifierCss(Token.MaxX2xl(inner)) == "@media (width < 96rem){.x{font-weight:bold}}";
 }
 
+test "dark mode and the other media features — the two halves of every Variant in the family" {
+    val th = defaultTheme();
+    assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
+    assert darkVariant(th).selector == "&";
+    assert printVariant().atRule == "@media print";
+    assert printVariant().selector == "&";
+    assert portraitVariant().atRule == "@media (orientation: portrait)";
+    assert portraitVariant().selector == "&";
+    assert landscapeVariant().atRule == "@media (orientation: landscape)";
+    assert landscapeVariant().selector == "&";
+    assert motionSafeVariant().atRule == "@media (prefers-reduced-motion: no-preference)";
+    assert motionSafeVariant().selector == "&";
+    assert motionReduceVariant().atRule == "@media (prefers-reduced-motion: reduce)";
+    assert motionReduceVariant().selector == "&";
+    assert contrastMoreVariant().atRule == "@media (prefers-contrast: more)";
+    assert contrastMoreVariant().selector == "&";
+    assert contrastLessVariant().atRule == "@media (prefers-contrast: less)";
+    assert contrastLessVariant().selector == "&";
+    assert forcedColorsVariant().atRule == "@media (forced-colors: active)";
+    assert forcedColorsVariant().selector == "&";
+}
+
+test "dark mode and the other media features — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Dark(inner)) == "@media (prefers-color-scheme: dark){.x{font-weight:bold}}";
+    assert modifierCss(Token.Print(inner)) == "@media print{.x{font-weight:bold}}";
+    assert modifierCss(Token.Portrait(inner)) == "@media (orientation: portrait){.x{font-weight:bold}}";
+    assert modifierCss(Token.Landscape(inner)) == "@media (orientation: landscape){.x{font-weight:bold}}";
+    assert modifierCss(Token.MotionSafe(inner)) == "@media (prefers-reduced-motion: no-preference){.x{font-weight:bold}}";
+    assert modifierCss(Token.MotionReduce(inner)) == "@media (prefers-reduced-motion: reduce){.x{font-weight:bold}}";
+    assert modifierCss(Token.ContrastMore(inner)) == "@media (prefers-contrast: more){.x{font-weight:bold}}";
+    assert modifierCss(Token.ContrastLess(inner)) == "@media (prefers-contrast: less){.x{font-weight:bold}}";
+    assert modifierCss(Token.ForcedColors(inner)) == "@media (forced-colors: active){.x{font-weight:bold}}";
+}
+
+test "dark — the `Media` strategy is an at-rule over the bare ampersand" {
+    val th = defaultTheme();
+    assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
+    assert darkVariant(th).selector == "&";
+    val inner = boldInner();
+    assert modifierCssWith(Token.Dark(inner), th)
+        == "@media (prefers-color-scheme: dark){.x{font-weight:bold}}";
+}
+
+test "dark — the `Class` strategy is a selector and no at-rule at all" {
+    val th = withDarkMode(defaultTheme(), DarkMode.Class(name: "dark"));
+    assert darkVariant(th).atRule == "";
+    assert darkVariant(th).selector == "&:where(.dark, .dark *)";
+    val inner = boldInner();
+    assert modifierCssWith(Token.Dark(inner), th)
+        == ".x:where(.dark, .dark *){font-weight:bold}";
+}
+
+test "dark — the `Attribute` strategy is the same shape, on a data attribute" {
+    val th = withDarkMode(defaultTheme(), DarkMode.Attribute(name: "data-theme", value: "dark"));
+    assert darkVariant(th).atRule == "";
+    assert darkVariant(th).selector == "&:where([data-theme=dark], [data-theme=dark] *)";
+    val inner = boldInner();
+    assert modifierCssWith(Token.Dark(inner), th)
+        == ".x:where([data-theme=dark], [data-theme=dark] *){font-weight:bold}";
+}
+
+test "dark — the strategy is an input to the class, because the rule differs" {
+    val inner = boldInner();
+    val tokens: Token[] = [Token.Dark(inner)];
+    val byMedia = defaultTheme();
+    val byClass = withDarkMode(byMedia, DarkMode.Class(name: "dark"));
+    assert emiliaWith(tokens, byMedia) != emiliaWith(tokens, byClass);
+    val _drop = await flush();
+}
+
+// ── ranges, order and depth ───────────────────────────────────────────────
+
 test "a breakpoint RANGE is nesting, not a variant — `md:max-xl:`" {
     val inner = boldInner();
     val mid: Token[] = [Token.MaxXl(inner)];
@@ -365,6 +491,14 @@ test "the other range the reference shows — `sm:max-md:`" {
     val mid: Token[] = [Token.MaxMd(inner)];
     assert modifierCss(Token.Sm(mid))
         == "@media (width >= 40rem){@media (width < 48rem){.x{font-weight:bold}}}";
+}
+
+test "three deep — `dark:md:hover:` comes out in source order" {
+    val inner = boldInner();
+    val hover: Token[] = [Token.Hover(inner)];
+    val md: Token[] = [Token.Md(hover)];
+    assert modifierCss(Token.Dark(md))
+        == "@media (prefers-color-scheme: dark){@media (width >= 48rem){@media (hover: hover){.x:hover{font-weight:bold}}}}";
 }
 
 test "a breakpoint override reaches both directions of the ladder" {

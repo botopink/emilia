@@ -12,7 +12,7 @@
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
 //// payload — siblings of section heads at the top level. Front 34 widened
-//// them from six to 13; the full map is under MODIFIERS below.
+//// them from six to 22; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -97,6 +97,17 @@
 ////     .MaxLg([Token])            max-lg:          → @media (width < <--breakpoint-lg>){…}
 ////     .MaxXl([Token])            max-xl:          → @media (width < <--breakpoint-xl>){…}
 ////     .MaxX2xl([Token])          max-2xl:         → @media (width < <--breakpoint-2xl>){…}
+////
+////   dark mode and the other media features
+////     .Dark([Token])             dark:            → darkAtRule(th){darkSelector(th){…}} — all three strategies
+////     .Print([Token])            print:           → @media print{…}
+////     .Portrait([Token])         portrait:        → @media (orientation: portrait){…}
+////     .Landscape([Token])        landscape:       → @media (orientation: landscape){…}
+////     .MotionSafe([Token])       motion-safe:     → @media (prefers-reduced-motion: no-preference){…}
+////     .MotionReduce([Token])     motion-reduce:   → @media (prefers-reduced-motion: reduce){…}
+////     .ContrastMore([Token])     contrast-more:   → @media (prefers-contrast: more){…}
+////     .ContrastLess([Token])     contrast-less:   → @media (prefers-contrast: less){…}
+////     .ForcedColors([Token])     forced-colors:   → @media (forced-colors: active){…}
 ////
 ////   interaction state
 ////     .Hover([Token])            hover:           → @media (hover: hover){&:hover{…}}
@@ -651,6 +662,17 @@ pub type Token {
     MaxLg(inner: Token[]),
     MaxXl(inner: Token[]),
     MaxX2xl(inner: Token[]),
+    //
+    // dark mode and the other media features
+    Dark(inner: Token[]),
+    Print(inner: Token[]),
+    Portrait(inner: Token[]),
+    Landscape(inner: Token[]),
+    MotionSafe(inner: Token[]),
+    MotionReduce(inner: Token[]),
+    ContrastMore(inner: Token[]),
+    ContrastLess(inner: Token[]),
+    ForcedColors(inner: Token[]),
     //
     // interaction state
     Hover(inner: Token[]),

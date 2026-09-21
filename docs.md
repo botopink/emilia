@@ -410,6 +410,20 @@ moves the queries and the class hashes with it.
 | `max-xl:` | `Token.MaxXl(inner)` | `@media (width < 80rem){…}` |
 | `max-2xl:` | `Token.MaxX2xl(inner)` | `@media (width < 96rem){…}` |
 
+**Dark mode and the other media features**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `dark:` | `Token.Dark(inner)` | `@media (prefers-color-scheme: dark){…}` |
+| `print:` | `Token.Print(inner)` | `@media print{…}` |
+| `portrait:` | `Token.Portrait(inner)` | `@media (orientation: portrait){…}` |
+| `landscape:` | `Token.Landscape(inner)` | `@media (orientation: landscape){…}` |
+| `motion-safe:` | `Token.MotionSafe(inner)` | `@media (prefers-reduced-motion: no-preference){…}` |
+| `motion-reduce:` | `Token.MotionReduce(inner)` | `@media (prefers-reduced-motion: reduce){…}` |
+| `contrast-more:` | `Token.ContrastMore(inner)` | `@media (prefers-contrast: more){…}` |
+| `contrast-less:` | `Token.ContrastLess(inner)` | `@media (prefers-contrast: less){…}` |
+| `forced-colors:` | `Token.ForcedColors(inner)` | `@media (forced-colors: active){…}` |
+
 **Interaction state**
 
 | upstream | emilia | CSS |

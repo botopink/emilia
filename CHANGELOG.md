@@ -2,6 +2,21 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Dark`, and the other eight media features** (1.0.10-beta front
+  `34-emilia-modifiers`, step 3). `darkVariant(th)` is
+  `Variant(atRule: darkAtRule(th), selector: darkSelector(th))` — it consumes
+  front 54's pair and **never learns which `DarkMode` strategy is in force**,
+  which is what makes all three work from one row: `Media` puts the whole
+  strategy in the at-rule over a bare `&`, `Class` and `Attribute` put it in a
+  `:where()` selector with no at-rule at all. A cell proves each, and a fourth
+  pins that the strategy reaches the class hash. **This is where the README is
+  out of date**: its step 3 calls the class- and attribute-based forms
+  `@custom-variant` registrations and rules them out of scope, which was true
+  before front 54 shipped `DarkMode` and decision 82 assigned the consumption
+  to this front. `Print`, `Portrait`, `Landscape`, `MotionSafe`,
+  `MotionReduce`, `ContrastMore`, `ContrastLess` and `ForcedColors` are
+  at-rule-only rows beside it. 247/247 on both targets.
+
 - **Ten breakpoints, both directions, every one of them read from the theme**
   (1.0.10-beta front `34-emilia-modifiers`, step 2). `Sm` and `X2xl` close the
   two ends the enum could not address at all, and `MaxSm`/`MaxMd`/`MaxLg`/
