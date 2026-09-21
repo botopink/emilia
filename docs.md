@@ -213,16 +213,26 @@ A **non-colour** token is rewritten too, and the result is meaningless CSS
 deliberate: dropping the declaration silently would hide the mistake, and one
 a browser discards is visible in devtools the moment it is looked for.
 
-### Pad
+### Pad and Margin
 
-Three axes (`X`, `Y`, `All`); the numeric scale is `1 = 0.25rem`,
-`2 = 0.5rem`, `4 = 1rem`, `8 = 2rem`, `16 = 4rem`.
+Three axes each (`X`, `Y`, `All`), over the multiplier scale. **A spacing value
+is never resolved here** — every leaf answers `spacing(n)`, so `--spacing` stays
+the one place the length is decided (§ Spacing — `spacing(n)`).
 
 ```bp
-Token.PadX4                 // padding-left:1rem;padding-right:1rem
-Token.PadY2                 // padding-top:0.5rem;padding-bottom:0.5rem
-Token.PadAll4               // padding:1rem
+.Pad.All.4                  // padding:calc(var(--spacing) * 4)
+.Pad.X.4                    // padding-left:calc(var(--spacing) * 4);padding-right:calc(var(--spacing) * 4)
+.Pad.Y.2                    // padding-top:calc(var(--spacing) * 2);padding-bottom:calc(var(--spacing) * 2)
+.Margin.All.4               // margin:calc(var(--spacing) * 4)
+.Margin.X.Auto              // margin-left:auto;margin-right:auto
 ```
+
+CSS has **no `padding-x` property**, so an axis token is two declarations, not
+one: `px-4` sets `padding-left` and `padding-right`. Until this front emilia
+emitted `padding-x:`, `padding-y:` and `margin-y:` — property names no browser
+knows, silently discarded — and the `Margin.X` ladder emitted `m-0.25`, `m-1`
+and `margin-auto`, which are Tailwind class fragments rather than declarations.
+Those eight spellings are gone, and a test asserts each of them is.
 
 ### Modifiers — state + breakpoint variants
 

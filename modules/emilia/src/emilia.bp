@@ -1,6 +1,7 @@
 import {Token} from "tokens";
 import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
 import {Ns, nsPrefix, themeVar, namespace} from "theme";
+import {spacing, spacingHalf} from "spacing";
 import {Rule, Block, Sheet, Variant, Options} from "output";
 import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant} from "output";
 import {encodeSheet, decodeSheet, carriesSeparator} from "output";
@@ -137,8 +138,8 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Font(_inner) -> declSheet(fontTokenToCss(_inner));
         Color(_inner) -> declSheet(colorTokenToCss(_inner, th));
         Bg(_inner) -> declSheet(bgTokenToCss(_inner, th));
-        Pad(_inner) -> declSheet(padTokenToCss(_inner));
-        Margin(_inner) -> declSheet(marginTokenToCss(_inner));
+        Pad(_inner) -> declSheet(padTokenToCss(_inner, th));
+        Margin(_inner) -> declSheet(marginTokenToCss(_inner, th));
         Layout(_inner) -> declSheet(layoutTokenToCss(_inner));
         Flex(_inner) -> declSheet(flexTokenToCss(_inner));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
@@ -273,86 +274,200 @@ fn bgTokenToCss(t: Token.Bg, th: Theme) -> string {
     return out;
 }
 
-fn padTokenToCss(t: Token.Pad) -> string {
+// ── front 35 — spacing and sizing ────────────────────────────────────────────
+//
+// FRONT 35 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the `Pad`,
+// `Margin`, `Size` and `Space` sections of `tokens.bp` and the four dispatchers
+// they reach.
+//
+// EMILIA NEVER RESOLVES A SPACING VALUE. Every leaf below answers `spacing(n)`
+// or `spacingHalf(n)` from `spacing.bp` — `calc(var(--spacing) * n)` — and
+// never a `rem` literal. A resolved `rem` is byte-different from upstream for
+// every spacing utility in the library AND it makes a project's
+// `--spacing: 4px` override silently ineffective, so it is wrong by contract
+// (`contracts.md` 4a) rather than by taste.
+//
+// WHAT THIS FRONT CORRECTED. Before it, six hand-written ladders lived here and
+// had drifted apart: `padTokenToCss` emitted `padding-x:` and `padding-y:`,
+// which are not CSS properties and which every browser discards, and
+// `marginScaleX` emitted `m-0.25`, `m-0.5`, `m-1`, `m-2` and `margin-auto` —
+// Tailwind CLASS FRAGMENTS, in a position where only a declaration is legal.
+// Three of emilia's ten sections emitted text that was not CSS and all three
+// were here. The paths that compiled before still compile; only the CSS they
+// emit changed, and what they emitted was never valid.
+
+// One declaration — `padding-top:calc(var(--spacing) * 4)`.
+fn oneDecl(prop: string, value: string) -> string {
+    return prop + ":" + value;
+}
+
+// The two-property form an axis utility expands to: `px-4` is BOTH
+// `padding-left` and `padding-right`, `;`-joined inside one token, because CSS
+// has no `padding-x`.
+fn axisDecl(first: string, second: string, value: string) -> string {
+    return first + ":" + value + ";" + second + ":" + value;
+}
+
+fn padTokenToCss(t: Token.Pad, th: Theme) -> string {
     val out = case t {
-        X(_inner) -> "padding-x:" + padScaleX(_inner);
-        Y(_inner) -> "padding-y:" + padScaleY(_inner);
-        All(_inner) -> "padding:" + padScaleAll(_inner);
+        X(_inner) -> axisDecl("padding-left", "padding-right", padScaleX(_inner, th));
+        Y(_inner) -> axisDecl("padding-top", "padding-bottom", padScaleY(_inner, th));
+        All(_inner) -> oneDecl("padding", padScaleAll(_inner, th));
     };
     return out;
 }
 
-fn padScaleX(s: Token.Pad.X) -> string {
+fn padScaleX(s: Token.Pad.X, th: Theme) -> string {
     val out = case s {
-        __1 -> "0.25rem";
-        __2 -> "0.5rem";
-        __4 -> "1rem";
-        __8 -> "2rem";
-        __16 -> "4rem";
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+        __16 -> spacing(16);
     };
     return out;
 }
 
-fn padScaleY(s: Token.Pad.Y) -> string {
+fn padScaleY(s: Token.Pad.Y, th: Theme) -> string {
     val out = case s {
-        __1 -> "0.25rem";
-        __2 -> "0.5rem";
-        __4 -> "1rem";
-        __8 -> "2rem";
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
     };
     return out;
 }
 
-fn padScaleAll(s: Token.Pad.All) -> string {
+fn padScaleAll(s: Token.Pad.All, th: Theme) -> string {
     val out = case s {
-        __1 -> "0.25rem";
-        __2 -> "0.5rem";
-        __4 -> "1rem";
-        __8 -> "2rem";
-        __16 -> "4rem";
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+        __16 -> spacing(16);
     };
     return out;
 }
 
-fn marginTokenToCss(t: Token.Margin) -> string {
+fn marginTokenToCss(t: Token.Margin, th: Theme) -> string {
     val out = case t {
-        X(_inner) -> marginScaleX(_inner);
-        Y(_inner) -> "margin-y:" + marginScaleY(_inner);
-        All(_inner) -> "margin:" + marginScaleAll(_inner);
+        X(_inner) -> axisDecl("margin-left", "margin-right", marginScaleX(_inner, th));
+        Y(_inner) -> axisDecl("margin-top", "margin-bottom", marginScaleY(_inner, th));
+        All(_inner) -> oneDecl("margin", marginScaleAll(_inner, th));
     };
     return out;
 }
 
-fn marginScaleX(s: Token.Margin.X) -> string {
+// `Auto` is a VALUE, not a property, so it rides the same ladder as every
+// multiplier and the axis expansion above gives `mx-auto` its two properties
+// for free. That is also why it stopped being `margin-auto`.
+fn marginScaleX(s: Token.Margin.X, th: Theme) -> string {
     val out = case s {
-        Auto -> "margin-auto";
-        __1 -> "m-0.25";
-        __2 -> "m-0.5";
-        __4 -> "m-1";
-        __8 -> "m-2";
+        Auto -> "auto";
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
     };
     return out;
 }
 
-fn marginScaleY(s: Token.Margin.Y) -> string {
+fn marginScaleY(s: Token.Margin.Y, th: Theme) -> string {
     val out = case s {
-        __1 -> "0.25rem";
-        __2 -> "0.5rem";
-        __4 -> "1rem";
-        __8 -> "2rem";
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
     };
     return out;
 }
 
-fn marginScaleAll(s: Token.Margin.All) -> string {
+fn marginScaleAll(s: Token.Margin.All, th: Theme) -> string {
     val out = case s {
-        __1 -> "0.25rem";
-        __2 -> "0.5rem";
-        __4 -> "1rem";
-        __8 -> "2rem";
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
     };
     return out;
 }
+
+// ── tests · front 35 ─────────────────────────────────────────────────────────
+//
+// The front's own block of assertions lives HERE, beside the dispatchers it
+// covers, rather than at the end of the file: front 33 appends its own block
+// there and a front that appends to the same line of the same file cannot be
+// merged without a conflict that says nothing.
+
+test "Pad.All — the property is `padding` and the value is a reference, not a rem" {
+    assert tokenDeclarations(.Pad.All.4) == "padding:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.All.16) == "padding:calc(var(--spacing) * 16)";
+}
+
+test "Pad.X and Pad.Y — the axis expands to the two real properties" {
+    assert tokenDeclarations(.Pad.X.4) == "padding-left:calc(var(--spacing) * 4);padding-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.Y.2) == "padding-top:calc(var(--spacing) * 2);padding-bottom:calc(var(--spacing) * 2)";
+}
+
+test "Margin.X.Auto — `mx-auto` is two properties, and `margin-auto` is not one of them" {
+    assert tokenDeclarations(.Margin.X.Auto) == "margin-left:auto;margin-right:auto";
+}
+
+test "Margin — the axis and the shorthand, both through the ladder" {
+    assert tokenDeclarations(.Margin.Y.8) == "margin-top:calc(var(--spacing) * 8);margin-bottom:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Margin.All.4) == "margin:calc(var(--spacing) * 4)";
+}
+
+// THE REGRESSION THIS FRONT IS HERE FOR. Six ladders emitted text that was not
+// CSS; this walks every `Pad` and `Margin` leaf that compiled before the front
+// and asserts none of the six spellings survives anywhere in the output.
+fn everySpacingTokenV0() -> Token[] {
+    val out: Token[] = [
+        .Pad.X.1, .Pad.X.2, .Pad.X.4, .Pad.X.8, .Pad.X.16,
+        .Pad.Y.1, .Pad.Y.2, .Pad.Y.4, .Pad.Y.8,
+        .Pad.All.1, .Pad.All.2, .Pad.All.4, .Pad.All.8, .Pad.All.16,
+        .Margin.X.Auto, .Margin.X.1, .Margin.X.2, .Margin.X.4, .Margin.X.8,
+        .Margin.Y.1, .Margin.Y.2, .Margin.Y.4, .Margin.Y.8,
+        .Margin.All.1, .Margin.All.2, .Margin.All.4, .Margin.All.8,
+    ];
+    return out;
+}
+
+fn spacingOutputV0() -> string {
+    return declarationsOf(tokensToSheet(everySpacingTokenV0(), defaultTheme())).join(";");
+}
+
+test "no spacing token emits a property name that is not a CSS property" {
+    val css = spacingOutputV0();
+    assert css.indexOf("padding-x") == -1;
+    assert css.indexOf("padding-y") == -1;
+    assert css.indexOf("margin-x") == -1;
+    assert css.indexOf("margin-y") == -1;
+}
+
+test "no spacing token emits a Tailwind class fragment" {
+    val css = spacingOutputV0();
+    assert css.indexOf("m-0.25") == -1;
+    assert css.indexOf("m-0.5") == -1;
+    assert css.indexOf("m-1") == -1;
+    assert css.indexOf("m-2") == -1;
+    assert css.indexOf("margin-auto") == -1;
+}
+
+test "no spacing token resolves a length — every value is a reference or `auto`" {
+    val css = spacingOutputV0();
+    assert css.indexOf("rem") == -1;
+    assert css.indexOf("calc(var(--spacing) * ") != -1;
+}
+
+test "the paths that compiled before this front still compile" {
+    assert tokenDeclarations(.Pad.X.4).indexOf("padding-left") == 0;
+    assert tokenDeclarations(.Pad.All.16).indexOf("padding:") == 0;
+    assert tokenDeclarations(.Margin.Y.8).indexOf("margin-top") == 0;
+    assert tokenDeclarations(.Margin.X.Auto).indexOf("margin-left:auto") == 0;
+}
+
+// ── end front 35 ─────────────────────────────────────────────────────────────
 
 fn layoutTokenToCss(t: Token.Layout) -> string {
     val out = case t {

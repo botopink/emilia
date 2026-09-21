@@ -46,9 +46,11 @@ Front 54 adds the **theme** and the **spacing ladder** (`theme.bp`,
 `allNamespaces`, `defaultTheme`, `emptyTheme`, `extendTheme`, `clearNamespace`,
 `namespace`, `themeValue`, `themeVar`, `themeCss`, `keyframeCss`, `darkAtRule`,
 `darkSelector`, `withDarkMode`, `spacing`, `spacingHalf` — see `docs.md`
-§ The theme. `emilia.bp`'s dispatchers do **not** consume them yet; rewiring
-`tokenToCss` to `spacing()` and to the theme is fronts 33–47's work, which is
-why the seven drifted `rem` ladders are still in `emilia.bp`.
+§ The theme. Rewiring `tokenToCss` to `spacing()` and to the theme is fronts
+33–47's work. Front 35 took **six** of the seven drifted `rem` ladders front 54
+found in `emilia.bp` — `padScaleX/Y/All` and `marginScaleX/Y/All`; the seventh,
+`flexGapScale`, is `Flex.Gap`'s and belongs to front 37, which owns that
+section.
 
 Front 56 adds the **rule model, the codec and the renderer** (`output.bp`) —
 see `docs.md` § The cascade and the output. It is the interface fronts 33, 34
@@ -86,6 +88,17 @@ dispatcher and the public entry points, **not** the per-section ones, so a
 front that needs the theme adds the parameter to its own function and to its
 own one line of the shared `case` — still one line each, and no front-56 commit
 touching a file two other fronts are editing.
+
+Front 35 owns the **spacing and sizing sections** — `Pad`, `Margin`, `Size` and
+`Space` in `tokens.bp`, and `padTokenToCss`, `marginTokenToCss`,
+`sizeTokenToCss` and `spaceTokenToSheet` in `emilia.bp`, fenced by the
+`// ── front 35 — spacing and sizing ──` banner in both files. Its one rule:
+**no leaf resolves a length**. Every value answers front 54's `spacing(n)` /
+`spacingHalf(n)`, so `calc(var(--spacing) * N)` is spelled once in the library
+and the whole scale consumes it. `Pad`/`Margin`/`Size` are ordinary
+`…TokenToCss` dispatchers adapted by `declSheet`; `Space` is the one dispatcher
+here that answers a `Sheet`, because `space-y-*` declares on the element's
+CHILDREN and so needs a selector outside the class.
 
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
@@ -470,6 +483,7 @@ to the commonJS row and runs once.
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **Six cells — `.Color.Red.{100,500,700}`, `.Color.Gray.{100,500,700}` — are declared and unreachable** until the compiler's leading-dot resolver stops guessing between `Token` and `__Token__Border`; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
+| 1.0.10-beta front 35 — spacing and sizing | IN PROGRESS — step 1 done: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)`; the six `rem` ladders are deleted and the `padding-x:`/`padding-y:`/`margin-y:` properties and the `m-0.25`/`m-1`/`margin-auto` class fragments are gone, each pinned by a test |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

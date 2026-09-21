@@ -2,6 +2,28 @@
 
 ## Unreleased — v0.beta.22
 
+- **Spacing stopped emitting text that is not CSS** (1.0.10-beta front
+  `35-emilia-spacing-sizing`, step 1). Three of emilia's ten sections emitted
+  strings no browser can read, and all three were here. `padTokenToCss`
+  answered `padding-x:` and `padding-y:` — **there is no `padding-x` property**,
+  so `px-4` and `py-4` were silently discarded by every browser; `Pad.X` now
+  answers the two real properties, `;`-joined inside the one token
+  (`padding-left:… ;padding-right:…`), and `Margin.Y` likewise instead of
+  `margin-y:`. `marginScaleX` was worse: it answered `m-0.25`, `m-0.5`, `m-1`,
+  `m-2` and `margin-auto` — **Tailwind class fragments**, in a position where
+  only a declaration is legal. `Margin.X.Auto` is `margin-left:auto;margin-right:auto`
+  now, `Auto` having become a value on the ladder rather than a property.
+  The six hand-written `rem` ladders (`padScaleX/Y/All`,
+  `marginScaleX/Y/All`) are **deleted, not widened**: every leaf answers front
+  54's `spacing(n)`, so a value is `calc(var(--spacing) * N)` and a project's
+  `--spacing: 4px` override finally reaches the utilities that consume it.
+  This changes the CSS four existing tokens emit and the front owns the break —
+  no path that compiled stops compiling, and what those paths emitted was never
+  valid CSS. Eight tests pin it, including one walk over every `Pad`/`Margin`
+  leaf asserting that `padding-x`, `padding-y`, `margin-x`, `margin-y`,
+  `m-0.25`, `m-0.5`, `m-1`, `m-2`, `margin-auto` and the substring `rem` appear
+  nowhere in the output.
+
 - **The colour palette resolves through the theme** (1.0.10-beta front
   `33-emilia-color-palette`, step 1). `Token.Color` is the 26-family x
   11-shade grid of `§ 3.6` / `§ 21.1` — the seventeen chromatic families

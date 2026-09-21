@@ -26,8 +26,12 @@
 ////              Inherit. The legacy Red/Blue/Gray leaves beside it emit the
 ////              `background` SHORTHAND and keep their pre-33 output; the
 ////              rest of Bg (gradients, images, …) is front 39's
-////   Pad      — X/Y/All scales (1=0.25rem, 4=1rem, 16=4rem)
-////   Margin   — X/Y/All scales (X carries Auto as a bare variant)
+////   Pad      — front 35: X/Y/All over the multiplier scale. A leaf is a
+////              MULTIPLIER of `--spacing`, never a resolved length, so
+////              `.Pad.All.4` is `padding:calc(var(--spacing) * 4)`
+////   Margin   — front 35: X/Y/All over the same scale; X carries Auto, which
+////              is a VALUE on the ladder (`margin-left:auto;margin-right:auto`)
+////              and not a property of its own
 ////   Layout   — Block/InlineBlock/Inline/Hidden/Flex/Grid
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
