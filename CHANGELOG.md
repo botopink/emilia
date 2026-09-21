@@ -15,6 +15,22 @@
   front 35 records — two fronts appending to the same last line cannot be
   merged.
 
+- **A scroll container, a stacking order and a box that keeps its space**
+  (1.0.10-beta front `36-emilia-layout`, step 3). `§ 5.14`, `§ 5.15`, `§ 5.18`,
+  `§ 5.19` and `§ 5.11` had no token: emilia could not clip, could not scroll,
+  could not stack and could not hide an element while keeping its space.
+  `Layout.Overflow` answers five values on the shorthand and five on each of
+  `X`/`Y` — three properties, not one property with an axis flag — and
+  `Layout.Overscroll` three on each of the same three. `Layout.Visibility`,
+  `Layout.Z` and `Layout.Isolation` complete the step.
+  **`invisible` is the UTILITY name and `hidden` is the CSS value**, and a
+  transcription that carried the name through would emit
+  `visibility:invisible`, which no browser honours; the test asserts the value
+  AND that the word `invisible` does not survive into the declaration.
+  `Z` is the one numeric family in this front that is not a length: `z-50` is
+  `z-index:50`, a bare integer that never reaches `spacing` and that a test
+  pins as carrying no `calc`, no `rem` and no `px`.
+
 - **`position` and the whole inset family** (1.0.10-beta front
   `36-emilia-layout`, step 2). Nothing in emilia could be positioned, and no
   positioned box could be placed: `§ 5.16` and `§ 5.17` had no token at all.

@@ -68,7 +68,11 @@
 ////              scale, answering the same `spacing(n)`/`spacingHalf(n)`, plus
 ////              Auto, Full and Frac { Half, Third, TwoThirds }. `inset` is a
 ////              real CSS shorthand so All is ONE declaration; X and Y expand
-////              to two, which is how §5.17 prints `inset-x-0`
+////              to two, which is how §5.17 prints `inset-x-0`; then Overflow
+////              and Overscroll (a shorthand plus an X and a Y longhand each),
+////              Visibility (`invisible` is the utility name, `hidden` the CSS
+////              value), Z — the one numeric family here that is NOT a length,
+////              a bare integer — and Isolation
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
@@ -699,6 +703,19 @@ pub type Token {
                 }
             }
         }
+        Overflow {
+            Auto, Hidden, Clip, Visible, Scroll,
+            X { Auto, Hidden, Clip, Visible, Scroll }
+            Y { Auto, Hidden, Clip, Visible, Scroll }
+        }
+        Overscroll {
+            Auto, Contain, None,
+            X { Auto, Contain, None }
+            Y { Auto, Contain, None }
+        }
+        Visibility { Visible, Invisible, Collapse, }
+        Z { 0, 10, 20, 30, 40, 50, Auto, }
+        Isolation { Isolate, Auto, }
     }
     // ── end front 36 ─────────────────────────────────────────────────────────
 

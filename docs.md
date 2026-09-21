@@ -416,6 +416,25 @@ the property name, and a test asserts the two length strings are equal.
 `top`/`bottom` have none, so `X` and `Y` expand to two — which is how `§ 5.17`
 prints `inset-x-0`.
 
+#### Overflow, overscroll, visibility, z-index, isolation
+
+```bp
+.Layout.Overflow.Hidden        // overflow:hidden
+.Layout.Overflow.Y.Auto        // overflow-y:auto
+.Layout.Overscroll.Contain     // overscroll-behavior:contain
+.Layout.Overscroll.X.None      // overscroll-behavior-x:none
+.Layout.Visibility.Invisible   // visibility:hidden   ← not `invisible`
+.Layout.Visibility.Collapse    // visibility:collapse
+.Layout.Z.50                   // z-index:50
+.Layout.Z.Auto                 // z-index:auto
+.Layout.Isolation.Isolate      // isolation:isolate
+```
+
+Two of these are places a transcription slips, so each has its own assertion:
+`invisible` is the **utility** name and `hidden` is the **CSS value**, and `Z`
+is the one numeric family in `Layout` that is **not a length** — `z-50` is the
+bare integer `50`, never a `calc` and never a `rem`.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

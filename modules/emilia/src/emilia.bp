@@ -2238,6 +2238,11 @@ fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
         Grid -> "display:grid";
         Position(_inner) -> layoutPositionToCss(_inner);
         Inset(_inner) -> layoutInsetToCss(_inner, th);
+        Overflow(_inner) -> layoutOverflowToCss(_inner);
+        Overscroll(_inner) -> layoutOverscrollToCss(_inner);
+        Visibility(_inner) -> layoutVisibilityToCss(_inner);
+        Z(_inner) -> layoutZToCss(_inner);
+        Isolation(_inner) -> layoutIsolationToCss(_inner);
     };
     return out;
 }
@@ -2817,6 +2822,109 @@ fn insetNegHalfE(h: Token.Layout.Inset.E.Neg.Half, th: Theme) -> string {
     return out;
 }
 
+// `overflow` is a shorthand and `overflow-x` / `overflow-y` are the longhands,
+// so the three are three properties rather than one property and an axis flag.
+fn layoutOverflowToCss(o: Token.Layout.Overflow) -> string {
+    val out = case o {
+        Auto -> "overflow:auto";
+        Hidden -> "overflow:hidden";
+        Clip -> "overflow:clip";
+        Visible -> "overflow:visible";
+        Scroll -> "overflow:scroll";
+        X(_inner) -> layoutOverflowXToCss(_inner);
+        Y(_inner) -> layoutOverflowYToCss(_inner);
+    };
+    return out;
+}
+
+fn layoutOverflowXToCss(o: Token.Layout.Overflow.X) -> string {
+    val out = case o {
+        Auto -> "overflow-x:auto";
+        Hidden -> "overflow-x:hidden";
+        Clip -> "overflow-x:clip";
+        Visible -> "overflow-x:visible";
+        Scroll -> "overflow-x:scroll";
+    };
+    return out;
+}
+
+fn layoutOverflowYToCss(o: Token.Layout.Overflow.Y) -> string {
+    val out = case o {
+        Auto -> "overflow-y:auto";
+        Hidden -> "overflow-y:hidden";
+        Clip -> "overflow-y:clip";
+        Visible -> "overflow-y:visible";
+        Scroll -> "overflow-y:scroll";
+    };
+    return out;
+}
+
+fn layoutOverscrollToCss(o: Token.Layout.Overscroll) -> string {
+    val out = case o {
+        Auto -> "overscroll-behavior:auto";
+        Contain -> "overscroll-behavior:contain";
+        None -> "overscroll-behavior:none";
+        X(_inner) -> layoutOverscrollXToCss(_inner);
+        Y(_inner) -> layoutOverscrollYToCss(_inner);
+    };
+    return out;
+}
+
+fn layoutOverscrollXToCss(o: Token.Layout.Overscroll.X) -> string {
+    val out = case o {
+        Auto -> "overscroll-behavior-x:auto";
+        Contain -> "overscroll-behavior-x:contain";
+        None -> "overscroll-behavior-x:none";
+    };
+    return out;
+}
+
+fn layoutOverscrollYToCss(o: Token.Layout.Overscroll.Y) -> string {
+    val out = case o {
+        Auto -> "overscroll-behavior-y:auto";
+        Contain -> "overscroll-behavior-y:contain";
+        None -> "overscroll-behavior-y:none";
+    };
+    return out;
+}
+
+// `invisible` is the UTILITY name; `hidden` is the CSS value. The two differ,
+// and a transcription that carried the utility name through would emit
+// `visibility:invisible`, which no browser honours and no test would notice
+// unless it said so. This one does.
+fn layoutVisibilityToCss(v: Token.Layout.Visibility) -> string {
+    val out = case v {
+        Visible -> "visibility:visible";
+        Invisible -> "visibility:hidden";
+        Collapse -> "visibility:collapse";
+    };
+    return out;
+}
+
+// THE ONE NUMERIC FAMILY IN THIS FRONT THAT IS NOT A LENGTH. `z-50` is
+// `z-index:50` — a bare integer — so it never reaches `spacing` and there is
+// nothing here for a theme to resolve.
+fn layoutZToCss(z: Token.Layout.Z) -> string {
+    val out = case z {
+        __0 -> "z-index:0";
+        __10 -> "z-index:10";
+        __20 -> "z-index:20";
+        __30 -> "z-index:30";
+        __40 -> "z-index:40";
+        __50 -> "z-index:50";
+        Auto -> "z-index:auto";
+    };
+    return out;
+}
+
+fn layoutIsolationToCss(i: Token.Layout.Isolation) -> string {
+    val out = case i {
+        Isolate -> "isolation:isolate";
+        Auto -> "isolation:auto";
+    };
+    return out;
+}
+
 // ── tests · front 36 ─────────────────────────────────────────────────────────
 //
 // The front's assertions live HERE, beside the dispatchers they cover, for the
@@ -2913,6 +3021,74 @@ test "inset and padding agree by construction — one scale, two properties" {
     assert insetValue == padValue;
     assert inset.indexOf("calc(var(--spacing) * 4)") != -1;
     assert pad.indexOf("calc(var(--spacing) * 4)") != -1;
+}
+
+test "overflow — the shorthand and both longhands, five values each" {
+    assert tokenDeclarations(.Layout.Overflow.Auto) == "overflow:auto";
+    assert tokenDeclarations(.Layout.Overflow.Hidden) == "overflow:hidden";
+    assert tokenDeclarations(.Layout.Overflow.Clip) == "overflow:clip";
+    assert tokenDeclarations(.Layout.Overflow.Visible) == "overflow:visible";
+    assert tokenDeclarations(.Layout.Overflow.Scroll) == "overflow:scroll";
+    assert tokenDeclarations(.Layout.Overflow.X.Auto) == "overflow-x:auto";
+    assert tokenDeclarations(.Layout.Overflow.X.Hidden) == "overflow-x:hidden";
+    assert tokenDeclarations(.Layout.Overflow.X.Clip) == "overflow-x:clip";
+    assert tokenDeclarations(.Layout.Overflow.X.Visible) == "overflow-x:visible";
+    assert tokenDeclarations(.Layout.Overflow.X.Scroll) == "overflow-x:scroll";
+    assert tokenDeclarations(.Layout.Overflow.Y.Auto) == "overflow-y:auto";
+    assert tokenDeclarations(.Layout.Overflow.Y.Hidden) == "overflow-y:hidden";
+    assert tokenDeclarations(.Layout.Overflow.Y.Clip) == "overflow-y:clip";
+    assert tokenDeclarations(.Layout.Overflow.Y.Visible) == "overflow-y:visible";
+    assert tokenDeclarations(.Layout.Overflow.Y.Scroll) == "overflow-y:scroll";
+}
+
+test "overscroll — three values on the shorthand and three on each axis" {
+    assert tokenDeclarations(.Layout.Overscroll.Auto) == "overscroll-behavior:auto";
+    assert tokenDeclarations(.Layout.Overscroll.Contain) == "overscroll-behavior:contain";
+    assert tokenDeclarations(.Layout.Overscroll.None) == "overscroll-behavior:none";
+    assert tokenDeclarations(.Layout.Overscroll.X.Auto) == "overscroll-behavior-x:auto";
+    assert tokenDeclarations(.Layout.Overscroll.X.Contain) == "overscroll-behavior-x:contain";
+    assert tokenDeclarations(.Layout.Overscroll.X.None) == "overscroll-behavior-x:none";
+    assert tokenDeclarations(.Layout.Overscroll.Y.Auto) == "overscroll-behavior-y:auto";
+    assert tokenDeclarations(.Layout.Overscroll.Y.Contain) == "overscroll-behavior-y:contain";
+    assert tokenDeclarations(.Layout.Overscroll.Y.None) == "overscroll-behavior-y:none";
+}
+
+// A NAME-VERSUS-VALUE TRAP, asserted on its own because it is a place a
+// transcription slips: the Tailwind utility is `invisible`, the CSS value is
+// `hidden`, and `visibility:invisible` is what a careless copy emits.
+test "visibility — `invisible` is `visibility:hidden`, and the word does not survive" {
+    assert tokenDeclarations(.Layout.Visibility.Visible) == "visibility:visible";
+    assert tokenDeclarations(.Layout.Visibility.Invisible) == "visibility:hidden";
+    assert tokenDeclarations(.Layout.Visibility.Collapse) == "visibility:collapse";
+    assert tokenDeclarations(.Layout.Visibility.Invisible).indexOf("invisible") == -1;
+}
+
+test "z-index — a bare integer, never a length and never a calc" {
+    assert tokenDeclarations(.Layout.Z.0) == "z-index:0";
+    assert tokenDeclarations(.Layout.Z.10) == "z-index:10";
+    assert tokenDeclarations(.Layout.Z.20) == "z-index:20";
+    assert tokenDeclarations(.Layout.Z.30) == "z-index:30";
+    assert tokenDeclarations(.Layout.Z.40) == "z-index:40";
+    assert tokenDeclarations(.Layout.Z.50) == "z-index:50";
+    assert tokenDeclarations(.Layout.Z.Auto) == "z-index:auto";
+    assert tokenDeclarations(.Layout.Z.50).indexOf("calc") == -1;
+    assert tokenDeclarations(.Layout.Z.50).indexOf("rem") == -1;
+    assert tokenDeclarations(.Layout.Z.50).indexOf("px") == -1;
+}
+
+test "isolation — the two values of `§ 5.11`" {
+    assert tokenDeclarations(.Layout.Isolation.Isolate) == "isolation:isolate";
+    assert tokenDeclarations(.Layout.Isolation.Auto) == "isolation:auto";
+}
+
+test "end to end — a sticky header over a scrolling panel" {
+    val header: Token[] = [.Layout.Position.Sticky, .Layout.Inset.T.0, .Layout.Z.50];
+    val panel: Token[] = [.Layout.Overflow.Y.Auto, .Layout.Overscroll.Contain];
+    val headerCls = emilia(header);
+    val panelCls = emilia(panel);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("." + headerCls + "{position:sticky;top:0;z-index:50}") != -1;
+    assert styles.indexOf("." + panelCls + "{overflow-y:auto;overscroll-behavior:contain}") != -1;
 }
 
 test "end to end — a badge pinned to the corner of a relative card" {
