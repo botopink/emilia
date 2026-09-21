@@ -20,6 +20,20 @@
   (`var(--color-white)` / `var(--color-black)`), which rewrites five front-56
   assertions and the two examples that pinned the hex.
 
+- **`Bg.Color` — the palette on `background-color`** (front
+  `33-emilia-color-palette`, step 2). The same 26 x 11 grid and the same five
+  named colours under a sub-section of `Bg`, and **all 286 cells resolve**:
+  `Bg` is a head segment no other enum carries, so the four-segment path
+  `.Bg.Color.Red.500` has no hash-order tie to lose and is the way to reach the
+  six shades `.Color.Red` / `.Color.Gray` cannot. The property is
+  `background-color`, the longhand upstream sets (`§ 10.3`) — the `background`
+  shorthand the v0 stub emitted resets every other background property of the
+  element as a side effect. `bgTokenToCss` is front 39's and gains exactly two
+  things from this front: the `Color` arm and the `th: Theme` parameter contract
+  4a asks of every sub-dispatcher. Its four legacy leaves (`.Bg.White`,
+  `.Bg.Black`, `.Bg.Red.500`, `.Bg.Gray.500`) keep the shorthand and the output
+  they had, so nothing that compiled changed meaning.
+
 - **Six colour cells are declared and unreachable** (front
   `33-emilia-color-palette`). `.Color.Red.{100,500,700}` and
   `.Color.Gray.{100,500,700}` do not compile in any spelling. The compiler's

@@ -123,16 +123,37 @@ Token, got __Token__Border`) rather than emitting the wrong CSS. Until the
 resolver is fixed, reach those six shades through `.Bg.Color.<Family>.<shade>`
 (whose head segment `Bg` is unique) or pick a neighbouring shade.
 
-### Bg (background)
+### Bg.Color — the same palette on `background-color`
 
 ```bp
-Token.BgRed500              // background:#ef4444
-Token.BgBlue500             // background:#3b82f6
-Token.BgGray100             // background:#f3f4f6
-Token.BgGray900             // background:#111827
-Token.BgWhite               // background:#ffffff
-Token.BgBlack               // background:#000000
-Token.BgHex("#abc123")      // background:#abc123
+.Bg.Color.Red.500           // background-color:var(--color-red-500)
+.Bg.Color.Sky.100           // background-color:var(--color-sky-100)
+.Bg.Color.Slate.900         // background-color:var(--color-slate-900)
+.Bg.Color.Taupe.950         // background-color:var(--color-taupe-950)
+.Bg.Color.White             // background-color:var(--color-white)
+.Bg.Color.Black             // background-color:var(--color-black)
+.Bg.Color.Transparent       // background-color:transparent
+.Bg.Color.Current           // background-color:currentColor
+.Bg.Color.Inherit           // background-color:inherit
+```
+
+Same 26 families, same eleven shades, one property along — and **all 286 cells
+resolve**, because `Bg` is a head segment no other enum carries. It is the way
+to reach the six shades `.Color.Red` / `.Color.Gray` cannot.
+
+The property is `background-color` and not `background`. Upstream's `bg-*`
+colour utilities set the longhand; the shorthand the v0 stub emitted resets
+every other background property of the element as a side effect.
+
+The four **legacy** `Bg` leaves keep what they emitted before the palette
+landed, so nothing that compiled changed meaning; front 39 folds them in when
+it lands:
+
+```bp
+.Bg.White                   // background:#ffffff
+.Bg.Black                   // background:#000000
+.Bg.Red.500                 // background:red
+.Bg.Gray.500                // background:gray
 ```
 
 ### Pad
