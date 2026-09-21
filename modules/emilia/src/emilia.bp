@@ -2236,26 +2236,26 @@ fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
         Hidden -> "display:none";
         Flex -> "display:flex";
         Grid -> "display:grid";
-        Position(_inner) -> layoutPositionToCss(_inner);
+        Position(_inner) -> layoutPositionToCss(_inner, th);
         Inset(_inner) -> layoutInsetToCss(_inner, th);
-        Overflow(_inner) -> layoutOverflowToCss(_inner);
-        Overscroll(_inner) -> layoutOverscrollToCss(_inner);
-        Visibility(_inner) -> layoutVisibilityToCss(_inner);
-        Z(_inner) -> layoutZToCss(_inner);
-        Isolation(_inner) -> layoutIsolationToCss(_inner);
-        Float(_inner) -> layoutFloatToCss(_inner);
-        Clear(_inner) -> layoutClearToCss(_inner);
-        Object(_inner) -> layoutObjectToCss(_inner);
-        Aspect(_inner) -> layoutAspectToCss(_inner);
-        Columns(_inner) -> layoutColumnsToCss(_inner);
-        Break(_inner) -> layoutBreakToCss(_inner);
-        Box(_inner) -> layoutBoxToCss(_inner);
-        BoxDecoration(_inner) -> layoutBoxDecorationToCss(_inner);
+        Overflow(_inner) -> layoutOverflowToCss(_inner, th);
+        Overscroll(_inner) -> layoutOverscrollToCss(_inner, th);
+        Visibility(_inner) -> layoutVisibilityToCss(_inner, th);
+        Z(_inner) -> layoutZToCss(_inner, th);
+        Isolation(_inner) -> layoutIsolationToCss(_inner, th);
+        Float(_inner) -> layoutFloatToCss(_inner, th);
+        Clear(_inner) -> layoutClearToCss(_inner, th);
+        Object(_inner) -> layoutObjectToCss(_inner, th);
+        Aspect(_inner) -> layoutAspectToCss(_inner, th);
+        Columns(_inner) -> layoutColumnsToCss(_inner, th);
+        Break(_inner) -> layoutBreakToCss(_inner, th);
+        Box(_inner) -> layoutBoxToCss(_inner, th);
+        BoxDecoration(_inner) -> layoutBoxDecorationToCss(_inner, th);
     };
     return out;
 }
 
-fn layoutPositionToCss(p: Token.Layout.Position) -> string {
+fn layoutPositionToCss(p: Token.Layout.Position, th: Theme) -> string {
     val out = case p {
         Static -> "position:static";
         Fixed -> "position:fixed";
@@ -2832,20 +2832,20 @@ fn insetNegHalfE(h: Token.Layout.Inset.E.Neg.Half, th: Theme) -> string {
 
 // `overflow` is a shorthand and `overflow-x` / `overflow-y` are the longhands,
 // so the three are three properties rather than one property and an axis flag.
-fn layoutOverflowToCss(o: Token.Layout.Overflow) -> string {
+fn layoutOverflowToCss(o: Token.Layout.Overflow, th: Theme) -> string {
     val out = case o {
         Auto -> "overflow:auto";
         Hidden -> "overflow:hidden";
         Clip -> "overflow:clip";
         Visible -> "overflow:visible";
         Scroll -> "overflow:scroll";
-        X(_inner) -> layoutOverflowXToCss(_inner);
-        Y(_inner) -> layoutOverflowYToCss(_inner);
+        X(_inner) -> layoutOverflowXToCss(_inner, th);
+        Y(_inner) -> layoutOverflowYToCss(_inner, th);
     };
     return out;
 }
 
-fn layoutOverflowXToCss(o: Token.Layout.Overflow.X) -> string {
+fn layoutOverflowXToCss(o: Token.Layout.Overflow.X, th: Theme) -> string {
     val out = case o {
         Auto -> "overflow-x:auto";
         Hidden -> "overflow-x:hidden";
@@ -2856,7 +2856,7 @@ fn layoutOverflowXToCss(o: Token.Layout.Overflow.X) -> string {
     return out;
 }
 
-fn layoutOverflowYToCss(o: Token.Layout.Overflow.Y) -> string {
+fn layoutOverflowYToCss(o: Token.Layout.Overflow.Y, th: Theme) -> string {
     val out = case o {
         Auto -> "overflow-y:auto";
         Hidden -> "overflow-y:hidden";
@@ -2867,18 +2867,18 @@ fn layoutOverflowYToCss(o: Token.Layout.Overflow.Y) -> string {
     return out;
 }
 
-fn layoutOverscrollToCss(o: Token.Layout.Overscroll) -> string {
+fn layoutOverscrollToCss(o: Token.Layout.Overscroll, th: Theme) -> string {
     val out = case o {
         Auto -> "overscroll-behavior:auto";
         Contain -> "overscroll-behavior:contain";
         None -> "overscroll-behavior:none";
-        X(_inner) -> layoutOverscrollXToCss(_inner);
-        Y(_inner) -> layoutOverscrollYToCss(_inner);
+        X(_inner) -> layoutOverscrollXToCss(_inner, th);
+        Y(_inner) -> layoutOverscrollYToCss(_inner, th);
     };
     return out;
 }
 
-fn layoutOverscrollXToCss(o: Token.Layout.Overscroll.X) -> string {
+fn layoutOverscrollXToCss(o: Token.Layout.Overscroll.X, th: Theme) -> string {
     val out = case o {
         Auto -> "overscroll-behavior-x:auto";
         Contain -> "overscroll-behavior-x:contain";
@@ -2887,7 +2887,7 @@ fn layoutOverscrollXToCss(o: Token.Layout.Overscroll.X) -> string {
     return out;
 }
 
-fn layoutOverscrollYToCss(o: Token.Layout.Overscroll.Y) -> string {
+fn layoutOverscrollYToCss(o: Token.Layout.Overscroll.Y, th: Theme) -> string {
     val out = case o {
         Auto -> "overscroll-behavior-y:auto";
         Contain -> "overscroll-behavior-y:contain";
@@ -2900,7 +2900,7 @@ fn layoutOverscrollYToCss(o: Token.Layout.Overscroll.Y) -> string {
 // and a transcription that carried the utility name through would emit
 // `visibility:invisible`, which no browser honours and no test would notice
 // unless it said so. This one does.
-fn layoutVisibilityToCss(v: Token.Layout.Visibility) -> string {
+fn layoutVisibilityToCss(v: Token.Layout.Visibility, th: Theme) -> string {
     val out = case v {
         Visible -> "visibility:visible";
         Invisible -> "visibility:hidden";
@@ -2912,7 +2912,7 @@ fn layoutVisibilityToCss(v: Token.Layout.Visibility) -> string {
 // THE ONE NUMERIC FAMILY IN THIS FRONT THAT IS NOT A LENGTH. `z-50` is
 // `z-index:50` — a bare integer — so it never reaches `spacing` and there is
 // nothing here for a theme to resolve.
-fn layoutZToCss(z: Token.Layout.Z) -> string {
+fn layoutZToCss(z: Token.Layout.Z, th: Theme) -> string {
     val out = case z {
         __0 -> "z-index:0";
         __10 -> "z-index:10";
@@ -2925,7 +2925,7 @@ fn layoutZToCss(z: Token.Layout.Z) -> string {
     return out;
 }
 
-fn layoutIsolationToCss(i: Token.Layout.Isolation) -> string {
+fn layoutIsolationToCss(i: Token.Layout.Isolation, th: Theme) -> string {
     val out = case i {
         Isolate -> "isolation:isolate";
         Auto -> "isolation:auto";
@@ -2936,7 +2936,7 @@ fn layoutIsolationToCss(i: Token.Layout.Isolation) -> string {
 // ANOTHER NAME-VERSUS-VALUE TRAP. Tailwind v4 spells the logical floats
 // `float-start` / `float-end`; CSS spells the values `inline-start` /
 // `inline-end`. `float:start` is not a value and would be discarded silently.
-fn layoutFloatToCss(f: Token.Layout.Float) -> string {
+fn layoutFloatToCss(f: Token.Layout.Float, th: Theme) -> string {
     val out = case f {
         Start -> "float:inline-start";
         End -> "float:inline-end";
@@ -2947,7 +2947,7 @@ fn layoutFloatToCss(f: Token.Layout.Float) -> string {
     return out;
 }
 
-fn layoutClearToCss(c: Token.Layout.Clear) -> string {
+fn layoutClearToCss(c: Token.Layout.Clear, th: Theme) -> string {
     val out = case c {
         Start -> "clear:inline-start";
         End -> "clear:inline-end";
@@ -2959,15 +2959,15 @@ fn layoutClearToCss(c: Token.Layout.Clear) -> string {
     return out;
 }
 
-fn layoutObjectToCss(o: Token.Layout.Object) -> string {
+fn layoutObjectToCss(o: Token.Layout.Object, th: Theme) -> string {
     val out = case o {
-        Fit(_inner) -> layoutObjectFitToCss(_inner);
-        Pos(_inner) -> layoutObjectPosToCss(_inner);
+        Fit(_inner) -> layoutObjectFitToCss(_inner, th);
+        Pos(_inner) -> layoutObjectPosToCss(_inner, th);
     };
     return out;
 }
 
-fn layoutObjectFitToCss(f: Token.Layout.Object.Fit) -> string {
+fn layoutObjectFitToCss(f: Token.Layout.Object.Fit, th: Theme) -> string {
     val out = case f {
         Contain -> "object-fit:contain";
         Cover -> "object-fit:cover";
@@ -2981,7 +2981,7 @@ fn layoutObjectFitToCss(f: Token.Layout.Object.Fit) -> string {
 // The four two-word values are ONE SPACE, not a hyphen: `object-left-bottom` is
 // `object-position:left bottom`. The hyphen belongs to the utility name and the
 // space to the CSS value, and the two are not the same string.
-fn layoutObjectPosToCss(p: Token.Layout.Object.Pos) -> string {
+fn layoutObjectPosToCss(p: Token.Layout.Object.Pos, th: Theme) -> string {
     val out = case p {
         Bottom -> "object-position:bottom";
         Center -> "object-position:center";
@@ -2998,7 +2998,7 @@ fn layoutObjectPosToCss(p: Token.Layout.Object.Pos) -> string {
 
 // `§ 5.1` prints the ratios with spaces around the slash, so that is what is
 // emitted: `aspect-ratio:1 / 1`, not `1/1`.
-fn layoutAspectToCss(a: Token.Layout.Aspect) -> string {
+fn layoutAspectToCss(a: Token.Layout.Aspect, th: Theme) -> string {
     val out = case a {
         Auto -> "aspect-ratio:auto";
         Square -> "aspect-ratio:1 / 1";
@@ -3023,7 +3023,7 @@ fn layoutAspectToCss(a: Token.Layout.Aspect) -> string {
 // and `-3` and the named widths only. `columns-4` … `columns-12` resolve
 // upstream through the bare-integer rule rather than through a theme key, so
 // they are left out until that is confirmed rather than guessed at here.
-fn layoutColumnsToCss(c: Token.Layout.Columns) -> string {
+fn layoutColumnsToCss(c: Token.Layout.Columns, th: Theme) -> string {
     val out = case c {
         __1 -> "columns:1";
         __2 -> "columns:2";
@@ -3046,16 +3046,16 @@ fn layoutColumnsToCss(c: Token.Layout.Columns) -> string {
     return out;
 }
 
-fn layoutBreakToCss(b: Token.Layout.Break) -> string {
+fn layoutBreakToCss(b: Token.Layout.Break, th: Theme) -> string {
     val out = case b {
-        After(_inner) -> layoutBreakAfterToCss(_inner);
-        Before(_inner) -> layoutBreakBeforeToCss(_inner);
-        Inside(_inner) -> layoutBreakInsideToCss(_inner);
+        After(_inner) -> layoutBreakAfterToCss(_inner, th);
+        Before(_inner) -> layoutBreakBeforeToCss(_inner, th);
+        Inside(_inner) -> layoutBreakInsideToCss(_inner, th);
     };
     return out;
 }
 
-fn layoutBreakAfterToCss(b: Token.Layout.Break.After) -> string {
+fn layoutBreakAfterToCss(b: Token.Layout.Break.After, th: Theme) -> string {
     val out = case b {
         Auto -> "break-after:auto";
         Avoid -> "break-after:avoid";
@@ -3068,7 +3068,7 @@ fn layoutBreakAfterToCss(b: Token.Layout.Break.After) -> string {
     return out;
 }
 
-fn layoutBreakBeforeToCss(b: Token.Layout.Break.Before) -> string {
+fn layoutBreakBeforeToCss(b: Token.Layout.Break.Before, th: Theme) -> string {
     val out = case b {
         Auto -> "break-before:auto";
         Avoid -> "break-before:avoid";
@@ -3084,7 +3084,7 @@ fn layoutBreakBeforeToCss(b: Token.Layout.Break.Before) -> string {
 // `break-inside` carries a SHORTER leaf set than the other two — `§ 5.5` has no
 // `all`, no `page`, no `left` and no `right` — so it is its own sub-section
 // rather than a third caller of one shared list.
-fn layoutBreakInsideToCss(b: Token.Layout.Break.Inside) -> string {
+fn layoutBreakInsideToCss(b: Token.Layout.Break.Inside, th: Theme) -> string {
     val out = case b {
         Auto -> "break-inside:auto";
         Avoid -> "break-inside:avoid";
@@ -3096,7 +3096,7 @@ fn layoutBreakInsideToCss(b: Token.Layout.Break.Inside) -> string {
 
 // `box-border` / `box-content` are the utility names and `border-box` /
 // `content-box` are the CSS values; the suffix moves.
-fn layoutBoxToCss(b: Token.Layout.Box) -> string {
+fn layoutBoxToCss(b: Token.Layout.Box, th: Theme) -> string {
     val out = case b {
         Border -> "box-sizing:border-box";
         Content -> "box-sizing:content-box";
@@ -3104,7 +3104,7 @@ fn layoutBoxToCss(b: Token.Layout.Box) -> string {
     return out;
 }
 
-fn layoutBoxDecorationToCss(b: Token.Layout.BoxDecoration) -> string {
+fn layoutBoxDecorationToCss(b: Token.Layout.BoxDecoration, th: Theme) -> string {
     val out = case b {
         Clone -> "box-decoration-break:clone";
         Slice -> "box-decoration-break:slice";
@@ -3324,6 +3324,292 @@ test "aspect-ratio — the slash keeps its spaces" {
 // The count is a plain integer; the named width is the THEME's, read through
 // the same `containerVar` front 35's `Size.MaxW.Md` reads. `columns-md` and
 // `max-w-md` are the same width by definition, so they are the same reference.
+// ── the front's regression ───────────────────────────────────────────────────
+//
+// THE WHOLE ARGUMENT OF THIS FRONT'S NUMERIC FAMILY, walked rather than
+// sampled. Every leaf `Layout` declares — all 776 of them — is mapped and the
+// output is checked for the two shapes that would mean a value was resolved
+// here instead of referenced:
+//
+//   - a `rem` ANYWHERE. `Inset` must answer `calc(var(--spacing) * n)` and the
+//     named column widths must answer `var(--container-*)`; a `rem` in either
+//     is front 35's defect reopened, and it would make a project's `--spacing`
+//     or `--container-md` override silently ineffective.
+//   - a CLASS FRAGMENT where a declaration belongs. `top-4`, `inset-x-0` and
+//     `z-50` are utility names, not CSS; the shape that reaches the document is
+//     `property:value`, so every leaf carries a `:` and none carries the
+//     hyphenated utility spelling of its own scale.
+//
+// `Border.Rounded` and `Text.Size` DO spell `rem` — they are fronts 41's and
+// 42's and are not walked here.
+fn layoutLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Layout.Block, .Layout.InlineBlock, .Layout.Inline, .Layout.InlineFlex,
+        .Layout.InlineGrid, .Layout.Contents, .Layout.FlowRoot, .Layout.ListItem,
+        .Layout.Hidden, .Layout.Flex, .Layout.Grid, .Layout.Position.Static,
+        .Layout.Position.Fixed, .Layout.Position.Absolute, .Layout.Position.Relative,
+        .Layout.Position.Sticky, .Layout.Inset.All.0, .Layout.Inset.All.1, .Layout.Inset.All.2,
+        .Layout.Inset.All.3, .Layout.Inset.All.4, .Layout.Inset.All.5, .Layout.Inset.All.6,
+        .Layout.Inset.All.7, .Layout.Inset.All.8, .Layout.Inset.All.9, .Layout.Inset.All.10,
+        .Layout.Inset.All.11, .Layout.Inset.All.12, .Layout.Inset.All.14, .Layout.Inset.All.16,
+        .Layout.Inset.All.20, .Layout.Inset.All.24, .Layout.Inset.All.28, .Layout.Inset.All.32,
+        .Layout.Inset.All.36, .Layout.Inset.All.40, .Layout.Inset.All.44, .Layout.Inset.All.48,
+        .Layout.Inset.All.52, .Layout.Inset.All.56, .Layout.Inset.All.60, .Layout.Inset.All.64,
+        .Layout.Inset.All.72, .Layout.Inset.All.80, .Layout.Inset.All.96, .Layout.Inset.All.Px,
+        .Layout.Inset.All.Auto, .Layout.Inset.All.Full, .Layout.Inset.All.Frac.Half,
+        .Layout.Inset.All.Frac.Third, .Layout.Inset.All.Frac.TwoThirds,
+        .Layout.Inset.All.Half.0, .Layout.Inset.All.Half.1, .Layout.Inset.All.Half.2,
+        .Layout.Inset.All.Half.3, .Layout.Inset.All.Neg.1, .Layout.Inset.All.Neg.2,
+        .Layout.Inset.All.Neg.3, .Layout.Inset.All.Neg.4, .Layout.Inset.All.Neg.5,
+        .Layout.Inset.All.Neg.6, .Layout.Inset.All.Neg.7, .Layout.Inset.All.Neg.8,
+        .Layout.Inset.All.Neg.9, .Layout.Inset.All.Neg.10, .Layout.Inset.All.Neg.11,
+        .Layout.Inset.All.Neg.12, .Layout.Inset.All.Neg.14, .Layout.Inset.All.Neg.16,
+        .Layout.Inset.All.Neg.20, .Layout.Inset.All.Neg.24, .Layout.Inset.All.Neg.28,
+        .Layout.Inset.All.Neg.32, .Layout.Inset.All.Neg.36, .Layout.Inset.All.Neg.40,
+        .Layout.Inset.All.Neg.44, .Layout.Inset.All.Neg.48, .Layout.Inset.All.Neg.52,
+        .Layout.Inset.All.Neg.56, .Layout.Inset.All.Neg.60, .Layout.Inset.All.Neg.64,
+        .Layout.Inset.All.Neg.72, .Layout.Inset.All.Neg.80, .Layout.Inset.All.Neg.96,
+        .Layout.Inset.All.Neg.Px, .Layout.Inset.All.Neg.Half.1, .Layout.Inset.All.Neg.Half.2,
+        .Layout.Inset.All.Neg.Half.3, .Layout.Inset.X.0, .Layout.Inset.X.1, .Layout.Inset.X.2,
+        .Layout.Inset.X.3, .Layout.Inset.X.4, .Layout.Inset.X.5, .Layout.Inset.X.6,
+        .Layout.Inset.X.7, .Layout.Inset.X.8, .Layout.Inset.X.9, .Layout.Inset.X.10,
+        .Layout.Inset.X.11, .Layout.Inset.X.12, .Layout.Inset.X.14, .Layout.Inset.X.16,
+        .Layout.Inset.X.20, .Layout.Inset.X.24, .Layout.Inset.X.28, .Layout.Inset.X.32,
+        .Layout.Inset.X.36, .Layout.Inset.X.40, .Layout.Inset.X.44, .Layout.Inset.X.48,
+        .Layout.Inset.X.52, .Layout.Inset.X.56, .Layout.Inset.X.60, .Layout.Inset.X.64,
+        .Layout.Inset.X.72, .Layout.Inset.X.80, .Layout.Inset.X.96, .Layout.Inset.X.Px,
+        .Layout.Inset.X.Auto, .Layout.Inset.X.Full, .Layout.Inset.X.Frac.Half,
+        .Layout.Inset.X.Frac.Third, .Layout.Inset.X.Frac.TwoThirds, .Layout.Inset.X.Half.0,
+        .Layout.Inset.X.Half.1, .Layout.Inset.X.Half.2, .Layout.Inset.X.Half.3,
+        .Layout.Inset.X.Neg.1, .Layout.Inset.X.Neg.2, .Layout.Inset.X.Neg.3,
+        .Layout.Inset.X.Neg.4, .Layout.Inset.X.Neg.5, .Layout.Inset.X.Neg.6,
+        .Layout.Inset.X.Neg.7, .Layout.Inset.X.Neg.8, .Layout.Inset.X.Neg.9,
+        .Layout.Inset.X.Neg.10, .Layout.Inset.X.Neg.11, .Layout.Inset.X.Neg.12,
+        .Layout.Inset.X.Neg.14, .Layout.Inset.X.Neg.16, .Layout.Inset.X.Neg.20,
+        .Layout.Inset.X.Neg.24, .Layout.Inset.X.Neg.28, .Layout.Inset.X.Neg.32,
+        .Layout.Inset.X.Neg.36, .Layout.Inset.X.Neg.40, .Layout.Inset.X.Neg.44,
+        .Layout.Inset.X.Neg.48, .Layout.Inset.X.Neg.52, .Layout.Inset.X.Neg.56,
+        .Layout.Inset.X.Neg.60, .Layout.Inset.X.Neg.64, .Layout.Inset.X.Neg.72,
+        .Layout.Inset.X.Neg.80, .Layout.Inset.X.Neg.96, .Layout.Inset.X.Neg.Px,
+        .Layout.Inset.X.Neg.Half.1, .Layout.Inset.X.Neg.Half.2, .Layout.Inset.X.Neg.Half.3,
+        .Layout.Inset.Y.0, .Layout.Inset.Y.1, .Layout.Inset.Y.2, .Layout.Inset.Y.3,
+        .Layout.Inset.Y.4, .Layout.Inset.Y.5, .Layout.Inset.Y.6, .Layout.Inset.Y.7,
+        .Layout.Inset.Y.8, .Layout.Inset.Y.9, .Layout.Inset.Y.10, .Layout.Inset.Y.11,
+        .Layout.Inset.Y.12, .Layout.Inset.Y.14, .Layout.Inset.Y.16, .Layout.Inset.Y.20,
+        .Layout.Inset.Y.24, .Layout.Inset.Y.28, .Layout.Inset.Y.32, .Layout.Inset.Y.36,
+        .Layout.Inset.Y.40, .Layout.Inset.Y.44, .Layout.Inset.Y.48, .Layout.Inset.Y.52,
+        .Layout.Inset.Y.56, .Layout.Inset.Y.60, .Layout.Inset.Y.64, .Layout.Inset.Y.72,
+        .Layout.Inset.Y.80, .Layout.Inset.Y.96, .Layout.Inset.Y.Px, .Layout.Inset.Y.Auto,
+        .Layout.Inset.Y.Full, .Layout.Inset.Y.Frac.Half, .Layout.Inset.Y.Frac.Third,
+        .Layout.Inset.Y.Frac.TwoThirds, .Layout.Inset.Y.Half.0, .Layout.Inset.Y.Half.1,
+        .Layout.Inset.Y.Half.2, .Layout.Inset.Y.Half.3, .Layout.Inset.Y.Neg.1,
+        .Layout.Inset.Y.Neg.2, .Layout.Inset.Y.Neg.3, .Layout.Inset.Y.Neg.4,
+        .Layout.Inset.Y.Neg.5, .Layout.Inset.Y.Neg.6, .Layout.Inset.Y.Neg.7,
+        .Layout.Inset.Y.Neg.8, .Layout.Inset.Y.Neg.9, .Layout.Inset.Y.Neg.10,
+        .Layout.Inset.Y.Neg.11, .Layout.Inset.Y.Neg.12, .Layout.Inset.Y.Neg.14,
+        .Layout.Inset.Y.Neg.16, .Layout.Inset.Y.Neg.20, .Layout.Inset.Y.Neg.24,
+        .Layout.Inset.Y.Neg.28, .Layout.Inset.Y.Neg.32, .Layout.Inset.Y.Neg.36,
+        .Layout.Inset.Y.Neg.40, .Layout.Inset.Y.Neg.44, .Layout.Inset.Y.Neg.48,
+        .Layout.Inset.Y.Neg.52, .Layout.Inset.Y.Neg.56, .Layout.Inset.Y.Neg.60,
+        .Layout.Inset.Y.Neg.64, .Layout.Inset.Y.Neg.72, .Layout.Inset.Y.Neg.80,
+        .Layout.Inset.Y.Neg.96, .Layout.Inset.Y.Neg.Px, .Layout.Inset.Y.Neg.Half.1,
+        .Layout.Inset.Y.Neg.Half.2, .Layout.Inset.Y.Neg.Half.3, .Layout.Inset.T.0,
+        .Layout.Inset.T.1, .Layout.Inset.T.2, .Layout.Inset.T.3, .Layout.Inset.T.4,
+        .Layout.Inset.T.5, .Layout.Inset.T.6, .Layout.Inset.T.7, .Layout.Inset.T.8,
+        .Layout.Inset.T.9, .Layout.Inset.T.10, .Layout.Inset.T.11, .Layout.Inset.T.12,
+        .Layout.Inset.T.14, .Layout.Inset.T.16, .Layout.Inset.T.20, .Layout.Inset.T.24,
+        .Layout.Inset.T.28, .Layout.Inset.T.32, .Layout.Inset.T.36, .Layout.Inset.T.40,
+        .Layout.Inset.T.44, .Layout.Inset.T.48, .Layout.Inset.T.52, .Layout.Inset.T.56,
+        .Layout.Inset.T.60, .Layout.Inset.T.64, .Layout.Inset.T.72, .Layout.Inset.T.80,
+        .Layout.Inset.T.96, .Layout.Inset.T.Px, .Layout.Inset.T.Auto, .Layout.Inset.T.Full,
+        .Layout.Inset.T.Frac.Half, .Layout.Inset.T.Frac.Third, .Layout.Inset.T.Frac.TwoThirds,
+        .Layout.Inset.T.Half.0, .Layout.Inset.T.Half.1, .Layout.Inset.T.Half.2,
+        .Layout.Inset.T.Half.3, .Layout.Inset.T.Neg.1, .Layout.Inset.T.Neg.2,
+        .Layout.Inset.T.Neg.3, .Layout.Inset.T.Neg.4, .Layout.Inset.T.Neg.5,
+        .Layout.Inset.T.Neg.6, .Layout.Inset.T.Neg.7, .Layout.Inset.T.Neg.8,
+        .Layout.Inset.T.Neg.9, .Layout.Inset.T.Neg.10, .Layout.Inset.T.Neg.11,
+        .Layout.Inset.T.Neg.12, .Layout.Inset.T.Neg.14, .Layout.Inset.T.Neg.16,
+        .Layout.Inset.T.Neg.20, .Layout.Inset.T.Neg.24, .Layout.Inset.T.Neg.28,
+        .Layout.Inset.T.Neg.32, .Layout.Inset.T.Neg.36, .Layout.Inset.T.Neg.40,
+        .Layout.Inset.T.Neg.44, .Layout.Inset.T.Neg.48, .Layout.Inset.T.Neg.52,
+        .Layout.Inset.T.Neg.56, .Layout.Inset.T.Neg.60, .Layout.Inset.T.Neg.64,
+        .Layout.Inset.T.Neg.72, .Layout.Inset.T.Neg.80, .Layout.Inset.T.Neg.96,
+        .Layout.Inset.T.Neg.Px, .Layout.Inset.T.Neg.Half.1, .Layout.Inset.T.Neg.Half.2,
+        .Layout.Inset.T.Neg.Half.3, .Layout.Inset.R.0, .Layout.Inset.R.1, .Layout.Inset.R.2,
+        .Layout.Inset.R.3, .Layout.Inset.R.4, .Layout.Inset.R.5, .Layout.Inset.R.6,
+        .Layout.Inset.R.7, .Layout.Inset.R.8, .Layout.Inset.R.9, .Layout.Inset.R.10,
+        .Layout.Inset.R.11, .Layout.Inset.R.12, .Layout.Inset.R.14, .Layout.Inset.R.16,
+        .Layout.Inset.R.20, .Layout.Inset.R.24, .Layout.Inset.R.28, .Layout.Inset.R.32,
+        .Layout.Inset.R.36, .Layout.Inset.R.40, .Layout.Inset.R.44, .Layout.Inset.R.48,
+        .Layout.Inset.R.52, .Layout.Inset.R.56, .Layout.Inset.R.60, .Layout.Inset.R.64,
+        .Layout.Inset.R.72, .Layout.Inset.R.80, .Layout.Inset.R.96, .Layout.Inset.R.Px,
+        .Layout.Inset.R.Auto, .Layout.Inset.R.Full, .Layout.Inset.R.Frac.Half,
+        .Layout.Inset.R.Frac.Third, .Layout.Inset.R.Frac.TwoThirds, .Layout.Inset.R.Half.0,
+        .Layout.Inset.R.Half.1, .Layout.Inset.R.Half.2, .Layout.Inset.R.Half.3,
+        .Layout.Inset.R.Neg.1, .Layout.Inset.R.Neg.2, .Layout.Inset.R.Neg.3,
+        .Layout.Inset.R.Neg.4, .Layout.Inset.R.Neg.5, .Layout.Inset.R.Neg.6,
+        .Layout.Inset.R.Neg.7, .Layout.Inset.R.Neg.8, .Layout.Inset.R.Neg.9,
+        .Layout.Inset.R.Neg.10, .Layout.Inset.R.Neg.11, .Layout.Inset.R.Neg.12,
+        .Layout.Inset.R.Neg.14, .Layout.Inset.R.Neg.16, .Layout.Inset.R.Neg.20,
+        .Layout.Inset.R.Neg.24, .Layout.Inset.R.Neg.28, .Layout.Inset.R.Neg.32,
+        .Layout.Inset.R.Neg.36, .Layout.Inset.R.Neg.40, .Layout.Inset.R.Neg.44,
+        .Layout.Inset.R.Neg.48, .Layout.Inset.R.Neg.52, .Layout.Inset.R.Neg.56,
+        .Layout.Inset.R.Neg.60, .Layout.Inset.R.Neg.64, .Layout.Inset.R.Neg.72,
+        .Layout.Inset.R.Neg.80, .Layout.Inset.R.Neg.96, .Layout.Inset.R.Neg.Px,
+        .Layout.Inset.R.Neg.Half.1, .Layout.Inset.R.Neg.Half.2, .Layout.Inset.R.Neg.Half.3,
+        .Layout.Inset.B.0, .Layout.Inset.B.1, .Layout.Inset.B.2, .Layout.Inset.B.3,
+        .Layout.Inset.B.4, .Layout.Inset.B.5, .Layout.Inset.B.6, .Layout.Inset.B.7,
+        .Layout.Inset.B.8, .Layout.Inset.B.9, .Layout.Inset.B.10, .Layout.Inset.B.11,
+        .Layout.Inset.B.12, .Layout.Inset.B.14, .Layout.Inset.B.16, .Layout.Inset.B.20,
+        .Layout.Inset.B.24, .Layout.Inset.B.28, .Layout.Inset.B.32, .Layout.Inset.B.36,
+        .Layout.Inset.B.40, .Layout.Inset.B.44, .Layout.Inset.B.48, .Layout.Inset.B.52,
+        .Layout.Inset.B.56, .Layout.Inset.B.60, .Layout.Inset.B.64, .Layout.Inset.B.72,
+        .Layout.Inset.B.80, .Layout.Inset.B.96, .Layout.Inset.B.Px, .Layout.Inset.B.Auto,
+        .Layout.Inset.B.Full, .Layout.Inset.B.Frac.Half, .Layout.Inset.B.Frac.Third,
+        .Layout.Inset.B.Frac.TwoThirds, .Layout.Inset.B.Half.0, .Layout.Inset.B.Half.1,
+        .Layout.Inset.B.Half.2, .Layout.Inset.B.Half.3, .Layout.Inset.B.Neg.1,
+        .Layout.Inset.B.Neg.2, .Layout.Inset.B.Neg.3, .Layout.Inset.B.Neg.4,
+        .Layout.Inset.B.Neg.5, .Layout.Inset.B.Neg.6, .Layout.Inset.B.Neg.7,
+        .Layout.Inset.B.Neg.8, .Layout.Inset.B.Neg.9, .Layout.Inset.B.Neg.10,
+        .Layout.Inset.B.Neg.11, .Layout.Inset.B.Neg.12, .Layout.Inset.B.Neg.14,
+        .Layout.Inset.B.Neg.16, .Layout.Inset.B.Neg.20, .Layout.Inset.B.Neg.24,
+        .Layout.Inset.B.Neg.28, .Layout.Inset.B.Neg.32, .Layout.Inset.B.Neg.36,
+        .Layout.Inset.B.Neg.40, .Layout.Inset.B.Neg.44, .Layout.Inset.B.Neg.48,
+        .Layout.Inset.B.Neg.52, .Layout.Inset.B.Neg.56, .Layout.Inset.B.Neg.60,
+        .Layout.Inset.B.Neg.64, .Layout.Inset.B.Neg.72, .Layout.Inset.B.Neg.80,
+        .Layout.Inset.B.Neg.96, .Layout.Inset.B.Neg.Px, .Layout.Inset.B.Neg.Half.1,
+        .Layout.Inset.B.Neg.Half.2, .Layout.Inset.B.Neg.Half.3, .Layout.Inset.L.0,
+        .Layout.Inset.L.1, .Layout.Inset.L.2, .Layout.Inset.L.3, .Layout.Inset.L.4,
+        .Layout.Inset.L.5, .Layout.Inset.L.6, .Layout.Inset.L.7, .Layout.Inset.L.8,
+        .Layout.Inset.L.9, .Layout.Inset.L.10, .Layout.Inset.L.11, .Layout.Inset.L.12,
+        .Layout.Inset.L.14, .Layout.Inset.L.16, .Layout.Inset.L.20, .Layout.Inset.L.24,
+        .Layout.Inset.L.28, .Layout.Inset.L.32, .Layout.Inset.L.36, .Layout.Inset.L.40,
+        .Layout.Inset.L.44, .Layout.Inset.L.48, .Layout.Inset.L.52, .Layout.Inset.L.56,
+        .Layout.Inset.L.60, .Layout.Inset.L.64, .Layout.Inset.L.72, .Layout.Inset.L.80,
+        .Layout.Inset.L.96, .Layout.Inset.L.Px, .Layout.Inset.L.Auto, .Layout.Inset.L.Full,
+        .Layout.Inset.L.Frac.Half, .Layout.Inset.L.Frac.Third, .Layout.Inset.L.Frac.TwoThirds,
+        .Layout.Inset.L.Half.0, .Layout.Inset.L.Half.1, .Layout.Inset.L.Half.2,
+        .Layout.Inset.L.Half.3, .Layout.Inset.L.Neg.1, .Layout.Inset.L.Neg.2,
+        .Layout.Inset.L.Neg.3, .Layout.Inset.L.Neg.4, .Layout.Inset.L.Neg.5,
+        .Layout.Inset.L.Neg.6, .Layout.Inset.L.Neg.7, .Layout.Inset.L.Neg.8,
+        .Layout.Inset.L.Neg.9, .Layout.Inset.L.Neg.10, .Layout.Inset.L.Neg.11,
+        .Layout.Inset.L.Neg.12, .Layout.Inset.L.Neg.14, .Layout.Inset.L.Neg.16,
+        .Layout.Inset.L.Neg.20, .Layout.Inset.L.Neg.24, .Layout.Inset.L.Neg.28,
+        .Layout.Inset.L.Neg.32, .Layout.Inset.L.Neg.36, .Layout.Inset.L.Neg.40,
+        .Layout.Inset.L.Neg.44, .Layout.Inset.L.Neg.48, .Layout.Inset.L.Neg.52,
+        .Layout.Inset.L.Neg.56, .Layout.Inset.L.Neg.60, .Layout.Inset.L.Neg.64,
+        .Layout.Inset.L.Neg.72, .Layout.Inset.L.Neg.80, .Layout.Inset.L.Neg.96,
+        .Layout.Inset.L.Neg.Px, .Layout.Inset.L.Neg.Half.1, .Layout.Inset.L.Neg.Half.2,
+        .Layout.Inset.L.Neg.Half.3, .Layout.Inset.S.0, .Layout.Inset.S.1, .Layout.Inset.S.2,
+        .Layout.Inset.S.3, .Layout.Inset.S.4, .Layout.Inset.S.5, .Layout.Inset.S.6,
+        .Layout.Inset.S.7, .Layout.Inset.S.8, .Layout.Inset.S.9, .Layout.Inset.S.10,
+        .Layout.Inset.S.11, .Layout.Inset.S.12, .Layout.Inset.S.14, .Layout.Inset.S.16,
+        .Layout.Inset.S.20, .Layout.Inset.S.24, .Layout.Inset.S.28, .Layout.Inset.S.32,
+        .Layout.Inset.S.36, .Layout.Inset.S.40, .Layout.Inset.S.44, .Layout.Inset.S.48,
+        .Layout.Inset.S.52, .Layout.Inset.S.56, .Layout.Inset.S.60, .Layout.Inset.S.64,
+        .Layout.Inset.S.72, .Layout.Inset.S.80, .Layout.Inset.S.96, .Layout.Inset.S.Px,
+        .Layout.Inset.S.Auto, .Layout.Inset.S.Full, .Layout.Inset.S.Frac.Half,
+        .Layout.Inset.S.Frac.Third, .Layout.Inset.S.Frac.TwoThirds, .Layout.Inset.S.Half.0,
+        .Layout.Inset.S.Half.1, .Layout.Inset.S.Half.2, .Layout.Inset.S.Half.3,
+        .Layout.Inset.S.Neg.1, .Layout.Inset.S.Neg.2, .Layout.Inset.S.Neg.3,
+        .Layout.Inset.S.Neg.4, .Layout.Inset.S.Neg.5, .Layout.Inset.S.Neg.6,
+        .Layout.Inset.S.Neg.7, .Layout.Inset.S.Neg.8, .Layout.Inset.S.Neg.9,
+        .Layout.Inset.S.Neg.10, .Layout.Inset.S.Neg.11, .Layout.Inset.S.Neg.12,
+        .Layout.Inset.S.Neg.14, .Layout.Inset.S.Neg.16, .Layout.Inset.S.Neg.20,
+        .Layout.Inset.S.Neg.24, .Layout.Inset.S.Neg.28, .Layout.Inset.S.Neg.32,
+        .Layout.Inset.S.Neg.36, .Layout.Inset.S.Neg.40, .Layout.Inset.S.Neg.44,
+        .Layout.Inset.S.Neg.48, .Layout.Inset.S.Neg.52, .Layout.Inset.S.Neg.56,
+        .Layout.Inset.S.Neg.60, .Layout.Inset.S.Neg.64, .Layout.Inset.S.Neg.72,
+        .Layout.Inset.S.Neg.80, .Layout.Inset.S.Neg.96, .Layout.Inset.S.Neg.Px,
+        .Layout.Inset.S.Neg.Half.1, .Layout.Inset.S.Neg.Half.2, .Layout.Inset.S.Neg.Half.3,
+        .Layout.Inset.E.0, .Layout.Inset.E.1, .Layout.Inset.E.2, .Layout.Inset.E.3,
+        .Layout.Inset.E.4, .Layout.Inset.E.5, .Layout.Inset.E.6, .Layout.Inset.E.7,
+        .Layout.Inset.E.8, .Layout.Inset.E.9, .Layout.Inset.E.10, .Layout.Inset.E.11,
+        .Layout.Inset.E.12, .Layout.Inset.E.14, .Layout.Inset.E.16, .Layout.Inset.E.20,
+        .Layout.Inset.E.24, .Layout.Inset.E.28, .Layout.Inset.E.32, .Layout.Inset.E.36,
+        .Layout.Inset.E.40, .Layout.Inset.E.44, .Layout.Inset.E.48, .Layout.Inset.E.52,
+        .Layout.Inset.E.56, .Layout.Inset.E.60, .Layout.Inset.E.64, .Layout.Inset.E.72,
+        .Layout.Inset.E.80, .Layout.Inset.E.96, .Layout.Inset.E.Px, .Layout.Inset.E.Auto,
+        .Layout.Inset.E.Full, .Layout.Inset.E.Frac.Half, .Layout.Inset.E.Frac.Third,
+        .Layout.Inset.E.Frac.TwoThirds, .Layout.Inset.E.Half.0, .Layout.Inset.E.Half.1,
+        .Layout.Inset.E.Half.2, .Layout.Inset.E.Half.3, .Layout.Inset.E.Neg.1,
+        .Layout.Inset.E.Neg.2, .Layout.Inset.E.Neg.3, .Layout.Inset.E.Neg.4,
+        .Layout.Inset.E.Neg.5, .Layout.Inset.E.Neg.6, .Layout.Inset.E.Neg.7,
+        .Layout.Inset.E.Neg.8, .Layout.Inset.E.Neg.9, .Layout.Inset.E.Neg.10,
+        .Layout.Inset.E.Neg.11, .Layout.Inset.E.Neg.12, .Layout.Inset.E.Neg.14,
+        .Layout.Inset.E.Neg.16, .Layout.Inset.E.Neg.20, .Layout.Inset.E.Neg.24,
+        .Layout.Inset.E.Neg.28, .Layout.Inset.E.Neg.32, .Layout.Inset.E.Neg.36,
+        .Layout.Inset.E.Neg.40, .Layout.Inset.E.Neg.44, .Layout.Inset.E.Neg.48,
+        .Layout.Inset.E.Neg.52, .Layout.Inset.E.Neg.56, .Layout.Inset.E.Neg.60,
+        .Layout.Inset.E.Neg.64, .Layout.Inset.E.Neg.72, .Layout.Inset.E.Neg.80,
+        .Layout.Inset.E.Neg.96, .Layout.Inset.E.Neg.Px, .Layout.Inset.E.Neg.Half.1,
+        .Layout.Inset.E.Neg.Half.2, .Layout.Inset.E.Neg.Half.3, .Layout.Overflow.Auto,
+        .Layout.Overflow.X.Auto, .Layout.Overflow.Y.Auto, .Layout.Overflow.Hidden,
+        .Layout.Overflow.X.Hidden, .Layout.Overflow.Y.Hidden, .Layout.Overflow.Clip,
+        .Layout.Overflow.X.Clip, .Layout.Overflow.Y.Clip, .Layout.Overflow.Visible,
+        .Layout.Overflow.X.Visible, .Layout.Overflow.Y.Visible, .Layout.Overflow.Scroll,
+        .Layout.Overflow.X.Scroll, .Layout.Overflow.Y.Scroll, .Layout.Overscroll.Auto,
+        .Layout.Overscroll.X.Auto, .Layout.Overscroll.Y.Auto, .Layout.Overscroll.Contain,
+        .Layout.Overscroll.X.Contain, .Layout.Overscroll.Y.Contain, .Layout.Overscroll.None,
+        .Layout.Overscroll.X.None, .Layout.Overscroll.Y.None, .Layout.Visibility.Visible,
+        .Layout.Visibility.Invisible, .Layout.Visibility.Collapse, .Layout.Z.0, .Layout.Z.10,
+        .Layout.Z.20, .Layout.Z.30, .Layout.Z.40, .Layout.Z.50, .Layout.Z.Auto,
+        .Layout.Isolation.Isolate, .Layout.Isolation.Auto, .Layout.Float.Start,
+        .Layout.Float.End, .Layout.Float.Right, .Layout.Float.Left, .Layout.Float.None,
+        .Layout.Clear.Start, .Layout.Clear.End, .Layout.Clear.Left, .Layout.Clear.Right,
+        .Layout.Clear.Both, .Layout.Clear.None, .Layout.Object.Fit.Contain,
+        .Layout.Object.Fit.Cover, .Layout.Object.Fit.Fill, .Layout.Object.Fit.None,
+        .Layout.Object.Fit.ScaleDown, .Layout.Object.Pos.Bottom, .Layout.Object.Pos.Center,
+        .Layout.Object.Pos.Left, .Layout.Object.Pos.LeftBottom, .Layout.Object.Pos.LeftTop,
+        .Layout.Object.Pos.Right, .Layout.Object.Pos.RightBottom, .Layout.Object.Pos.RightTop,
+        .Layout.Object.Pos.Top, .Layout.Aspect.Auto, .Layout.Aspect.Square,
+        .Layout.Aspect.Video, .Layout.Columns.1, .Layout.Columns.2, .Layout.Columns.3,
+        .Layout.Columns.Auto, .Layout.Columns.X3xs, .Layout.Columns.X2xs, .Layout.Columns.Xs,
+        .Layout.Columns.Sm, .Layout.Columns.Md, .Layout.Columns.Lg, .Layout.Columns.Xl,
+        .Layout.Columns.X2xl, .Layout.Columns.X3xl, .Layout.Columns.X4xl, .Layout.Columns.X5xl,
+        .Layout.Columns.X6xl, .Layout.Columns.X7xl, .Layout.Break.After.Auto,
+        .Layout.Break.Before.Auto, .Layout.Break.After.Avoid, .Layout.Break.Before.Avoid,
+        .Layout.Break.After.All, .Layout.Break.Before.All, .Layout.Break.After.Page,
+        .Layout.Break.Before.Page, .Layout.Break.After.Left, .Layout.Break.Before.Left,
+        .Layout.Break.After.Right, .Layout.Break.Before.Right, .Layout.Break.After.Column,
+        .Layout.Break.Before.Column, .Layout.Break.Inside.Auto, .Layout.Break.Inside.Avoid,
+        .Layout.Break.Inside.AvoidPage, .Layout.Break.Inside.AvoidColumn, .Layout.Box.Border,
+        .Layout.Box.Content, .Layout.BoxDecoration.Clone, .Layout.BoxDecoration.Slice,
+    ];
+    return leaves;
+}
+
+test "regression — no `Layout` leaf resolves a length; all 776 reference the theme" {
+    val leaves = layoutLeaves();
+    assert leaves.length == 776;
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("rem") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf(":") != -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).length > 0 });
+    assert tokenDeclarations(.Border.Rounded.Lg).indexOf("rem") != -1;
+}
+
+test "regression — no `Layout` leaf emits a Tailwind class fragment" {
+    val leaves = layoutLeaves();
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("inset-x-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("inset-y-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("top-") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("z-50") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("overflow-auto") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("float-start") == -1 });
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("box-border") == -1 });
+}
+
+// Every multiplier leaf of every direction carries the multiplier it names,
+// through `spacing(n)` and through nothing else. The negatives carry `* -n`.
+test "regression — the inset ladder is the spacing ladder, direction by direction" {
+    assert tokenDeclarations(.Layout.Inset.All.12) == "inset:" + spacing(12);
+    assert tokenDeclarations(.Layout.Inset.T.96) == "top:" + spacing(96);
+    assert tokenDeclarations(.Layout.Inset.B.Neg.16) == "bottom:" + spacing(-16);
+    assert tokenDeclarations(.Layout.Inset.L.Half.2) == "left:" + spacingHalf(2);
+    assert tokenDeclarations(.Layout.Inset.S.Neg.Half.3) == "inset-inline-start:" + spacingHalf(-3);
+    assert tokenDeclarations(.Layout.Inset.E.0) == "inset-inline-end:0";
+}
+
 test "columns — a count is an integer, a named width is the theme's container" {
     assert tokenDeclarations(.Layout.Columns.1) == "columns:1";
     assert tokenDeclarations(.Layout.Columns.2) == "columns:2";

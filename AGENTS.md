@@ -89,6 +89,23 @@ front that needs the theme adds the parameter to its own function and to its
 own one line of the shared `case` — still one line each, and no front-56 commit
 touching a file two other fronts are editing.
 
+Front 36 owns the **layout section** — `Layout` in `tokens.bp` and
+`layoutTokenToCss` with its sub-dispatchers in `emilia.bp`, fenced by the
+`// ── front 36 — layout ──` banner in both files. The eleven display values are
+the section's OWN leaves, so `.Layout.Flex` keeps its pre-36 spelling; everything
+else in `§ 5` is a sub-section beside them (`Position`, `Inset`, `Overflow`,
+`Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`,
+`Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration`) — 776 leaves. Its rule is
+front 35's rule: **no leaf resolves a length**. `Inset` answers front 54's
+`spacing(n)` / `spacingHalf(n)`, the same two functions `Pad` and `Margin`
+answer, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named
+column widths answer front 35's `containerVar`, so `.Layout.Columns.Md` and
+`.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is
+not a length — a bare integer. `layoutTokenToCss(t, th)` and every
+sub-dispatcher under the banner take `th: Theme`. **`Flex`/`Grid` the container
+properties are front 37's**, and `Gap` with them; `display:flex` is here only
+because it is a display value.
+
 Front 35 owns the **spacing and sizing sections** — `Pad`, `Margin`, `Size` and
 `Space` in `tokens.bp`, and `padTokenToCss`, `marginTokenToCss`,
 `sizeTokenToCss` and `spaceTokenToSheet` in `emilia.bp`, fenced by the
@@ -434,10 +451,16 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **260/260** on
+  refuses) runs every module's in-file `test {}` blocks, **263/263** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 172 (`emilia.bp`). `emilia.bp`'s 172 are front 56's 33
-  (below) plus front 33's 81 plus front 35's 31 plus front 36's 27. Front 35's 31 cover the scale
+  (`output.bp`) + 175 (`emilia.bp`). `emilia.bp`'s 175 are front 56's 33
+  (below) plus front 33's 81 plus front 35's 31 plus front 36's 30. Three of
+  front 36's 30 are the front's REGRESSION: a walk over all **776** `Layout`
+  leaves asserting no declaration carries a `rem`, that every one carries a
+  `:`, and that none carries a Tailwind class fragment (`inset-x-`, `top-`,
+  `z-50`, `overflow-auto`, `float-start`, `box-border`); the same test asserts
+  `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
+  discriminate rather than to pass vacuously. Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
   the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
   named container and breakpoint widths read back through `themeValue`), the

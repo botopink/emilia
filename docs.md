@@ -476,6 +476,15 @@ by definition, so they are the same reference, and a project that overrides
 bare-integer rule rather than through a theme key; arbitrary `aspect-[4/3]` and
 `z-[999]`, which belong to the escape-hatch front.
 
+#### Nothing in `Layout` resolves a length
+
+`Layout` declares 776 leaves, and a test walks **every one of them** asserting
+the emitted declaration carries no `rem`, carries a `:`, and carries no Tailwind
+class fragment. `Inset` goes through `spacing(n)` / `spacingHalf(n)`; the named
+column widths go through `var(--container-*)`; `Z` is a bare integer. Halving
+`--spacing` or changing `--container-md` moves the `:root` block and not one
+byte of any `Layout` rule.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

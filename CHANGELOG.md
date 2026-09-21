@@ -15,6 +15,21 @@
   front 35 records — two fronts appending to the same last line cannot be
   merged.
 
+- **The dispatcher contract, and 776 leaves walked for a resolved length**
+  (1.0.10-beta front `36-emilia-layout`, step 6). `layoutTokenToCss(t, th)` and
+  every sub-dispatcher under the front 36 banner now carry `th: Theme`, each is
+  `val out = case …; return out;` with arrow arms only, and each is exhaustive
+  with no `_` — so a leaf added to `Layout` reds its own dispatcher rather than
+  falling through. The shared `case`'s `Layout` arm is the one line this front
+  changed there; no new top-level arm was added.
+  The front's REGRESSION walks **all 776 `Layout` leaves** and asserts no
+  declaration carries a `rem`, that every one carries a `:`, and that none
+  carries a Tailwind class fragment (`inset-x-`, `top-`, `z-50`,
+  `overflow-auto`, `float-start`, `box-border`). The same test asserts
+  `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
+  discriminate; a deliberate `0.25rem` planted in one inset arm was confirmed
+  to fail it.
+
 - **Multi-column, fragmentation and box-sizing — and the column widths are the
   theme's** (1.0.10-beta front `36-emilia-layout`, step 5). `Layout.Columns`,
   `Layout.Break { After, Before, Inside }`, `Layout.Box` and
