@@ -2,6 +2,18 @@
 
 ## Unreleased — v0.beta.22
 
+- **The theme** (1.0.10-beta front `54-emilia-theme`, step 1). New module
+  `modules/emilia/src/theme.bp`, declared `pub mod theme;` in `root.bp` and listed in
+  the member manifest's `files`. A theme is a **flat `ThemeEntry[]`**, not nineteen
+  record fields: `ThemeEntry(name, value)`, `Theme(entries, keyframes, darkMode)`,
+  `DarkMode { Media, Class(name), Attribute(name, value) }`, and the `Ns` enum naming
+  the nineteen namespaces. `nsPrefix(ns)` is the **only** place a custom-property
+  prefix string is written — `--color-`, `--font-`, …, `@keyframes ` — and
+  `Ns.Spacing` maps to `--spacing` with no trailing dash, because it is a single
+  variable rather than a family. `allNamespaces()` lists the nineteen in declaration
+  order. Measured: `botopink test` in `modules/emilia/` is 5/5 (`theme.bp`) + 17/17
+  (`emilia.bp`) on commonJS and on erlang.
+
 - **The repository is a workspace** (`02-packaging` step 2; decisions 75 and 76 of
   1.0.10-beta). `botopink.json` at the root is `{ name, version, description, targets
   [commonJS, erlang], workspaces ["modules/*", "examples/*"] }` — no `src`, `files`,

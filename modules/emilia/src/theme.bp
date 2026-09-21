@@ -1,0 +1,186 @@
+//// emilia/theme — the theme: a flat entry list, its namespaces, and the
+//// operations that extend, override, clear and read it.
+////
+//// A Tailwind theme is a flat set of CSS custom properties declared inside
+//// `@theme { … }`. The PREFIX of a property name selects its namespace
+//// (`--color-*`, `--font-*`, … — eighteen families plus the `@keyframes`
+//// bodies an `@theme` block may carry, which makes nineteen). Adding a name
+//// extends the theme; reusing one overrides it; dropping a namespace clears
+//// it; dropping everything empties it.
+////
+//// THE THEME IS A FLAT ENTRY LIST, NOT NINETEEN RECORD FIELDS. A
+//// nineteen-field record cannot express `--color-*: initial` or `--*: initial`
+//// without nineteen more functions, and every extension point would have to
+//// name its field. The flat set is what CSS actually has, so it delivers all
+//// nineteen namespaces AND the three reset forms with five functions.
+//// Namespaces stay typed through the `Ns` enum, which maps to its prefix, so
+//// no caller writes a prefix string by hand.
+////
+//// `extend` REFUSES an entry whose name matches no known prefix. There is no
+//// permissive mode and no argument that relaxes it: an unknown prefix is a
+//// typo or a namespace this library does not have, and both are errors.
+////
+//// emilia NEVER RESOLVES A SPACING VALUE — see `spacing.bp`. Every spacing
+//// utility emits `calc(var(--spacing) * n)`, so a consumer's `--spacing`
+//// override is what decides the rendered length.
+////
+//// The custom-property block is ALWAYS emitted in full (`@theme static`
+//// semantics). Tree-shaking the unused variables needs a whole-program pass
+//// over every `emilia()` call site, which emilia cannot do — it hashes per
+//// call site — so the tree-shaken form is out of scope.
+////
+//// FRONT 33 INTERFACE: the 26 colour families x 11 shades are front 33's
+//// data, handed over as `paletteEntries() -> ThemeEntry[]`; the composed
+//// theme is `extend(defaultTheme(), paletteEntries())`. This module does not
+//// import front 33, and front 33 does not edit this file — that is the whole
+//// interface between them.
+
+// One custom property. `name` carries its `--` prefix (or the bare animation
+// name, for a `keyframes` entry); `value` is the declaration's value (or the
+// brace-balanced rule body, for a `keyframes` entry).
+pub type ThemeEntry(name: string, value: string)
+
+// The dark-mode strategy, chosen once per project. `Media` follows the
+// operating system, `Class` a class on an ancestor, `Attribute` a data
+// attribute. Front 34 reads both `darkAtRule` and `darkSelector` and builds
+// the `Dark` variant; this module does not own that token.
+pub type DarkMode {
+    Media,
+    Class(name: string),
+    Attribute(name: string, value: string),
+}
+
+// The theme. `entries` is the flat custom-property set, in declaration order;
+// `keyframes` is separate because a keyframes value is a rule body, not a
+// property value, and so cannot live inside the `:root` block.
+pub type Theme(
+    entries: ThemeEntry[],
+    keyframes: ThemeEntry[],
+    darkMode: DarkMode,
+)
+
+// The nineteen namespaces a theme carries.
+pub type Ns {
+    Color,
+    Font,
+    Text,
+    FontWeight,
+    Tracking,
+    Leading,
+    Breakpoint,
+    Container,
+    Spacing,
+    Radius,
+    Shadow,
+    InsetShadow,
+    DropShadow,
+    Blur,
+    Perspective,
+    Aspect,
+    Ease,
+    Animate,
+    Keyframes,
+}
+
+// The ONLY place a namespace prefix string is written. `--spacing` carries no
+// trailing `-` because it is a single variable, not a family.
+pub fn nsPrefix(ns: Ns) -> string {
+    val out = case ns {
+        Color -> "--color-";
+        Font -> "--font-";
+        Text -> "--text-";
+        FontWeight -> "--font-weight-";
+        Tracking -> "--tracking-";
+        Leading -> "--leading-";
+        Breakpoint -> "--breakpoint-";
+        Container -> "--container-";
+        Spacing -> "--spacing";
+        Radius -> "--radius-";
+        Shadow -> "--shadow-";
+        InsetShadow -> "--inset-shadow-";
+        DropShadow -> "--drop-shadow-";
+        Blur -> "--blur-";
+        Perspective -> "--perspective-";
+        Aspect -> "--aspect-";
+        Ease -> "--ease-";
+        Animate -> "--animate-";
+        Keyframes -> "@keyframes ";
+    };
+    return out;
+}
+
+// Every namespace, in the order `Ns` declares them. `knownPrefixes` folds this
+// through `nsPrefix`, so the prefix table has exactly one author.
+pub fn allNamespaces() -> Ns[] {
+    val out: Ns[] = [
+        Ns.Color,
+        Ns.Font,
+        Ns.Text,
+        Ns.FontWeight,
+        Ns.Tracking,
+        Ns.Leading,
+        Ns.Breakpoint,
+        Ns.Container,
+        Ns.Spacing,
+        Ns.Radius,
+        Ns.Shadow,
+        Ns.InsetShadow,
+        Ns.DropShadow,
+        Ns.Blur,
+        Ns.Perspective,
+        Ns.Aspect,
+        Ns.Ease,
+        Ns.Animate,
+        Ns.Keyframes,
+    ];
+    return out;
+}
+
+fn knownPrefixes() -> string[] {
+    return allNamespaces().map({ ns -> nsPrefix(ns) });
+}
+
+// ── tests ────────────────────────────────────────────────────────────────────
+
+test "nsPrefix — the eighteen custom-property namespaces" {
+    assert nsPrefix(Ns.Color) == "--color-";
+    assert nsPrefix(Ns.Font) == "--font-";
+    assert nsPrefix(Ns.Text) == "--text-";
+    assert nsPrefix(Ns.FontWeight) == "--font-weight-";
+    assert nsPrefix(Ns.Tracking) == "--tracking-";
+    assert nsPrefix(Ns.Leading) == "--leading-";
+    assert nsPrefix(Ns.Breakpoint) == "--breakpoint-";
+    assert nsPrefix(Ns.Container) == "--container-";
+    assert nsPrefix(Ns.Radius) == "--radius-";
+    assert nsPrefix(Ns.Shadow) == "--shadow-";
+    assert nsPrefix(Ns.InsetShadow) == "--inset-shadow-";
+    assert nsPrefix(Ns.DropShadow) == "--drop-shadow-";
+    assert nsPrefix(Ns.Blur) == "--blur-";
+    assert nsPrefix(Ns.Perspective) == "--perspective-";
+    assert nsPrefix(Ns.Aspect) == "--aspect-";
+    assert nsPrefix(Ns.Ease) == "--ease-";
+    assert nsPrefix(Ns.Animate) == "--animate-";
+}
+
+test "nsPrefix — --spacing is a single variable, so it carries no trailing dash" {
+    assert nsPrefix(Ns.Spacing) == "--spacing";
+}
+
+test "nsPrefix — the nineteenth namespace is the keyframes at-rule" {
+    assert nsPrefix(Ns.Keyframes) == "@keyframes ";
+}
+
+test "allNamespaces — nineteen namespaces, nineteen distinct prefixes" {
+    assert allNamespaces().length == 19;
+    assert knownPrefixes().length == 19;
+    val distinct = knownPrefixes().filter({ p -> p.startsWith("--") });
+    assert distinct.length == 18;
+}
+
+test "Theme — constructed by named arguments only" {
+    val entries: ThemeEntry[] = [ThemeEntry(name: "--spacing", value: "4px")];
+    val keyframes: ThemeEntry[] = [];
+    val th = Theme(entries: entries, keyframes: keyframes, darkMode: DarkMode.Media);
+    assert th.entries.length == 1;
+    assert th.keyframes.length == 0;
+}

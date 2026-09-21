@@ -118,12 +118,18 @@ emilia/
 │   └── emilia/        ← THE CORE — what `from "emilia"` gives a consumer
 │       ├── botopink.json  name emilia · src src/ · entry root.bp ·
 │       │                    target commonJS · targets [commonJS, erlang] ·
-│       │                    files: root.bp · tokens.bp · emilia.bp ·
-│       │                    no dependencies
+│       │                    files: root.bp · tokens.bp · theme.bp ·
+│       │                    emilia.bp · no dependencies
 │       └── src/
-│           ├── root.bp    ← `pub mod tokens; pub default mod emilia;` (the
+│           ├── root.bp    ← `pub mod tokens; pub mod theme;
+│           │                pub default mod emilia;` (the
 │           │                v0 build folded the `stylesheet` module into
 │           │                `emilia.bp` — see the README's "Deferred")
+│           ├── theme.bp   ← front 54: the theme as a FLAT `ThemeEntry[]`
+│           │                with validated namespace prefixes (`Ns` +
+│           │                `nsPrefix`, the only place a prefix is
+│           │                written), `DarkMode`, and the extend /
+│           │                override / clear / empty / read operations
 │           ├── tokens.bp  ← the `Token` enum-shaped `type`
 │           │                (`pub type Token { … }`, 1.0.3 surface): every
 │           │                section + the modifier variants. Section

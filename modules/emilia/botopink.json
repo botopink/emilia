@@ -9,6 +9,7 @@
   "files": [
     "root.bp",
     "tokens.bp",
+    "theme.bp",
     "emilia.bp"
   ]
 }

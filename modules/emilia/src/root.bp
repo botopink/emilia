@@ -30,4 +30,5 @@
 //// package and not when emilia is consumed as a dependency.
 
 pub mod tokens;
+pub mod theme;
 pub default mod emilia;
