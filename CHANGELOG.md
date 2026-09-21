@@ -47,6 +47,24 @@
   ineffective. `i32` rather than `f64`, so the emitted string never depends on a
   backend's float formatting. Measured: 6/6 + 24/24 + 17/17 on both targets.
 
+- **The static custom-property block and the dark-mode strategy** (front
+  `54-emilia-theme`, steps 5 and 6). `themeCss(th)` renders the theme as the BODY of a
+  `:root` rule — `name:value` joined with `;`, in the theme's own order, which is
+  `defaultTheme()`'s declaration order followed by each `extendTheme`'s. The block is
+  **always the whole theme** (`@theme static` semantics): tree-shaking needs a
+  whole-program pass over every `emilia()` call site and emilia hashes per call site, so
+  the tree-shaken form is out of scope for this milestone — not a bug to file later.
+  `keyframeCss(th)` hands back the four `@keyframes` bodies, which cannot live inside
+  `:root`; each carries the bare animation name and a brace-balanced body, so front 56
+  writes `nsPrefix(Ns.Keyframes) + name + value` and never spells the at-rule.
+  `darkAtRule(th)` / `darkSelector(th)` turn the strategy into the two pieces front 34
+  needs: `@media (prefers-color-scheme: dark)` + `&` for `Media`, `""` +
+  `&:where(.dark, .dark *)` for `Class`, `""` +
+  `&:where([data-theme=dark], [data-theme=dark] *)` for `Attribute`. `withDarkMode(th,
+  mode)` swaps the strategy and changes nothing else. Verified: `themeCss(defaultTheme())`
+  and the four keyframes blocks are **byte-identical to the 70 expected lines** of the
+  milestone's own `05-emilia/test-snap.md`. Measured: 6/6 + 36/36 + 17/17 on both targets.
+
 - **The repository is a workspace** (`02-packaging` step 2; decisions 75 and 76 of
   1.0.10-beta). `botopink.json` at the root is `{ name, version, description, targets
   [commonJS, erlang], workspaces ["modules/*", "examples/*"] }` — no `src`, `files`,

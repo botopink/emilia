@@ -253,6 +253,38 @@ Negative steps need no second function. `spacing` takes an `i32`, not an `f64`,
 so the emitted string never depends on a backend's float formatting; the
 fractional steps are a closed set that `spacingHalf` covers exactly.
 
+### Rendering a theme
+
+| Function | What it answers |
+| --- | --- |
+| `themeCss(th) -> string` | the `:root` body — `name:value` joined with `;` |
+| `keyframeCss(th) -> ThemeEntry[]` | the `@keyframes` bodies, which cannot sit inside `:root` |
+| `darkAtRule(th) -> string` | the at-rule a dark rule nests inside, or `""` |
+| `darkSelector(th) -> string` | the selector a dark rule is written against |
+| `withDarkMode(th, mode) -> Theme` | swap the strategy, change nothing else |
+
+The block is **always the whole theme**. Upstream emits only the variables a
+build used, and `@theme static` emits all of them; emilia's behaviour is the
+second, because tree-shaking would need a whole-program pass over every
+`emilia()` call site and emilia hashes per call site.
+
+Entry order is the theme's own, and it matters: emilia's class names are content
+hashes, so a reordered theme is a different document for the same input.
+
+A keyframes entry carries the bare animation name and a brace-balanced body, so
+one block is written `nsPrefix(Ns.Keyframes) + name + value` —
+`@keyframes spin{to{transform:rotate(360deg)}}` — and nobody spells the at-rule
+by hand.
+
+| Strategy | `darkAtRule` | `darkSelector` |
+| --- | --- | --- |
+| `DarkMode.Media` | `@media (prefers-color-scheme: dark)` | `&` |
+| `DarkMode.Class(name: "dark")` | `""` | `&:where(.dark, .dark *)` |
+| `DarkMode.Attribute(name: "data-theme", value: "dark")` | `""` | `&:where([data-theme=dark], [data-theme=dark] *)` |
+
+`Class` and `Attribute` carry the whole strategy in the selector, which is why
+their at-rule is empty. The `Dark` token that consumes these is front 34's.
+
 ### The colour palette is not here
 
 `defaultTheme()` carries `--color-black` and `--color-white` and nothing else.

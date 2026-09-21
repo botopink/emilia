@@ -357,6 +357,65 @@ pub fn extendTheme(th: Theme, entries: ThemeEntry[]) -> Theme {
     return Theme(entries: merged, keyframes: th.keyframes, darkMode: th.darkMode);
 }
 
+// ── the static custom-property block ─────────────────────────────────────────
+
+// Render the theme as the BODY of a `:root` rule — `name:value` joined with
+// `;`. Front 56 wraps it; this module produces strings and imports nothing.
+//
+// The block is ALWAYS the whole theme. Upstream's default emits only the
+// variables the build actually used and `@theme static` emits all of them;
+// emilia's behaviour is the second, because tree-shaking needs a whole-program
+// pass over every `emilia()` call site and emilia hashes per call site. Saying
+// so here means nobody files it later as a bug.
+//
+// The order is the theme's own — `defaultTheme()`'s declaration order followed
+// by the order each `extendTheme` added to it. Deterministic order matters:
+// emilia's class names are content hashes, so a reordered theme would produce
+// a different document for the same input.
+pub fn themeCss(th: Theme) -> string {
+    return th.entries.map({ e -> e.name + ":" + e.value }).join(";");
+}
+
+// The `@keyframes` bodies, which cannot live inside `:root`. Each entry's
+// `name` is the bare animation name and its `value` the brace-balanced rule
+// body, so front 56 writes one block as `nsPrefix(Ns.Keyframes) + name + value`
+// and never spells `@keyframes` itself.
+pub fn keyframeCss(th: Theme) -> ThemeEntry[] {
+    return th.keyframes;
+}
+
+// ── the dark-mode strategy ───────────────────────────────────────────────────
+
+// The at-rule a dark rule is nested inside — non-empty only for `Media`, where
+// the strategy IS an at-rule. `Class` and `Attribute` carry the whole strategy
+// in their selector, so their at-rule is empty.
+pub fn darkAtRule(th: Theme) -> string {
+    val out = case th.darkMode {
+        Media -> "@media (prefers-color-scheme: dark)";
+        Class(name) -> "";
+        Attribute(name, value) -> "";
+    };
+    return out;
+}
+
+// The selector a dark rule is written against. `&` under `Media`, because the
+// at-rule already narrows it; a `:where()` pair under the other two, so the
+// variant costs no specificity and still matches the marked element itself as
+// well as its descendants.
+pub fn darkSelector(th: Theme) -> string {
+    val out = case th.darkMode {
+        Media -> "&";
+        Class(name) -> "&:where(." + name + ", ." + name + " *)";
+        Attribute(name, value) -> "&:where([" + name + "=" + value + "], [" + name + "=" + value + "] *)";
+    };
+    return out;
+}
+
+// Swap a theme's dark-mode strategy and change nothing else about it.
+pub fn withDarkMode(th: Theme, mode: DarkMode) -> Theme {
+    return Theme(entries: th.entries, keyframes: th.keyframes, darkMode: mode);
+}
+
 // ── tests ────────────────────────────────────────────────────────────────────
 
 test "nsPrefix — the eighteen custom-property namespaces" {
@@ -600,4 +659,78 @@ test "clearNamespace — clearing then re-declaring is how a project replaces a 
 test "namespace — --spacing is read back through its own namespace" {
     assert namespace(defaultTheme(), Ns.Spacing).length == 1;
     assert namespace(emptyTheme(), Ns.Spacing).length == 0;
+}
+
+// ── tests · the custom-property block and the dark strategy ──────────────────
+
+test "themeCss — the block opens with the spacing base" {
+    assert themeCss(defaultTheme()).startsWith("--spacing:0.25rem;");
+}
+
+test "themeCss — an empty theme renders nothing at all" {
+    assert themeCss(emptyTheme()) == "";
+}
+
+test "themeCss — two calls on the same theme return the same string" {
+    val th = defaultTheme();
+    assert themeCss(th) == themeCss(th);
+    assert themeCss(defaultTheme()) == themeCss(defaultTheme());
+}
+
+test "themeCss — an extended theme carries the new value, in place" {
+    val brand: ThemeEntry[] = [ThemeEntry(name: "--spacing", value: "4px")];
+    val css = themeCss(extendTheme(defaultTheme(), brand));
+    assert css.startsWith("--spacing:4px;");
+    assert css.length == themeCss(defaultTheme()).length - 4;
+}
+
+test "themeCss — declarations are joined with a single semicolon" {
+    val two: ThemeEntry[] = [
+        ThemeEntry(name: "--spacing", value: "4px"),
+        ThemeEntry(name: "--color-lagoon", value: "oklch(0.72 0.11 221.19)"),
+    ];
+    assert themeCss(extendTheme(emptyTheme(), two)) == "--spacing:4px;--color-lagoon:oklch(0.72 0.11 221.19)";
+}
+
+test "keyframeCss — four bodies, named, and every one brace-balanced" {
+    val kf = keyframeCss(defaultTheme());
+    assert kf.length == 4;
+    assert kf.map({ e -> e.name }).join(",") == "spin,ping,pulse,bounce";
+    assert kf.all({ e -> e.value.startsWith("{") });
+    assert kf.all({ e -> e.value.endsWith("}") });
+    assert kf.all({ e -> e.value.split("{").length == e.value.split("}").length });
+}
+
+test "keyframeCss — front 56 writes a block without spelling the at-rule" {
+    val first = keyframeCss(defaultTheme()).at(0) ?? ThemeEntry(name: "", value: "");
+    assert nsPrefix(Ns.Keyframes) + first.name + first.value == "@keyframes spin{to{transform:rotate(360deg)}}";
+}
+
+test "keyframeCss — an empty theme carries no keyframes" {
+    assert keyframeCss(emptyTheme()).length == 0;
+}
+
+test "darkMode — Media is an at-rule, so its selector is the bare ampersand" {
+    assert darkAtRule(defaultTheme()) == "@media (prefers-color-scheme: dark)";
+    assert darkSelector(defaultTheme()) == "&";
+}
+
+test "darkMode — Class carries the whole strategy in its selector" {
+    val byClass = withDarkMode(defaultTheme(), DarkMode.Class(name: "dark"));
+    assert darkAtRule(byClass) == "";
+    assert darkSelector(byClass) == "&:where(.dark, .dark *)";
+}
+
+test "darkMode — Attribute carries the whole strategy in its selector" {
+    val byAttr = withDarkMode(defaultTheme(), DarkMode.Attribute(name: "data-theme", value: "dark"));
+    assert darkAtRule(byAttr) == "";
+    assert darkSelector(byAttr) == "&:where([data-theme=dark], [data-theme=dark] *)";
+}
+
+test "darkMode — switching the strategy changes nothing else about the theme" {
+    val base = defaultTheme();
+    val byClass = withDarkMode(base, DarkMode.Class(name: "dark"));
+    assert themeCss(byClass) == themeCss(base);
+    assert keyframeCss(byClass).length == keyframeCss(base).length;
+    assert byClass.entries.length == base.entries.length;
 }
