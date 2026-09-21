@@ -453,6 +453,29 @@ Three more traps, each pinned: the **utility** name is `float-start`, the CSS
 utility name and the CSS value is two words separated by one space; and the
 aspect ratios keep the spaces around the slash the way `§ 5.1` prints them.
 
+#### Multi-column, fragmentation, box-sizing
+
+```bp
+.Layout.Columns.2                  // columns:2
+.Layout.Columns.Md                 // columns:var(--container-md)
+.Layout.Break.After.Page           // break-after:page
+.Layout.Break.Inside.AvoidColumn   // break-inside:avoid-column
+.Layout.Box.Border                 // box-sizing:border-box
+.Layout.BoxDecoration.Clone        // box-decoration-break:clone
+```
+
+A column **count** is a plain integer. A column **width** is the theme's
+container ladder — `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same width
+by definition, so they are the same reference, and a project that overrides
+`--container-md` moves both. No `Columns` leaf spells a `rem`.
+
+`break-inside` carries a shorter leaf set than `break-after` / `break-before`:
+`§ 5.5` has no `all`, no `page`, no `left` and no `right`.
+
+**Not declared:** `columns-4` … `columns-12`, which resolve upstream through the
+bare-integer rule rather than through a theme key; arbitrary `aspect-[4/3]` and
+`z-[999]`, which belong to the escape-hatch front.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

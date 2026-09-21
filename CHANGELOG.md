@@ -15,6 +15,26 @@
   front 35 records — two fronts appending to the same last line cannot be
   merged.
 
+- **Multi-column, fragmentation and box-sizing — and the column widths are the
+  theme's** (1.0.10-beta front `36-emilia-layout`, step 5). `Layout.Columns`,
+  `Layout.Break { After, Before, Inside }`, `Layout.Box` and
+  `Layout.BoxDecoration` close `§ 5.2`–`§ 5.6`.
+  **The front's spec printed the fourteen named column widths as `rem`
+  literals — `columns-md` → `columns:28rem` — and that is a defect, not a
+  transcription.** Front 54's theme already carries `--container-md: 28rem` and
+  front 35's `.Size.MaxW.Md` already reads it, so `columns:28rem` would be a
+  SECOND spelling of one width: a project overriding `--container-md` would see
+  its `max-width` move and its `columns` stay put. `.Layout.Columns.Md` emits
+  `columns:var(--container-md)` through front 35's `containerVar`, and a test
+  asserts the thirteen named widths carry no `rem` and that the `columns` value
+  and the `max-width` value are the same string.
+  The three counts are not lengths — `columns-2` is `columns:2` — and
+  `break-inside` keeps its own shorter leaf set, `§ 5.5` having no `all`, no
+  `page`, no `left` and no `right`.
+  **Reference gap, recorded rather than hidden:** `columns-4` … `columns-12`
+  resolve upstream through the bare-integer rule rather than through a theme
+  key, so they are left undeclared until that is confirmed.
+
 - **Float, clear, and an image that can be cropped** (1.0.10-beta front
   `36-emilia-layout`, step 4). `Layout.Float` and `Layout.Clear` answer
   `§ 5.9`/`§ 5.10`, `Layout.Object` the `Fit`/`Pos` split of `§ 5.12`/`§ 5.13`,

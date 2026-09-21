@@ -2247,6 +2247,10 @@ fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
         Clear(_inner) -> layoutClearToCss(_inner);
         Object(_inner) -> layoutObjectToCss(_inner);
         Aspect(_inner) -> layoutAspectToCss(_inner);
+        Columns(_inner) -> layoutColumnsToCss(_inner);
+        Break(_inner) -> layoutBreakToCss(_inner);
+        Box(_inner) -> layoutBoxToCss(_inner);
+        BoxDecoration(_inner) -> layoutBoxDecorationToCss(_inner);
     };
     return out;
 }
@@ -3003,6 +3007,111 @@ fn layoutAspectToCss(a: Token.Layout.Aspect) -> string {
     return out;
 }
 
+// THE NAMED COLUMN WIDTHS ARE THE THEME'S CONTAINER LADDER, not thirteen `rem`
+// literals. `columns-md` and `max-w-md` are the same width by definition —
+// front 54's theme carries `--container-md: 28rem` and front 35's `Size.MaxW.Md`
+// already reads it — so this front reads it too, through the same
+// `containerVar`. Spelling `columns:28rem` here would be byte-different from
+// upstream and would make a project's `--container-md` override silently
+// ineffective for `columns` while working for `max-width`, which is worse than
+// either being wrong on its own.
+//
+// The three integers are NOT lengths: `columns-2` is `columns:2`, a column
+// count, and nothing in the theme resolves it.
+//
+// REFERENCE GAP, recorded rather than hidden: `§ 5.2` prints `columns-1`, `-2`
+// and `-3` and the named widths only. `columns-4` … `columns-12` resolve
+// upstream through the bare-integer rule rather than through a theme key, so
+// they are left out until that is confirmed rather than guessed at here.
+fn layoutColumnsToCss(c: Token.Layout.Columns) -> string {
+    val out = case c {
+        __1 -> "columns:1";
+        __2 -> "columns:2";
+        __3 -> "columns:3";
+        Auto -> "columns:auto";
+        X3xs -> oneDecl("columns", containerVar("3xs"));
+        X2xs -> oneDecl("columns", containerVar("2xs"));
+        Xs -> oneDecl("columns", containerVar("xs"));
+        Sm -> oneDecl("columns", containerVar("sm"));
+        Md -> oneDecl("columns", containerVar("md"));
+        Lg -> oneDecl("columns", containerVar("lg"));
+        Xl -> oneDecl("columns", containerVar("xl"));
+        X2xl -> oneDecl("columns", containerVar("2xl"));
+        X3xl -> oneDecl("columns", containerVar("3xl"));
+        X4xl -> oneDecl("columns", containerVar("4xl"));
+        X5xl -> oneDecl("columns", containerVar("5xl"));
+        X6xl -> oneDecl("columns", containerVar("6xl"));
+        X7xl -> oneDecl("columns", containerVar("7xl"));
+    };
+    return out;
+}
+
+fn layoutBreakToCss(b: Token.Layout.Break) -> string {
+    val out = case b {
+        After(_inner) -> layoutBreakAfterToCss(_inner);
+        Before(_inner) -> layoutBreakBeforeToCss(_inner);
+        Inside(_inner) -> layoutBreakInsideToCss(_inner);
+    };
+    return out;
+}
+
+fn layoutBreakAfterToCss(b: Token.Layout.Break.After) -> string {
+    val out = case b {
+        Auto -> "break-after:auto";
+        Avoid -> "break-after:avoid";
+        All -> "break-after:all";
+        Page -> "break-after:page";
+        Left -> "break-after:left";
+        Right -> "break-after:right";
+        Column -> "break-after:column";
+    };
+    return out;
+}
+
+fn layoutBreakBeforeToCss(b: Token.Layout.Break.Before) -> string {
+    val out = case b {
+        Auto -> "break-before:auto";
+        Avoid -> "break-before:avoid";
+        All -> "break-before:all";
+        Page -> "break-before:page";
+        Left -> "break-before:left";
+        Right -> "break-before:right";
+        Column -> "break-before:column";
+    };
+    return out;
+}
+
+// `break-inside` carries a SHORTER leaf set than the other two — `§ 5.5` has no
+// `all`, no `page`, no `left` and no `right` — so it is its own sub-section
+// rather than a third caller of one shared list.
+fn layoutBreakInsideToCss(b: Token.Layout.Break.Inside) -> string {
+    val out = case b {
+        Auto -> "break-inside:auto";
+        Avoid -> "break-inside:avoid";
+        AvoidPage -> "break-inside:avoid-page";
+        AvoidColumn -> "break-inside:avoid-column";
+    };
+    return out;
+}
+
+// `box-border` / `box-content` are the utility names and `border-box` /
+// `content-box` are the CSS values; the suffix moves.
+fn layoutBoxToCss(b: Token.Layout.Box) -> string {
+    val out = case b {
+        Border -> "box-sizing:border-box";
+        Content -> "box-sizing:content-box";
+    };
+    return out;
+}
+
+fn layoutBoxDecorationToCss(b: Token.Layout.BoxDecoration) -> string {
+    val out = case b {
+        Clone -> "box-decoration-break:clone";
+        Slice -> "box-decoration-break:slice";
+    };
+    return out;
+}
+
 // ── tests · front 36 ─────────────────────────────────────────────────────────
 //
 // The front's assertions live HERE, beside the dispatchers they cover, for the
@@ -3210,6 +3319,63 @@ test "aspect-ratio — the slash keeps its spaces" {
     assert tokenDeclarations(.Layout.Aspect.Square) == "aspect-ratio:1 / 1";
     assert tokenDeclarations(.Layout.Aspect.Video) == "aspect-ratio:16 / 9";
     assert tokenDeclarations(.Layout.Aspect.Video).indexOf("16/9") == -1;
+}
+
+// The count is a plain integer; the named width is the THEME's, read through
+// the same `containerVar` front 35's `Size.MaxW.Md` reads. `columns-md` and
+// `max-w-md` are the same width by definition, so they are the same reference.
+test "columns — a count is an integer, a named width is the theme's container" {
+    assert tokenDeclarations(.Layout.Columns.1) == "columns:1";
+    assert tokenDeclarations(.Layout.Columns.2) == "columns:2";
+    assert tokenDeclarations(.Layout.Columns.3) == "columns:3";
+    assert tokenDeclarations(.Layout.Columns.Auto) == "columns:auto";
+    assert tokenDeclarations(.Layout.Columns.Md) == "columns:var(--container-md)";
+    assert tokenDeclarations(.Layout.Columns.X3xs) == "columns:var(--container-3xs)";
+    assert tokenDeclarations(.Layout.Columns.X7xl) == "columns:var(--container-7xl)";
+}
+
+test "columns — all fourteen named widths, and the ladder is one ladder" {
+    val named: Token[] = [
+        .Layout.Columns.X3xs, .Layout.Columns.X2xs, .Layout.Columns.Xs,
+        .Layout.Columns.Sm, .Layout.Columns.Md, .Layout.Columns.Lg,
+        .Layout.Columns.Xl, .Layout.Columns.X2xl, .Layout.Columns.X3xl,
+        .Layout.Columns.X4xl, .Layout.Columns.X5xl, .Layout.Columns.X6xl,
+        .Layout.Columns.X7xl,
+    ];
+    assert named.all({ t -> tokenDeclarations(t).indexOf("rem") == -1 });
+    assert named.all({ t -> tokenDeclarations(t).indexOf("columns:var(--container-") == 0 });
+    val colMd = tokenDeclarations(.Layout.Columns.Md).split(":").at(1) ?? "";
+    val maxWMd = tokenDeclarations(.Size.MaxW.Md).split(":").at(1) ?? "";
+    assert colMd == maxWMd;
+    assert themeValue(defaultTheme(), "--container-md") == "28rem";
+}
+
+test "break — the three properties, with `inside`'s shorter leaf set of its own" {
+    assert tokenDeclarations(.Layout.Break.After.Auto) == "break-after:auto";
+    assert tokenDeclarations(.Layout.Break.After.Avoid) == "break-after:avoid";
+    assert tokenDeclarations(.Layout.Break.After.All) == "break-after:all";
+    assert tokenDeclarations(.Layout.Break.After.Page) == "break-after:page";
+    assert tokenDeclarations(.Layout.Break.After.Left) == "break-after:left";
+    assert tokenDeclarations(.Layout.Break.After.Right) == "break-after:right";
+    assert tokenDeclarations(.Layout.Break.After.Column) == "break-after:column";
+    assert tokenDeclarations(.Layout.Break.Before.Auto) == "break-before:auto";
+    assert tokenDeclarations(.Layout.Break.Before.Avoid) == "break-before:avoid";
+    assert tokenDeclarations(.Layout.Break.Before.All) == "break-before:all";
+    assert tokenDeclarations(.Layout.Break.Before.Page) == "break-before:page";
+    assert tokenDeclarations(.Layout.Break.Before.Left) == "break-before:left";
+    assert tokenDeclarations(.Layout.Break.Before.Right) == "break-before:right";
+    assert tokenDeclarations(.Layout.Break.Before.Column) == "break-before:column";
+    assert tokenDeclarations(.Layout.Break.Inside.Auto) == "break-inside:auto";
+    assert tokenDeclarations(.Layout.Break.Inside.Avoid) == "break-inside:avoid";
+    assert tokenDeclarations(.Layout.Break.Inside.AvoidPage) == "break-inside:avoid-page";
+    assert tokenDeclarations(.Layout.Break.Inside.AvoidColumn) == "break-inside:avoid-column";
+}
+
+test "box-sizing and box-decoration-break — the suffix moves off the name" {
+    assert tokenDeclarations(.Layout.Box.Border) == "box-sizing:border-box";
+    assert tokenDeclarations(.Layout.Box.Content) == "box-sizing:content-box";
+    assert tokenDeclarations(.Layout.BoxDecoration.Clone) == "box-decoration-break:clone";
+    assert tokenDeclarations(.Layout.BoxDecoration.Slice) == "box-decoration-break:slice";
 }
 
 test "end to end — a media card that crops its image and clips its overflow" {

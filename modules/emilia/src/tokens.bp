@@ -74,7 +74,12 @@
 ////              value), Z — the one numeric family here that is NOT a length,
 ////              a bare integer — and Isolation; then Float and Clear (whose
 ////              logical values are `inline-start`/`inline-end`, not
-////              `start`/`end`), Object { Fit, Pos } and Aspect
+////              `start`/`end`), Object { Fit, Pos } and Aspect; and Columns,
+////              Break { After, Before, Inside }, Box and BoxDecoration.
+////              Columns' named widths are the THEME's container ladder —
+////              `.Layout.Columns.Md` is `columns:var(--container-md)`, the
+////              same reference `.Size.MaxW.Md` reads — and no leaf in the
+////              section spells a `rem`
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
@@ -728,6 +733,18 @@ pub type Token {
             }
         }
         Aspect { Auto, Square, Video, }
+        Columns {
+            1, 2, 3,
+            Auto,
+            X3xs, X2xs, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, X5xl, X6xl, X7xl,
+        }
+        Break {
+            After { Auto, Avoid, All, Page, Left, Right, Column }
+            Before { Auto, Avoid, All, Page, Left, Right, Column }
+            Inside { Auto, Avoid, AvoidPage, AvoidColumn }
+        }
+        Box { Border, Content, }
+        BoxDecoration { Clone, Slice, }
     }
     // ── end front 36 ─────────────────────────────────────────────────────────
 
