@@ -135,8 +135,11 @@ pub fn flush() -> @Future<string> {
 // parallel for no gain — the arm is one line either way.
 fn tokenToSheet(t: Token, th: Theme) -> Sheet {
     val out = case t {
-        Text(_inner) -> declSheet(textTokenToCss(_inner));
-        Font(_inner) -> declSheet(fontTokenToCss(_inner));
+        // ── front 38 — typography ──────────────────────────────
+        Text(_inner) -> declSheet(textTokenToCss(_inner, th));
+        Font(_inner) -> declSheet(fontTokenToCss(_inner, th));
+        List(_inner) -> declSheet(listTokenToCss(_inner, th));
+        // ── end front 38 ───────────────────────────────────────
         Color(_inner) -> declSheet(colorTokenToCss(_inner, th));
         Bg(_inner) -> declSheet(bgTokenToCss(_inner, th));
         Pad(_inner) -> declSheet(padTokenToCss(_inner, th));
@@ -1478,9 +1481,9 @@ test "end to end — a responsive, stateful button is one class and four rules" 
     val styles = await flushWith(bareOptions());
     assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
         + cls + "{background-color:var(--color-blue-600)}."
-        + cls + ":focus-visible{text-decoration:underline}@media (hover: hover){."
+        + cls + ":focus-visible{text-decoration-line:underline}@media (hover: hover){."
         + cls + ":hover{background-color:var(--color-blue-700)}}@media (width >= 48rem){."
-        + cls + "{font-size:1.125rem}}}</style>";
+        + cls + "{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}}</style>";
 }
 
 test "end to end — a peer-driven error message reaches its sibling" {
@@ -1495,55 +1498,1524 @@ test "end to end — a peer-driven error message reaches its sibling" {
 
 //// ═══ END FRONT 34 ═════════════════════════════════════════════════════════════════
 
-fn textTokenToCss(t: Token.Text) -> string {
+// ── front 38 — typography ────────────────────────────────────────────────────
+//
+// FRONT 38 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the `Text`,
+// `Font` and `List` sections of `tokens.bp` and the three dispatchers they
+// reach, with their sub-dispatchers, their value tables and `typographyEntries()`.
+//
+// ITS RULE IS FRONTS 35/36/37's RULE ONE LEVEL UP: no leaf resolves a FONT
+// SIZE, a LEADING, a TRACKING, a COLOUR or an INDENT. `Size` answers front 54's
+// `--text-*` namespace as a PAIR (upstream's `text-lg` changes leading too, and
+// emilia used to drop that half on the floor); `Tracking` and `Leading` answer
+// `--tracking-*` / `--leading-*`; `Decoration.Color` answers front 33's
+// `paletteVar`, so this front holds no colour table; `Indent` answers front
+// 54's `spacing(n)`. The eighth `rem` ladder — `textSizeToCss`, the one front
+// 35 and front 37 left because `Text.Size` is this front's — IS DELETED HERE,
+// and with it the last resolved `rem` in the library.
+//
+// THREE THINGS EXISTING TOKENS NOW EMIT DIFFERENTLY, each because what they
+// emitted was not what Tailwind v4.3 emits:
+//
+//   - `.Text.Size.*` was `font-size:1.125rem` and is now the `var(--text-lg)`
+//     pair with its `--text-lg--line-height` (`§ 9.2`);
+//   - `.Font.Sans` was the literal `ui-sans-serif,system-ui,sans-serif` stack
+//     and is now `var(--font-sans)` (`§ 9.1`) — the stack itself moved into
+//     `typographyEntries()`, so no value was lost;
+//   - `.Text.Underline` / `.Text.LineThrough` were the `text-decoration`
+//     SHORTHAND and are now `text-decoration-line` (`§ 9.17`), which is what
+//     makes `underline` compose with `decoration-dotted` instead of
+//     overwriting it.
+//
+// `.Text.Bold` is NOT one of them. `font-weight:bold` is emilia's own leaf and
+// not a transcription of a Tailwind utility; it is pinned by six assertions in
+// this file and this front leaves every one of them alone.
+
+// The reference form of a font size: `§ 9.2` emits the size AND its paired
+// line-height from one utility, and the pair is the whole point — a `text-lg`
+// in Tailwind changes leading, and before this front an emilia `.Text.Size.Lg`
+// did not. Written once, over front 54's `--text-*` namespace, so the thirteen
+// arms below carry a NAME and never a value.
+fn textSizeDecl(name: string) -> string {
+    val base = nsPrefix(Ns.Text) + name;
+    return "font-size:" + themeVar(base) + ";line-height:" + themeVar(base + "--line-height");
+}
+
+// `§ 9.10`'s four declarations, in the order the reference prints them. `None`
+// is the RESET and not an omission — it has to undo all four.
+fn lineClampDecl(n: string) -> string {
+    return "overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:" + n;
+}
+
+fn textTokenToCss(t: Token.Text, th: Theme) -> string {
     val out = case t {
         Bold -> "font-weight:bold";
         Italic -> "font-style:italic";
-        Underline -> "text-decoration:underline";
-        LineThrough -> "text-decoration:line-through";
+        Underline -> "text-decoration-line:underline";
+        LineThrough -> "text-decoration-line:line-through";
         Left -> "text-align:left";
         Center -> "text-align:center";
         Right -> "text-align:right";
         Justify -> "text-align:justify";
-        Size(_inner) -> textSizeToCss(_inner);
+        Size(_inner) -> textSizeToCss(_inner, th);
+        Overline -> "text-decoration-line:overline";
+        NoUnderline -> "text-decoration-line:none";
+        Start -> "text-align:start";
+        End -> "text-align:end";
+        Truncate -> "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+        Tracking(_inner) -> textTrackingToCss(_inner, th);
+        Leading(_inner) -> textLeadingToCss(_inner, th);
+        Clamp(_inner) -> textClampToCss(_inner, th);
+        Transform(_inner) -> textTransformToCss(_inner, th);
+        Overflow(_inner) -> textOverflowToCss(_inner, th);
+        Wrap(_inner) -> textWrapToCss(_inner, th);
+        Decoration(_inner) -> textDecorationToCss(_inner, th);
+        Whitespace(_inner) -> textWhitespaceToCss(_inner, th);
+        Break(_inner) -> textBreakToCss(_inner, th);
+        OverflowWrap(_inner) -> textOverflowWrapToCss(_inner, th);
+        Hyphens(_inner) -> textHyphensToCss(_inner, th);
+        Indent(_inner) -> textIndentToCss(_inner, th);
+        Align(_inner) -> textAlignToCss(_inner, th);
+        Tab(_inner) -> textTabToCss(_inner, th);
+        Content(_inner) -> textContentToCss(_inner, th);
     };
     return out;
 }
 
-fn textSizeToCss(s: Token.Text.Size) -> string {
+// `§ 9.2` and `§ 21.3`. Thirteen sizes, each a NAME handed to `textSizeDecl`:
+// the values live in front 54's theme (`--text-xs` = `0.75rem` with
+// `--text-xs--line-height` = `calc(1 / 0.75)`, `--text-5xl` = `3rem` with a
+// bare `1`) and never here.
+fn textSizeToCss(s: Token.Text.Size, th: Theme) -> string {
     val out = case s {
-        Xs -> "font-size:0.75rem";
-        Sm -> "font-size:0.875rem";
-        Base -> "font-size:1rem";
-        Lg -> "font-size:1.125rem";
-        Xl -> "font-size:1.25rem";
-        X2xl -> "font-size:1.5rem";
-        X3xl -> "font-size:1.875rem";
-        X4xl -> "font-size:2.25rem";
+        Xs -> textSizeDecl("xs");
+        Sm -> textSizeDecl("sm");
+        Base -> textSizeDecl("base");
+        Lg -> textSizeDecl("lg");
+        Xl -> textSizeDecl("xl");
+        X2xl -> textSizeDecl("2xl");
+        X3xl -> textSizeDecl("3xl");
+        X4xl -> textSizeDecl("4xl");
+        X5xl -> textSizeDecl("5xl");
+        X6xl -> textSizeDecl("6xl");
+        X7xl -> textSizeDecl("7xl");
+        X8xl -> textSizeDecl("8xl");
+        X9xl -> textSizeDecl("9xl");
     };
     return out;
 }
 
-fn fontTokenToCss(t: Token.Font) -> string {
+// `§ 9.9`. The six values are `typographyEntries()`'s; this reads the namespace.
+fn textTrackingToCss(t: Token.Text.Tracking, th: Theme) -> string {
     val out = case t {
-        Sans -> "font-family:ui-sans-serif,system-ui,sans-serif";
-        Serif -> "font-family:ui-serif,Georgia,serif";
-        Mono -> "font-family:ui-monospace,SFMono-Regular,Menlo,monospace";
-        Weight(_inner) -> fontWeightToCss(_inner);
+        Tighter -> "letter-spacing:" + themeVar(nsPrefix(Ns.Tracking) + "tighter");
+        Tight -> "letter-spacing:" + themeVar(nsPrefix(Ns.Tracking) + "tight");
+        Normal -> "letter-spacing:" + themeVar(nsPrefix(Ns.Tracking) + "normal");
+        Wide -> "letter-spacing:" + themeVar(nsPrefix(Ns.Tracking) + "wide");
+        Wider -> "letter-spacing:" + themeVar(nsPrefix(Ns.Tracking) + "wider");
+        Widest -> "letter-spacing:" + themeVar(nsPrefix(Ns.Tracking) + "widest");
     };
     return out;
 }
 
-fn fontWeightToCss(w: Token.Font.Weight) -> string {
+// `§ 9.11`. `None` is the ONE leaf here that is a literal and not a reference —
+// the reference prints `leading-none` as `line-height: 1`, with no
+// `--leading-none` entry behind it, so there is none to read.
+fn textLeadingToCss(t: Token.Text.Leading, th: Theme) -> string {
+    val out = case t {
+        None -> "line-height:1";
+        Tight -> "line-height:" + themeVar(nsPrefix(Ns.Leading) + "tight");
+        Snug -> "line-height:" + themeVar(nsPrefix(Ns.Leading) + "snug");
+        Normal -> "line-height:" + themeVar(nsPrefix(Ns.Leading) + "normal");
+        Relaxed -> "line-height:" + themeVar(nsPrefix(Ns.Leading) + "relaxed");
+        Loose -> "line-height:" + themeVar(nsPrefix(Ns.Leading) + "loose");
+    };
+    return out;
+}
+
+// `§ 9.10`. Four declarations from one token, and `None` undoes all four.
+fn textClampToCss(t: Token.Text.Clamp, th: Theme) -> string {
+    val out = case t {
+        __1 -> lineClampDecl("1");
+        __2 -> lineClampDecl("2");
+        __3 -> lineClampDecl("3");
+        __4 -> lineClampDecl("4");
+        __5 -> lineClampDecl("5");
+        __6 -> lineClampDecl("6");
+        None -> "overflow:visible;display:block;-webkit-box-orient:horizontal;-webkit-line-clamp:none";
+    };
+    return out;
+}
+
+// `§ 9.22`. `None` is the CSS value; the Tailwind name is `normal-case`.
+fn textTransformToCss(t: Token.Text.Transform, th: Theme) -> string {
+    val out = case t {
+        Uppercase -> "text-transform:uppercase";
+        Lowercase -> "text-transform:lowercase";
+        Capitalize -> "text-transform:capitalize";
+        None -> "text-transform:none";
+    };
+    return out;
+}
+
+// `§ 9.23`, the two single-declaration rows. `truncate` is the third and is a
+// bare leaf of `Text`, because it sets three properties and not this one.
+fn textOverflowToCss(t: Token.Text.Overflow, th: Theme) -> string {
+    val out = case t {
+        Ellipsis -> "text-overflow:ellipsis";
+        Clip -> "text-overflow:clip";
+    };
+    return out;
+}
+
+// `§ 9.24`.
+fn textWrapToCss(t: Token.Text.Wrap, th: Theme) -> string {
+    val out = case t {
+        Wrap -> "text-wrap:wrap";
+        Nowrap -> "text-wrap:nowrap";
+        Balance -> "text-wrap:balance";
+        Pretty -> "text-wrap:pretty";
+    };
+    return out;
+}
+
+// `§ 9.19`-`§ 9.21` plus `§ 9.18`. Upstream spells all four families with one
+// `decoration-*` prefix (`decoration-2` and `decoration-red-500` are the same
+// prefix carrying different kinds of value); the token tree separates them by
+// sub-section, which is a deliberate divergence from the class naming and the
+// only way a typed surface can tell a thickness from a colour.
+fn textDecorationToCss(t: Token.Text.Decoration, th: Theme) -> string {
+    val out = case t {
+        Style(_inner) -> textDecorationStyleToCss(_inner, th);
+        Thickness(_inner) -> textDecorationThicknessToCss(_inner, th);
+        Offset(_inner) -> textDecorationOffsetToCss(_inner, th);
+        Color(_inner) -> textDecorationColorToCss(_inner, th);
+    };
+    return out;
+}
+
+// `§ 9.19`.
+fn textDecorationStyleToCss(t: Token.Text.Decoration.Style, th: Theme) -> string {
+    val out = case t {
+        Solid -> "text-decoration-style:solid";
+        Double -> "text-decoration-style:double";
+        Dotted -> "text-decoration-style:dotted";
+        Dashed -> "text-decoration-style:dashed";
+        Wavy -> "text-decoration-style:wavy";
+    };
+    return out;
+}
+
+// `§ 9.20`. The ladder stops at `4` because the reference stops at `4`; the
+// 1.0.8 draft's `8` step is not declared, and would be a `px` literal this
+// front has no reference row for.
+fn textDecorationThicknessToCss(t: Token.Text.Decoration.Thickness, th: Theme) -> string {
+    val out = case t {
+        Auto -> "text-decoration-thickness:auto";
+        FromFont -> "text-decoration-thickness:from-font";
+        __0 -> "text-decoration-thickness:0px";
+        __1 -> "text-decoration-thickness:1px";
+        __2 -> "text-decoration-thickness:2px";
+        __4 -> "text-decoration-thickness:4px";
+    };
+    return out;
+}
+
+// `§ 9.21`. `0` is `0px` and not `0`, which is what the reference prints.
+fn textDecorationOffsetToCss(t: Token.Text.Decoration.Offset, th: Theme) -> string {
+    val out = case t {
+        Auto -> "text-underline-offset:auto";
+        __0 -> "text-underline-offset:0px";
+        __1 -> "text-underline-offset:1px";
+        __2 -> "text-underline-offset:2px";
+        __4 -> "text-underline-offset:4px";
+    };
+    return out;
+}
+
+// `§ 9.18`. THIS FRONT HOLDS NO COLOUR TABLE: every cell goes through front
+// 33's `paletteVar(family, shade)`, so `decoration-red-500` and `text-red-500`
+// reference ONE custom property and cannot drift. The two named colours read
+// the theme the way front 33's `Color.White`/`Black` do; the three CSS-wide
+// keywords have no theme entry and stay literal.
+fn textDecorationColorToCss(t: Token.Text.Decoration.Color, th: Theme) -> string {
+    val out = case t {
+        Red(_inner) -> "text-decoration-color:" + paletteVar("red", decorationRedShade(_inner));
+        Orange(_inner) -> "text-decoration-color:" + paletteVar("orange", decorationOrangeShade(_inner));
+        Amber(_inner) -> "text-decoration-color:" + paletteVar("amber", decorationAmberShade(_inner));
+        Yellow(_inner) -> "text-decoration-color:" + paletteVar("yellow", decorationYellowShade(_inner));
+        Lime(_inner) -> "text-decoration-color:" + paletteVar("lime", decorationLimeShade(_inner));
+        Green(_inner) -> "text-decoration-color:" + paletteVar("green", decorationGreenShade(_inner));
+        Emerald(_inner) -> "text-decoration-color:" + paletteVar("emerald", decorationEmeraldShade(_inner));
+        Teal(_inner) -> "text-decoration-color:" + paletteVar("teal", decorationTealShade(_inner));
+        Cyan(_inner) -> "text-decoration-color:" + paletteVar("cyan", decorationCyanShade(_inner));
+        Sky(_inner) -> "text-decoration-color:" + paletteVar("sky", decorationSkyShade(_inner));
+        Blue(_inner) -> "text-decoration-color:" + paletteVar("blue", decorationBlueShade(_inner));
+        Indigo(_inner) -> "text-decoration-color:" + paletteVar("indigo", decorationIndigoShade(_inner));
+        Violet(_inner) -> "text-decoration-color:" + paletteVar("violet", decorationVioletShade(_inner));
+        Purple(_inner) -> "text-decoration-color:" + paletteVar("purple", decorationPurpleShade(_inner));
+        Fuchsia(_inner) -> "text-decoration-color:" + paletteVar("fuchsia", decorationFuchsiaShade(_inner));
+        Pink(_inner) -> "text-decoration-color:" + paletteVar("pink", decorationPinkShade(_inner));
+        Rose(_inner) -> "text-decoration-color:" + paletteVar("rose", decorationRoseShade(_inner));
+        Slate(_inner) -> "text-decoration-color:" + paletteVar("slate", decorationSlateShade(_inner));
+        Gray(_inner) -> "text-decoration-color:" + paletteVar("gray", decorationGrayShade(_inner));
+        Zinc(_inner) -> "text-decoration-color:" + paletteVar("zinc", decorationZincShade(_inner));
+        Neutral(_inner) -> "text-decoration-color:" + paletteVar("neutral", decorationNeutralShade(_inner));
+        Stone(_inner) -> "text-decoration-color:" + paletteVar("stone", decorationStoneShade(_inner));
+        Mauve(_inner) -> "text-decoration-color:" + paletteVar("mauve", decorationMauveShade(_inner));
+        Olive(_inner) -> "text-decoration-color:" + paletteVar("olive", decorationOliveShade(_inner));
+        Mist(_inner) -> "text-decoration-color:" + paletteVar("mist", decorationMistShade(_inner));
+        Taupe(_inner) -> "text-decoration-color:" + paletteVar("taupe", decorationTaupeShade(_inner));
+        White -> "text-decoration-color:" + themeVar(nsPrefix(Ns.Color) + "white");
+        Black -> "text-decoration-color:" + themeVar(nsPrefix(Ns.Color) + "black");
+        Transparent -> "text-decoration-color:transparent";
+        Current -> "text-decoration-color:currentColor";
+        Inherit -> "text-decoration-color:inherit";
+    };
+    return out;
+}
+
+fn decorationRedShade(s: Token.Text.Decoration.Color.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationOrangeShade(s: Token.Text.Decoration.Color.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationAmberShade(s: Token.Text.Decoration.Color.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationYellowShade(s: Token.Text.Decoration.Color.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationLimeShade(s: Token.Text.Decoration.Color.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationGreenShade(s: Token.Text.Decoration.Color.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationEmeraldShade(s: Token.Text.Decoration.Color.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationTealShade(s: Token.Text.Decoration.Color.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationCyanShade(s: Token.Text.Decoration.Color.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationSkyShade(s: Token.Text.Decoration.Color.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationBlueShade(s: Token.Text.Decoration.Color.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationIndigoShade(s: Token.Text.Decoration.Color.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationVioletShade(s: Token.Text.Decoration.Color.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationPurpleShade(s: Token.Text.Decoration.Color.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationFuchsiaShade(s: Token.Text.Decoration.Color.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationPinkShade(s: Token.Text.Decoration.Color.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationRoseShade(s: Token.Text.Decoration.Color.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationSlateShade(s: Token.Text.Decoration.Color.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationGrayShade(s: Token.Text.Decoration.Color.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationZincShade(s: Token.Text.Decoration.Color.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationNeutralShade(s: Token.Text.Decoration.Color.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationStoneShade(s: Token.Text.Decoration.Color.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationMauveShade(s: Token.Text.Decoration.Color.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationOliveShade(s: Token.Text.Decoration.Color.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationMistShade(s: Token.Text.Decoration.Color.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn decorationTaupeShade(s: Token.Text.Decoration.Color.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+// `§ 9.28`.
+fn textWhitespaceToCss(t: Token.Text.Whitespace, th: Theme) -> string {
+    val out = case t {
+        Normal -> "white-space:normal";
+        Nowrap -> "white-space:nowrap";
+        Pre -> "white-space:pre";
+        PreLine -> "white-space:pre-line";
+        PreWrap -> "white-space:pre-wrap";
+        BreakSpaces -> "white-space:break-spaces";
+    };
+    return out;
+}
+
+// `§ 9.29`, `word-break`. `Normal` is TWO declarations because upstream's
+// `break-normal` resets both properties; `Words` is one, and it is an
+// `overflow-wrap` even though the utility is spelled `break-*`. That asymmetry
+// is the reference's, and it is why `OverflowWrap` below is a separate section
+// rather than a merge.
+fn textBreakToCss(t: Token.Text.Break, th: Theme) -> string {
+    val out = case t {
+        Normal -> "overflow-wrap:normal;word-break:normal";
+        Words -> "overflow-wrap:break-word";
+        All -> "word-break:break-all";
+        Keep -> "word-break:keep-all";
+    };
+    return out;
+}
+
+// `§ 9.30`, `overflow-wrap`. `Anywhere` has no `break-*` spelling at all,
+// which is what a merge with `Break` would have lost.
+fn textOverflowWrapToCss(t: Token.Text.OverflowWrap, th: Theme) -> string {
+    val out = case t {
+        Normal -> "overflow-wrap:normal";
+        BreakWord -> "overflow-wrap:break-word";
+        Anywhere -> "overflow-wrap:anywhere";
+    };
+    return out;
+}
+
+// `§ 9.31`.
+fn textHyphensToCss(t: Token.Text.Hyphens, th: Theme) -> string {
+    val out = case t {
+        None -> "hyphens:none";
+        Manual -> "hyphens:manual";
+        Auto -> "hyphens:auto";
+    };
+    return out;
+}
+
+// `§ 9.25`. PROVISIONAL FORM — the reference prints `indent-8` as HTML with no
+// CSS beside it, so the `calc(var(--spacing) * N)` shape is inferred from
+// `§ 21.2` ("every spacing utility is a multiplier of `--spacing`") and not
+// transcribed. What is NOT provisional is that it goes through front 54's
+// `spacing(n)`: whatever the correct form turns out to be, it is the form
+// `.Pad.All.8` already uses, and one function answers both.
+fn textIndentToCss(t: Token.Text.Indent, th: Theme) -> string {
+    val out = case t {
+        __0 -> "text-indent:" + spacing(0);
+        __1 -> "text-indent:" + spacing(1);
+        __2 -> "text-indent:" + spacing(2);
+        __4 -> "text-indent:" + spacing(4);
+        __8 -> "text-indent:" + spacing(8);
+    };
+    return out;
+}
+
+// `§ 9.27`.
+fn textAlignToCss(t: Token.Text.Align, th: Theme) -> string {
+    val out = case t {
+        Baseline -> "vertical-align:baseline";
+        Top -> "vertical-align:top";
+        Middle -> "vertical-align:middle";
+        Bottom -> "vertical-align:bottom";
+        TextTop -> "vertical-align:text-top";
+        TextBottom -> "vertical-align:text-bottom";
+        Sub -> "vertical-align:sub";
+        Super -> "vertical-align:super";
+    };
+    return out;
+}
+
+// `§ 9.26`. A tab size is a COUNT, not a length — no `px`, no `--spacing`.
+fn textTabToCss(t: Token.Text.Tab, th: Theme) -> string {
+    val out = case t {
+        __0 -> "tab-size:0";
+        __2 -> "tab-size:2";
+        __4 -> "tab-size:4";
+        __8 -> "tab-size:8";
+    };
+    return out;
+}
+
+// `§ 9.32`. The two non-arbitrary cases; `content-['Hello']` is the escape-hatch
+// front's. `Empty` carries two QUOTE CHARACTERS inside the CSS value, which is
+// a real thing for the codec to carry — the separators are `\t`, `\n` and
+// `\r`, and a `"` is none of them.
+fn textContentToCss(t: Token.Text.Content, th: Theme) -> string {
+    val out = case t {
+        None -> "content:none";
+        Empty -> "content:\"\"";
+    };
+    return out;
+}
+
+// `§ 9.1`. The three family stacks that used to be spelled here are now
+// `typographyEntries()`'s `--font-sans` / `--font-serif` / `--font-mono`, so a
+// project overriding one moves every `.Font.*` that references it.
+fn fontTokenToCss(t: Token.Font, th: Theme) -> string {
+    val out = case t {
+        Sans -> "font-family:" + themeVar(nsPrefix(Ns.Font) + "sans");
+        Serif -> "font-family:" + themeVar(nsPrefix(Ns.Font) + "serif");
+        Mono -> "font-family:" + themeVar(nsPrefix(Ns.Font) + "mono");
+        Weight(_inner) -> fontWeightToCss(_inner, th);
+        Smoothing(_inner) -> fontSmoothingToCss(_inner, th);
+        Style(_inner) -> fontStyleToCss(_inner, th);
+        Stretch(_inner) -> fontStretchToCss(_inner, th);
+        Nums(_inner) -> fontNumsToCss(_inner, th);
+    };
+    return out;
+}
+
+// `§ 9.5`. NINE numeric weights, and they stay LITERAL: the reference prints
+// `font-bold` as `font-weight: 700` and not as a `var(--font-weight-bold)`.
+// The `--font-weight-*` entries are contributed anyway (`typographyEntries()`),
+// because `§ 21` gives the namespace and a project reads it with `themeValue`.
+fn fontWeightToCss(w: Token.Font.Weight, th: Theme) -> string {
     val out = case w {
         Light -> "font-weight:300";
         Normal -> "font-weight:400";
         Medium -> "font-weight:500";
         Bold -> "font-weight:700";
         Black -> "font-weight:900";
+        Thin -> "font-weight:100";
+        Extralight -> "font-weight:200";
+        Semibold -> "font-weight:600";
+        Extrabold -> "font-weight:800";
     };
     return out;
 }
+
+// `§ 9.3`. Two vendor properties from one token, in the reference's order.
+fn fontSmoothingToCss(t: Token.Font.Smoothing, th: Theme) -> string {
+    val out = case t {
+        Antialiased -> "-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale";
+        Subpixel -> "-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto";
+    };
+    return out;
+}
+
+// `§ 9.4`. The Tailwind name of `Normal` is `not-italic` and the CSS value is
+// `normal`; the name-versus-value gap is the whole reason this row has a test.
+fn fontStyleToCss(t: Token.Font.Style, th: Theme) -> string {
+    val out = case t {
+        Italic -> "font-style:italic";
+        Normal -> "font-style:normal";
+    };
+    return out;
+}
+
+// `§ 9.6`.
+fn fontStretchToCss(t: Token.Font.Stretch, th: Theme) -> string {
+    val out = case t {
+        UltraCondensed -> "font-stretch:ultra-condensed";
+        ExtraCondensed -> "font-stretch:extra-condensed";
+        Condensed -> "font-stretch:condensed";
+        SemiCondensed -> "font-stretch:semi-condensed";
+        Normal -> "font-stretch:normal";
+        SemiExpanded -> "font-stretch:semi-expanded";
+        Expanded -> "font-stretch:expanded";
+        ExtraExpanded -> "font-stretch:extra-expanded";
+        UltraExpanded -> "font-stretch:ultra-expanded";
+    };
+    return out;
+}
+
+// `§ 9.7`. The leaf names are shortened where the utility repeats the property
+// (`lining-nums` is `Lining`, not `LiningNums`); the VALUES are upstream's
+// verbatim, so `Lining` emits `lining-nums` and not `lining`.
+fn fontNumsToCss(t: Token.Font.Nums, th: Theme) -> string {
+    val out = case t {
+        Normal -> "font-variant-numeric:normal";
+        Ordinal -> "font-variant-numeric:ordinal";
+        SlashedZero -> "font-variant-numeric:slashed-zero";
+        Lining -> "font-variant-numeric:lining-nums";
+        Oldstyle -> "font-variant-numeric:oldstyle-nums";
+        Proportional -> "font-variant-numeric:proportional-nums";
+        Tabular -> "font-variant-numeric:tabular-nums";
+        DiagonalFractions -> "font-variant-numeric:diagonal-fractions";
+        StackedFractions -> "font-variant-numeric:stacked-fractions";
+    };
+    return out;
+}
+
+// `§ 9.12`-`§ 9.14`. Six leaves over three properties.
+fn listTokenToCss(t: Token.List, th: Theme) -> string {
+    val out = case t {
+        None -> "list-style-type:none";
+        Disc -> "list-style-type:disc";
+        Decimal -> "list-style-type:decimal";
+        Inside -> "list-style-position:inside";
+        Outside -> "list-style-position:outside";
+        ImageNone -> "list-style-image:none";
+    };
+    return out;
+}
+
+// ── front 38 · the theme entries ─────────────────────────────────────────────
+//
+// The half of the theme this front references, handed over as a `ThemeEntry[]`
+// the way front 33 hands over `paletteEntries()`:
+// `extendTheme(defaultTheme(), typographyEntries())`.
+//
+// `--text-*` IS NOT HERE, and that is deliberate: front 54's `defaultTheme()`
+// already carries all thirteen sizes and all thirteen paired line-heights with
+// the values `§ 21.3` prints, so restating them would be a second
+// transcription of one table. The test `typographyEntries — the --text-* half
+// is front 54's` pins that.
+//
+// THREE ROWS ARE PROVISIONAL and are marked here, not only in a table at the
+// bottom of a README: `--font-sans`, `--font-serif` and `--font-mono` carry NO
+// VALUE in the reference — `§ 9.1` prints the reference form `var(--font-sans)`
+// and `§ 21.3` prints only the size scale. The values below are emilia's OWN
+// pre-38 stacks, moved verbatim out of `fontTokenToCss` so that nothing this
+// library emitted is lost; they are shorter than upstream's real defaults
+// (which append emoji families) and must be confirmed against upstream before
+// anyone treats them as v4.3 parity.
+//
+// The rest are transcribed: `--font-weight-*` from `§ 9.5`, `--tracking-*` from
+// the parenthesised values of `§ 9.9`, `--leading-*` from those of `§ 9.11`.
+// There is no `--leading-none`: `§ 9.11` prints `leading-none` as the literal
+// `1`, with no entry behind it.
+pub fn typographyEntries() -> ThemeEntry[] {
+    val families: ThemeEntry[] = [
+        ThemeEntry(name: "--font-sans", value: "ui-sans-serif,system-ui,sans-serif"),
+        ThemeEntry(name: "--font-serif", value: "ui-serif,Georgia,serif"),
+        ThemeEntry(name: "--font-mono", value: "ui-monospace,SFMono-Regular,Menlo,monospace"),
+    ];
+    val weights: ThemeEntry[] = [
+        ThemeEntry(name: "--font-weight-thin", value: "100"),
+        ThemeEntry(name: "--font-weight-extralight", value: "200"),
+        ThemeEntry(name: "--font-weight-light", value: "300"),
+        ThemeEntry(name: "--font-weight-normal", value: "400"),
+        ThemeEntry(name: "--font-weight-medium", value: "500"),
+        ThemeEntry(name: "--font-weight-semibold", value: "600"),
+        ThemeEntry(name: "--font-weight-bold", value: "700"),
+        ThemeEntry(name: "--font-weight-extrabold", value: "800"),
+        ThemeEntry(name: "--font-weight-black", value: "900"),
+    ];
+    val tracking: ThemeEntry[] = [
+        ThemeEntry(name: "--tracking-tighter", value: "-0.05em"),
+        ThemeEntry(name: "--tracking-tight", value: "-0.025em"),
+        ThemeEntry(name: "--tracking-normal", value: "0em"),
+        ThemeEntry(name: "--tracking-wide", value: "0.025em"),
+        ThemeEntry(name: "--tracking-wider", value: "0.05em"),
+        ThemeEntry(name: "--tracking-widest", value: "0.1em"),
+    ];
+    val leading: ThemeEntry[] = [
+        ThemeEntry(name: "--leading-tight", value: "1.25"),
+        ThemeEntry(name: "--leading-snug", value: "1.375"),
+        ThemeEntry(name: "--leading-normal", value: "1.5"),
+        ThemeEntry(name: "--leading-relaxed", value: "1.625"),
+        ThemeEntry(name: "--leading-loose", value: "2"),
+    ];
+    return families.append(weights).append(tracking).append(leading);
+}
+
+// ── front 38 · tests ─────────────────────────────────────────────────────────
+//
+// The walk at the foot of this block is the front's REGRESSION and the reason
+// the per-leaf tests above it are not the whole story: a shadowed `case` arm
+// does not red, it falls out of the `case` and the token declares the EMPTY
+// STRING, on one target only (§ Maintainer rules). 437 leaves are asserted to
+// declare something, to carry a `:`, to resolve no length and no colour, and
+// to emit no Tailwind class fragment — each probe with a control that FAILS.
+
+// ── the four corrections ─────────────────────────────────────────────────────
+
+test "front 38 — a size token is the --text-* PAIR, and no longer a rem" {
+    assert tokenDeclarations(.Text.Size.Lg)
+        == "font-size:var(--text-lg);line-height:var(--text-lg--line-height)";
+    assert tokenDeclarations(.Text.Size.Lg).indexOf("1.125rem") == -1;
+    assert tokenDeclarations(.Text.Size.Lg).indexOf("rem") == -1;
+    assert declarationsOf(tokenToSheet(.Text.Size.Lg, defaultTheme())).length == 1;
+}
+
+test "front 38 — a family references var(--font-*), not a literal stack" {
+    assert tokenDeclarations(.Font.Sans) == "font-family:var(--font-sans)";
+    assert tokenDeclarations(.Font.Serif) == "font-family:var(--font-serif)";
+    assert tokenDeclarations(.Font.Mono) == "font-family:var(--font-mono)";
+    assert tokenDeclarations(.Font.Sans).indexOf("ui-sans-serif") == -1;
+    assert tokenDeclarations(.Font.Serif).indexOf("Georgia") == -1;
+    assert tokenDeclarations(.Font.Mono).indexOf("SFMono-Regular") == -1;
+}
+
+test "front 38 — underline is the text-decoration-line LONGHAND" {
+    assert tokenDeclarations(.Text.Underline) == "text-decoration-line:underline";
+    assert tokenDeclarations(.Text.LineThrough) == "text-decoration-line:line-through";
+    assert tokenDeclarations(.Text.Overline) == "text-decoration-line:overline";
+    assert tokenDeclarations(.Text.NoUnderline) == "text-decoration-line:none";
+    // The shorthand is gone, which is what makes a line compose with a style
+    // rather than overwrite it: two tokens, two properties, one rule.
+    assert tokenDeclarations(.Text.Underline).indexOf("text-decoration:") == -1;
+    val both: Token[] = [.Text.Underline, .Text.Decoration.Style.Dotted];
+    assert declarationsOf(tokensToSheet(both, defaultTheme())).join(";")
+        == "text-decoration-line:underline;text-decoration-style:dotted";
+}
+
+test "front 38 — .Text.Bold is untouched, and sits next to three that changed" {
+    assert tokenDeclarations(.Text.Bold) == "font-weight:bold";
+    assert tokenDeclarations(.Text.Italic) == "font-style:italic";
+    assert tokenDeclarations(.Text.Left) == "text-align:left";
+    assert tokenDeclarations(.Text.Center) == "text-align:center";
+    assert tokenDeclarations(.Text.Right) == "text-align:right";
+    assert tokenDeclarations(.Text.Justify) == "text-align:justify";
+}
+
+// ── size, weight, family ─────────────────────────────────────────────────────
+
+test "front 38 — thirteen sizes, each a --text-* pair" {
+    assert tokenDeclarations(.Text.Size.Xs) == "font-size:var(--text-xs);line-height:var(--text-xs--line-height)";
+    assert tokenDeclarations(.Text.Size.Sm) == "font-size:var(--text-sm);line-height:var(--text-sm--line-height)";
+    assert tokenDeclarations(.Text.Size.Base) == "font-size:var(--text-base);line-height:var(--text-base--line-height)";
+    assert tokenDeclarations(.Text.Size.Lg) == "font-size:var(--text-lg);line-height:var(--text-lg--line-height)";
+    assert tokenDeclarations(.Text.Size.Xl) == "font-size:var(--text-xl);line-height:var(--text-xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X2xl) == "font-size:var(--text-2xl);line-height:var(--text-2xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X3xl) == "font-size:var(--text-3xl);line-height:var(--text-3xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X4xl) == "font-size:var(--text-4xl);line-height:var(--text-4xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X5xl) == "font-size:var(--text-5xl);line-height:var(--text-5xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X6xl) == "font-size:var(--text-6xl);line-height:var(--text-6xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X7xl) == "font-size:var(--text-7xl);line-height:var(--text-7xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X8xl) == "font-size:var(--text-8xl);line-height:var(--text-8xl--line-height)";
+    assert tokenDeclarations(.Text.Size.X9xl) == "font-size:var(--text-9xl);line-height:var(--text-9xl--line-height)";
+}
+
+test "front 38 — the --text-* half of the theme is front 54's, not a second copy" {
+    // `§ 21.3` distinguishes two shapes and `defaultTheme()` already carries
+    // both, so `typographyEntries()` does NOT restate them. These two cells
+    // are the shapes: a computed ratio, and a bare `1` from `5xl` up.
+    val th = defaultTheme();
+    assert themeValue(th, "--text-xs") == "0.75rem";
+    assert themeValue(th, "--text-xs--line-height") == "calc(1 / 0.75)";
+    assert themeValue(th, "--text-5xl") == "3rem";
+    assert themeValue(th, "--text-5xl--line-height") == "1";
+    assert typographyEntries().filter({ e -> e.name.startsWith("--text-") }).length == 0;
+}
+
+test "front 38 — nine weights, 100 through 900" {
+    assert tokenDeclarations(.Font.Weight.Thin) == "font-weight:100";
+    assert tokenDeclarations(.Font.Weight.Extralight) == "font-weight:200";
+    assert tokenDeclarations(.Font.Weight.Light) == "font-weight:300";
+    assert tokenDeclarations(.Font.Weight.Normal) == "font-weight:400";
+    assert tokenDeclarations(.Font.Weight.Medium) == "font-weight:500";
+    assert tokenDeclarations(.Font.Weight.Semibold) == "font-weight:600";
+    assert tokenDeclarations(.Font.Weight.Bold) == "font-weight:700";
+    assert tokenDeclarations(.Font.Weight.Extrabold) == "font-weight:800";
+    assert tokenDeclarations(.Font.Weight.Black) == "font-weight:900";
+}
+
+test "front 38 — two alignments the section was missing" {
+    assert tokenDeclarations(.Text.Start) == "text-align:start";
+    assert tokenDeclarations(.Text.End) == "text-align:end";
+}
+
+// ── the multi-declaration tokens, in the reference's order ───────────────────
+
+test "front 38 — antialiased is two vendor properties from one token" {
+    assert tokenDeclarations(.Font.Smoothing.Antialiased)
+        == "-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale";
+    assert tokenDeclarations(.Font.Smoothing.Subpixel)
+        == "-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto";
+}
+
+test "front 38 — truncate is three declarations" {
+    assert tokenDeclarations(.Text.Truncate)
+        == "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+}
+
+test "front 38 — break-normal is two, break-words is one, and they differ in property" {
+    assert tokenDeclarations(.Text.Break.Normal) == "overflow-wrap:normal;word-break:normal";
+    assert tokenDeclarations(.Text.Break.Words) == "overflow-wrap:break-word";
+    assert tokenDeclarations(.Text.Break.All) == "word-break:break-all";
+    assert tokenDeclarations(.Text.Break.Keep) == "word-break:keep-all";
+}
+
+test "front 38 — OverflowWrap is a separate section, and wrap-anywhere is why" {
+    assert tokenDeclarations(.Text.OverflowWrap.Normal) == "overflow-wrap:normal";
+    assert tokenDeclarations(.Text.OverflowWrap.BreakWord) == "overflow-wrap:break-word";
+    assert tokenDeclarations(.Text.OverflowWrap.Anywhere) == "overflow-wrap:anywhere";
+    // `wrap-anywhere` has no `break-*` spelling at all — merging the two
+    // sections would have lost it.
+    assert tokenDeclarations(.Text.Break.Words) == tokenDeclarations(.Text.OverflowWrap.BreakWord);
+}
+
+test "front 38 — line-clamp-N is four declarations in the reference's order" {
+    assert tokenDeclarations(.Text.Clamp.3)
+        == "overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3";
+    assert tokenDeclarations(.Text.Clamp.1).indexOf("-webkit-line-clamp:1") != -1;
+    assert tokenDeclarations(.Text.Clamp.6).indexOf("-webkit-line-clamp:6") != -1;
+}
+
+test "front 38 — line-clamp-none is the four-declaration RESET, not an omission" {
+    assert tokenDeclarations(.Text.Clamp.None)
+        == "overflow:visible;display:block;-webkit-box-orient:horizontal;-webkit-line-clamp:none";
+}
+
+// ── tracking and leading ─────────────────────────────────────────────────────
+
+test "front 38 — six tracking values, each a var(--tracking-*)" {
+    assert tokenDeclarations(.Text.Tracking.Tighter) == "letter-spacing:var(--tracking-tighter)";
+    assert tokenDeclarations(.Text.Tracking.Tight) == "letter-spacing:var(--tracking-tight)";
+    assert tokenDeclarations(.Text.Tracking.Normal) == "letter-spacing:var(--tracking-normal)";
+    assert tokenDeclarations(.Text.Tracking.Wide) == "letter-spacing:var(--tracking-wide)";
+    assert tokenDeclarations(.Text.Tracking.Wider) == "letter-spacing:var(--tracking-wider)";
+    assert tokenDeclarations(.Text.Tracking.Widest) == "letter-spacing:var(--tracking-widest)";
+}
+
+test "front 38 — six leading values, five references and one literal" {
+    assert tokenDeclarations(.Text.Leading.Tight) == "line-height:var(--leading-tight)";
+    assert tokenDeclarations(.Text.Leading.Snug) == "line-height:var(--leading-snug)";
+    assert tokenDeclarations(.Text.Leading.Normal) == "line-height:var(--leading-normal)";
+    assert tokenDeclarations(.Text.Leading.Relaxed) == "line-height:var(--leading-relaxed)";
+    assert tokenDeclarations(.Text.Leading.Loose) == "line-height:var(--leading-loose)";
+    // `leading-none` is the one leaf here the reference prints as a literal:
+    // `§ 9.11` gives `line-height: 1` with no `--leading-none` behind it.
+    assert tokenDeclarations(.Text.Leading.None) == "line-height:1";
+    assert typographyEntries().filter({ e -> e.name == "--leading-none" }).length == 0;
+}
+
+// ── style, stretch, variant-numeric ──────────────────────────────────────────
+
+test "front 38 — not-italic is Style.Normal, and the CSS value is normal" {
+    assert tokenDeclarations(.Font.Style.Italic) == "font-style:italic";
+    assert tokenDeclarations(.Font.Style.Normal) == "font-style:normal";
+    // The v0 leaf and the v4-shaped spelling emit the same declaration.
+    assert tokenDeclarations(.Text.Italic) == tokenDeclarations(.Font.Style.Italic);
+}
+
+test "front 38 — nine font-stretch values" {
+    assert tokenDeclarations(.Font.Stretch.UltraCondensed) == "font-stretch:ultra-condensed";
+    assert tokenDeclarations(.Font.Stretch.ExtraCondensed) == "font-stretch:extra-condensed";
+    assert tokenDeclarations(.Font.Stretch.Condensed) == "font-stretch:condensed";
+    assert tokenDeclarations(.Font.Stretch.SemiCondensed) == "font-stretch:semi-condensed";
+    assert tokenDeclarations(.Font.Stretch.Normal) == "font-stretch:normal";
+    assert tokenDeclarations(.Font.Stretch.SemiExpanded) == "font-stretch:semi-expanded";
+    assert tokenDeclarations(.Font.Stretch.Expanded) == "font-stretch:expanded";
+    assert tokenDeclarations(.Font.Stretch.ExtraExpanded) == "font-stretch:extra-expanded";
+    assert tokenDeclarations(.Font.Stretch.UltraExpanded) == "font-stretch:ultra-expanded";
+}
+
+test "front 38 — nine font-variant-numeric values, upstream's spelling" {
+    assert tokenDeclarations(.Font.Nums.Normal) == "font-variant-numeric:normal";
+    assert tokenDeclarations(.Font.Nums.Ordinal) == "font-variant-numeric:ordinal";
+    assert tokenDeclarations(.Font.Nums.SlashedZero) == "font-variant-numeric:slashed-zero";
+    assert tokenDeclarations(.Font.Nums.Lining) == "font-variant-numeric:lining-nums";
+    assert tokenDeclarations(.Font.Nums.Oldstyle) == "font-variant-numeric:oldstyle-nums";
+    assert tokenDeclarations(.Font.Nums.Proportional) == "font-variant-numeric:proportional-nums";
+    assert tokenDeclarations(.Font.Nums.Tabular) == "font-variant-numeric:tabular-nums";
+    assert tokenDeclarations(.Font.Nums.DiagonalFractions) == "font-variant-numeric:diagonal-fractions";
+    assert tokenDeclarations(.Font.Nums.StackedFractions) == "font-variant-numeric:stacked-fractions";
+}
+
+// ── transform, overflow, wrap ────────────────────────────────────────────────
+
+test "front 38 — four text-transform values; normal-case is the value `none`" {
+    assert tokenDeclarations(.Text.Transform.Uppercase) == "text-transform:uppercase";
+    assert tokenDeclarations(.Text.Transform.Lowercase) == "text-transform:lowercase";
+    assert tokenDeclarations(.Text.Transform.Capitalize) == "text-transform:capitalize";
+    assert tokenDeclarations(.Text.Transform.None) == "text-transform:none";
+}
+
+test "front 38 — text-overflow and text-wrap" {
+    assert tokenDeclarations(.Text.Overflow.Ellipsis) == "text-overflow:ellipsis";
+    assert tokenDeclarations(.Text.Overflow.Clip) == "text-overflow:clip";
+    assert tokenDeclarations(.Text.Wrap.Wrap) == "text-wrap:wrap";
+    assert tokenDeclarations(.Text.Wrap.Nowrap) == "text-wrap:nowrap";
+    assert tokenDeclarations(.Text.Wrap.Balance) == "text-wrap:balance";
+    assert tokenDeclarations(.Text.Wrap.Pretty) == "text-wrap:pretty";
+}
+
+// ── decoration ───────────────────────────────────────────────────────────────
+
+test "front 38 — five decoration styles" {
+    assert tokenDeclarations(.Text.Decoration.Style.Solid) == "text-decoration-style:solid";
+    assert tokenDeclarations(.Text.Decoration.Style.Double) == "text-decoration-style:double";
+    assert tokenDeclarations(.Text.Decoration.Style.Dotted) == "text-decoration-style:dotted";
+    assert tokenDeclarations(.Text.Decoration.Style.Dashed) == "text-decoration-style:dashed";
+    assert tokenDeclarations(.Text.Decoration.Style.Wavy) == "text-decoration-style:wavy";
+}
+
+test "front 38 — six thicknesses and five offsets, the reference's extent" {
+    assert tokenDeclarations(.Text.Decoration.Thickness.Auto) == "text-decoration-thickness:auto";
+    assert tokenDeclarations(.Text.Decoration.Thickness.FromFont) == "text-decoration-thickness:from-font";
+    assert tokenDeclarations(.Text.Decoration.Thickness.0) == "text-decoration-thickness:0px";
+    assert tokenDeclarations(.Text.Decoration.Thickness.1) == "text-decoration-thickness:1px";
+    assert tokenDeclarations(.Text.Decoration.Thickness.2) == "text-decoration-thickness:2px";
+    assert tokenDeclarations(.Text.Decoration.Thickness.4) == "text-decoration-thickness:4px";
+    assert tokenDeclarations(.Text.Decoration.Offset.Auto) == "text-underline-offset:auto";
+    assert tokenDeclarations(.Text.Decoration.Offset.0) == "text-underline-offset:0px";
+    assert tokenDeclarations(.Text.Decoration.Offset.1) == "text-underline-offset:1px";
+    assert tokenDeclarations(.Text.Decoration.Offset.2) == "text-underline-offset:2px";
+    assert tokenDeclarations(.Text.Decoration.Offset.4) == "text-underline-offset:4px";
+}
+
+test "front 38 — a decoration colour is front 33's reference, not a copy" {
+    assert tokenDeclarations(.Text.Decoration.Color.Red.500)
+        == "text-decoration-color:var(--color-red-500)";
+    // Asserted against the HELPER rather than against a second literal: if
+    // front 33 moves the reference form, this row moves with it.
+    assert tokenDeclarations(.Text.Decoration.Color.Red.500)
+        == "text-decoration-color:" + paletteVar("red", "500");
+    assert tokenDeclarations(.Text.Decoration.Color.Taupe.50)
+        == "text-decoration-color:" + paletteVar("taupe", "50");
+    // No arm discards its shade — the defect front 40 inherited from the
+    // two-family `Border.Color` stub.
+    assert tokenDeclarations(.Text.Decoration.Color.Red.100)
+        != tokenDeclarations(.Text.Decoration.Color.Red.900);
+    assert tokenDeclarations(.Text.Decoration.Color.White)
+        == "text-decoration-color:var(--color-white)";
+    assert tokenDeclarations(.Text.Decoration.Color.Black)
+        == "text-decoration-color:var(--color-black)";
+    assert tokenDeclarations(.Text.Decoration.Color.Transparent)
+        == "text-decoration-color:transparent";
+    assert tokenDeclarations(.Text.Decoration.Color.Current)
+        == "text-decoration-color:currentColor";
+    assert tokenDeclarations(.Text.Decoration.Color.Inherit)
+        == "text-decoration-color:inherit";
+}
+
+test "front 38 — a decoration colour and a text colour reference ONE property" {
+    val a = tokenDeclarations(.Color.Indigo.500);
+    val b = tokenDeclarations(.Text.Decoration.Color.Indigo.500);
+    assert a == "color:var(--color-indigo-500)";
+    assert b == "text-decoration-color:var(--color-indigo-500)";
+    assert a.indexOf("var(--color-indigo-500)") != -1;
+    assert b.indexOf("var(--color-indigo-500)") != -1;
+}
+
+// ── whitespace, hyphens, indent, align, tab, content, lists ──────────────────
+
+test "front 38 — six whitespace values" {
+    assert tokenDeclarations(.Text.Whitespace.Normal) == "white-space:normal";
+    assert tokenDeclarations(.Text.Whitespace.Nowrap) == "white-space:nowrap";
+    assert tokenDeclarations(.Text.Whitespace.Pre) == "white-space:pre";
+    assert tokenDeclarations(.Text.Whitespace.PreLine) == "white-space:pre-line";
+    assert tokenDeclarations(.Text.Whitespace.PreWrap) == "white-space:pre-wrap";
+    assert tokenDeclarations(.Text.Whitespace.BreakSpaces) == "white-space:break-spaces";
+}
+
+test "front 38 — three hyphens values" {
+    assert tokenDeclarations(.Text.Hyphens.None) == "hyphens:none";
+    assert tokenDeclarations(.Text.Hyphens.Manual) == "hyphens:manual";
+    assert tokenDeclarations(.Text.Hyphens.Auto) == "hyphens:auto";
+}
+
+test "front 38 — indent answers front 54's spacing(n), and resolves nothing" {
+    assert tokenDeclarations(.Text.Indent.8) == "text-indent:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Text.Indent.8) == "text-indent:" + spacing(8);
+    assert tokenDeclarations(.Text.Indent.0) == "text-indent:0";
+    // The same function `.Pad.All.8` answers, so the two agree by construction
+    // and halving `--spacing` moves both.
+    assert tokenDeclarations(.Text.Indent.8).indexOf(spacing(8)) != -1;
+    assert tokenDeclarations(.Pad.All.8).indexOf(spacing(8)) != -1;
+}
+
+test "front 38 — eight vertical-align values" {
+    assert tokenDeclarations(.Text.Align.Baseline) == "vertical-align:baseline";
+    assert tokenDeclarations(.Text.Align.Top) == "vertical-align:top";
+    assert tokenDeclarations(.Text.Align.Middle) == "vertical-align:middle";
+    assert tokenDeclarations(.Text.Align.Bottom) == "vertical-align:bottom";
+    assert tokenDeclarations(.Text.Align.TextTop) == "vertical-align:text-top";
+    assert tokenDeclarations(.Text.Align.TextBottom) == "vertical-align:text-bottom";
+    assert tokenDeclarations(.Text.Align.Sub) == "vertical-align:sub";
+    assert tokenDeclarations(.Text.Align.Super) == "vertical-align:super";
+}
+
+test "front 38 — four tab sizes, each a COUNT and not a length" {
+    assert tokenDeclarations(.Text.Tab.0) == "tab-size:0";
+    assert tokenDeclarations(.Text.Tab.2) == "tab-size:2";
+    assert tokenDeclarations(.Text.Tab.4) == "tab-size:4";
+    assert tokenDeclarations(.Text.Tab.8) == "tab-size:8";
+    assert tokenDeclarations(.Text.Tab.4).indexOf("px") == -1;
+    assert tokenDeclarations(.Text.Tab.4).indexOf("var(") == -1;
+}
+
+test "front 38 — content-none and content-[''], two quote characters and all" {
+    assert tokenDeclarations(.Text.Content.None) == "content:none";
+    assert tokenDeclarations(.Text.Content.Empty) == "content:\"\"";
+    // The codec's separators are tab, newline and carriage return; a quote is
+    // none of them, so the value survives a round trip through the host cell.
+    assert carriesSeparator(tokenDeclarations(.Text.Content.Empty)) == false;
+    assert decodeSheet(encodeSheet(tokenToSheet(.Text.Content.Empty, defaultTheme())))
+        .rules.length == 1;
+}
+
+test "front 38 — List answers six leaves across three properties" {
+    assert tokenDeclarations(.List.None) == "list-style-type:none";
+    assert tokenDeclarations(.List.Disc) == "list-style-type:disc";
+    assert tokenDeclarations(.List.Decimal) == "list-style-type:decimal";
+    assert tokenDeclarations(.List.Inside) == "list-style-position:inside";
+    assert tokenDeclarations(.List.Outside) == "list-style-position:outside";
+    assert tokenDeclarations(.List.ImageNone) == "list-style-image:none";
+}
+
+// ── the theme entries ────────────────────────────────────────────────────────
+
+test "front 38 — typographyEntries carries 23 entries in four namespaces" {
+    val es = typographyEntries();
+    assert es.length == 23;
+    assert es.filter({ e -> e.name.startsWith("--font-weight-") }).length == 9;
+    assert es.filter({ e -> e.name.startsWith("--tracking-") }).length == 6;
+    assert es.filter({ e -> e.name.startsWith("--leading-") }).length == 5;
+    // The three family entries are the PROVISIONAL rows: the reference prints
+    // the reference FORM (`var(--font-sans)`) and no value for it, so these
+    // three carry emilia's own pre-38 stacks and nothing upstream confirmed.
+    assert es.filter({ e -> e.name == "--font-sans" }).length == 1;
+    assert es.filter({ e -> e.name == "--font-serif" }).length == 1;
+    assert es.filter({ e -> e.name == "--font-mono" }).length == 1;
+}
+
+test "front 38 — the tracking and leading values the reference prints" {
+    val th = extendTheme(defaultTheme(), typographyEntries());
+    assert themeValue(th, "--tracking-tighter") == "-0.05em";
+    assert themeValue(th, "--tracking-tight") == "-0.025em";
+    assert themeValue(th, "--tracking-normal") == "0em";
+    assert themeValue(th, "--tracking-wide") == "0.025em";
+    assert themeValue(th, "--tracking-wider") == "0.05em";
+    assert themeValue(th, "--tracking-widest") == "0.1em";
+    assert themeValue(th, "--leading-tight") == "1.25";
+    assert themeValue(th, "--leading-snug") == "1.375";
+    assert themeValue(th, "--leading-normal") == "1.5";
+    assert themeValue(th, "--leading-relaxed") == "1.625";
+    assert themeValue(th, "--leading-loose") == "2";
+    assert themeValue(th, "--font-weight-bold") == "700";
+}
+
+test "front 38 — composing the entries disturbs nothing else, and the sizes stay" {
+    val th = extendTheme(defaultTheme(), typographyEntries());
+    assert themeValue(th, "--spacing") == "0.25rem";
+    assert themeValue(th, "--breakpoint-md") == "48rem";
+    assert themeValue(th, "--text-lg") == "1.125rem";
+    assert themeValue(th, "--text-lg--line-height") == "calc(1.75 / 1.125)";
+    assert th.entries.length == defaultTheme().entries.length + 23;
+}
+
+test "front 38 — a project's own type scale reaches every size token" {
+    // The front's whole argument: the utility emits a REFERENCE, so moving
+    // `--text-lg` moves the rule without moving one byte of the class body.
+    val brand: ThemeEntry[] = [ThemeEntry(name: "--text-lg", value: "1.2rem")];
+    val th = extendTheme(defaultTheme(), brand);
+    assert themeValue(th, "--text-lg") == "1.2rem";
+    assert declarationsOf(tokenToSheet(.Text.Size.Lg, th)).join(";")
+        == declarationsOf(tokenToSheet(.Text.Size.Lg, defaultTheme())).join(";");
+}
+
+// ── end to end ───────────────────────────────────────────────────────────────
+
+test "front 38 — end to end: a display heading is one class and one rule" {
+    // The spec writes this list as `.Text.Balance`; the token above is
+    // `.Text.Wrap.Balance` — `text-wrap` is a property group of its own and a
+    // bare leaf would put four values of one property beside `Bold`.
+    val tokens: Token[] = [.Font.Sans, .Text.Size.X3xl, .Text.Tracking.Tight, .Text.Wrap.Balance];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{font-family:var(--font-sans);"
+        + "font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);"
+        + "letter-spacing:var(--tracking-tight);text-wrap:balance}}</style>";
+}
+
+test "front 38 — end to end: a clamped excerpt with a wavy underlined link" {
+    val tokens: Token[] = [
+        .Text.Size.Sm,
+        .Text.Leading.Relaxed,
+        .Text.Clamp.3,
+        .Text.Underline,
+        .Text.Decoration.Style.Wavy,
+        .Text.Decoration.Color.Sky.500,
+        .Text.Decoration.Offset.2,
+    ];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{font-size:var(--text-sm);line-height:var(--text-sm--line-height);"
+        + "line-height:var(--leading-relaxed);"
+        + "overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;"
+        + "text-decoration-line:underline;text-decoration-style:wavy;"
+        + "text-decoration-color:var(--color-sky-500);text-underline-offset:2px}}</style>";
+}
+
+// ── the regression walk ──────────────────────────────────────────────────────
+
+fn front38TextLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Text.Bold, .Text.Italic, .Text.Underline, .Text.LineThrough, .Text.Left, .Text.Center,
+        .Text.Right, .Text.Justify, .Text.Overline, .Text.NoUnderline, .Text.Start, .Text.End,
+        .Text.Truncate, .Text.Size.Xs, .Text.Size.Sm, .Text.Size.Base, .Text.Size.Lg,
+        .Text.Size.Xl, .Text.Size.X2xl, .Text.Size.X3xl, .Text.Size.X4xl, .Text.Size.X5xl,
+        .Text.Size.X6xl, .Text.Size.X7xl, .Text.Size.X8xl, .Text.Size.X9xl,
+        .Text.Tracking.Tighter, .Text.Tracking.Tight, .Text.Tracking.Normal,
+        .Text.Tracking.Wide, .Text.Tracking.Wider, .Text.Tracking.Widest, .Text.Leading.None,
+        .Text.Leading.Tight, .Text.Leading.Snug, .Text.Leading.Normal, .Text.Leading.Relaxed,
+        .Text.Leading.Loose, .Text.Clamp.1, .Text.Clamp.2, .Text.Clamp.3, .Text.Clamp.4,
+        .Text.Clamp.5, .Text.Clamp.6, .Text.Clamp.None, .Text.Transform.Uppercase,
+        .Text.Transform.Lowercase, .Text.Transform.Capitalize, .Text.Transform.None,
+        .Text.Overflow.Ellipsis, .Text.Overflow.Clip, .Text.Wrap.Wrap, .Text.Wrap.Nowrap,
+        .Text.Wrap.Balance, .Text.Wrap.Pretty, .Text.Decoration.Style.Solid,
+        .Text.Decoration.Style.Double, .Text.Decoration.Style.Dotted,
+        .Text.Decoration.Style.Dashed, .Text.Decoration.Style.Wavy,
+        .Text.Decoration.Thickness.Auto, .Text.Decoration.Thickness.FromFont,
+        .Text.Decoration.Thickness.0, .Text.Decoration.Thickness.1,
+        .Text.Decoration.Thickness.2, .Text.Decoration.Thickness.4,
+        .Text.Decoration.Offset.Auto, .Text.Decoration.Offset.0, .Text.Decoration.Offset.1,
+        .Text.Decoration.Offset.2, .Text.Decoration.Offset.4, .Text.Decoration.Color.Red.50,
+        .Text.Decoration.Color.Red.100, .Text.Decoration.Color.Red.200,
+        .Text.Decoration.Color.Red.300, .Text.Decoration.Color.Red.400,
+        .Text.Decoration.Color.Red.500, .Text.Decoration.Color.Red.600,
+        .Text.Decoration.Color.Red.700, .Text.Decoration.Color.Red.800,
+        .Text.Decoration.Color.Red.900, .Text.Decoration.Color.Red.950,
+        .Text.Decoration.Color.Orange.50, .Text.Decoration.Color.Orange.100,
+        .Text.Decoration.Color.Orange.200, .Text.Decoration.Color.Orange.300,
+        .Text.Decoration.Color.Orange.400, .Text.Decoration.Color.Orange.500,
+        .Text.Decoration.Color.Orange.600, .Text.Decoration.Color.Orange.700,
+        .Text.Decoration.Color.Orange.800, .Text.Decoration.Color.Orange.900,
+        .Text.Decoration.Color.Orange.950, .Text.Decoration.Color.Amber.50,
+        .Text.Decoration.Color.Amber.100, .Text.Decoration.Color.Amber.200,
+        .Text.Decoration.Color.Amber.300, .Text.Decoration.Color.Amber.400,
+        .Text.Decoration.Color.Amber.500, .Text.Decoration.Color.Amber.600,
+        .Text.Decoration.Color.Amber.700, .Text.Decoration.Color.Amber.800,
+        .Text.Decoration.Color.Amber.900, .Text.Decoration.Color.Amber.950,
+        .Text.Decoration.Color.Yellow.50, .Text.Decoration.Color.Yellow.100,
+        .Text.Decoration.Color.Yellow.200, .Text.Decoration.Color.Yellow.300,
+        .Text.Decoration.Color.Yellow.400, .Text.Decoration.Color.Yellow.500,
+        .Text.Decoration.Color.Yellow.600, .Text.Decoration.Color.Yellow.700,
+        .Text.Decoration.Color.Yellow.800, .Text.Decoration.Color.Yellow.900,
+        .Text.Decoration.Color.Yellow.950, .Text.Decoration.Color.Lime.50,
+        .Text.Decoration.Color.Lime.100, .Text.Decoration.Color.Lime.200,
+        .Text.Decoration.Color.Lime.300, .Text.Decoration.Color.Lime.400,
+        .Text.Decoration.Color.Lime.500, .Text.Decoration.Color.Lime.600,
+        .Text.Decoration.Color.Lime.700, .Text.Decoration.Color.Lime.800,
+        .Text.Decoration.Color.Lime.900, .Text.Decoration.Color.Lime.950,
+        .Text.Decoration.Color.Green.50, .Text.Decoration.Color.Green.100,
+        .Text.Decoration.Color.Green.200, .Text.Decoration.Color.Green.300,
+        .Text.Decoration.Color.Green.400, .Text.Decoration.Color.Green.500,
+        .Text.Decoration.Color.Green.600, .Text.Decoration.Color.Green.700,
+        .Text.Decoration.Color.Green.800, .Text.Decoration.Color.Green.900,
+        .Text.Decoration.Color.Green.950, .Text.Decoration.Color.Emerald.50,
+        .Text.Decoration.Color.Emerald.100, .Text.Decoration.Color.Emerald.200,
+        .Text.Decoration.Color.Emerald.300, .Text.Decoration.Color.Emerald.400,
+        .Text.Decoration.Color.Emerald.500, .Text.Decoration.Color.Emerald.600,
+        .Text.Decoration.Color.Emerald.700, .Text.Decoration.Color.Emerald.800,
+        .Text.Decoration.Color.Emerald.900, .Text.Decoration.Color.Emerald.950,
+        .Text.Decoration.Color.Teal.50, .Text.Decoration.Color.Teal.100,
+        .Text.Decoration.Color.Teal.200, .Text.Decoration.Color.Teal.300,
+        .Text.Decoration.Color.Teal.400, .Text.Decoration.Color.Teal.500,
+        .Text.Decoration.Color.Teal.600, .Text.Decoration.Color.Teal.700,
+        .Text.Decoration.Color.Teal.800, .Text.Decoration.Color.Teal.900,
+        .Text.Decoration.Color.Teal.950, .Text.Decoration.Color.Cyan.50,
+        .Text.Decoration.Color.Cyan.100, .Text.Decoration.Color.Cyan.200,
+        .Text.Decoration.Color.Cyan.300, .Text.Decoration.Color.Cyan.400,
+        .Text.Decoration.Color.Cyan.500, .Text.Decoration.Color.Cyan.600,
+        .Text.Decoration.Color.Cyan.700, .Text.Decoration.Color.Cyan.800,
+        .Text.Decoration.Color.Cyan.900, .Text.Decoration.Color.Cyan.950,
+        .Text.Decoration.Color.Sky.50, .Text.Decoration.Color.Sky.100,
+        .Text.Decoration.Color.Sky.200, .Text.Decoration.Color.Sky.300,
+        .Text.Decoration.Color.Sky.400, .Text.Decoration.Color.Sky.500,
+        .Text.Decoration.Color.Sky.600, .Text.Decoration.Color.Sky.700,
+        .Text.Decoration.Color.Sky.800, .Text.Decoration.Color.Sky.900,
+        .Text.Decoration.Color.Sky.950, .Text.Decoration.Color.Blue.50,
+        .Text.Decoration.Color.Blue.100, .Text.Decoration.Color.Blue.200,
+        .Text.Decoration.Color.Blue.300, .Text.Decoration.Color.Blue.400,
+        .Text.Decoration.Color.Blue.500, .Text.Decoration.Color.Blue.600,
+        .Text.Decoration.Color.Blue.700, .Text.Decoration.Color.Blue.800,
+        .Text.Decoration.Color.Blue.900, .Text.Decoration.Color.Blue.950,
+        .Text.Decoration.Color.Indigo.50, .Text.Decoration.Color.Indigo.100,
+        .Text.Decoration.Color.Indigo.200, .Text.Decoration.Color.Indigo.300,
+        .Text.Decoration.Color.Indigo.400, .Text.Decoration.Color.Indigo.500,
+        .Text.Decoration.Color.Indigo.600, .Text.Decoration.Color.Indigo.700,
+        .Text.Decoration.Color.Indigo.800, .Text.Decoration.Color.Indigo.900,
+        .Text.Decoration.Color.Indigo.950, .Text.Decoration.Color.Violet.50,
+        .Text.Decoration.Color.Violet.100, .Text.Decoration.Color.Violet.200,
+        .Text.Decoration.Color.Violet.300, .Text.Decoration.Color.Violet.400,
+        .Text.Decoration.Color.Violet.500, .Text.Decoration.Color.Violet.600,
+        .Text.Decoration.Color.Violet.700, .Text.Decoration.Color.Violet.800,
+        .Text.Decoration.Color.Violet.900, .Text.Decoration.Color.Violet.950,
+        .Text.Decoration.Color.Purple.50, .Text.Decoration.Color.Purple.100,
+        .Text.Decoration.Color.Purple.200, .Text.Decoration.Color.Purple.300,
+        .Text.Decoration.Color.Purple.400, .Text.Decoration.Color.Purple.500,
+        .Text.Decoration.Color.Purple.600, .Text.Decoration.Color.Purple.700,
+        .Text.Decoration.Color.Purple.800, .Text.Decoration.Color.Purple.900,
+        .Text.Decoration.Color.Purple.950, .Text.Decoration.Color.Fuchsia.50,
+        .Text.Decoration.Color.Fuchsia.100, .Text.Decoration.Color.Fuchsia.200,
+        .Text.Decoration.Color.Fuchsia.300, .Text.Decoration.Color.Fuchsia.400,
+        .Text.Decoration.Color.Fuchsia.500, .Text.Decoration.Color.Fuchsia.600,
+        .Text.Decoration.Color.Fuchsia.700, .Text.Decoration.Color.Fuchsia.800,
+        .Text.Decoration.Color.Fuchsia.900, .Text.Decoration.Color.Fuchsia.950,
+        .Text.Decoration.Color.Pink.50, .Text.Decoration.Color.Pink.100,
+        .Text.Decoration.Color.Pink.200, .Text.Decoration.Color.Pink.300,
+        .Text.Decoration.Color.Pink.400, .Text.Decoration.Color.Pink.500,
+        .Text.Decoration.Color.Pink.600, .Text.Decoration.Color.Pink.700,
+        .Text.Decoration.Color.Pink.800, .Text.Decoration.Color.Pink.900,
+        .Text.Decoration.Color.Pink.950, .Text.Decoration.Color.Rose.50,
+        .Text.Decoration.Color.Rose.100, .Text.Decoration.Color.Rose.200,
+        .Text.Decoration.Color.Rose.300, .Text.Decoration.Color.Rose.400,
+        .Text.Decoration.Color.Rose.500, .Text.Decoration.Color.Rose.600,
+        .Text.Decoration.Color.Rose.700, .Text.Decoration.Color.Rose.800,
+        .Text.Decoration.Color.Rose.900, .Text.Decoration.Color.Rose.950,
+        .Text.Decoration.Color.Slate.50, .Text.Decoration.Color.Slate.100,
+        .Text.Decoration.Color.Slate.200, .Text.Decoration.Color.Slate.300,
+        .Text.Decoration.Color.Slate.400, .Text.Decoration.Color.Slate.500,
+        .Text.Decoration.Color.Slate.600, .Text.Decoration.Color.Slate.700,
+        .Text.Decoration.Color.Slate.800, .Text.Decoration.Color.Slate.900,
+        .Text.Decoration.Color.Slate.950, .Text.Decoration.Color.Gray.50,
+        .Text.Decoration.Color.Gray.100, .Text.Decoration.Color.Gray.200,
+        .Text.Decoration.Color.Gray.300, .Text.Decoration.Color.Gray.400,
+        .Text.Decoration.Color.Gray.500, .Text.Decoration.Color.Gray.600,
+        .Text.Decoration.Color.Gray.700, .Text.Decoration.Color.Gray.800,
+        .Text.Decoration.Color.Gray.900, .Text.Decoration.Color.Gray.950,
+        .Text.Decoration.Color.Zinc.50, .Text.Decoration.Color.Zinc.100,
+        .Text.Decoration.Color.Zinc.200, .Text.Decoration.Color.Zinc.300,
+        .Text.Decoration.Color.Zinc.400, .Text.Decoration.Color.Zinc.500,
+        .Text.Decoration.Color.Zinc.600, .Text.Decoration.Color.Zinc.700,
+        .Text.Decoration.Color.Zinc.800, .Text.Decoration.Color.Zinc.900,
+        .Text.Decoration.Color.Zinc.950, .Text.Decoration.Color.Neutral.50,
+        .Text.Decoration.Color.Neutral.100, .Text.Decoration.Color.Neutral.200,
+        .Text.Decoration.Color.Neutral.300, .Text.Decoration.Color.Neutral.400,
+        .Text.Decoration.Color.Neutral.500, .Text.Decoration.Color.Neutral.600,
+        .Text.Decoration.Color.Neutral.700, .Text.Decoration.Color.Neutral.800,
+        .Text.Decoration.Color.Neutral.900, .Text.Decoration.Color.Neutral.950,
+        .Text.Decoration.Color.Stone.50, .Text.Decoration.Color.Stone.100,
+        .Text.Decoration.Color.Stone.200, .Text.Decoration.Color.Stone.300,
+        .Text.Decoration.Color.Stone.400, .Text.Decoration.Color.Stone.500,
+        .Text.Decoration.Color.Stone.600, .Text.Decoration.Color.Stone.700,
+        .Text.Decoration.Color.Stone.800, .Text.Decoration.Color.Stone.900,
+        .Text.Decoration.Color.Stone.950, .Text.Decoration.Color.Mauve.50,
+        .Text.Decoration.Color.Mauve.100, .Text.Decoration.Color.Mauve.200,
+        .Text.Decoration.Color.Mauve.300, .Text.Decoration.Color.Mauve.400,
+        .Text.Decoration.Color.Mauve.500, .Text.Decoration.Color.Mauve.600,
+        .Text.Decoration.Color.Mauve.700, .Text.Decoration.Color.Mauve.800,
+        .Text.Decoration.Color.Mauve.900, .Text.Decoration.Color.Mauve.950,
+        .Text.Decoration.Color.Olive.50, .Text.Decoration.Color.Olive.100,
+        .Text.Decoration.Color.Olive.200, .Text.Decoration.Color.Olive.300,
+        .Text.Decoration.Color.Olive.400, .Text.Decoration.Color.Olive.500,
+        .Text.Decoration.Color.Olive.600, .Text.Decoration.Color.Olive.700,
+        .Text.Decoration.Color.Olive.800, .Text.Decoration.Color.Olive.900,
+        .Text.Decoration.Color.Olive.950, .Text.Decoration.Color.Mist.50,
+        .Text.Decoration.Color.Mist.100, .Text.Decoration.Color.Mist.200,
+        .Text.Decoration.Color.Mist.300, .Text.Decoration.Color.Mist.400,
+        .Text.Decoration.Color.Mist.500, .Text.Decoration.Color.Mist.600,
+        .Text.Decoration.Color.Mist.700, .Text.Decoration.Color.Mist.800,
+        .Text.Decoration.Color.Mist.900, .Text.Decoration.Color.Mist.950,
+        .Text.Decoration.Color.Taupe.50, .Text.Decoration.Color.Taupe.100,
+        .Text.Decoration.Color.Taupe.200, .Text.Decoration.Color.Taupe.300,
+        .Text.Decoration.Color.Taupe.400, .Text.Decoration.Color.Taupe.500,
+        .Text.Decoration.Color.Taupe.600, .Text.Decoration.Color.Taupe.700,
+        .Text.Decoration.Color.Taupe.800, .Text.Decoration.Color.Taupe.900,
+        .Text.Decoration.Color.Taupe.950, .Text.Decoration.Color.White,
+        .Text.Decoration.Color.Black, .Text.Decoration.Color.Transparent,
+        .Text.Decoration.Color.Current, .Text.Decoration.Color.Inherit, .Text.Whitespace.Normal,
+        .Text.Whitespace.Nowrap, .Text.Whitespace.Pre, .Text.Whitespace.PreLine,
+        .Text.Whitespace.PreWrap, .Text.Whitespace.BreakSpaces, .Text.Break.Normal,
+        .Text.Break.Words, .Text.Break.All, .Text.Break.Keep, .Text.OverflowWrap.Normal,
+        .Text.OverflowWrap.BreakWord, .Text.OverflowWrap.Anywhere, .Text.Hyphens.None,
+        .Text.Hyphens.Manual, .Text.Hyphens.Auto, .Text.Indent.0, .Text.Indent.1,
+        .Text.Indent.2, .Text.Indent.4, .Text.Indent.8, .Text.Align.Baseline, .Text.Align.Top,
+        .Text.Align.Middle, .Text.Align.Bottom, .Text.Align.TextTop, .Text.Align.TextBottom,
+        .Text.Align.Sub, .Text.Align.Super, .Text.Tab.0, .Text.Tab.2, .Text.Tab.4, .Text.Tab.8,
+        .Text.Content.None, .Text.Content.Empty,
+    ];
+    return leaves;
+}
+
+fn front38FontLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Font.Sans, .Font.Serif, .Font.Mono, .Font.Weight.Thin, .Font.Weight.Extralight,
+        .Font.Weight.Light, .Font.Weight.Normal, .Font.Weight.Medium, .Font.Weight.Semibold,
+        .Font.Weight.Bold, .Font.Weight.Extrabold, .Font.Weight.Black,
+        .Font.Smoothing.Antialiased, .Font.Smoothing.Subpixel, .Font.Style.Italic,
+        .Font.Style.Normal, .Font.Stretch.UltraCondensed, .Font.Stretch.ExtraCondensed,
+        .Font.Stretch.Condensed, .Font.Stretch.SemiCondensed, .Font.Stretch.Normal,
+        .Font.Stretch.SemiExpanded, .Font.Stretch.Expanded, .Font.Stretch.ExtraExpanded,
+        .Font.Stretch.UltraExpanded, .Font.Nums.Normal, .Font.Nums.Ordinal,
+        .Font.Nums.SlashedZero, .Font.Nums.Lining, .Font.Nums.Oldstyle, .Font.Nums.Proportional,
+        .Font.Nums.Tabular, .Font.Nums.DiagonalFractions, .Font.Nums.StackedFractions,
+    ];
+    return leaves;
+}
+
+fn front38ListLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .List.None, .List.Disc, .List.Decimal, .List.Inside, .List.Outside, .List.ImageNone,
+    ];
+    return leaves;
+}
+
+fn front38Leaves() -> Token[] {
+    return front38TextLeaves().append(front38FontLeaves()).append(front38ListLeaves());
+}
+
+// No leaf of this front may resolve a font size, a leading, a tracking or a
+// colour. `px` is NOT in the probe: a decoration thickness and an underline
+// offset are `px` counts in the reference itself (`§ 9.20`, `§ 9.21`), so
+// banning it would ban a row upstream prints.
+fn f38CarriesNoLiteral(decl: string) -> bool {
+    return decl.indexOf("rem") == -1 && decl.indexOf("#") == -1
+        && decl.indexOf("oklch(") == -1 && decl.indexOf("rgb(") == -1
+        && decl.indexOf("ui-sans-serif") == -1;
+}
+
+// The tracking and leading values, spelled as the reference spells them. A
+// resolved `letter-spacing:-0.025em` would be invisible to the probe above —
+// `em` cannot be banned outright, because `font-stretch:semi-condensed` carries
+// one — so the six values and the five are named.
+fn f38ResolvesNoTrackOrLead(decl: string) -> bool {
+    return decl.indexOf("0.05em") == -1 && decl.indexOf("0.025em") == -1
+        && decl.indexOf("0em") == -1 && decl.indexOf("0.1em") == -1
+        && decl.indexOf("1.25") == -1 && decl.indexOf("1.375") == -1
+        && decl.indexOf("1.625") == -1;
+}
+
+fn f38IsWellFormed(decl: string) -> bool {
+    return decl.length > 0 && decl.indexOf(":") != -1;
+}
+
+// A Tailwind CLASS NAME where a CSS value belongs. Every fragment below is
+// one no legitimate declaration of this front can contain — `tracking-tight`
+// and `text-xs` are NOT usable here, because `var(--tracking-tight)` and
+// `var(--text-xs)` carry them legitimately, and a probe that fires on correct
+// output is a probe that gets deleted.
+fn f38CarriesNoClassFragment(decl: string) -> bool {
+    return decl.indexOf("font-thin") == -1 && decl.indexOf("not-italic") == -1
+        && decl.indexOf("normal-nums") == -1 && decl.indexOf("text-balance") == -1
+        && decl.indexOf("line-clamp-3") == -1 && decl.indexOf("list-disc") == -1
+        && decl.indexOf("decoration-dotted") == -1 && decl.indexOf("underline-offset-2") == -1
+        && decl.indexOf("break-words") == -1 && decl.indexOf("indent-8") == -1
+        && decl.indexOf("whitespace-pre") == -1 && decl.indexOf("align-middle") == -1;
+}
+
+test "regression — 437 leaves, and every one declares something well formed" {
+    val leaves = front38Leaves();
+    assert front38TextLeaves().length == 397;
+    assert front38FontLeaves().length == 34;
+    assert front38ListLeaves().length == 6;
+    assert leaves.length == 437;
+    assert leaves.all({ t -> f38IsWellFormed(tokenDeclarations(t)) });
+}
+
+test "regression — no leaf of this front resolves a size, a leading or a colour" {
+    val leaves = front38Leaves();
+    assert leaves.all({ t -> f38CarriesNoLiteral(tokenDeclarations(t)) });
+    assert leaves.all({ t -> f38ResolvesNoTrackOrLead(tokenDeclarations(t)) });
+}
+
+test "regression — no leaf of this front emits a Tailwind class fragment" {
+    val leaves = front38Leaves();
+    assert leaves.all({ t -> f38CarriesNoClassFragment(tokenDeclarations(t)) });
+}
+
+test "regression — the three probes discriminate" {
+    // THE CONTROLS THAT MUST FAIL. Front 38 deleted the library's last
+    // resolved `rem`, so the literal control is a hand-built declaration —
+    // there is no longer a real token that can supply one.
+    assert f38CarriesNoLiteral("font-size:1.125rem") == false;
+    assert f38CarriesNoLiteral("font-family:ui-sans-serif,system-ui,sans-serif") == false;
+    assert f38CarriesNoLiteral(tokenDeclarations(.Bg.White)) == false;
+    assert f38CarriesNoLiteral(tokenDeclarations(.Text.Size.Lg));
+    assert f38ResolvesNoTrackOrLead("letter-spacing:-0.025em") == false;
+    assert f38ResolvesNoTrackOrLead("line-height:1.625") == false;
+    assert f38ResolvesNoTrackOrLead(tokenDeclarations(.Text.Tracking.Tight));
+    assert f38IsWellFormed("") == false;
+    assert f38IsWellFormed("font-weight") == false;
+    assert f38IsWellFormed("font-weight:700");
+    assert f38CarriesNoClassFragment("list-style-type:list-disc") == false;
+    assert f38CarriesNoClassFragment("text-decoration-style:decoration-dotted") == false;
+    assert f38CarriesNoClassFragment("text-wrap:text-balance") == false;
+    // and it does NOT fire on correct output, which is the half a probe of
+    // this shape usually gets wrong:
+    assert f38CarriesNoClassFragment("letter-spacing:var(--tracking-tight)");
+    assert f38CarriesNoClassFragment("line-height:var(--leading-relaxed)");
+    assert f38CarriesNoClassFragment("font-size:var(--text-xs);line-height:var(--text-xs--line-height)");
+}
+
+test "regression — the walk fails when a literal is planted in it" {
+    // Run rather than described: one stray literal token appended to the real
+    // list, and the whole walk asserted to FAIL. `.Bg.White` is front 39's and
+    // still spells `background:#ffffff`.
+    val strays: Token[] = [.Bg.White];
+    val planted: Token[] = front38Leaves().append(strays);
+    assert planted.length == 438;
+    assert planted.all({ t -> f38CarriesNoLiteral(tokenDeclarations(t)) }) == false;
+    assert front38Leaves().all({ t -> f38CarriesNoLiteral(tokenDeclarations(t)) });
+}
+
+test "regression — every decoration colour cell is a reference, and all 286 differ" {
+    val leaves = front38TextLeaves();
+    // 286 grid cells plus `White` and `Black`, which reference the theme the
+    // way front 33's `Color.White`/`Black` do.
+    val cells = leaves.filter({ t -> tokenDeclarations(t).indexOf("text-decoration-color:var(--color-") != -1 });
+    assert cells.length == 288;
+    val decls = cells.map({ t -> tokenDeclarations(t) });
+    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
+    // rather than looked up backwards (§ Maintainer rules). A discarded shade
+    // is what this catches — the literal probe alone does not.
+    val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
+    assert dupes.length == 0;
+}
+
+// ── end front 38 ─────────────────────────────────────────────────────────────
 
 // FRONT 39 OWNS THIS DISPATCHER; front 33 owns the `Color` arm and the theme
 // parameter it needs. The four legacy leaves below keep their pre-33 output —
@@ -4640,7 +6112,7 @@ test "aspect-ratio — the slash keeps its spaces" {
 //     `property:value`, so every leaf carries a `:` and none carries the
 //     hyphenated utility spelling of its own scale.
 //
-// `Text.Size` DOES spell `rem` — it is front 42's and is not walked here, and
+// `Text.Size` USED TO spell `rem` — front 38 made it `var(--text-lg)`, and
 // it is THE CONTROL below. `Border.Rounded` used to be the control and is no
 // longer one: front 40 rewrote it to `var(--radius-*)`, so it would now pass
 // the probe vacuously.
@@ -4887,7 +6359,14 @@ test "regression — no `Layout` leaf resolves a length; all 776 reference the t
     assert leaves.all({ t -> tokenDeclarations(t).indexOf("rem") == -1 });
     assert leaves.all({ t -> tokenDeclarations(t).indexOf(":") != -1 });
     assert leaves.all({ t -> tokenDeclarations(t).length > 0 });
-    assert tokenDeclarations(.Text.Size.Lg).indexOf("rem") != -1;
+    // CONTROL, rewritten by front 38. `.Text.Size.Lg` used to spell
+    // `1.125rem` and was the one real token left that resolved a `rem`;
+    // it now answers `var(--text-lg)`, so THERE IS NO SUCH TOKEN ANY MORE
+    // and the control is a hand-built declaration. The line below it is the
+    // same fact asserted from the other side, so this walk reddens again the
+    // day some front reintroduces a resolved length on `Text.Size`.
+    assert "font-size:1.125rem".indexOf("rem") != -1;
+    assert tokenDeclarations(.Text.Size.Lg).indexOf("rem") == -1;
 }
 
 test "regression — no `Layout` leaf emits a Tailwind class fragment" {
@@ -5839,11 +7318,13 @@ test "gap reads front 54's ladder, so halving `--spacing` moves no rule" {
 //     names, not CSS; what reaches the document is `property:value`, so every
 //     leaf carries a `:` and none carries the hyphenated utility spelling.
 //
-// THE CONTROL. `.Text.Size.Lg` is asserted to DO carry a `rem` — it is front
-// 42's and spells `1.125rem` — so the probe is known to discriminate rather
-// than to pass vacuously. It was `.Border.Rounded.Lg` until front 40 rewrote
-// that leaf to `var(--radius-lg)`, which would have made the probe vacuous. A `0.25rem` planted in one `gapScaleAll` arm was
-// confirmed to fail the walk before it was taken out again.
+// THE CONTROL, moved twice. It was `.Border.Rounded.Lg` until front 40 rewrote
+// that leaf to `var(--radius-lg)`, then `.Text.Size.Lg` until front 38 did the
+// same to the type scale — NO token in emilia resolves a `rem` any more, which
+// is what these walks exist to bring about, so the control is a hand-built
+// declaration beside the same fact asserted from the other side. A `0.25rem`
+// planted in one `gapScaleAll` arm was confirmed to fail the walk before it was
+// taken out again.
 fn flexLeaves() -> Token[] {
     val leaves: Token[] = [
         .Flex.Row, .Flex.RowReverse, .Flex.Col, .Flex.ColReverse, .Flex.Wrap,
@@ -5953,7 +7434,14 @@ test "regression — no leaf of this front resolves a length; all 356 declare" {
     assert leaves.all({ t -> tokenDeclarations(t).indexOf("rem") == -1 });
     assert leaves.all({ t -> tokenDeclarations(t).indexOf(":") != -1 });
     assert leaves.all({ t -> tokenDeclarations(t).length > 0 });
-    assert tokenDeclarations(.Text.Size.Lg).indexOf("rem") != -1;
+    // CONTROL, rewritten by front 38. `.Text.Size.Lg` used to spell
+    // `1.125rem` and was the one real token left that resolved a `rem`;
+    // it now answers `var(--text-lg)`, so THERE IS NO SUCH TOKEN ANY MORE
+    // and the control is a hand-built declaration. The line below it is the
+    // same fact asserted from the other side, so this walk reddens again the
+    // day some front reintroduces a resolved length on `Text.Size`.
+    assert "font-size:1.125rem".indexOf("rem") != -1;
+    assert tokenDeclarations(.Text.Size.Lg).indexOf("rem") == -1;
 }
 
 test "regression — no leaf of this front emits a Tailwind class fragment" {
@@ -9139,13 +10627,18 @@ test "regression — the other four colour sub-sections are distinct too" {
 }
 
 // THE CONTROL THAT MUST FAIL. A walk that cannot fail proves nothing, so each
-// probe is shown to discriminate on a REAL token: `.Text.Size.Lg` is front 42's
-// and spells `1.125rem`, `.Bg.White` spells a hex, and an empty string is not a
-// declaration. `.Border.Rounded.Lg` was the control the three earlier fronts
-// used, and this front is exactly why it can no longer be one — it now answers
-// `var(--radius-lg)` and would pass the probe vacuously.
+// probe is shown to discriminate on a REAL token where one exists: `.Bg.White`
+// spells a hex, and an empty string is not a declaration.
+// `.Border.Rounded.Lg` was the control the three earlier fronts used, and this
+// front is exactly why it can no longer be one — it now answers
+// `var(--radius-lg)` and would pass the probe vacuously. `.Text.Size.Lg`
+// replaced it and lasted one front: front 38 made that a reference too, so the
+// `rem` arm now takes a hand-built declaration.
 test "regression — the three probes discriminate, on real tokens" {
-    assert f40CarriesNoLiteral(tokenDeclarations(.Text.Size.Lg)) == false;
+    // front 38 made `.Text.Size.Lg` a reference (`var(--text-lg)`), so the
+    // `rem` probe is shown to discriminate on a hand-built declaration; the
+    // two real-token probes below are untouched.
+    assert f40CarriesNoLiteral("font-size:1.125rem") == false;
     assert f40CarriesNoLiteral(tokenDeclarations(.Bg.White)) == false;
     assert f40CarriesNoLiteral(tokenDeclarations(.Border.Rounded.Lg));
     assert f40IsWellFormed("") == false;
@@ -9164,7 +10657,9 @@ test "regression — the three probes discriminate, on real tokens" {
 // same shape front 39 used, and it is what proves the `all` over 1704 leaves is
 // not passing because the list is empty or the probe is inert.
 test "regression — the walk fails when a literal is planted in it" {
-    val strays: Token[] = [.Text.Size.Lg];
+    // The stray was `.Text.Size.Lg` until front 38 made it a reference.
+    // `.Bg.White` is front 39's and still spells `background:#ffffff`.
+    val strays: Token[] = [.Bg.White];
     val planted: Token[] = front40Leaves().append(strays);
     assert planted.length == 1705;
     assert planted.all({ t -> f40CarriesNoLiteral(firstDeclaration(t)) }) == false;
@@ -9232,8 +10727,8 @@ test "tokenToSheet — Text.Bold lowers to font-weight:bold" {
     assert tokenDeclarations(.Text.Bold) == "font-weight:bold";
 }
 
-test "tokenToSheet — Text.Size.Lg lowers to font-size:1.125rem" {
-    assert tokenDeclarations(.Text.Size.Lg) == "font-size:1.125rem";
+test "tokenToSheet — Text.Size.Lg lowers to the --text-lg pair" {
+    assert tokenDeclarations(.Text.Size.Lg) == "font-size:var(--text-lg);line-height:var(--text-lg--line-height)";
 }
 
 test "tokenToSheet — Color.Black lowers to the theme reference, not a hex" {
@@ -9428,7 +10923,7 @@ test "emilia of mixed tokens folds one class into one rule" {
     val tokens: Token[] = [.Bg.White, .Text.Size.Lg];
     val cls = emilia(tokens);
     val styles = await flushWith(bareOptions());
-    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{." + cls + "{background:#ffffff;font-size:1.125rem}}</style>";
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{." + cls + "{background:#ffffff;font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}</style>";
 }
 
 test "two emilia sites with the same token list collapse to one class" {
@@ -13371,7 +14866,9 @@ test "regression — no background leaf resolves a colour or a length" {
 
 test "regression — the literal walk discriminates, on real tokens" {
     assert bgCarriesNoLiteral(tokenDeclarations(.Bg.White)) == false;
-    assert bgCarriesNoLiteral(tokenDeclarations(.Text.Size.Lg)) == false;
+    // front 38 made `.Text.Size.Lg` a reference; the `rem` arm of the probe
+    // is shown to discriminate on a hand-built declaration instead.
+    assert bgCarriesNoLiteral("font-size:1.125rem") == false;
     assert bgCarriesNoLiteral(tokenDeclarations(.Bg.Color.Red.500));
     val strays: Token[] = [.Bg.White];
     val planted: Token[] = backgroundLeaves().append(strays);

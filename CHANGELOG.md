@@ -2,6 +2,79 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Text` and `Font` widened, `List` added — the whole of `§ 9`** (1.0.10-beta
+  front `38-emilia-typography`). 437 leaves over thirty-two property groups, of
+  which emilia covered four, partially, and three of those four emitted CSS that
+  is not what Tailwind v4.3 emits. `Text` goes from eight leaves and eight sizes
+  to five more bare leaves and seventeen sub-sections — Size (thirteen),
+  Tracking, Leading, Clamp, Transform, Overflow, Wrap,
+  Decoration { Style, Thickness, Offset, Color }, Whitespace, Break,
+  OverflowWrap, Hyphens, Indent, Align, Tab and Content. `Font` gains four
+  weights and four sub-sections — Smoothing, Style, Stretch and Nums. `List` is
+  a new TOP-LEVEL section: `list-style-*` applies to the list and not to its
+  text.
+
+  **Four things changed meaning for paths that already compiled**, each because
+  what they emitted was not what upstream emits. `.Text.Size.*` was
+  `font-size:1.125rem` and is now the `var(--text-lg)` PAIR with its
+  `--text-lg--line-height`: a `text-lg` in Tailwind changes leading, and in
+  emilia it did not (`§ 9.2`). `.Font.{Sans,Serif,Mono}` spelled a literal
+  family stack and now reference `var(--font-*)` (`§ 9.1`) — the stacks moved
+  into `typographyEntries()`, so no value was lost. `.Text.Underline` and
+  `.Text.LineThrough` emitted the `text-decoration` SHORTHAND and now emit
+  `text-decoration-line` (`§ 9.17`), which is what makes `underline` compose
+  with `decoration-dotted` instead of overwriting it. **`.Text.Bold` is
+  untouched** — `font-weight:bold` is emilia's own leaf, not a transcription of
+  a utility, and an explicit regression test says so beside the three that
+  changed.
+
+  That size change deleted **the library's last resolved `rem`**, and with it
+  the walk CONTROL of four other fronts: 36, 37, 39 and 40 each assert "no leaf
+  of this front resolves a length" beside a control asserting some real token
+  DOES, and all four had chosen `.Text.Size.Lg` after front 40 took
+  `.Border.Rounded.Lg` away from them. There is no such token any more, so all
+  four controls are now hand-built declarations, each paired with the same fact
+  asserted from the other side (`tokenDeclarations(.Text.Size.Lg)` carries no
+  `rem`). Three more pinned strings moved with it — front 34's end-to-end
+  button, front 56's leaf and mixed-token goldens — plus `examples/emilia-card`
+  and `examples/emilia-backgrounds`, and `examples/emilia-modifiers`'s
+  `text-decoration:underline`.
+
+  **This front holds no colour table and no length ladder.**
+  `Text.Decoration.Color` is front 33's 26 x 11 grid through `paletteVar`, so a
+  decoration colour and a text colour reference ONE custom property and cannot
+  drift; `Text.Indent` answers front 54's `spacing(n)`, the same function
+  `.Pad.All.8` answers; `Text.Size`, `Tracking` and `Leading` answer front 54's
+  `--text-*` / `--tracking-*` / `--leading-*` namespaces. `typographyEntries()`
+  contributes the half of the theme the reference prints and `defaultTheme()`
+  does not — the nine `--font-weight-*`, the six `--tracking-*` and the five
+  `--leading-*` — and deliberately does NOT restate `--text-*`, which front 54
+  already carries with the values `§ 21.3` prints.
+
+  **Three theme rows are PROVISIONAL and say so at the declaration**, not only
+  in a table: `--font-sans`, `--font-serif` and `--font-mono` carry no value
+  anywhere in the reference (`§ 9.1` prints the reference form, `§ 21.3` only
+  the size scale), so they carry emilia's own pre-38 stacks, moved verbatim out
+  of the dispatcher. They are shorter than upstream's real defaults and must be
+  confirmed before anyone reads them as v4.3 parity. `text-indent`'s
+  `calc(var(--spacing) * N)` shape is the second: `§ 9.25` prints `indent-8` as
+  HTML with no CSS, so the form is inferred from `§ 21.2` — what is not
+  provisional is that it goes through `spacing(n)`.
+
+  437 leaves walked for a resolved size, a colour, a font stack, a raw tracking
+  or leading value, well-formedness and a Tailwind class fragment, each probe
+  with a control that FAILS — and the class-fragment probe is asserted NOT to
+  fire on correct output, because `var(--tracking-tight)` legitimately contains
+  the string `tracking-tight`. Two planted defects were watched redden and
+  removed. `examples/emilia-typography/` (11 tests) and
+  `examples/emilia-text-decoration/` (11 tests) are the showcases. +44 inline
+  tests in `modules/emilia`, which is **463** on commonJS and on erlang.
+  **Reference gaps left undeclared**: `font-feature-settings`,
+  `list-image-[url(…)]`, `content-['Hello']`, the numeric `leading-3`…`10`
+  ladder (`§ 9.11` prints only the named values) and the `8` step on decoration
+  thickness and underline offset (`§ 9.20` and `§ 9.21` stop at `4`) — the
+  first three are the escape-hatch front's.
+
 - **`Border` widened, and `Outline` / `Ring` / `Divide` added** (1.0.10-beta
   front `40-emilia-borders`). The whole of `§ 11`, 1704 leaves, in four
   families. `Border.W` gains the fifth width and eight directional

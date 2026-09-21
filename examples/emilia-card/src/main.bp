@@ -136,7 +136,10 @@ test "flush returns a layered `<style>...</style>` document with the registered 
     // reference `var(--color-red-600)`, not to the CSS keyword `red` the V1
     // stub emitted for every shade of the family.
     assert styles.indexOf("@media (hover: hover){." + bodyStyle + ":hover{color:var(--color-red-600)}}") != -1;
-    assert styles.indexOf("@media (width >= 48rem){." + bodyStyle + "{font-size:1.125rem}}") != -1;
+    // Front 38 landed the type scale: a size token emits the `--text-*` PAIR
+    // — the font-size AND the line-height upstream pairs with it — where it
+    // used to resolve a literal `rem` and drop the leading entirely.
+    assert styles.indexOf("@media (width >= 48rem){." + bodyStyle + "{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}") != -1;
     // `.Text.Size.X3xl` and `.Text.Size.Base` open the two class bodies below.
     // They used to be missing from them: a commonJS codegen defect lowered a
     // `case` arm whose variant name was unique in the program to an
@@ -148,6 +151,6 @@ test "flush returns a layered `<style>...</style>` document with the registered 
     // a `tag` comparison. The fix landed in botopink-lang — a uniquely-named
     // variant compares the `tag` string too — so both sizes reach the CSS and
     // the two assertions below are ordinary goldens with nothing pinned.
-    assert styles.indexOf("." + bodyStyle + "{font-size:1rem;color:var(--color-gray-600)}") != -1;
-    assert styles.indexOf("." + titleStyle + "{font-size:1.875rem;font-weight:bold;color:var(--color-red-600)}") != -1;
+    assert styles.indexOf("." + bodyStyle + "{font-size:var(--text-base);line-height:var(--text-base--line-height);color:var(--color-gray-600)}") != -1;
+    assert styles.indexOf("." + titleStyle + "{font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:bold;color:var(--color-red-600)}") != -1;
 }

@@ -15,9 +15,35 @@
 //// them from six to 83; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
-////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
-////              + Size { Xs, Sm, Base, Lg, Xl, X2xl, X3xl, X4xl }
-////   Font     — Sans/Serif/Mono + Weight { Light, Normal, Medium, Bold, Black }
+////   Text     — front 38: the whole of `§ 9` that is not a colour and not an
+////              arbitrary-value form. The pre-38 leaves keep their spelling
+////              (Bold/Italic/Underline/LineThrough, Left/Center/Right/
+////              Justify) and three of them change what they EMIT: `Underline`
+////              and `LineThrough` answer the `text-decoration-line` LONGHAND
+////              (`§ 9.17`), which is what makes them composable with
+////              `Decoration.Style` instead of overwriting it. Beside them
+////              Overline, NoUnderline, Start, End and Truncate, and seventeen
+////              sub-sections: Size (thirteen, `§ 21.3`, each a `--text-*`
+////              PAIR — font-size and its line-height — where it used to be a
+////              literal `rem` and no leading at all), Tracking, Leading,
+////              Clamp, Transform, Overflow, Wrap, Decoration { Style,
+////              Thickness, Offset, Color }, Whitespace, Break, OverflowWrap,
+////              Hyphens, Indent, Align, Tab and Content. `Decoration.Color`
+////              is front 33's 26 x 11 grid through `paletteVar`, so a
+////              decoration colour and a text colour cannot drift; `Indent` is
+////              front 54's `spacing(n)`; `Tracking`/`Leading` are the
+////              `--tracking-*` / `--leading-*` namespaces. `Break` and
+////              `OverflowWrap` are SEPARATE: upstream's `break-*` and `wrap-*`
+////              overlap in effect and not in property
+////   Font     — front 38: Sans/Serif/Mono now reference `var(--font-*)`
+////              (`§ 9.1`) rather than spelling a family stack, Weight carries
+////              all nine of `§ 9.5`, and four sub-sections join them —
+////              Smoothing (`§ 9.3`, two vendor properties from one token),
+////              Style (`§ 9.4`), Stretch (`§ 9.6`, nine) and Nums (`§ 9.7`,
+////              nine)
+////   List     — front 38: `§ 9.12`-`§ 9.14` — list-style-type, -position and
+////              -image over six leaves. Top-level, because `list-style-*`
+////              applies to the list and not to its text
 ////   Color    — front 33: the 26-family x 11-shade grid — the 17 chromatic
 ////              families Red..Rose and the 9 neutral Slate..Taupe, each
 ////              50,100,…,900,950 — plus White/Black/Transparent/Current/
@@ -330,7 +356,95 @@ pub type Token {
             X2xl,
             X3xl,
             X4xl,
+            // ── front 38 — typography ────────────────────────────────────
+            // The five sizes `§ 21.3` prints beyond `4xl`. Appended, never
+            // interleaved: the eight above keep their spelling and only the
+            // CSS they emit changes (a `var(--text-*)` pair, not a `rem`).
+            X5xl,
+            X6xl,
+            X7xl,
+            X8xl,
+            X9xl,
         }
+        // ── front 38 — typography ────────────────────────────────────────
+        //
+        // `§ 9` is thirty-two property groups; `Text` carried three of them
+        // and `Font` two. Everything below is appended after the pre-38
+        // leaves and after `Size`, so no path that compiled before this
+        // front moved. The five bare leaves are `§ 9.15`'s two missing
+        // alignments, `§ 9.17`'s two missing decoration lines and
+        // `§ 9.23`'s `truncate`, which is three declarations from one token.
+        //
+        // NO LEAF HERE RESOLVES A COLOUR, A FONT SIZE, A TRACKING OR A
+        // LEADING: `Size` answers front 54's `--text-*` namespace, `Tracking`
+        // and `Leading` answer `--tracking-*` / `--leading-*`,
+        // `Decoration.Color` answers front 33's `paletteVar`, and `Indent`
+        // answers front 54's `spacing(n)`. The literals that remain are
+        // upstream's own — `leading-none` is `1`, a decoration thickness is
+        // a `px` count, and a tab size is a bare integer.
+        //
+        // `Break` (`§ 9.29`, `word-break`) and `OverflowWrap` (`§ 9.30`) are
+        // two sections and not one: Tailwind's `break-*` and `wrap-*` overlap
+        // in EFFECT and not in PROPERTY, and merging them would lose
+        // `wrap-anywhere`.
+        Overline,
+        NoUnderline,
+        Start,
+        End,
+        Truncate,
+        Tracking { Tighter, Tight, Normal, Wide, Wider, Widest, }
+        Leading { None, Tight, Snug, Normal, Relaxed, Loose, }
+        Clamp { 1, 2, 3, 4, 5, 6, None, }
+        Transform { Uppercase, Lowercase, Capitalize, None, }
+        Overflow { Ellipsis, Clip, }
+        Wrap { Wrap, Nowrap, Balance, Pretty, }
+        Decoration {
+            Style { Solid, Double, Dotted, Dashed, Wavy, }
+            Thickness { Auto, FromFont, 0, 1, 2, 4, }
+            Offset { Auto, 0, 1, 2, 4, }
+            Color {
+                Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Orange  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Amber   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Yellow  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Lime    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Green   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Emerald { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Teal    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Cyan    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Sky     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Blue    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Indigo  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Violet  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Purple  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Fuchsia { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Pink    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Rose    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Slate   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Gray    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Zinc    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Neutral { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Stone   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Mauve   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Olive   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Mist    { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                Taupe   { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
+                White,
+                Black,
+                Transparent,
+                Current,
+                Inherit,
+            }
+        }
+        Whitespace { Normal, Nowrap, Pre, PreLine, PreWrap, BreakSpaces, }
+        Break { Normal, Words, All, Keep, }
+        OverflowWrap { Normal, BreakWord, Anywhere, }
+        Hyphens { None, Manual, Auto, }
+        Indent { 0, 1, 2, 4, 8, }
+        Align { Baseline, Top, Middle, Bottom, TextTop, TextBottom, Sub, Super, }
+        Tab { 0, 2, 4, 8, }
+        Content { None, Empty, }
+        // ── end front 38 ─────────────────────────────────────────────────
     }
 
     Font {
@@ -343,8 +457,49 @@ pub type Token {
             Medium,
             Bold,
             Black,
+            // ── front 38 — typography ────────────────────────────────────
+            // The four weights of `§ 9.5` the section was missing. Appended
+            // after the five that existed, whose output is unchanged.
+            Thin,
+            Extralight,
+            Semibold,
+            Extrabold,
         }
+        // ── front 38 — typography ────────────────────────────────────────
+        // `§ 9.3`, `§ 9.4`, `§ 9.6` and `§ 9.7`. `Style.Italic` is the
+        // v4-shaped spelling of the declaration `.Text.Italic` already emits;
+        // both stay. `Smoothing.Subpixel` is upstream's `subpixel-antialiased`
+        // and emits `auto` on both vendor properties.
+        Smoothing { Antialiased, Subpixel, }
+        Style { Italic, Normal, }
+        Stretch {
+            UltraCondensed, ExtraCondensed, Condensed, SemiCondensed, Normal,
+            SemiExpanded, Expanded, ExtraExpanded, UltraExpanded,
+        }
+        Nums {
+            Normal, Ordinal, SlashedZero, Lining, Oldstyle, Proportional,
+            Tabular, DiagonalFractions, StackedFractions,
+        }
+        // ── end front 38 ─────────────────────────────────────────────────
     }
+
+    // ── front 38 — typography ────────────────────────────────────────────────
+    //
+    // `§ 9.12`-`§ 9.14`, the one group of `§ 9` that is not text: three
+    // list-style properties over six leaves. It is a TOP-LEVEL section because
+    // `list-style-*` applies to a list and not to its text, and because
+    // `.List.Disc` reads better than `.Text.List.Disc`. `ImageNone` is flat —
+    // `§ 9.12` prints only the arbitrary form beside `list-image-none`, so
+    // there is no ladder for it to head.
+    List {
+        None,
+        Disc,
+        Decimal,
+        Inside,
+        Outside,
+        ImageNone,
+    }
+    // ── end front 38 ─────────────────────────────────────────────────────────
 
     Color {
         Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }

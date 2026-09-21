@@ -272,7 +272,7 @@ test "gradient text needs `bg-clip-text` and a transparent colour" {
         + "--tw-gradient-from:var(--color-sky-400);"
         + "--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to, transparent);"
         + "--tw-gradient-to:var(--color-fuchsia-600);"
-        + "font-size:1.875rem;font-weight:700}") != -1;
+        + "font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:700}") != -1;
 }
 
 test "a texture tiles on one axis, inside the padding box" {

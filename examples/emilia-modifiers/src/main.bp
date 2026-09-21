@@ -218,7 +218,7 @@ test "a link reads the BAR's hover through .group, and its own through :hover" {
     val cls = navLink();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls + ":is(:where(.group):hover *){color:var(--color-black)}") != -1;
-    assert doc.indexOf("@media (hover: hover){." + cls + ":hover{text-decoration:underline}}") != -1;
+    assert doc.indexOf("@media (hover: hover){." + cls + ":hover{text-decoration-line:underline}}") != -1;
 }
 
 test "the two ends of the link list are trimmed structurally, not by an index" {

@@ -28,7 +28,7 @@ Three named imports from `from "emilia"`:
    Front 56 added **`flushWith(o: Options)`**; `flush()` is
    `flushWith(defaultOptions())`.
 3. **`Token` enum** — the typed authored surface (see `tokens.bp`).
-   Sections: Text, Font, Color, Bg, Pad, Margin, Size, Space, Layout, Flex,
+   Sections: Text, Font, List, Color, Bg, Pad, Margin, Size, Space, Layout, Flex,
    Grid, Gap, Border, Outline, Ring, Divide,
    Effect, Gradient + the 83 modifier variants of front 34, each carrying a nested
    `Token[]` (see below and `docs.md` § Modifiers). Front 33 widened **`Color`** to the
@@ -191,7 +191,8 @@ reference `var(--radius-*)`; `Full` and `None` still do not, because upstream
 prints those two literally. That last change cost three other fronts their walk
 CONTROL: fronts 36, 37 and 39 all asserted `.Border.Rounded.Lg` DOES carry a
 `rem`, to prove their probes discriminated. All three now point at
-`.Text.Size.Lg`, which is front 42's and still spells `1.125rem`. **A front
+`.Text.Size.Lg`, which then still spelled `1.125rem` — until front 38, whose
+  own job was to make it `var(--text-lg)`, took that away too. **A front
 that makes a literal into a reference must grep for its own tokens in other
 fronts' controls** — the README said no existing assertion covered `Sm`, `Md`
 or `Lg`, and three did.
@@ -202,6 +203,42 @@ pre-40 leaves emit exactly what they emitted before; the eight directional
 sub-sections follow the shorthand so that one section speaks one way.
 `Outline.W.0` and `Divide.{X,Y}.0` emit `0px`, the first from the README and
 the second VERIFIED against upstream.
+
+Front 38 owns **typography** — the `Text`, `Font` and `List` sections of
+`tokens.bp` and `textTokenToCss`, `fontTokenToCss` and `listTokenToCss` with
+their sub-dispatchers and `typographyEntries()` in `emilia.bp`, fenced by the
+`// ── front 38 — typography ──` banner in both files. **437 leaves** over the
+whole of `§ 9`. Its rule is fronts 35's, 36's, 37's and 40's, one level up:
+**no leaf resolves a FONT SIZE, a LEADING, a TRACKING, a COLOUR or an INDENT.**
+`Size` answers front 54's `--text-*` namespace as a PAIR — font-size AND its
+`--text-*--line-height`, which emilia used to drop entirely — `Tracking` and
+`Leading` answer `--tracking-*` / `--leading-*`, `Decoration.Color` answers
+front 33's `paletteVar` (this front holds no colour table), and `Indent`
+answers front 54's `spacing(n)`, the same function `.Pad.All.8` answers.
+
+**What front 38 changed under other fronts.** Four compiling paths changed what
+they EMIT, each because what they emitted was not `§ 9`'s form: `.Text.Size.*`
+was a literal `rem` with no leading and is now the `var(--text-*)` pair;
+`.Font.{Sans,Serif,Mono}` spelled a family stack and now reference
+`var(--font-*)` (the stacks moved into `typographyEntries()`);
+`.Text.Underline` and `.Text.LineThrough` were the `text-decoration` SHORTHAND
+and are now `text-decoration-line`, which is what lets a line compose with
+`Decoration.Style` instead of being overwritten by it. **`.Text.Bold` is not
+one of them** and its six assertions are untouched. The size change **deleted
+the library's last resolved `rem`**, which was the walk CONTROL of fronts 36,
+37, 39 and 40 — see § Maintainer rules.
+
+`typographyEntries() -> ThemeEntry[]` is this front's half of the theme, composed
+the way front 33's `paletteEntries()` is
+(`extendTheme(defaultTheme(), typographyEntries())`): nine `--font-weight-*`,
+six `--tracking-*`, five `--leading-*` and the three family stacks. It does
+**not** restate `--text-*` — front 54's `defaultTheme()` already carries all
+thirteen sizes and all thirteen line-heights with `§ 21.3`'s values, and a
+second transcription of one table is how two tables drift. **The three
+`--font-*` family rows are PROVISIONAL**: the reference prints the reference
+FORM and no value for it, so they carry emilia's own pre-38 stacks and nothing
+upstream confirmed. `text-indent`'s `calc(var(--spacing) * N)` shape is the
+second provisional row — `§ 9.25` shows `indent-8` as HTML with no CSS.
 
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
@@ -282,7 +319,8 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 located refusal `botopink.json is a workspace, not a package — run this
 command inside one of its members: emilia, emilia-backgrounds, emilia-borders,
 emilia-card, emilia-cascade, emilia-grid, emilia-layout, emilia-modifiers,
-emilia-outline-ring, emilia-spacing, emilia-theme`. Every `modules/*/`
+emilia-outline-ring, emilia-spacing, emilia-text-decoration, emilia-theme,
+emilia-typography`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -433,6 +471,35 @@ emilia/
 │   │                    background alike, and nothing it emits resolves a
 │   │                    colour or a length. 12 in-file test {}, green on both
 │   │                    targets)
+│   ├── emilia-typography/ ← member `emilia-typography` (an application: entry
+│   │                    main.bp, targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } — the front 38 showcase for the
+│   │                    FONT half of `§ 9`: the three families as theme
+│   │                    references, a size token as the two-declaration pair,
+│   │                    the four weights the ladder was missing, smoothing,
+│   │                    not-italic, font-stretch, a tabular slashed-zero figure
+│   │                    set, tracking and leading with `leading-none`'s
+│   │                    literal, line-clamp and its four-declaration reset,
+│   │                    `truncate`, and an article header over a clamped
+│   │                    excerpt. Its last two tests are the front's argument: a
+│   │                    project's `--text-4xl` and `--font-sans` reach the
+│   │                    header and give the SAME class, and nothing it emits
+│   │                    resolves a size, a leading or a font stack.
+│   │                    11 in-file `test {}`, green on both targets)
+│   ├── emilia-text-decoration/ ← member `emilia-text-decoration` (an
+│   │                    application: entry main.bp, targets [commonJS,
+│   │                    erlang], `emilia` via { "workspace": true } — the
+│   │                    front 38 showcase for the TEXT half: the four
+│   │                    decoration lines on the longhand with the shorthand
+│   │                    asserted ABSENT, a line composing with a style (which
+│   │                    the shorthand made impossible), thickness and offset,
+│   │                    the palette on `text-decoration-color` with three
+│   │                    shades giving three classes, lists, whitespace,
+│   │                    word-breaking beside overflow-wrap, hyphens, indent as
+│   │                    a spacing multiplier, vertical-align, tab-size,
+│   │                    `content:""` on a `::before`, and a footnoted
+│   │                    paragraph whose links are wavy-underlined.
+│   │                    11 in-file `test {}`, green on both targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
 │                        target commonJS, `emilia` via { "workspace": true },
 │                        `jhonstart` still by { git, branch } until jhonstart
@@ -617,9 +684,18 @@ to the commonJS row and runs once.
   because it spelled `0.5rem` — and front 40's whole job was to make it
   `var(--radius-lg)`. Three tests in two other fronts went red at once, and the
   front's own README had stated that no existing assertion covered `Sm`, `Md` or
-  `Lg`. The controls now point at `.Text.Size.Lg` (front 42's, `1.125rem`), and
-  the next front to theme the type scale will have to move them again. Prefer a
-  control from a family YOUR front does not own and no near-term front does.
+  `Lg`. The controls then pointed at `.Text.Size.Lg`, which spelled
+  `1.125rem` — and **front 38's whole job was to make THAT `var(--text-lg)`**,
+  so the same walks (36's, 37's, 39's and by then 40's) went red a second time,
+  exactly one front later. **There is now no token in emilia that resolves a
+  `rem` at all** — which is the point of fronts 35–47, and also means a
+  token-shaped control for that probe no longer exists. All four are now
+  hand-built declarations (`f38CarriesNoLiteral("font-size:1.125rem") == false`)
+  paired with the same fact asserted from the other side, so the walk still
+  reddens the day a front reintroduces a resolved length. **A probe that takes
+  a declaration STRING takes a string control**; reach for a real token only
+  when your front does not own the family and no near-term front does — twice
+  now, one did.
 - **A SECTION HEAD may not be named like a TOP-LEVEL payload variant.** A
   section named `After` beside the top-level `After(inner: Token[])` does not
   red — it silently breaks the TOP-LEVEL variant's payload projection, so
@@ -702,11 +778,13 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **375/375** on
+  refuses) runs every module's in-file `test {}` blocks, **463/463** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 287 (`emilia.bp`). `emilia.bp`'s 287 are front 56's 33
+  (`output.bp`) + 375 (`emilia.bp`). **Quote the SUM, never the last line** —
+  `botopink test` prints one summary PER MODULE, so the figure the run ends on
+  is `emilia.bp`'s alone. `emilia.bp`'s 375 are front 56's 33
   (below) plus front 33's 81 plus front 35's 31 plus front 37's 27 plus front
-  39's 35 plus front
+  39's 35 plus front 40's 44 plus front 38's 44 plus front
   34's 50 — two per
   variant family (the `Variant` halves and the CSS the row renders), the three
   dark-mode strategies a cell each, the ranges, a three-deep chain, the indexed
@@ -744,7 +822,27 @@ to the commonJS row and runs once.
   well-formedness walk is re-run over the SAME list under a predicate known to
   be false for part of it. The well-formedness walk is not boilerplate — a
   shadowed arm falls out of its `case` and declares the EMPTY STRING rather
-  than redding, which is the shape front 36's `Break` section was bitten by. Front 35's 31 cover the scale
+  than redding, which is the shape front 36's `Break` section was bitten by.
+  Front 38's 44 cover the four CORRECTIONS (each asserted against the new
+  string AND the absence of the old one), `.Text.Bold` as an explicit
+  regression beside the three that changed, the thirteen sizes as `--text-*`
+  PAIRS, the nine weights, the five multi-declaration tokens with their exact
+  order (`antialiased`, `truncate`, `break-normal`, `line-clamp-N`,
+  `line-clamp-none`), tracking and leading with `leading-none`'s literal, the
+  decoration family (style, thickness, offset, and the colour asserted to equal
+  front 33's `paletteVar` OUTPUT rather than a second literal), lists,
+  whitespace, breaking, hyphens, indent against `spacing(8)`, align, tab,
+  `content:""` through the codec, `typographyEntries()` and its composition,
+  and two end-to-end documents. Six of the 44 are the front's REGRESSION: a
+  walk over all **437** leaves (397 `Text` + 34 `Font` + 6 `List`) for
+  well-formedness, for a resolved size / colour / font stack, for a raw
+  tracking or leading value — `em` cannot be banned outright, because
+  `font-stretch:semi-condensed` carries one, so the eleven values are named —
+  and for a Tailwind class fragment, plus a planted defect and a 288-way
+  distinctness walk over the decoration colour cells. **The class-fragment probe
+  is asserted NOT to fire on correct output too**, which is the half that
+  usually goes wrong: `var(--tracking-tight)` legitimately contains the string
+  `tracking-tight`, and a probe that fires on it is a probe someone deletes. Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
   the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
   named container and breakpoint widths read back through `themeValue`), the
@@ -801,6 +899,35 @@ to the commonJS row and runs once.
   and nothing the example emits carries a `#`, an `oklch(`, a `rem` or a
   Tailwind class fragment. 12 in-file tests, green on commonJS and on erlang;
   it builds and runs.
+
+- `examples/emilia-typography/` is the member `emilia-typography` and is the
+  first half of front 38's worked example: the three families as theme
+  references with `ui-sans-serif` asserted ABSENT, a size token rendering as
+  TWO declarations, the four weights the ladder was missing, `antialiased` as a
+  vendor pair and `not-italic` as the value `normal`, `font-stretch`, a price
+  table's tabular slashed-zero figures, tracking and leading with
+  `leading-none`'s literal `1`, `line-clamp-3` beside the four-declaration
+  reset `line-clamp-none`, `truncate` as three declarations from one token, and
+  an article header over a clamped excerpt. Its last two tests carry the
+  front's argument, asserted from a CONSUMER package: a project that overrides
+  `--text-4xl` and `--font-sans` gets the SAME class and the SAME declarations
+  — only the theme layer moves — and nothing the example emits resolves a size,
+  a leading or a font stack. 11 in-file tests, green on commonJS and on erlang.
+
+- `examples/emilia-text-decoration/` is the member `emilia-text-decoration` and
+  is the second half: the four decoration lines on the longhand with
+  `{text-decoration:` asserted absent, a line COMPOSING with a style in one
+  rule (which the shorthand made impossible), thickness including `from-font`,
+  the offset, the palette on `text-decoration-color` with three shades of one
+  family giving three distinct classes, lists on three properties, a `pre` code
+  block, `break-all` beside `wrap-anywhere` — two properties, which is why they
+  are two sections — hyphens on justified text, indent as
+  `calc(var(--spacing) * 8)`, a superscript footnote marker, `tab-size`, and
+  `content:""` on a `::before` so the two quote characters are shown to survive
+  the host cell's codec. It ends with a footnoted paragraph whose links carry a
+  wavy sky underline, and with the front's cross-front argument: a decoration
+  colour and a text colour are ONE custom property, so a project override moves
+  both. 11 in-file tests, green on commonJS and on erlang.
 
 - `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
   tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.600`, …), the
@@ -934,6 +1061,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). +30 inline tests in `modules/emilia`, which is **313** on commonJS and on erlang with front 34 merged in. **`Break` is FLAT** — `BreakAfter`/`BreakBefore`/`BreakInside`, not the spec's `Break { After, Before, Inside }`: a section head named like a top-level payload variant shadows that variant's payload projection, and front 34 carries `After`/`Before` (§ Maintainer rules). **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
 | 1.0.10-beta front 39 — backgrounds | DONE — steps 1–4. Step 1: the seven keyword sub-sections of `Bg` (`Attachment`, `Clip`, `Origin`, `Pos`, `Repeat`, `Size`, `Image.None`), 29 leaves appended after front 33's `Bg.Color` block and the legacy leaves. `Pos` not `Position` (so `.Bg.Pos.*` reads apart from `.Layout.Position.*`), `Repeat.None` not `NoRepeat`, `Clip.Text` the one clip value that is not a `*-box`. The legacy `Bg` leaves are byte-identical and pinned; this front does NOT fold them into `background-color`. Step 2: `Gradient` is a TOP-LEVEL section (a stop sets a custom property, not `background-image`), `Gradient.To` the eight directions — the phrases spelled in one place, `to top right` and never `to top-right`. Steps 3–4: `From` / `Via` / `Stop` each carry front 33's whole grid (291 leaves each) through `paletteVar(family, shade)`, so a stop and a background reference ONE custom property; token ORDER is load-bearing (`Via`'s three-stop list beats `From`'s two-stop one, and `Stop` writes no list so it cannot overwrite `Via`'s). **The stop composition diverges from the spec after the upstream check the spec demanded** — upstream's position variables and `--tw-gradient-via-stops` rest on `@property` registration emilia does not emit, so the registered `#0000` default is written as a `var(…, transparent)` fallback instead. 910 leaves walked for a literal, a length and a class fragment, each walk with a control that fails. `examples/emilia-backgrounds/` is the showcase (12 tests). +35 inline tests in `modules/emilia`, which is **375** on commonJS and on erlang with front 37 merged in. **Reference gaps left undeclared**: colour-stop positions (`from-10%`), radial and conic gradients, gradient interpolation (`bg-linear-to-r/oklch`) and every arbitrary-value form (`bg-[url(…)]`, `bg-size-[…]`) — the escape-hatch front's |
 | 1.0.10-beta front 40 — borders, outlines, rings and divides | DONE — steps 1–6 + two worked examples. **1704 leaves** over the whole of `§ 11`. `Border.W` gains the fifth width and eight directional sub-sections (an AXIS is two declarations, a SIDE one, and `S`/`E` are `border-inline-*-width`); `Border.Style` is new; `Border.Color` goes from a two-family stub whose dispatcher DISCARDED THE SHADE (`border-color:red` for every cell) to front 33's full 26 x 11 grid through `paletteVar`; `Border.Rounded` goes from four literal `rem` leaves to a ten-leaf ladder of `var(--radius-*)` on the shorthand and on fourteen directional sub-sections. `Outline`, `Ring` and `Divide` are three new TOP-LEVEL sections — head-audited against the 84 payload variants, the fifteen section heads and the lexer's keyword table before a dispatcher was written, with no collision. **`Outline.Style.None` is the trap**: `outline:2px solid transparent;outline-offset:2px`, asserted BOTH for what it emits and for the `outline-style:none` it must never emit. `ringTokenToSheet` and `divideTokenToSheet` are the two `…ToSheet` dispatchers; `Divide` CALLS front 35's `siblingSelector()`, and the byte-identity test front 35 could not write (because `Divide` did not exist) is now in `emilia.bp` and in `examples/emilia-outline-ring/`. **Upstream VERIFIED while writing**: the divide child selector really is `& > :not(:last-child)`, the zero-then-width pair, the reverse custom properties, `--tw-ring-color`, `--tw-ring-inset`, and the v4 default ring width of **1px** (v3's was 3px), so `--tw-ring-shadow` is `0 0 0 Npx` and NOT the spec's v3-shaped `calc(…)` form. **Still unverified and recorded**: the composed `box-shadow` list, and the whole `ring-offset-*` family, which v4's documentation no longer carries — declared because the spec asks for it, not because it was confirmed. 1704 leaves walked for a literal, a class fragment and well-formedness, each walk with a control that fails, plus a colour-reference walk over all 1440 cells and a 288-way distinctness walk — the literal probe alone does NOT catch a discarded shade, which is this front's own historical defect. Three planted defects were watched redden and removed. **Blast radius outside the front**: `.Border.Rounded.Lg` was fronts 36/37/39's walk CONTROL and is no longer a literal, so all three now use `.Text.Size.Lg`; `examples/emilia-modifiers` pinned `border-color:red` and `examples/emilia-layout` pinned `border-radius:0.5rem`, both updated. `examples/emilia-borders/` (10 tests) and `examples/emilia-outline-ring/` (13 tests) are the showcases. +44 inline tests in `modules/emilia`, which is **419** on commonJS and on erlang. **Reference gaps left undeclared**: `outline-hidden`, and every arbitrary-value form — the escape-hatch front's |
+| 1.0.10-beta front 38 — typography | DONE — steps 1–6 + two worked examples. **437 leaves** over the whole of `§ 9` (397 `Text` + 34 `Font` + 6 `List`). `Text` gains five bare leaves (`Overline`, `NoUnderline`, `Start`, `End`, `Truncate`) and seventeen sub-sections; `Font` gains four weights and four sub-sections (Smoothing, Style, Stretch, Nums); `List` is a new TOP-LEVEL section, head-audited against the 84 payload variants before it was written. **Four compiling paths changed what they EMIT**: `.Text.Size.*` is the `var(--text-*)` PAIR with its `--text-*--line-height` where it was a literal `rem` with no leading at all (`§ 9.2`), `.Font.{Sans,Serif,Mono}` reference `var(--font-*)` where they spelled a family stack (`§ 9.1`), and `.Text.Underline`/`.Text.LineThrough` emit `text-decoration-line` where they emitted the `text-decoration` SHORTHAND (`§ 9.17`) — which is what lets a line compose with `Decoration.Style` instead of being overwritten. **`.Text.Bold` is untouched** and has an explicit regression test beside the three that changed. The size change **deleted the library's last resolved `rem`** and with it the walk CONTROL of fronts 36, 37, 39 and 40, all four of which now use a hand-built declaration; three pinned goldens (front 34's button, front 56's leaf and mixed-token flush) and three examples (`emilia-card`, `emilia-backgrounds`, `emilia-modifiers`) moved with it. No leaf resolves a size, a leading, a tracking, a colour or an indent: `Decoration.Color` is front 33's 26 x 11 grid through `paletteVar`, `Indent` is front 54's `spacing(n)`, and `Size`/`Tracking`/`Leading` are front 54's namespaces. `typographyEntries()` contributes nine `--font-weight-*`, six `--tracking-*`, five `--leading-*` and the three family stacks, and deliberately does NOT restate `--text-*` — front 54 already carries it with `§ 21.3`'s values. **PROVISIONAL and marked at the declaration**: the three `--font-*` family values (the reference prints the FORM and no value, so these are emilia's own pre-38 stacks) and `text-indent`'s `calc(var(--spacing) * N)` shape (`§ 9.25` shows `indent-8` as HTML with no CSS). 437 leaves walked for well-formedness, a resolved literal, a raw tracking/leading value and a class fragment, each probe with a control that fails AND — for the class-fragment probe — a control proving it does not fire on correct output. Two planted defects were watched redden and removed. `examples/emilia-typography/` (11 tests) and `examples/emilia-text-decoration/` (11 tests) are the showcases. +44 inline tests in `modules/emilia`, which is **463** on commonJS and on erlang. **Reference gaps left undeclared**: `font-feature-settings`, `list-image-[url(…)]`, `content-['Hello']` — the escape-hatch front's — plus the numeric `leading-3`…`10` ladder and the `8` step on decoration thickness and underline offset, which the 1.0.8 draft declared and `§ 9.11`/`§ 9.20`/`§ 9.21` do not print |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

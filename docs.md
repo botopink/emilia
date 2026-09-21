@@ -40,16 +40,16 @@ import { emilia, flush, Token } from "emilia";
 import { div, h1, p, renderToString } from "jhonstart";
 
 val titleStyle = emilia([
-    Token.TextSizeX3xl,
-    Token.TextBold,
-    Token.ColorRed500,
+    .Text.Size.X3xl,
+    .Text.Bold,
+    .Color.Red.600,
 ]);
 
 val bodyStyle = emilia([
-    Token.TextSizeBase,
-    Token.ColorGray500,
-    Token.Hover([Token.ColorRed500]),
-    Token.Md([Token.TextSizeLg]),
+    .Text.Size.Base,
+    .Color.Gray.600,
+    Token.Hover([.Color.Red.600]),
+    Token.Md([.Text.Size.Lg]),
 ]);
 
 // SSR composition — markup first, then the registered stylesheet.
@@ -65,24 +65,141 @@ at the call site, not runtime fall-throughs. The full v0 surface (with
 the values each variant emits) lives in
 [`modules/emilia/src/tokens.bp`](modules/emilia/src/tokens.bp); the highlights:
 
-### Text
+### Text, Font and List — `§ 9`
+
+Thirty-two property groups. The listing below is by group; every leaf is in
+[`tokens.bp`](modules/emilia/src/tokens.bp).
+
+**A size is TWO declarations.** Upstream's `text-lg` sets a font-size AND the
+line-height paired with it, and both are theme references:
 
 ```bp
-Token.TextBold              // font-weight:bold
-Token.TextItalic            // font-style:italic
-Token.TextUnderline         // text-decoration:underline
-Token.TextLineThrough       // text-decoration:line-through
-Token.TextLeft              // text-align:left
-Token.TextCenter            // text-align:center
-Token.TextRight             // text-align:right
-Token.TextSizeXs            // font-size:0.75rem
-Token.TextSizeSm            // font-size:0.875rem
-Token.TextSizeBase          // font-size:1rem
-Token.TextSizeLg            // font-size:1.125rem
-Token.TextSizeXl            // font-size:1.25rem
-Token.TextSizeX2xl          // font-size:1.5rem
-Token.TextSizeX3xl          // font-size:1.875rem
+.Text.Size.Xs               // font-size:var(--text-xs);line-height:var(--text-xs--line-height)
+.Text.Size.Lg               // font-size:var(--text-lg);line-height:var(--text-lg--line-height)
+.Text.Size.X9xl             // font-size:var(--text-9xl);line-height:var(--text-9xl--line-height)
 ```
+
+Thirteen sizes: `Xs Sm Base Lg Xl X2xl X3xl X4xl X5xl X6xl X7xl X8xl X9xl`.
+The values are front 54's `defaultTheme()`, so a project that overrides
+`--text-lg` moves every `text-lg` rule and no class name changes.
+
+```bp
+.Font.Sans                  // font-family:var(--font-sans)
+.Font.Serif                 // font-family:var(--font-serif)
+.Font.Mono                  // font-family:var(--font-mono)
+.Font.Weight.Thin           // font-weight:100
+.Font.Weight.Normal         // font-weight:400
+.Font.Weight.Semibold       // font-weight:600
+.Font.Weight.Black          // font-weight:900
+```
+
+Nine weights: `Thin Extralight Light Normal Medium Semibold Bold Extrabold
+Black`, `100` through `900`. The weights stay LITERAL — that is the form the
+reference prints — while the families are references, and the three stacks live
+in `typographyEntries()`.
+
+```bp
+.Font.Smoothing.Antialiased // -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale
+.Font.Smoothing.Subpixel    // -webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto
+.Font.Style.Italic          // font-style:italic
+.Font.Style.Normal          // font-style:normal          (upstream: not-italic)
+.Font.Stretch.SemiCondensed // font-stretch:semi-condensed
+.Font.Nums.Tabular          // font-variant-numeric:tabular-nums
+.Font.Nums.SlashedZero      // font-variant-numeric:slashed-zero
+```
+
+Nine stretch values (`UltraCondensed ExtraCondensed Condensed SemiCondensed
+Normal SemiExpanded Expanded ExtraExpanded UltraExpanded`) and nine numeric
+variants (`Normal Ordinal SlashedZero Lining Oldstyle Proportional Tabular
+DiagonalFractions StackedFractions`).
+
+**Tracking and leading** are references too; `leading-none` is the one leaf the
+reference prints as a literal:
+
+```bp
+.Text.Tracking.Tight        // letter-spacing:var(--tracking-tight)
+.Text.Tracking.Widest       // letter-spacing:var(--tracking-widest)
+.Text.Leading.Relaxed       // line-height:var(--leading-relaxed)
+.Text.Leading.None          // line-height:1
+```
+
+**The decoration family.** The line is the LONGHAND, which is what lets it
+compose with a style instead of overwriting it:
+
+```bp
+.Text.Underline                    // text-decoration-line:underline
+.Text.Overline                     // text-decoration-line:overline
+.Text.LineThrough                  // text-decoration-line:line-through
+.Text.NoUnderline                  // text-decoration-line:none
+.Text.Decoration.Style.Wavy        // text-decoration-style:wavy
+.Text.Decoration.Thickness.2       // text-decoration-thickness:2px
+.Text.Decoration.Thickness.FromFont// text-decoration-thickness:from-font
+.Text.Decoration.Offset.4          // text-underline-offset:4px
+.Text.Decoration.Color.Sky.500     // text-decoration-color:var(--color-sky-500)
+```
+
+`Decoration.Color` is the SAME 26 x 11 grid `Color` and `Bg.Color` carry, through
+the same `paletteVar`, so a decoration colour and a text colour cannot drift.
+
+**Alignment, transform, overflow and wrap:**
+
+```bp
+.Text.Left                  // text-align:left
+.Text.Center                // text-align:center
+.Text.Right                 // text-align:right
+.Text.Justify               // text-align:justify
+.Text.Start                 // text-align:start
+.Text.End                   // text-align:end
+.Text.Transform.Uppercase   // text-transform:uppercase
+.Text.Transform.None        // text-transform:none        (upstream: normal-case)
+.Text.Truncate              // overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+.Text.Overflow.Ellipsis     // text-overflow:ellipsis
+.Text.Wrap.Balance          // text-wrap:balance
+.Text.Clamp.3               // overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3
+.Text.Clamp.None            // overflow:visible;display:block;-webkit-box-orient:horizontal;-webkit-line-clamp:none
+```
+
+`Clamp` runs `1` to `6` plus `None`, and `None` is the four-declaration RESET
+rather than the absence of a token.
+
+**Whitespace, breaking, hyphens, indent, align, tab, content:**
+
+```bp
+.Text.Whitespace.Pre        // white-space:pre
+.Text.Break.Normal          // overflow-wrap:normal;word-break:normal
+.Text.Break.All             // word-break:break-all
+.Text.OverflowWrap.Anywhere // overflow-wrap:anywhere
+.Text.Hyphens.Auto          // hyphens:auto
+.Text.Indent.8              // text-indent:calc(var(--spacing) * 8)
+.Text.Align.Super           // vertical-align:super
+.Text.Tab.4                 // tab-size:4
+.Text.Content.None          // content:none
+.Text.Content.Empty         // content:""
+```
+
+- **`Break` and `OverflowWrap` are two sections, not one.** Upstream's `break-*`
+  and `wrap-*` overlap in EFFECT and not in PROPERTY — `break-words` is an
+  `overflow-wrap` although it is spelled `break-` — and merging them would lose
+  `wrap-anywhere`, which has no `break-*` spelling at all.
+- **`Text.Indent` never resolves a length.** It answers front 54's
+  `spacing(n)`, the same function `.Pad.All.8` answers, so the two agree by
+  construction.
+- **`.Text.Bold` and `.Text.Italic` are emilia's own leaves**, not
+  transcriptions of a Tailwind utility; `font-weight:bold` is what they emitted
+  before `§ 9` landed and what they emit now.
+
+### List — `§ 9.12`–`§ 9.14`
+
+```bp
+.List.None                  // list-style-type:none
+.List.Disc                  // list-style-type:disc
+.List.Decimal               // list-style-type:decimal
+.List.Inside                // list-style-position:inside
+.List.Outside               // list-style-position:outside
+.List.ImageNone             // list-style-image:none
+```
+
+Top-level, because `list-style-*` applies to the list and not to its text.
 
 ### Color — the palette
 
@@ -819,10 +936,12 @@ every one of them asserting the emitted declaration carries no `rem`, carries a
 `:`, and carries no Tailwind class fragment. Only `Flex.Basis` and `Gap` are
 lengths and both go through `spacing(n)` / `spacingHalf(n)`; a grow factor, an
 order, a column count, a span and a line number are bare integers. The same
-test asserts `.Text.Size.Lg` DOES carry a `rem`, so the probe is known to
-discriminate rather than to pass vacuously. It used to assert that of
-`.Border.Rounded.Lg`, until front 40 rewrote the radius ladder to reference the
-theme.
+test carries a CONTROL, so the probe is known to discriminate rather than to
+pass vacuously. The control has moved twice: it was `.Border.Rounded.Lg` until
+front 40 rewrote the radius ladder to reference the theme, then `.Text.Size.Lg`
+until front 38 did the same to the type scale. **No token in emilia resolves a
+`rem` any more**, so the control is now a hand-built declaration beside the
+same fact asserted from the other side.
 
 `examples/emilia-grid/` is the worked example: a toolbar whose heading takes the
 remaining space and which stacks under `sm`, and a twelve-column dashboard that
