@@ -141,6 +141,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Pad(_inner) -> declSheet(padTokenToCss(_inner, th));
         Margin(_inner) -> declSheet(marginTokenToCss(_inner, th));
         Size(_inner) -> declSheet(sizeTokenToCss(_inner, th));
+        Space(_inner) -> spaceTokenToSheet(_inner, th);
         Layout(_inner) -> declSheet(layoutTokenToCss(_inner));
         Flex(_inner) -> declSheet(flexTokenToCss(_inner));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
@@ -1355,6 +1356,156 @@ fn sizeMaxBlockToCss(s: Token.Size.MaxBlock, th: Theme) -> string {
     return out;
 }
 
+// `space-x-*` AND `space-y-*` ARE NOT DECLARATIONS ON THE ELEMENT. They set a
+// margin on the element's CHILDREN, so this is the one dispatcher in the front
+// that answers a `Sheet` rather than a declaration string — the second of the
+// two shapes contract 4a defines — and its one line in `tokenToSheet` skips
+// `declSheet`.
+//
+// The selector is a nesting template with EXACTLY ONE `&`, which is where the
+// class name goes: `.e_1f2 > :not(:last-child)`. It is written once, here, and
+// FRONT 40 MUST CALL `siblingSelector()` rather than re-spelling it — its
+// `divide-*` family separates the same children the same way, and two fronts
+// that write the same selector by hand are two fronts that will eventually
+// write it differently. A test pins the string so a change to it is a visible
+// change rather than a silent one.
+//
+// REFERENCE GAP, recorded rather than hidden: `space-x-*` is absent from the
+// local `TAILWIND_CSS_DOCS.md` entirely, so both the child selector and the
+// property are this front's PROPOSAL and not a transcription. The logical
+// `margin-inline-end` / `margin-block-end` pair is chosen over
+// `margin-left` / `margin-top` for the same reason `Pad.S`/`Pad.E` exist: it
+// follows the writing direction. `--tw-space-x-reverse` is an upstream-internal
+// custom property name and is unverified; nothing in emilia reads it yet.
+pub fn siblingSelector() -> string {
+    return "& > :not(:last-child)";
+}
+
+// A rule that declares on the CHILDREN of the class, not on the class. Front
+// 56's `staticSheet` is the constructor for a LITERAL selector — one with no
+// `&`, which the class name never reaches — so this front builds its own
+// two-line one rather than stretch that contract.
+fn childSheet(decls: string) -> Sheet {
+    val none: string[] = [];
+    val rules: Rule[] = [Rule(
+        layer: "utilities",
+        atRules: none,
+        selector: siblingSelector(),
+        declarations: decls,
+        important: false,
+    )];
+    val blocks: Block[] = [];
+    return Sheet(rules: rules, blocks: blocks);
+}
+
+fn spaceTokenToSheet(t: Token.Space, th: Theme) -> Sheet {
+    val out = case t {
+        X(_inner) -> childSheet(oneDecl("margin-inline-end", spaceScaleX(_inner, th)));
+        Y(_inner) -> childSheet(oneDecl("margin-block-end", spaceScaleY(_inner, th)));
+        XReverse -> childSheet(oneDecl("--tw-space-x-reverse", "1"));
+        YReverse -> childSheet(oneDecl("--tw-space-y-reverse", "1"));
+    };
+    return out;
+}
+
+fn spaceScaleX(s: Token.Space.X, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> spaceHalfX(_inner, th);
+        Neg(_inner) -> spaceNegX(_inner, th);
+    };
+    return out;
+}
+
+fn spaceHalfX(h: Token.Space.X.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn spaceNegX(s: Token.Space.X.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> spaceNegHalfX(_inner, th);
+    };
+    return out;
+}
+
+fn spaceNegHalfX(h: Token.Space.X.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn spaceScaleY(s: Token.Space.Y, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> spaceHalfY(_inner, th);
+        Neg(_inner) -> spaceNegY(_inner, th);
+    };
+    return out;
+}
+
+fn spaceHalfY(h: Token.Space.Y.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn spaceNegY(s: Token.Space.Y.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> spaceNegHalfY(_inner, th);
+    };
+    return out;
+}
+
+fn spaceNegHalfY(h: Token.Space.Y.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
 // ── tests · front 35 ─────────────────────────────────────────────────────────
 //
 // The front's own block of assertions lives HERE, beside the dispatchers it
@@ -1604,6 +1755,32 @@ fn everySpacingToken() -> Token[] {
         .Margin.E.Neg.60, .Margin.E.Neg.64, .Margin.E.Neg.72, .Margin.E.Neg.80,
         .Margin.E.Neg.96, .Margin.E.Neg.Px, .Margin.E.Neg.Half.1, .Margin.E.Neg.Half.2,
         .Margin.E.Neg.Half.3,
+        .Space.X.0, .Space.X.1, .Space.X.2, .Space.X.3, .Space.X.4, .Space.X.5, .Space.X.6,
+        .Space.X.7, .Space.X.8, .Space.X.9, .Space.X.10, .Space.X.11, .Space.X.12, .Space.X.14,
+        .Space.X.16, .Space.X.20, .Space.X.24, .Space.X.28, .Space.X.32, .Space.X.36,
+        .Space.X.40, .Space.X.44, .Space.X.48, .Space.X.52, .Space.X.56, .Space.X.60,
+        .Space.X.64, .Space.X.72, .Space.X.80, .Space.X.96, .Space.X.Px, .Space.X.Half.0,
+        .Space.X.Half.1, .Space.X.Half.2, .Space.X.Half.3, .Space.X.Neg.1, .Space.X.Neg.2,
+        .Space.X.Neg.3, .Space.X.Neg.4, .Space.X.Neg.5, .Space.X.Neg.6, .Space.X.Neg.7,
+        .Space.X.Neg.8, .Space.X.Neg.9, .Space.X.Neg.10, .Space.X.Neg.11, .Space.X.Neg.12,
+        .Space.X.Neg.14, .Space.X.Neg.16, .Space.X.Neg.20, .Space.X.Neg.24, .Space.X.Neg.28,
+        .Space.X.Neg.32, .Space.X.Neg.36, .Space.X.Neg.40, .Space.X.Neg.44, .Space.X.Neg.48,
+        .Space.X.Neg.52, .Space.X.Neg.56, .Space.X.Neg.60, .Space.X.Neg.64, .Space.X.Neg.72,
+        .Space.X.Neg.80, .Space.X.Neg.96, .Space.X.Neg.Px, .Space.X.Neg.Half.1,
+        .Space.X.Neg.Half.2, .Space.X.Neg.Half.3, .Space.Y.0, .Space.Y.1, .Space.Y.2,
+        .Space.Y.3, .Space.Y.4, .Space.Y.5, .Space.Y.6, .Space.Y.7, .Space.Y.8, .Space.Y.9,
+        .Space.Y.10, .Space.Y.11, .Space.Y.12, .Space.Y.14, .Space.Y.16, .Space.Y.20,
+        .Space.Y.24, .Space.Y.28, .Space.Y.32, .Space.Y.36, .Space.Y.40, .Space.Y.44,
+        .Space.Y.48, .Space.Y.52, .Space.Y.56, .Space.Y.60, .Space.Y.64, .Space.Y.72,
+        .Space.Y.80, .Space.Y.96, .Space.Y.Px, .Space.Y.Half.0, .Space.Y.Half.1,
+        .Space.Y.Half.2, .Space.Y.Half.3, .Space.Y.Neg.1, .Space.Y.Neg.2, .Space.Y.Neg.3,
+        .Space.Y.Neg.4, .Space.Y.Neg.5, .Space.Y.Neg.6, .Space.Y.Neg.7, .Space.Y.Neg.8,
+        .Space.Y.Neg.9, .Space.Y.Neg.10, .Space.Y.Neg.11, .Space.Y.Neg.12, .Space.Y.Neg.14,
+        .Space.Y.Neg.16, .Space.Y.Neg.20, .Space.Y.Neg.24, .Space.Y.Neg.28, .Space.Y.Neg.32,
+        .Space.Y.Neg.36, .Space.Y.Neg.40, .Space.Y.Neg.44, .Space.Y.Neg.48, .Space.Y.Neg.52,
+        .Space.Y.Neg.56, .Space.Y.Neg.60, .Space.Y.Neg.64, .Space.Y.Neg.72, .Space.Y.Neg.80,
+        .Space.Y.Neg.96, .Space.Y.Neg.Px, .Space.Y.Neg.Half.1, .Space.Y.Neg.Half.2,
+        .Space.Y.Neg.Half.3, .Space.XReverse, .Space.YReverse,
     ];
     return out;
 }
@@ -1614,7 +1791,7 @@ fn everySpacingCss() -> string {
 
 test "the walk is complete — one rule per leaf, and none of them is empty" {
     val s = tokensToSheet(everySpacingToken(), defaultTheme());
-    assert s.rules.length == 936;
+    assert s.rules.length == 1074;
     assert declarationsOf(s).any({ d -> d == "" }) == false;
 }
 
@@ -1913,6 +2090,76 @@ test "every Size leaf declares a property, and none of them resolves a rem" {
     assert css.indexOf("rem") == -1;
     assert css.indexOf("padding") == -1;
     assert css.indexOf("margin") == -1;
+}
+
+// ── tests · Space ────────────────────────────────────────────────────────────
+
+fn spaceRule(t: Token) -> Rule {
+    return firstRuleOf(tokenToSheet(t, defaultTheme()));
+}
+
+test "Space — the declaration is on the CHILDREN, under the sibling selector" {
+    val r = spaceRule(.Space.Y.4);
+    assert r.selector == "& > :not(:last-child)";
+    assert r.declarations == "margin-block-end:calc(var(--spacing) * 4)";
+    assert r.layer == "utilities";
+    assert r.atRules.length == 0;
+    assert r.important == false;
+}
+
+test "Space — the X axis is the inline end, the Y axis the block end" {
+    assert spaceRule(.Space.X.4).declarations == "margin-inline-end:calc(var(--spacing) * 4)";
+    assert spaceRule(.Space.Y.4).declarations == "margin-block-end:calc(var(--spacing) * 4)";
+    assert spaceRule(.Space.X.0).declarations == "margin-inline-end:0";
+    assert spaceRule(.Space.X.Px).declarations == "margin-inline-end:1px";
+    assert spaceRule(.Space.Y.Half.1).declarations == "margin-block-end:calc(var(--spacing) * 1.5)";
+}
+
+test "Space — a negative child margin, the pull-up form" {
+    assert spaceRule(.Space.X.Neg.2).declarations == "margin-inline-end:calc(var(--spacing) * -2)";
+    assert spaceRule(.Space.Y.Neg.4).declarations == "margin-block-end:calc(var(--spacing) * -4)";
+    assert spaceRule(.Space.Y.Neg.Px).declarations == "margin-block-end:-1px";
+}
+
+test "Space — the two reverse tokens set the upstream custom property" {
+    assert spaceRule(.Space.XReverse).declarations == "--tw-space-x-reverse:1";
+    assert spaceRule(.Space.YReverse).declarations == "--tw-space-y-reverse:1";
+    assert spaceRule(.Space.XReverse).selector == "& > :not(:last-child)";
+}
+
+// The selector is a nesting template, so it carries EXACTLY ONE `&` — with
+// none it would replace the rule it was meant to describe, with two it would
+// duplicate it, and front 56 refuses both with no opt-out. Front 40's `divide-*`
+// separates the same children the same way and must call `siblingSelector()`
+// rather than re-spell it; this is the assertion that makes a divergence
+// visible the day it is written.
+test "Space — the sibling selector is one template, with exactly one ampersand" {
+    val sel = siblingSelector();
+    assert sel == "& > :not(:last-child)";
+    assert sel.split("&").length - 1 == 1;
+    assert spaceRule(.Space.X.4).selector == sel;
+    assert spaceRule(.Space.YReverse).selector == sel;
+}
+
+test "Space — a modifier wraps the child selector, it does not replace it" {
+    val inner: Token[] = [.Space.Y.4];
+    val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
+    assert r.selector == "&:hover > :not(:last-child)";
+    assert r.declarations == "margin-block-end:calc(var(--spacing) * 4)";
+}
+
+// A `Space` token and a plain declaration in ONE token list are two rules of
+// one class, because they do not describe the same elements. The spec writes
+// the composition as one declaration string; it cannot be one — a declaration
+// string has no room for a selector — so what is pinned here is the rendered
+// document, which is where the question is actually answered.
+test "Space — composing with a Pad token in one list gives two rules, in order" {
+    val tokens: Token[] = [.Pad.All.4, .Space.Y.4];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{padding:calc(var(--spacing) * 4)}."
+        + cls + " > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}}</style>";
 }
 
 // ── end front 35 ─────────────────────────────────────────────────────────────

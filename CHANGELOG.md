@@ -2,6 +2,27 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Space` — the first emilia token that declares on something other than the
+  element** (1.0.10-beta front `35-emilia-spacing-sizing`, step 4).
+  `space-x-*` / `space-y-*` set a margin on an element's CHILDREN, so
+  `spaceTokenToSheet(t, th) -> Sheet` is the second of the two shapes contract
+  4a defines and the one arm of `tokenToSheet` that does not go through
+  `declSheet`. Its rule carries the nesting template
+  **`& > :not(:last-child)`**, so `emilia([.Pad.All.4, .Space.Y.4])` renders as
+  two rules of one class — `.e_x{padding:…}` and
+  `.e_x > :not(:last-child){margin-block-end:…}` — and a modifier wraps the
+  child selector rather than replacing it (`&:hover > :not(:last-child)`).
+  The selector is `pub fn siblingSelector()`, written once: **front 40's
+  `divide-*` must call it** rather than re-spell it. `X` is
+  `margin-inline-end` and `Y` is `margin-block-end`, the logical pair, over the
+  same scale and the same `Neg` as `Margin`; `XReverse`/`YReverse` set
+  `--tw-space-x-reverse` / `--tw-space-y-reverse`.
+  **Reference gap, recorded rather than hidden:** `space-*` is absent from the
+  local `TAILWIND_CSS_DOCS.md` entirely, so both the child selector and the
+  property are this front's proposal and not a transcription, and the two
+  `--tw-space-*-reverse` names are upstream-internal and unverified. A test
+  pins each, so changing one is a visible change.
+
 - **`Size` — a component can be given a width** (1.0.10-beta front
   `35-emilia-spacing-sizing`, step 3). There was no sizing section at all: no
   width, height, min or max token of any kind. `Token.Size` carries thirteen

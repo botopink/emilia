@@ -329,6 +329,39 @@ the dispatcher would have made impossible.
 and `MaxW.Screen` the five breakpoints. No `Size` leaf emits a `rem` of its own;
 a test walks all 566 of them and asserts it.
 
+### Space — spacing between children
+
+`space-x-*` and `space-y-*` are **not declarations on the element**. They set a
+margin on its children, so a `Space` token produces a rule with its own
+selector:
+
+```bp
+val cls = emilia([.Pad.All.4, .Space.Y.4]);
+await flush();
+// .e_1f2{padding:calc(var(--spacing) * 4)}
+// .e_1f2 > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}
+```
+
+Two rules of one class, because they do not describe the same elements. `X` is
+`margin-inline-end`, `Y` is `margin-block-end` — the logical pair, for the same
+reason `Pad.S`/`Pad.E` exist. The scale is the one `Pad` and `Margin` use,
+`Neg` included, and `.Space.XReverse` / `.Space.YReverse` set upstream's
+`--tw-space-x-reverse` / `--tw-space-y-reverse`.
+
+The selector is a nesting template carrying exactly one `&`, so a modifier
+wraps it rather than replacing it:
+
+```bp
+Token.Hover([.Space.Y.4])
+// &:hover > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}
+```
+
+**Recorded, not hidden:** `space-x-*` is absent from the local Tailwind
+reference entirely, so the child selector and the property are this front's
+proposal rather than a transcription, and the `--tw-space-*-reverse` names are
+upstream-internal and unverified. Both are pinned by a test, so changing them
+is a visible change.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

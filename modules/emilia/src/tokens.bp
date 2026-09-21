@@ -51,6 +51,13 @@
 ////              width is the theme's container ladder
 ////              (`.Size.MaxW.Md` → `max-width:var(--container-md)`), with
 ////              MaxW.Screen.* reading the breakpoint ladder the same way
+////   Space    — front 35: `space-x-*` / `space-y-*`, over the same scale with
+////              the same Neg — but the declaration is on the element's
+////              CHILDREN, so this section's dispatcher answers a `Sheet` whose
+////              selector is `& > :not(:last-child)` rather than a declaration
+////              string. XReverse/YReverse set the upstream `--tw-space-*-
+////              reverse` custom property. Front 40's `divide-*` separates the
+////              same children and must call `siblingSelector()`
 ////   Layout   — Block/InlineBlock/Inline/Hidden/Flex/Grid
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
@@ -480,6 +487,35 @@ pub type Token {
             Px,
             None, Full, Min, Max, Fit,
         }
+    }
+
+    Space {
+        X {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Half { 0, 1, 2, 3 }
+            Neg {
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+                44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Half { 1, 2, 3 }
+            }
+        }
+        Y {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+            44, 48, 52, 56, 60, 64, 72, 80, 96,
+            Px,
+            Half { 0, 1, 2, 3 }
+            Neg {
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
+                44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Half { 1, 2, 3 }
+            }
+        }
+        XReverse,
+        YReverse,
     }
 
     Layout {
