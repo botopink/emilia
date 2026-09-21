@@ -156,6 +156,31 @@ it lands:
 .Bg.Gray.500                // background:gray
 ```
 
+### `Color.Hex("#abc")` is declared and unconstructible
+
+The `Hex(value: string)` leaf is kept — it is the proof that a string payload
+splices into the emitted CSS, and `colorTokenToCss` still matches it — but
+**no caller can build one**. Measured against the compiler, on this enum:
+
+```text
+Token.Color.Hex("#abc")
+  error: 'Hex' is not declared in any behavior implemented for 'Token'
+val h: Token = .Color.Hex("#abc");
+  error: unbound variable 'Color'
+```
+
+A payload leaf nested inside a section has no constructible spelling; the
+variant type-checks in a `case` pattern, so the surface looks complete and is
+not. The shape that builds is a **top-level** variant with builtin-typed
+fields — which is what `Alpha(percent: i32, inner: Token[])` is, and what an
+arbitrary-value escape hatch will have to be.
+
+Nothing in the palette depends on the enum, which is why that gap costs this
+front nothing: `paletteVar(family, shade)` and `alphaWrap(percent, css)` take
+plain strings and are `pub`, and the property name (`color:`,
+`background-color:`) lives in the dispatcher rather than in the value. A
+colour emilia's enum does not carry formats through the same functions.
+
 ### Alpha — opacity, upstream's `/N` suffix
 
 ```bp

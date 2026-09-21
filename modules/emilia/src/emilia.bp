@@ -2980,3 +2980,60 @@ test "Alpha — end to end, the `bg-red-500/50` row as a document" {
     assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
         + cls + "{background-color:color-mix(in oklab, var(--color-red-500) 50%, transparent)}}</style>";
 }
+
+// ── the palette is a string-to-string mapping, with the enum at its edge ─────
+//
+// Front 57 will need to hand a colour emilia's enum does not carry — an
+// arbitrary value — to the same formatter and get a well-formed declaration
+// back. Nothing in this front stands in the way, and that is a design
+// constraint rather than an accident:
+//
+//   - `paletteVar(family, shade)` takes two plain STRINGS and is `pub`. It
+//     never sees a `Token.Color`, so a family and a shade that did not come
+//     from a leaf format identically.
+//   - `alphaWrap(percent, css)` takes a declaration string and is `pub`, for
+//     the same reason.
+//   - THE PROPERTY NAME LIVES IN THE DISPATCHER, not in the value. `color:` and
+//     `background-color:` are written in `colorTokenToCss` / `bgColorTokenToCss`
+//     and nowhere else, so a front that needs a third property reuses the value
+//     half without a second palette table.
+//   - No function in this front takes a `Token.Color` where a `string` would do.
+//
+// `Color.Hex(value: string)` is the proof that a string payload splices into
+// the emitted CSS, and its arm is retained unchanged. It is also
+// UNCONSTRUCTIBLE, and measured rather than assumed — against
+// `zig-out/bin/botopink`, on this enum:
+//
+//     Token.Color.Hex("#abc")
+//       error: 'Hex' is not declared in any behavior implemented for 'Token'
+//     val h: Token = .Color.Hex("#abc");
+//       error: unbound variable 'Color'
+//
+// A payload leaf NESTED INSIDE A SECTION has no constructible spelling; the
+// variant type-checks in a `case` pattern, so the surface looks complete and
+// is not. The shape that does build is a TOP-LEVEL variant with builtin-typed
+// fields — which is what `Token.Alpha(percent: i32, inner: Token[])` above is,
+// and what front 57's escape hatch will have to be. Contract 4a says so for
+// every payload-carrying token in the milestone.
+
+test "the palette formats a family and a shade it did not get from a leaf" {
+    assert paletteVar("brand", "500") == "var(--color-brand-500)";
+    assert paletteVar("red", "550") == "var(--color-red-550)";
+    assert alphaWrap(30, "color:" + paletteVar("brand", "500"))
+        == "color:color-mix(in oklab, var(--color-brand-500) 30%, transparent)";
+}
+
+test "the property name is the dispatcher's, so the same value serves both" {
+    val shared = paletteVar("red", "500");
+    assert tokenDeclarations(.Color.Red.600).indexOf(paletteVar("red", "600")) != -1;
+    assert tokenDeclarations(.Bg.Color.Red.500) == "background-color:" + shared;
+    assert tokenDeclarations(.Color.Red.400) == "color:" + paletteVar("red", "400");
+}
+
+test "a project override reaches every rule, because the token emits a reference" {
+    val brand: ThemeEntry[] = [ThemeEntry(name: "--color-red-500", value: "#ff0000")];
+    val th = extendTheme(extendTheme(defaultTheme(), paletteEntries()), brand);
+    assert themeValue(th, "--color-red-500") == "#ff0000";
+    assert tokenDeclarations(.Bg.Color.Red.500) == "background-color:var(--color-red-500)";
+    assert themeValue(th, "--color-red-600") == "oklch(57.7% 0.245 27.325)";
+}

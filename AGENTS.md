@@ -272,6 +272,15 @@ to the commonJS row and runs once.
 - **camelCase** all method/fn names (`tokenToCss`, `flushSheet`,
   `hashHex` — never `token_to_css` — memory:
   `feedback_camelcase_naming`).
+- **A payload leaf NESTED INSIDE A SECTION cannot be constructed.**
+  `Token.Color.Hex("#abc")` reds `'Hex' is not declared in any behavior
+  implemented for 'Token'`; `val h: Token = .Color.Hex("#abc");` reds `unbound
+  variable 'Color'`. The variant type-checks in a `case` pattern, so the
+  surface looks complete and is not — `Color.Hex`, `Bg.Hex` and
+  `Border.Color.Hex` are all reachable by an arm and by nothing else. A
+  payload-carrying token has to be a **top-level** variant with builtin-typed
+  fields (`Token.Alpha(percent: i32, inner: Token[])`, `Token.Hover(inner:
+  Token[])`), which is what contract 4a requires of every one in the milestone.
 - **Enum payload destructuring uses the NAMED FIELD** —
   `ColorHex(value: string)` is matched as `ColorHex(value) -> …`, not
   `ColorHex(v) -> …`. The positional binding parses but lowers to
@@ -383,10 +392,10 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **199/199** on
+  refuses) runs every module's in-file `test {}` blocks, **202/202** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 111 (`emilia.bp`). `emilia.bp`'s 111 are front 56's 33 (below)
-  plus front 33's 78: 26 one-per-family `Color` grid tests (280 of the 286
+  (`output.bp`) + 114 (`emilia.bp`). `emilia.bp`'s 114 are front 56's 33 (below)
+  plus front 33's 81: 26 one-per-family `Color` grid tests (280 of the 286
   cells — the six unreachable ones are named in § Maintainer rules) and 26 for
   the `Bg.Color` mirror (all 286), plus `paletteVar`, the shade-survives pin,
   the named colours on both properties, the pre-33 paths, the legacy `Bg`
@@ -398,7 +407,11 @@ to the commonJS row and runs once.
   two rows the reference shows, four percentages, two tokens under one
   wrapper, a non-colour token, a keyword colour, both nesting orders with a
   modifier, `alphaWrap` on plain strings, the codec, and the end-to-end
-  `bg-red-500/50` document. Front 56's 33:
+  `bg-red-500/50` document, and three pinning the palette as a
+  STRING-TO-STRING mapping with the enum only at its edge — a family and a
+  shade that came from no leaf, the property name living in the dispatcher,
+  and a project override reaching every rule through the reference. Front
+  56's 33:
   - 8 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
     Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md,
     plus the shape of a section rule) — `Color.Black` reads

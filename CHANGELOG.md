@@ -20,6 +20,21 @@
   (`var(--color-white)` / `var(--color-black)`), which rewrites five front-56
   assertions and the two examples that pinned the hex.
 
+- **The palette is a string-to-string mapping, with the enum at its edge**
+  (front `33-emilia-color-palette`, step 5). `paletteVar(family, shade)` and
+  `alphaWrap(percent, css)` are `pub` and take plain strings; the property name
+  (`color:`, `background-color:`) lives in the dispatcher rather than in the
+  value; no function in the front takes a `Token.Color` where a `string` would
+  do. So front 57's escape hatch can hand a colour this enum does not carry to
+  the same formatter and get a well-formed declaration back, without a second
+  palette table and without this front changing shape. `Color.Hex(value)` is
+  retained unchanged as the proof that a string payload splices — and recorded
+  as **unconstructible**, with the exact compiler errors measured against
+  `zig-out/bin/botopink`: `Token.Color.Hex("#abc")` reds `'Hex' is not declared
+  in any behavior implemented for 'Token'`, and `val h: Token =
+  .Color.Hex("#abc");` reds `unbound variable 'Color'`. A payload-carrying
+  token has to be a top-level variant with builtin-typed fields.
+
 - **`Alpha(percent, inner)` — upstream's `/N` opacity suffix** (front
   `33-emilia-color-palette`, step 4). `bg-red-500/50` is the most used colour
   form in real markup and v0 had no token for it. `Token.Alpha(percent: 50,
