@@ -899,14 +899,25 @@ pub type Token {
             Center,
             End,
             Stretch,
+            Baseline,
         }
         Justify {
+            Normal,
             Start,
             Center,
             End,
             Between,
             Around,
+            Evenly,
+            Stretch,
         }
+        JustifyItems { Start, End, Center, Stretch }
+        JustifySelf { Auto, Start, End, Center, Stretch }
+        AlignSelf { Auto, Start, End, Center, Stretch, Baseline }
+        Content { Normal, Center, Start, End, Between, Around, Evenly, Stretch }
+        PlaceContent { Center, Start, End, Between, Around, Evenly, Stretch }
+        PlaceItems { Start, End, Center, Stretch }
+        PlaceSelf { Auto, Start, End, Center, Stretch }
         Gap {
             1,
             2,

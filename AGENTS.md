@@ -514,6 +514,16 @@ to the commonJS row and runs once.
   the top-level variant list before adding it. Reported to botopink-lang: a
   name that cannot be constructed should not capture a constructor that can.
 
+- **`Self` IS A LANGUAGE KEYWORD, so a section cannot be named it.** `Flex.Self
+  { Auto, … }` reds `this token cannot appear here — unexpected \`Self\`` at the
+  declaration and again at every `case` arm that names it. Unlike the
+  section-head shadow below, this one FAILS LOUDLY and at the right line, so it
+  costs a rename and nothing else. Front 37's `align-self` and `place-self`
+  families are `Flex.AlignSelf` and `Flex.PlaceSelf`, and the rest of the
+  `place-*` family is flattened with them — `Flex.PlaceContent` /
+  `Flex.PlaceItems` — the way front 36 flattened `Break`, because half a
+  flattened family reads worse than all of it. The spec's `.Flex.Self` and
+  `.Flex.Place.Self` spellings do not parse; no emitted byte differs.
 - **A consumer must import a type's TRANSITIVE types too, and the error points
   at the wrong line.** `import { Theme } from "emilia";` alone reds `unknown
   type 'DarkMode'` because `Theme` carries a `DarkMode` field; `Options` needs
@@ -538,10 +548,10 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **320/320** on
+  refuses) runs every module's in-file `test {}` blocks, **326/326** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 232 (`emilia.bp`). `emilia.bp`'s 232 are front 56's 33
-  (below) plus front 33's 81 plus front 35's 31 plus front 37's 7 plus front
+  (`output.bp`) + 238 (`emilia.bp`). `emilia.bp`'s 238 are front 56's 33
+  (below) plus front 33's 81 plus front 35's 31 plus front 37's 13 plus front
   34's 50 — two per
   variant family (the `Variant` halves and the CSS the row renders), the three
   dark-mode strategies a cell each, the ranges, a three-deep chain, the indexed

@@ -5015,8 +5015,15 @@ fn flexTokenToCss(t: Token.Flex, th: Theme) -> string {
         Shrink(_inner) -> oneDecl("flex-shrink", flexShrinkToCss(_inner, th));
         Basis(_inner) -> oneDecl("flex-basis", flexBasisScale(_inner, th));
         Order(_inner) -> oneDecl("order", flexOrderToCss(_inner, th));
-        Items(_inner) -> flexItemsToCss(_inner, th);
-        Justify(_inner) -> flexJustifyToCss(_inner, th);
+        Items(_inner) -> oneDecl("align-items", flexItemsToCss(_inner, th));
+        Justify(_inner) -> oneDecl("justify-content", flexJustifyToCss(_inner, th));
+        JustifyItems(_inner) -> oneDecl("justify-items", flexJustifyItemsToCss(_inner, th));
+        JustifySelf(_inner) -> oneDecl("justify-self", flexJustifySelfToCss(_inner, th));
+        AlignSelf(_inner) -> oneDecl("align-self", flexAlignSelfToCss(_inner, th));
+        Content(_inner) -> oneDecl("align-content", flexContentToCss(_inner, th));
+        PlaceContent(_inner) -> oneDecl("place-content", flexPlaceContentToCss(_inner, th));
+        PlaceItems(_inner) -> oneDecl("place-items", flexPlaceItemsToCss(_inner, th));
+        PlaceSelf(_inner) -> oneDecl("place-self", flexPlaceSelfToCss(_inner, th));
         Gap(_inner) -> oneDecl("gap", legacyGapScale(_inner, th));
     };
     return out;
@@ -5103,23 +5110,129 @@ fn flexOrderToCss(o: Token.Flex.Order, th: Theme) -> string {
     return out;
 }
 
+// ── the alignment family · `§ 6.16`–`§ 6.24` ────────────────────────────────
+//
+// ALIGNMENT APPLIES TO GRID AS MUCH AS TO FLEX and it lives under `Flex`
+// anyway, because `align-items` and `justify-content` were spelled that way
+// before this front and renaming a token that compiles today is what the
+// milestone forbids. A grid container writes `.Flex.Justify.Center` and gets
+// `justify-content:center`, which is the correct CSS for a grid; only the
+// token's SPELLING reads as though it were flex-only.
+//
+// UPSTREAM IS NOT INTERNALLY CONSISTENT HERE AND THIS FRONT COPIES IT RATHER
+// THAN SMOOTHING IT. `justify-content`, `align-items`, `align-self` and
+// `align-content` take `flex-start`/`flex-end`; `justify-items`,
+// `justify-self` and the whole `place-*` family take `start`/`end`. A test
+// asserts both spellings come out of the right tokens, so the asymmetry is
+// pinned rather than normalised.
+//
+// `AlignSelf` AND THE FLAT `place-*` TRIO, not `Self` and `Place { … }`:
+// `Self` is a LANGUAGE KEYWORD, so a section cannot be named it — `unexpected
+// \`Self\`` at the declaration, and again at every arm. The family is flattened
+// the way front 36 flattened `Break`, which is also the 1.0.8 draft's
+// spelling, and no emitted byte differs.
 fn flexItemsToCss(p: Token.Flex.Items, th: Theme) -> string {
     val out = case p {
-        Start -> "align-items:flex-start";
-        Center -> "align-items:center";
-        End -> "align-items:flex-end";
-        Stretch -> "align-items:stretch";
+        Start -> "flex-start";
+        Center -> "center";
+        End -> "flex-end";
+        Stretch -> "stretch";
+        Baseline -> "baseline";
     };
     return out;
 }
 
 fn flexJustifyToCss(p: Token.Flex.Justify, th: Theme) -> string {
     val out = case p {
-        Start -> "justify-content:flex-start";
-        Center -> "justify-content:center";
-        End -> "justify-content:flex-end";
-        Between -> "justify-content:space-between";
-        Around -> "justify-content:space-around";
+        Normal -> "normal";
+        Start -> "flex-start";
+        Center -> "center";
+        End -> "flex-end";
+        Between -> "space-between";
+        Around -> "space-around";
+        Evenly -> "space-evenly";
+        Stretch -> "stretch";
+    };
+    return out;
+}
+
+fn flexJustifyItemsToCss(p: Token.Flex.JustifyItems, th: Theme) -> string {
+    val out = case p {
+        Start -> "start";
+        End -> "end";
+        Center -> "center";
+        Stretch -> "stretch";
+    };
+    return out;
+}
+
+fn flexJustifySelfToCss(p: Token.Flex.JustifySelf, th: Theme) -> string {
+    val out = case p {
+        Auto -> "auto";
+        Start -> "start";
+        End -> "end";
+        Center -> "center";
+        Stretch -> "stretch";
+    };
+    return out;
+}
+
+fn flexAlignSelfToCss(p: Token.Flex.AlignSelf, th: Theme) -> string {
+    val out = case p {
+        Auto -> "auto";
+        Start -> "flex-start";
+        End -> "flex-end";
+        Center -> "center";
+        Stretch -> "stretch";
+        Baseline -> "baseline";
+    };
+    return out;
+}
+
+fn flexContentToCss(p: Token.Flex.Content, th: Theme) -> string {
+    val out = case p {
+        Normal -> "normal";
+        Center -> "center";
+        Start -> "flex-start";
+        End -> "flex-end";
+        Between -> "space-between";
+        Around -> "space-around";
+        Evenly -> "space-evenly";
+        Stretch -> "stretch";
+    };
+    return out;
+}
+
+fn flexPlaceContentToCss(p: Token.Flex.PlaceContent, th: Theme) -> string {
+    val out = case p {
+        Center -> "center";
+        Start -> "start";
+        End -> "end";
+        Between -> "space-between";
+        Around -> "space-around";
+        Evenly -> "space-evenly";
+        Stretch -> "stretch";
+    };
+    return out;
+}
+
+fn flexPlaceItemsToCss(p: Token.Flex.PlaceItems, th: Theme) -> string {
+    val out = case p {
+        Start -> "start";
+        End -> "end";
+        Center -> "center";
+        Stretch -> "stretch";
+    };
+    return out;
+}
+
+fn flexPlaceSelfToCss(p: Token.Flex.PlaceSelf, th: Theme) -> string {
+    val out = case p {
+        Auto -> "auto";
+        Start -> "start";
+        End -> "end";
+        Center -> "center";
+        Stretch -> "stretch";
     };
     return out;
 }
@@ -5198,6 +5311,93 @@ test "order — a count, the two sentinels, and the one that is not a keyword" {
     assert tokenDeclarations(.Flex.Order.Last) == "order:9999";
     assert tokenDeclarations(.Flex.Order.None) == "order:0";
     assert tokenDeclarations(.Flex.Order.None).indexOf("none") == -1;
+}
+
+// ── tests · the alignment family ─────────────────────────────────────────────
+
+test "justify-content — all eight values of `§ 6.16`, three of them new" {
+    assert tokenDeclarations(.Flex.Justify.Normal) == "justify-content:normal";
+    assert tokenDeclarations(.Flex.Justify.Start) == "justify-content:flex-start";
+    assert tokenDeclarations(.Flex.Justify.End) == "justify-content:flex-end";
+    assert tokenDeclarations(.Flex.Justify.Center) == "justify-content:center";
+    assert tokenDeclarations(.Flex.Justify.Between) == "justify-content:space-between";
+    assert tokenDeclarations(.Flex.Justify.Around) == "justify-content:space-around";
+    assert tokenDeclarations(.Flex.Justify.Evenly) == "justify-content:space-evenly";
+    assert tokenDeclarations(.Flex.Justify.Stretch) == "justify-content:stretch";
+}
+
+test "align-items — all five values of `§ 6.20`, `baseline` included" {
+    assert tokenDeclarations(.Flex.Items.Start) == "align-items:flex-start";
+    assert tokenDeclarations(.Flex.Items.End) == "align-items:flex-end";
+    assert tokenDeclarations(.Flex.Items.Center) == "align-items:center";
+    assert tokenDeclarations(.Flex.Items.Stretch) == "align-items:stretch";
+    assert tokenDeclarations(.Flex.Items.Baseline) == "align-items:baseline";
+}
+
+test "align-self and align-content — the two families that had no token" {
+    assert tokenDeclarations(.Flex.AlignSelf.Auto) == "align-self:auto";
+    assert tokenDeclarations(.Flex.AlignSelf.Start) == "align-self:flex-start";
+    assert tokenDeclarations(.Flex.AlignSelf.End) == "align-self:flex-end";
+    assert tokenDeclarations(.Flex.AlignSelf.Center) == "align-self:center";
+    assert tokenDeclarations(.Flex.AlignSelf.Stretch) == "align-self:stretch";
+    assert tokenDeclarations(.Flex.AlignSelf.Baseline) == "align-self:baseline";
+    assert tokenDeclarations(.Flex.Content.Normal) == "align-content:normal";
+    assert tokenDeclarations(.Flex.Content.Start) == "align-content:flex-start";
+    assert tokenDeclarations(.Flex.Content.End) == "align-content:flex-end";
+    assert tokenDeclarations(.Flex.Content.Center) == "align-content:center";
+    assert tokenDeclarations(.Flex.Content.Between) == "align-content:space-between";
+    assert tokenDeclarations(.Flex.Content.Around) == "align-content:space-around";
+    assert tokenDeclarations(.Flex.Content.Evenly) == "align-content:space-evenly";
+    assert tokenDeclarations(.Flex.Content.Stretch) == "align-content:stretch";
+}
+
+test "justify-items and justify-self — the grid-side pair of `§ 6.18`/`§ 6.19`" {
+    assert tokenDeclarations(.Flex.JustifyItems.Start) == "justify-items:start";
+    assert tokenDeclarations(.Flex.JustifyItems.End) == "justify-items:end";
+    assert tokenDeclarations(.Flex.JustifyItems.Center) == "justify-items:center";
+    assert tokenDeclarations(.Flex.JustifyItems.Stretch) == "justify-items:stretch";
+    assert tokenDeclarations(.Flex.JustifySelf.Auto) == "justify-self:auto";
+    assert tokenDeclarations(.Flex.JustifySelf.Start) == "justify-self:start";
+    assert tokenDeclarations(.Flex.JustifySelf.End) == "justify-self:end";
+    assert tokenDeclarations(.Flex.JustifySelf.Center) == "justify-self:center";
+    assert tokenDeclarations(.Flex.JustifySelf.Stretch) == "justify-self:stretch";
+}
+
+test "the three `place-*` shorthands, and `place-content-between` spells space" {
+    assert tokenDeclarations(.Flex.PlaceContent.Center) == "place-content:center";
+    assert tokenDeclarations(.Flex.PlaceContent.Start) == "place-content:start";
+    assert tokenDeclarations(.Flex.PlaceContent.End) == "place-content:end";
+    assert tokenDeclarations(.Flex.PlaceContent.Between) == "place-content:space-between";
+    assert tokenDeclarations(.Flex.PlaceContent.Around) == "place-content:space-around";
+    assert tokenDeclarations(.Flex.PlaceContent.Evenly) == "place-content:space-evenly";
+    assert tokenDeclarations(.Flex.PlaceContent.Stretch) == "place-content:stretch";
+    assert tokenDeclarations(.Flex.PlaceItems.Start) == "place-items:start";
+    assert tokenDeclarations(.Flex.PlaceItems.End) == "place-items:end";
+    assert tokenDeclarations(.Flex.PlaceItems.Center) == "place-items:center";
+    assert tokenDeclarations(.Flex.PlaceItems.Stretch) == "place-items:stretch";
+    assert tokenDeclarations(.Flex.PlaceSelf.Auto) == "place-self:auto";
+    assert tokenDeclarations(.Flex.PlaceSelf.Start) == "place-self:start";
+    assert tokenDeclarations(.Flex.PlaceSelf.End) == "place-self:end";
+    assert tokenDeclarations(.Flex.PlaceSelf.Center) == "place-self:center";
+    assert tokenDeclarations(.Flex.PlaceSelf.Stretch) == "place-self:stretch";
+}
+
+// THE ASYMMETRY, ASSERTED RATHER THAN NORMALISED. `justify-content:flex-start`
+// and `justify-items:start` are both correct and both emitted, from different
+// tokens whose leaves share a name. A transcription that picked one spelling
+// for the family would be wrong for four of the seven property groups.
+test "`flex-start` and `start` are both right, and each from its own token" {
+    assert tokenDeclarations(.Flex.Justify.Start) == "justify-content:flex-start";
+    assert tokenDeclarations(.Flex.Items.Start) == "align-items:flex-start";
+    assert tokenDeclarations(.Flex.AlignSelf.Start) == "align-self:flex-start";
+    assert tokenDeclarations(.Flex.Content.Start) == "align-content:flex-start";
+    assert tokenDeclarations(.Flex.JustifyItems.Start) == "justify-items:start";
+    assert tokenDeclarations(.Flex.JustifySelf.Start) == "justify-self:start";
+    assert tokenDeclarations(.Flex.PlaceContent.Start) == "place-content:start";
+    assert tokenDeclarations(.Flex.PlaceItems.Start) == "place-items:start";
+    assert tokenDeclarations(.Flex.PlaceSelf.Start) == "place-self:start";
+    assert tokenDeclarations(.Flex.JustifyItems.Start).indexOf("flex-start") == -1;
+    assert tokenDeclarations(.Flex.PlaceItems.Start).indexOf("flex-start") == -1;
 }
 
 fn borderTokenToCss(t: Token.Border) -> string {

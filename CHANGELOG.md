@@ -2,6 +2,33 @@
 
 ## Unreleased — v0.beta.22
 
+- **The alignment family — seven property groups that had no token at all**
+  (1.0.10-beta front `37-emilia-grid`, step 2). `§ 6.16`–`§ 6.24` is nine
+  property groups and emilia carried two of them, each a third short:
+  `Flex.Items` had four of the five `align-items` values and `Flex.Justify`
+  five of the eight `justify-content` values. Both are complete now
+  (`Baseline`; `Normal`, `Evenly`, `Stretch`), and `Flex.AlignSelf`,
+  `Flex.Content`, `Flex.JustifyItems`, `Flex.JustifySelf`,
+  `Flex.PlaceContent`, `Flex.PlaceItems` and `Flex.PlaceSelf` close the seven
+  that were missing entirely.
+  **The whole family stays under `Flex` although it applies to grid too.**
+  Moving `Items` and `Justify` to a neutral section would rename two tokens
+  that compile today, which the milestone forbids; a grid container writes
+  `.Flex.Justify.Center` and gets `justify-content:center`, which is the
+  correct CSS for a grid. Only the spelling reads as flex-only.
+  **The `flex-start`-versus-`start` asymmetry is asserted, not normalised.**
+  `justify-content`, `align-items`, `align-self` and `align-content` take
+  `flex-start`/`flex-end`; `justify-items`, `justify-self` and `place-*` take
+  `start`/`end`. One test pins all nine groups side by side and asserts
+  `flex-start` does NOT survive into the four that must not carry it.
+  **`Self` IS A LANGUAGE KEYWORD and the spec's `.Flex.Self` /
+  `.Flex.Place.Self` do not parse** — `unexpected \`Self\`` at the declaration
+  and at every arm. Unlike a section head shadowing a top-level variant, this
+  fails loudly at the right line. `align-self` is `.Flex.AlignSelf` and the
+  `place-*` trio is flattened with it — `.Flex.PlaceContent` /
+  `.Flex.PlaceItems` / `.Flex.PlaceSelf` — the way front 36 flattened `Break`
+  and the way the 1.0.8 draft spelled them. Not one emitted byte differs.
+  Recorded in `AGENTS.md` § Maintainer rules. +6 in-file tests (232 → 238).
 - **A flex item can finally grow, shrink, reorder and set a basis**
   (1.0.10-beta front `37-emilia-grid`, step 1). Before this, `Flex` was seven
   paths — four direction/wrap leaves, `Items`, `Justify` and a four-value
