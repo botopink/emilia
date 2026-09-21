@@ -11975,6 +11975,12 @@ test "Transition — six presets of three declarations, one preset of one" {
 // pattern does not red — it falls out of its `case` and the token declares the
 // empty string, on one target only — so each of the four is asserted to declare
 // its own property and not the other section's.
+// WHAT FRONT 45 INHERITS, stated here because front 45 lands next inside this
+// level and `Transform` is the name it will want: `Transition.Transform` is a
+// LEAF, so a `Transform` SECTION beside it is a head beside a leaf — safe, and
+// measured safe by front 41. What front 45 must NOT declare is a TOP-LEVEL
+// `Transform(…)` PAYLOAD variant, which would silently break this leaf's
+// section the way front 36's `Break { After }` broke front 34's `After`.
 test "the head audit — four leaves repeat a head elsewhere and none of them is shadowed" {
     assert firstDeclaration(.Transition.All).startsWith("transition-property:all");
     assert firstDeclaration(.Transition.Opacity).startsWith("transition-property:opacity");

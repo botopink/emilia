@@ -299,6 +299,18 @@ names the variable and never its value. The two arbitrary-value variants are
 provisional as a pair for front 41's reason (`§ 15` prints no arbitrary-value
 row anywhere); the property each sets is not.
 
+**WHAT FRONT 45 INHERITS.** Front 45 (transforms) depends on this front for
+token existence and lands after it inside level 3, and `Transform` is the name
+it will want. `Transition.Transform` is a LEAF, so a `Transform` SECTION beside
+it is a head beside a leaf — safe, and measured safe by front 41. What front 45
+must NOT declare is a top-level `Transform(…)` PAYLOAD variant: that is the
+shape that silently breaks a section of the same name, the way front 36's
+`Break { After }` broke front 34's `After`. Beyond the name, front 45 gets
+`Transition.Transform` already emitting `transition-property:transform` — so a
+transform is animatable the day its tokens exist, with no edit here — and it
+gets `transitionEntries()` as the pattern for a front that owes the theme a
+namespace `defaultTheme()` does not carry (front 45's is `--perspective-*`).
+
 **`.Transition.Base`, never `.Transition.Default`** — `default` is in the
 keyword table AND `Default(inner)` is already a top-level modifier variant, so
 the name fails the head audit twice over. Four LEAVES of this front repeat a

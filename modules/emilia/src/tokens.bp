@@ -1776,14 +1776,18 @@ pub type Token {
     // `Ease`, `Delay` — was checked against the 87 top-level payload variants
     // (the 83 modifiers, `Alpha` and front 41's three `*Raw`) and against the
     // lexer's keyword table before a line of it was written. No collision, and
-    // none of the six repeats an existing section head either. Four LEAVES do
+    // none of the six repeats an existing section head either. Three LEAVES do
     // repeat a head declared elsewhere — `Transition.All` beside `Pad.All` and
     // `Gap.All`, `Transition.Opacity` and `Transition.Shadow` beside
-    // `Effect.Opacity` and `Effect.Shadow`, `Transition.Transform` beside
-    // `Layout.Transform`'s future neighbour in front 45 — and all four were RUN
-    // on both targets rather than reasoned about: the walk in `emilia.bp`
-    // asserts every leaf of this front declares something non-empty, which is
-    // the shape a shadowed arm fails.
+    // `Effect.Opacity` and `Effect.Shadow` — and all three were RUN on both
+    // targets rather than reasoned about: the walk in `emilia.bp` asserts every
+    // leaf of this front declares something non-empty, which is the shape a
+    // shadowed arm fails. The fourth, `Transition.Transform`, repeats no head
+    // TODAY and is FRONT 45's to check: a `Transform` SECTION beside this leaf
+    // is a head beside a leaf, which front 41 measured safe, and `Transform` is
+    // not among the 87 top-level payload variants — so the collision that would
+    // bite is a top-level `Transform(…)` payload variant, which front 45 must
+    // not declare.
     //
     // `Base`, NOT `Default`. The bare `transition` utility cannot be spelled
     // `Default` here twice over: `default` is in the lexer's keyword table, and
