@@ -181,7 +181,7 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
 command inside one of its members: emilia, emilia-card, emilia-cascade,
-emilia-theme`. Every `modules/*/`
+emilia-spacing, emilia-theme`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -214,9 +214,13 @@ emilia/
 │           │                themeVar operations
 │           ├── spacing.bp ← front 54: `spacing(n)` = `calc(var(--spacing)
 │           │                * n)` and `spacingHalf(n)`. emilia NEVER
-│           │                resolves a spacing value — the seven `rem`
-│           │                ladders still in `emilia.bp` are front 35's
-│           │                to delete
+│           │                resolves a spacing value. Front 35 deleted
+│           │                six of the seven `rem` ladders that were in
+│           │                `emilia.bp`; the seventh, `flexGapScale`, is
+│           │                `Flex.Gap`'s and is front 37's. `spacingHalf`
+│           │                cannot spell `-0.5` (an i32 has no negative
+│           │                zero), which is why `Margin.*.Neg.Half` is
+│           │                `{1,2,3}` — front 54 owes a signed half step
 │           ├── output.bp  ← front 56: the rule model (`Rule`, `Block`,
 │           │                `Sheet`, `Variant`), `nestVariant` /
 │           │                `markImportant`, the `\t`/`\n`/`\r` codec that
@@ -226,10 +230,14 @@ emilia/
 │           │                external and imports only `theme` — the cells
 │           │                cannot move here (see "Gotchas")
 │           ├── tokens.bp  ← the `Token` enum-shaped `type`
-│           │                (`pub type Token { … }`, 1.0.3 surface): every
-│           │                section + the modifier variants. Section
-│           │                headers live in the docblock; NEVER a line
-│           │                comment inside the enum body (parser gotcha)
+│           │                (`pub type Token { … }`): every section + the
+│           │                modifier variants. Section headers live in
+│           │                the docblock. A line comment inside the enum
+│           │                body USED to be a parser gotcha; front 35
+│           │                measured it green (`botopink test` both
+│           │                targets + every example) and its banner
+│           │                fences `Pad`/`Margin`/`Size`/`Space` inside
+│           │                the body. Prefer the docblock anyway
 │           └── emilia.bp  ← `emilia(tokens) -> string` + `flush()` + the
 │                            `tokenToCss`/`tokensToCss` dispatchers + the
 │                            `#\[@External\.<target>(…)]` host cells
@@ -256,6 +264,16 @@ emilia/
 │   │                    document does NOT yet carry the theme — wrapping
 │   │                    `themeCss`/`keyframeCss` in cascade layers is
 │   │                    front 56's `withTheme`/`flushWith`)
+│   ├── emilia-spacing/ ← member `emilia-spacing` (an application: entry
+│   │                    main.bp, targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } — the front 35 showcase: the
+│   │                    multiplier scale, nine padding and margin
+│   │                    directions, `auto`, negatives, child spacing, the
+│   │                    thirteen `Size` sub-sections, and a centred article
+│   │                    shell with a full-bleed header. Its last test is
+│   │                    the front's whole argument: halving `--spacing`
+│   │                    moves the `:root` block and not one byte of any
+│   │                    rule. 12 in-file `test {}`, green on both targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
 │                        target commonJS, `emilia` via { "workspace": true },
 │                        `jhonstart` still by { git, branch } until jhonstart
@@ -409,10 +427,19 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **202/202** on
+  refuses) runs every module's in-file `test {}` blocks, **233/233** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 114 (`emilia.bp`). `emilia.bp`'s 114 are front 56's 33 (below)
-  plus front 33's 81: 26 one-per-family `Color` grid tests (280 of the 286
+  (`output.bp`) + 145 (`emilia.bp`). `emilia.bp`'s 145 are front 56's 33
+  (below) plus front 33's 81 plus front 35's 31. Front 35's 31 cover the scale
+  and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
+  the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
+  named container and breakpoint widths read back through `themeValue`), the
+  `Space` rule shape and its selector, and three end-to-end documents. Three of
+  the 31 are the front's REGRESSION: a walk over **1074** `Pad`/`Margin`/`Space`
+  leaves asserting the output carries no `rem`, none of `padding-x`,
+  `padding-y`, `margin-x`, `margin-y`, and none of `m-0.25`, `m-0.5`, `m-1`,
+  `m-2`, `margin-auto`; a fourth walks all **566** `Size` leaves for the same
+  `rem`. Front 33's 81: 26 one-per-family `Color` grid tests (280 of the 286
   cells — the six unreachable ones are named in § Maintainer rules) and 26 for
   the `Bg.Color` mirror (all 286), plus `paletteVar`, the shade-survives pin,
   the named colours on both properties, the pre-33 paths, the legacy `Bg`
@@ -457,6 +484,18 @@ to the commonJS row and runs once.
   deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
   a listed example that builds fails the gate just as a red one does.
 
+- `examples/emilia-spacing/` is the member `emilia-spacing` and is front 35's
+  worked example: the multiplier scale through `.Pad.All.*`, the nine padding
+  and margin directions, `m-auto` and `mx-auto` on one ladder, a centred
+  article shell (`max-w-3xl` + `mx-auto` + `px-6`) as one class and one rule,
+  a full-bleed header whose negative `-mx-6` cancels it, fractions, the
+  per-axis viewport unit, `size-12`, the six logical forms, and a comment
+  thread spaced by `Space.Y` with a reply pulled up by `-mt-2`. Its last two
+  tests are the front's argument: no token in the example emits a resolved
+  length or a class fragment, and halving `--spacing` gives the SAME class with
+  the SAME declarations — only the `:root` block moves. 12 in-file tests, green
+  on commonJS and on erlang.
+
 - `examples/emilia-cascade/` is the member `emilia-cascade` and is front 56's
   worked example: the reset supplied through `withBase`, the hover hoisted into
   `@media (hover: hover){.e_x:hover{…}}`, the breakpoint hoisted into
@@ -487,7 +526,7 @@ to the commonJS row and runs once.
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **Six cells — `.Color.Red.{100,500,700}`, `.Color.Gray.{100,500,700}` — are declared and unreachable** until the compiler's leading-dot resolver stops guessing between `Token` and `__Token__Border`; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
-| 1.0.10-beta front 35 — spacing and sizing | IN PROGRESS — steps 1–4 done: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all |
+| 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

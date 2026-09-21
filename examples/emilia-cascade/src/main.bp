@@ -14,6 +14,8 @@
 //   - the BREAKPOINT is a hoisted `@media (width >= 48rem)`, whose width is
 //     read from the theme's `--breakpoint-md` rather than written by emilia,
 //     so a project that overrides the variable moves the breakpoint;
+//     the PADDING is read from `--spacing` the same way, since front 35 —
+//     `padding:calc(var(--spacing) * 4)`, never `padding:1rem`;
 //   - the RESET is supplied through `Options` and lands in its own `base`
 //     layer. Its selector is LITERAL (`html`, `*`), which is a selector with
 //     no `&` — the class name, and the prefix, never reach it;
@@ -81,19 +83,19 @@ test "the hover is a SIBLING rule, not a block nested in the class body" {
     // The pre-56 nested form was `.e_x{background:#ffffff;:hover{...}}`, so a
     // `;:hover` anywhere in the document would mean the hoist did not happen.
     assert doc.indexOf(";:hover") == -1;
-    assert doc.indexOf("." + cls + "{background:#ffffff;color:var(--color-black);padding:1rem}") != -1;
+    assert doc.indexOf("." + cls + "{background:#ffffff;color:var(--color-black);padding:calc(var(--spacing) * 4)}") != -1;
 }
 
 test "the breakpoint is a hoisted @media whose width comes from the theme" {
     val cls = card();
     val doc = await flushWith(projectOptions());
-    assert doc.indexOf("@media (width >= 48rem){." + cls + "{padding:2rem}}") != -1;
+    assert doc.indexOf("@media (width >= 48rem){." + cls + "{padding:calc(var(--spacing) * 8)}}") != -1;
 }
 
 test "the unconditioned rule of a class precedes its conditioned ones" {
     val cls = card();
     val doc = await flushWith(projectOptions());
-    assert doc.indexOf("." + cls + "{background:#ffffff;color:var(--color-black);padding:1rem}") < doc.indexOf("@media (hover: hover)");
+    assert doc.indexOf("." + cls + "{background:#ffffff;color:var(--color-black);padding:calc(var(--spacing) * 4)}") < doc.indexOf("@media (hover: hover)");
     assert doc.indexOf("@media (hover: hover)") < doc.indexOf("@media (width >= 48rem)");
 }
 
@@ -138,7 +140,7 @@ test "turning the layers off emits the same rules, in the same order, with no @l
 test "the build-level important flag reaches every declaration of every rule" {
     val cls = card();
     val doc = await flushWith(withImportant(projectOptions(), true));
-    assert doc.indexOf("." + cls + "{background:#ffffff!important;color:var(--color-black)!important;padding:1rem!important}") != -1;
+    assert doc.indexOf("." + cls + "{background:#ffffff!important;color:var(--color-black)!important;padding:calc(var(--spacing) * 4)!important}") != -1;
     assert doc.indexOf("html{line-height:1.5!important") != -1;
 }
 

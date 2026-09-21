@@ -376,8 +376,8 @@ Token.Hover([Token.BgRed700])           // :hover{background:#ef4444}        (Bg
 Token.Focus([Token.ColorBlue500])       // :focus{color:#3b82f6}
 Token.Active([Token.TextUnderline])     // :active{text-decoration:underline}
 Token.Md([Token.TextSizeLg])            // @media(min-width:768px){font-size:1.125rem}
-Token.Lg([Token.PadX8])                 // @media(min-width:1024px){padding-left:2rem;padding-right:2rem}
-Token.Xl([Token.PadX16])                // @media(min-width:1280px){padding-left:4rem;padding-right:4rem}
+Token.Lg([.Pad.X.8])                    // padding-left:calc(var(--spacing) * 8);padding-right:…
+Token.Xl([.Pad.X.16])                   // padding-left:calc(var(--spacing) * 16);padding-right:…
 ```
 
 Modifiers nest:

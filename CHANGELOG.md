@@ -2,6 +2,26 @@
 
 ## Unreleased — v0.beta.22
 
+- **`examples/emilia-spacing/`, and the front 35 block is fenced in both files**
+  (1.0.10-beta front `35-emilia-spacing-sizing`, step 5). The
+  `// ── front 35 — spacing and sizing ──` banner now fences the four sections
+  in `tokens.bp` as well as the four dispatchers in `emilia.bp`. A line comment
+  inside the `Token` enum body was recorded as a parser gotcha and is not one
+  any more: measured green on both targets and on every example, and the note
+  in `AGENTS.md` is corrected rather than worked around.
+  The new workspace member `examples/emilia-spacing/` is the front's worked
+  example — the multiplier scale, the nine directions, `auto`, negatives,
+  a centred article shell as one class and one rule, a full-bleed header whose
+  `-mx-6` cancels it, fractions, the per-axis viewport unit, `size-12`, the six
+  logical forms, and a comment thread spaced by `Space.Y` with a reply pulled up
+  by `-mt-2`. Its last two tests are the front's whole argument: no token in it
+  emits a resolved length or a class fragment, and **halving `--spacing` gives
+  the same class with the same declarations — only the `:root` block moves**.
+  12 in-file tests, green on commonJS and erlang.
+  `examples/emilia-cascade/` had four assertions pinning `padding:1rem` and
+  `padding:2rem`; they now pin `calc(var(--spacing) * 4)` and
+  `calc(var(--spacing) * 8)`, which is the correction this front owns.
+
 - **`Space` — the first emilia token that declares on something other than the
   element** (1.0.10-beta front `35-emilia-spacing-sizing`, step 4).
   `space-x-*` / `space-y-*` set a margin on an element's CHILDREN, so

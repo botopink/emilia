@@ -208,6 +208,15 @@ pub type Token {
         Hex(value: string),
     }
 
+    // ── front 35 — spacing and sizing ────────────────────────────────────────
+    //
+    // `Pad`, `Margin`, `Size` and `Space`: every numeric leaf below is a
+    // MULTIPLIER of `--spacing` and not a length. `spacing(n)` and
+    // `spacingHalf(n)` in `spacing.bp` are the only two places
+    // `calc(var(--spacing) * N)` is written, and the four dispatchers in
+    // `emilia.bp` — under the same banner — consume them. `Flex.Gap` is
+    // front 37's and `Layout.Inset` front 36's, even though they space things
+    // the same way.
     Pad {
         All {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
@@ -517,6 +526,8 @@ pub type Token {
         XReverse,
         YReverse,
     }
+
+    // ── end front 35 ─────────────────────────────────────────────────────────
 
     Layout {
         Block,

@@ -2162,6 +2162,49 @@ test "Space — composing with a Pad token in one list gives two rules, in order
         + cls + " > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}}</style>";
 }
 
+// ── tests · end to end ───────────────────────────────────────────────────────
+
+// The centred article shell every layout starts from: a max width from the
+// theme's container ladder, `mx-auto`, and horizontal padding. Three tokens,
+// one class, and — because all three sit in the same context — ONE rule.
+test "end to end — a centred shell is one class, one rule, and no length in it" {
+    val tokens: Token[] = [.Size.MaxW.X3xl, .Margin.X.Auto, .Pad.X.6];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{max-width:var(--container-3xl);margin-left:auto;margin-right:auto;"
+        + "padding-left:calc(var(--spacing) * 6);padding-right:calc(var(--spacing) * 6)}}</style>";
+}
+
+// The same three tokens under the STOCK theme: every length the shell resolves
+// to is in the `:root` block rather than in the rule, which is the whole point
+// of the front. A project that overrides either variable moves the shell
+// without emilia re-emitting a byte of it.
+test "end to end — the lengths live in the theme layer, not in the utility" {
+    val tokens: Token[] = [.Size.MaxW.X3xl, .Margin.X.Auto, .Pad.X.6];
+    val cls = emilia(tokens);
+    val styles = await flush();
+    assert styles.indexOf("--spacing:0.25rem") != -1;
+    assert styles.indexOf("--container-3xl:48rem") != -1;
+    assert styles.indexOf("@layer utilities{." + cls + "{max-width:var(--container-3xl);"
+        + "margin-left:auto;margin-right:auto;padding-left:calc(var(--spacing) * 6);"
+        + "padding-right:calc(var(--spacing) * 6)}}") != -1;
+}
+
+// A stacked thread: the children are spaced by `Space.Y` and the last reply is
+// pulled back up by a negative margin. Both are front 35's, and they land in
+// two different rules because they describe two different sets of elements.
+test "end to end — a stacked thread spaces its children and pulls one back up" {
+    val stack: Token[] = [.Space.Y.4, .Pad.All.6];
+    val pulled: Token[] = [.Margin.T.Neg.2];
+    val stackCls = emilia(stack);
+    val pulledCls = emilia(pulled);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("." + stackCls + "{padding:calc(var(--spacing) * 6)}") != -1;
+    assert styles.indexOf("." + stackCls + " > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}") != -1;
+    assert styles.indexOf("." + pulledCls + "{margin-top:calc(var(--spacing) * -2)}") != -1;
+}
+
 // ── end front 35 ─────────────────────────────────────────────────────────────
 
 fn layoutTokenToCss(t: Token.Layout) -> string {
