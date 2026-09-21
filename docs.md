@@ -430,7 +430,50 @@ moves the queries and the class hashes with it.
 | --- | --- | --- |
 | `hover:` | `Token.Hover(inner)` | `@media (hover: hover){&:hover{…}}` |
 | `focus:` | `Token.Focus(inner)` | `&:focus{…}` |
+| `focus-within:` | `Token.FocusWithin(inner)` | `&:focus-within{…}` |
+| `focus-visible:` | `Token.FocusVisible(inner)` | `&:focus-visible{…}` |
 | `active:` | `Token.Active(inner)` | `&:active{…}` |
+| `visited:` | `Token.Visited(inner)` | `&:visited{…}` |
+| `target:` | `Token.Target(inner)` | `&:target{…}` |
+| `open:` | `Token.Open(inner)` | `&:is(:open, :popover-open){…}` |
+| `inert:` | `Token.Inert(inner)` | `&:is([inert], [inert] *){…}` |
+
+**Form state**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `disabled:` | `Token.Disabled(inner)` | `&:disabled{…}` |
+| `enabled:` | `Token.Enabled(inner)` | `&:enabled{…}` |
+| `checked:` | `Token.Checked(inner)` | `&:checked{…}` |
+| `indeterminate:` | `Token.Indeterminate(inner)` | `&:indeterminate{…}` |
+| `default:` | `Token.Default(inner)` | `&:default{…}` |
+| `optional:` | `Token.Optional(inner)` | `&:optional{…}` |
+| `required:` | `Token.Required(inner)` | `&:required{…}` |
+| `valid:` | `Token.Valid(inner)` | `&:valid{…}` |
+| `invalid:` | `Token.Invalid(inner)` | `&:invalid{…}` |
+| `user-valid:` | `Token.UserValid(inner)` | `&:user-valid{…}` |
+| `user-invalid:` | `Token.UserInvalid(inner)` | `&:user-invalid{…}` |
+| `in-range:` | `Token.InRange(inner)` | `&:in-range{…}` |
+| `out-of-range:` | `Token.OutOfRange(inner)` | `&:out-of-range{…}` |
+| `placeholder-shown:` | `Token.PlaceholderShown(inner)` | `&:placeholder-shown{…}` |
+| `autofill:` | `Token.Autofill(inner)` | `&:autofill{…}` |
+| `read-only:` | `Token.ReadOnly(inner)` | `&:read-only{…}` |
+
+**Structural position**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `first:` | `Token.First(inner)` | `&:first-child{…}` |
+| `last:` | `Token.Last(inner)` | `&:last-child{…}` |
+| `only:` | `Token.Only(inner)` | `&:only-child{…}` |
+| `odd:` | `Token.Odd(inner)` | `&:nth-child(odd){…}` |
+| `even:` | `Token.Even(inner)` | `&:nth-child(even){…}` |
+| `first-of-type:` | `Token.FirstOfType(inner)` | `&:first-of-type{…}` |
+| `last-of-type:` | `Token.LastOfType(inner)` | `&:last-of-type{…}` |
+| `only-of-type:` | `Token.OnlyOfType(inner)` | `&:only-of-type{…}` |
+| `empty:` | `Token.Empty(inner)` | `&:empty{…}` |
+| `nth-N:` | `Token.Nth(index, inner)` | `&:nth-child(3){…}` |
+| `nth-last-N:` | `Token.NthLast(index, inner)` | `&:nth-last-child(5){…}` |
 
 `.group` and `.peer` are classes the **consumer's markup** carries: emilia
 emits the selector that reads them and never the class itself.

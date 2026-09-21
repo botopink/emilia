@@ -2,6 +2,23 @@
 
 ## Unreleased — v0.beta.22
 
+- **Thirty-six state variants, and the two that take an index**
+  (1.0.10-beta front `34-emilia-modifiers`, step 4). Six more interaction
+  states (`FocusWithin`, `FocusVisible`, `Visited`, `Target`, `Open`,
+  `Inert`), the sixteen form states a form cannot be styled without
+  (`Disabled` … `ReadOnly`), nine structural positions, and `Nth(index, inner)`
+  / `NthLast(index, inner)`, which build their selector from an `i32` payload
+  carried beside the list.
+  **One reference row did not survive front 56.** `§ 3.2` spells `open` as
+  `&:open, &:popover-open` — two `&`, which `checkVariantSelector` refuses with
+  no opt-out, correctly: a two-`&` template DUPLICATES the rule it wraps. The
+  two states go inside one `:is()` instead — `&:is(:open, :popover-open)` —
+  which is one `&`, the same match set, and no selector list for front 56 to
+  split. Worth a reader's attention: upstream v4.1 additionally carries the
+  legacy `[open]` attribute in that row, which the local reference's table does
+  not, so the row is transcribed from the reference and not from upstream.
+  257/257 on both targets.
+
 - **`Dark`, and the other eight media features** (1.0.10-beta front
   `34-emilia-modifiers`, step 3). `darkVariant(th)` is
   `Variant(atRule: darkAtRule(th), selector: darkSelector(th))` — it consumes

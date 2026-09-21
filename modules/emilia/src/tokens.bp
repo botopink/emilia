@@ -12,7 +12,7 @@
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
 //// payload — siblings of section heads at the top level. Front 34 widened
-//// them from six to 22; the full map is under MODIFIERS below.
+//// them from six to 55; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -112,7 +112,44 @@
 ////   interaction state
 ////     .Hover([Token])            hover:           → @media (hover: hover){&:hover{…}}
 ////     .Focus([Token])            focus:           → &:focus{…}
+////     .FocusWithin([Token])      focus-within:    → &:focus-within{…}
+////     .FocusVisible([Token])     focus-visible:   → &:focus-visible{…}
 ////     .Active([Token])           active:          → &:active{…}
+////     .Visited([Token])          visited:         → &:visited{…}
+////     .Target([Token])           target:          → &:target{…}
+////     .Open([Token])             open:            → &:is(:open, :popover-open){…}
+////     .Inert([Token])            inert:           → &:is([inert], [inert] *){…}
+////
+////   form state
+////     .Disabled([Token])         disabled:        → &:disabled{…}
+////     .Enabled([Token])          enabled:         → &:enabled{…}
+////     .Checked([Token])          checked:         → &:checked{…}
+////     .Indeterminate([Token])    indeterminate:   → &:indeterminate{…}
+////     .Default([Token])          default:         → &:default{…}
+////     .Optional([Token])         optional:        → &:optional{…}
+////     .Required([Token])         required:        → &:required{…}
+////     .Valid([Token])            valid:           → &:valid{…}
+////     .Invalid([Token])          invalid:         → &:invalid{…}
+////     .UserValid([Token])        user-valid:      → &:user-valid{…}
+////     .UserInvalid([Token])      user-invalid:    → &:user-invalid{…}
+////     .InRange([Token])          in-range:        → &:in-range{…}
+////     .OutOfRange([Token])       out-of-range:    → &:out-of-range{…}
+////     .PlaceholderShown([Token]) placeholder-shown: → &:placeholder-shown{…}
+////     .Autofill([Token])         autofill:        → &:autofill{…}
+////     .ReadOnly([Token])         read-only:       → &:read-only{…}
+////
+////   structural position
+////     .First([Token])            first:           → &:first-child{…}
+////     .Last([Token])             last:            → &:last-child{…}
+////     .Only([Token])             only:            → &:only-child{…}
+////     .Odd([Token])              odd:             → &:nth-child(odd){…}
+////     .Even([Token])             even:            → &:nth-child(even){…}
+////     .FirstOfType([Token])      first-of-type:   → &:first-of-type{…}
+////     .LastOfType([Token])       last-of-type:    → &:last-of-type{…}
+////     .OnlyOfType([Token])       only-of-type:    → &:only-of-type{…}
+////     .Empty([Token])            empty:           → &:empty{…}
+////     .Nth(index, [Token])       nth-N:           → &:nth-child(N){…}
+////     .NthLast(index, [Token])   nth-last-N:      → &:nth-last-child(N){…}
 
 pub type Token {
     Text {
@@ -677,6 +714,43 @@ pub type Token {
     // interaction state
     Hover(inner: Token[]),
     Focus(inner: Token[]),
+    FocusWithin(inner: Token[]),
+    FocusVisible(inner: Token[]),
     Active(inner: Token[]),
+    Visited(inner: Token[]),
+    Target(inner: Token[]),
+    Open(inner: Token[]),
+    Inert(inner: Token[]),
+    //
+    // form state
+    Disabled(inner: Token[]),
+    Enabled(inner: Token[]),
+    Checked(inner: Token[]),
+    Indeterminate(inner: Token[]),
+    Default(inner: Token[]),
+    Optional(inner: Token[]),
+    Required(inner: Token[]),
+    Valid(inner: Token[]),
+    Invalid(inner: Token[]),
+    UserValid(inner: Token[]),
+    UserInvalid(inner: Token[]),
+    InRange(inner: Token[]),
+    OutOfRange(inner: Token[]),
+    PlaceholderShown(inner: Token[]),
+    Autofill(inner: Token[]),
+    ReadOnly(inner: Token[]),
+    //
+    // structural position
+    First(inner: Token[]),
+    Last(inner: Token[]),
+    Only(inner: Token[]),
+    Odd(inner: Token[]),
+    Even(inner: Token[]),
+    FirstOfType(inner: Token[]),
+    LastOfType(inner: Token[]),
+    OnlyOfType(inner: Token[]),
+    Empty(inner: Token[]),
+    Nth(index: i32, inner: Token[]),
+    NthLast(index: i32, inner: Token[]),
     // ── end front 34 ─────────────────────────────────────────────────────────
 }

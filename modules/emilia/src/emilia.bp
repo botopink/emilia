@@ -170,7 +170,40 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         ForcedColors(inner) -> nestVariant(tokensToSheet(inner, th), forcedColorsVariant());
         Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
         Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
+        FocusWithin(inner) -> nestVariant(tokensToSheet(inner, th), focusWithinVariant());
+        FocusVisible(inner) -> nestVariant(tokensToSheet(inner, th), focusVisibleVariant());
         Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
+        Visited(inner) -> nestVariant(tokensToSheet(inner, th), visitedVariant());
+        Target(inner) -> nestVariant(tokensToSheet(inner, th), targetVariant());
+        Open(inner) -> nestVariant(tokensToSheet(inner, th), openVariant());
+        Inert(inner) -> nestVariant(tokensToSheet(inner, th), inertVariant());
+        Disabled(inner) -> nestVariant(tokensToSheet(inner, th), disabledVariant());
+        Enabled(inner) -> nestVariant(tokensToSheet(inner, th), enabledVariant());
+        Checked(inner) -> nestVariant(tokensToSheet(inner, th), checkedVariant());
+        Indeterminate(inner) -> nestVariant(tokensToSheet(inner, th), indeterminateVariant());
+        Default(inner) -> nestVariant(tokensToSheet(inner, th), defaultVariant());
+        Optional(inner) -> nestVariant(tokensToSheet(inner, th), optionalVariant());
+        Required(inner) -> nestVariant(tokensToSheet(inner, th), requiredVariant());
+        Valid(inner) -> nestVariant(tokensToSheet(inner, th), validVariant());
+        Invalid(inner) -> nestVariant(tokensToSheet(inner, th), invalidVariant());
+        UserValid(inner) -> nestVariant(tokensToSheet(inner, th), userValidVariant());
+        UserInvalid(inner) -> nestVariant(tokensToSheet(inner, th), userInvalidVariant());
+        InRange(inner) -> nestVariant(tokensToSheet(inner, th), inRangeVariant());
+        OutOfRange(inner) -> nestVariant(tokensToSheet(inner, th), outOfRangeVariant());
+        PlaceholderShown(inner) -> nestVariant(tokensToSheet(inner, th), placeholderShownVariant());
+        Autofill(inner) -> nestVariant(tokensToSheet(inner, th), autofillVariant());
+        ReadOnly(inner) -> nestVariant(tokensToSheet(inner, th), readOnlyVariant());
+        First(inner) -> nestVariant(tokensToSheet(inner, th), firstVariant());
+        Last(inner) -> nestVariant(tokensToSheet(inner, th), lastVariant());
+        Only(inner) -> nestVariant(tokensToSheet(inner, th), onlyVariant());
+        Odd(inner) -> nestVariant(tokensToSheet(inner, th), oddVariant());
+        Even(inner) -> nestVariant(tokensToSheet(inner, th), evenVariant());
+        FirstOfType(inner) -> nestVariant(tokensToSheet(inner, th), firstOfTypeVariant());
+        LastOfType(inner) -> nestVariant(tokensToSheet(inner, th), lastOfTypeVariant());
+        OnlyOfType(inner) -> nestVariant(tokensToSheet(inner, th), onlyOfTypeVariant());
+        Empty(inner) -> nestVariant(tokensToSheet(inner, th), emptyVariant());
+        Nth(index, inner) -> nestVariant(tokensToSheet(inner, th), nthVariant(index));
+        NthLast(index, inner) -> nestVariant(tokensToSheet(inner, th), nthLastVariant(index));
         // ── end front 34 ─────────────────────────────────────────────────
     };
     return out;
@@ -334,8 +367,149 @@ pub fn focusVariant() -> Variant {
     return selectorVariant("&:focus");
 }
 
+pub fn focusWithinVariant() -> Variant {
+    return selectorVariant("&:focus-within");
+}
+
+pub fn focusVisibleVariant() -> Variant {
+    return selectorVariant("&:focus-visible");
+}
+
 pub fn activeVariant() -> Variant {
     return selectorVariant("&:active");
+}
+
+pub fn visitedVariant() -> Variant {
+    return selectorVariant("&:visited");
+}
+
+pub fn targetVariant() -> Variant {
+    return selectorVariant("&:target");
+}
+
+// THE REFERENCE ROW DOES NOT SURVIVE FRONT 56. `§ 3.2` spells `open` as
+// `&:open, &:popover-open`, which carries TWO `&` and is refused by
+// `checkVariantSelector` with no opt-out — correctly, since the two-`&` form
+// duplicates the rule it wraps. The two states go inside one `:is()` instead:
+// one `&`, the same match set, and no selector list for front 56 to split.
+pub fn openVariant() -> Variant {
+    return selectorVariant("&:is(:open, :popover-open)");
+}
+
+pub fn inertVariant() -> Variant {
+    return selectorVariant("&:is([inert], [inert] *)");
+}
+
+// ── form state ───────────────────────────────────────────────────────────
+
+pub fn disabledVariant() -> Variant {
+    return selectorVariant("&:disabled");
+}
+
+pub fn enabledVariant() -> Variant {
+    return selectorVariant("&:enabled");
+}
+
+pub fn checkedVariant() -> Variant {
+    return selectorVariant("&:checked");
+}
+
+pub fn indeterminateVariant() -> Variant {
+    return selectorVariant("&:indeterminate");
+}
+
+pub fn defaultVariant() -> Variant {
+    return selectorVariant("&:default");
+}
+
+pub fn optionalVariant() -> Variant {
+    return selectorVariant("&:optional");
+}
+
+pub fn requiredVariant() -> Variant {
+    return selectorVariant("&:required");
+}
+
+pub fn validVariant() -> Variant {
+    return selectorVariant("&:valid");
+}
+
+pub fn invalidVariant() -> Variant {
+    return selectorVariant("&:invalid");
+}
+
+pub fn userValidVariant() -> Variant {
+    return selectorVariant("&:user-valid");
+}
+
+pub fn userInvalidVariant() -> Variant {
+    return selectorVariant("&:user-invalid");
+}
+
+pub fn inRangeVariant() -> Variant {
+    return selectorVariant("&:in-range");
+}
+
+pub fn outOfRangeVariant() -> Variant {
+    return selectorVariant("&:out-of-range");
+}
+
+pub fn placeholderShownVariant() -> Variant {
+    return selectorVariant("&:placeholder-shown");
+}
+
+pub fn autofillVariant() -> Variant {
+    return selectorVariant("&:autofill");
+}
+
+pub fn readOnlyVariant() -> Variant {
+    return selectorVariant("&:read-only");
+}
+
+// ── structural position ──────────────────────────────────────────────────
+
+pub fn firstVariant() -> Variant {
+    return selectorVariant("&:first-child");
+}
+
+pub fn lastVariant() -> Variant {
+    return selectorVariant("&:last-child");
+}
+
+pub fn onlyVariant() -> Variant {
+    return selectorVariant("&:only-child");
+}
+
+pub fn oddVariant() -> Variant {
+    return selectorVariant("&:nth-child(odd)");
+}
+
+pub fn evenVariant() -> Variant {
+    return selectorVariant("&:nth-child(even)");
+}
+
+pub fn firstOfTypeVariant() -> Variant {
+    return selectorVariant("&:first-of-type");
+}
+
+pub fn lastOfTypeVariant() -> Variant {
+    return selectorVariant("&:last-of-type");
+}
+
+pub fn onlyOfTypeVariant() -> Variant {
+    return selectorVariant("&:only-of-type");
+}
+
+pub fn emptyVariant() -> Variant {
+    return selectorVariant("&:empty");
+}
+
+pub fn nthVariant(index: i32) -> Variant {
+    return selectorVariant("&:nth-child(" + index.toString() + ")");
+}
+
+pub fn nthLastVariant(index: i32) -> Variant {
+    return selectorVariant("&:nth-last-child(" + index.toString() + ")");
 }
 
 // ── front 34 · tests ─────────────────────────────────────────────────────
@@ -441,6 +615,135 @@ test "dark mode and the other media features — the CSS each row renders around
     assert modifierCss(Token.ForcedColors(inner)) == "@media (forced-colors: active){.x{font-weight:bold}}";
 }
 
+test "interaction state — the two halves of every Variant in the family" {
+    assert hoverVariant().atRule == "@media (hover: hover)";
+    assert hoverVariant().selector == "&:hover";
+    assert focusVariant().atRule == "";
+    assert focusVariant().selector == "&:focus";
+    assert focusWithinVariant().atRule == "";
+    assert focusWithinVariant().selector == "&:focus-within";
+    assert focusVisibleVariant().atRule == "";
+    assert focusVisibleVariant().selector == "&:focus-visible";
+    assert activeVariant().atRule == "";
+    assert activeVariant().selector == "&:active";
+    assert visitedVariant().atRule == "";
+    assert visitedVariant().selector == "&:visited";
+    assert targetVariant().atRule == "";
+    assert targetVariant().selector == "&:target";
+    assert openVariant().atRule == "";
+    assert openVariant().selector == "&:is(:open, :popover-open)";
+    assert inertVariant().atRule == "";
+    assert inertVariant().selector == "&:is([inert], [inert] *)";
+}
+
+test "interaction state — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Hover(inner)) == "@media (hover: hover){.x:hover{font-weight:bold}}";
+    assert modifierCss(Token.Focus(inner)) == ".x:focus{font-weight:bold}";
+    assert modifierCss(Token.FocusWithin(inner)) == ".x:focus-within{font-weight:bold}";
+    assert modifierCss(Token.FocusVisible(inner)) == ".x:focus-visible{font-weight:bold}";
+    assert modifierCss(Token.Active(inner)) == ".x:active{font-weight:bold}";
+    assert modifierCss(Token.Visited(inner)) == ".x:visited{font-weight:bold}";
+    assert modifierCss(Token.Target(inner)) == ".x:target{font-weight:bold}";
+    assert modifierCss(Token.Open(inner)) == ".x:is(:open, :popover-open){font-weight:bold}";
+    assert modifierCss(Token.Inert(inner)) == ".x:is([inert], [inert] *){font-weight:bold}";
+}
+
+test "form state — the two halves of every Variant in the family" {
+    assert disabledVariant().atRule == "";
+    assert disabledVariant().selector == "&:disabled";
+    assert enabledVariant().atRule == "";
+    assert enabledVariant().selector == "&:enabled";
+    assert checkedVariant().atRule == "";
+    assert checkedVariant().selector == "&:checked";
+    assert indeterminateVariant().atRule == "";
+    assert indeterminateVariant().selector == "&:indeterminate";
+    assert defaultVariant().atRule == "";
+    assert defaultVariant().selector == "&:default";
+    assert optionalVariant().atRule == "";
+    assert optionalVariant().selector == "&:optional";
+    assert requiredVariant().atRule == "";
+    assert requiredVariant().selector == "&:required";
+    assert validVariant().atRule == "";
+    assert validVariant().selector == "&:valid";
+    assert invalidVariant().atRule == "";
+    assert invalidVariant().selector == "&:invalid";
+    assert userValidVariant().atRule == "";
+    assert userValidVariant().selector == "&:user-valid";
+    assert userInvalidVariant().atRule == "";
+    assert userInvalidVariant().selector == "&:user-invalid";
+    assert inRangeVariant().atRule == "";
+    assert inRangeVariant().selector == "&:in-range";
+    assert outOfRangeVariant().atRule == "";
+    assert outOfRangeVariant().selector == "&:out-of-range";
+    assert placeholderShownVariant().atRule == "";
+    assert placeholderShownVariant().selector == "&:placeholder-shown";
+    assert autofillVariant().atRule == "";
+    assert autofillVariant().selector == "&:autofill";
+    assert readOnlyVariant().atRule == "";
+    assert readOnlyVariant().selector == "&:read-only";
+}
+
+test "form state — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Disabled(inner)) == ".x:disabled{font-weight:bold}";
+    assert modifierCss(Token.Enabled(inner)) == ".x:enabled{font-weight:bold}";
+    assert modifierCss(Token.Checked(inner)) == ".x:checked{font-weight:bold}";
+    assert modifierCss(Token.Indeterminate(inner)) == ".x:indeterminate{font-weight:bold}";
+    assert modifierCss(Token.Default(inner)) == ".x:default{font-weight:bold}";
+    assert modifierCss(Token.Optional(inner)) == ".x:optional{font-weight:bold}";
+    assert modifierCss(Token.Required(inner)) == ".x:required{font-weight:bold}";
+    assert modifierCss(Token.Valid(inner)) == ".x:valid{font-weight:bold}";
+    assert modifierCss(Token.Invalid(inner)) == ".x:invalid{font-weight:bold}";
+    assert modifierCss(Token.UserValid(inner)) == ".x:user-valid{font-weight:bold}";
+    assert modifierCss(Token.UserInvalid(inner)) == ".x:user-invalid{font-weight:bold}";
+    assert modifierCss(Token.InRange(inner)) == ".x:in-range{font-weight:bold}";
+    assert modifierCss(Token.OutOfRange(inner)) == ".x:out-of-range{font-weight:bold}";
+    assert modifierCss(Token.PlaceholderShown(inner)) == ".x:placeholder-shown{font-weight:bold}";
+    assert modifierCss(Token.Autofill(inner)) == ".x:autofill{font-weight:bold}";
+    assert modifierCss(Token.ReadOnly(inner)) == ".x:read-only{font-weight:bold}";
+}
+
+test "structural position — the two halves of every Variant in the family" {
+    assert firstVariant().atRule == "";
+    assert firstVariant().selector == "&:first-child";
+    assert lastVariant().atRule == "";
+    assert lastVariant().selector == "&:last-child";
+    assert onlyVariant().atRule == "";
+    assert onlyVariant().selector == "&:only-child";
+    assert oddVariant().atRule == "";
+    assert oddVariant().selector == "&:nth-child(odd)";
+    assert evenVariant().atRule == "";
+    assert evenVariant().selector == "&:nth-child(even)";
+    assert firstOfTypeVariant().atRule == "";
+    assert firstOfTypeVariant().selector == "&:first-of-type";
+    assert lastOfTypeVariant().atRule == "";
+    assert lastOfTypeVariant().selector == "&:last-of-type";
+    assert onlyOfTypeVariant().atRule == "";
+    assert onlyOfTypeVariant().selector == "&:only-of-type";
+    assert emptyVariant().atRule == "";
+    assert emptyVariant().selector == "&:empty";
+    assert nthVariant(3).atRule == "";
+    assert nthVariant(3).selector == "&:nth-child(3)";
+    assert nthLastVariant(5).atRule == "";
+    assert nthLastVariant(5).selector == "&:nth-last-child(5)";
+}
+
+test "structural position — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.First(inner)) == ".x:first-child{font-weight:bold}";
+    assert modifierCss(Token.Last(inner)) == ".x:last-child{font-weight:bold}";
+    assert modifierCss(Token.Only(inner)) == ".x:only-child{font-weight:bold}";
+    assert modifierCss(Token.Odd(inner)) == ".x:nth-child(odd){font-weight:bold}";
+    assert modifierCss(Token.Even(inner)) == ".x:nth-child(even){font-weight:bold}";
+    assert modifierCss(Token.FirstOfType(inner)) == ".x:first-of-type{font-weight:bold}";
+    assert modifierCss(Token.LastOfType(inner)) == ".x:last-of-type{font-weight:bold}";
+    assert modifierCss(Token.OnlyOfType(inner)) == ".x:only-of-type{font-weight:bold}";
+    assert modifierCss(Token.Empty(inner)) == ".x:empty{font-weight:bold}";
+    assert modifierCss(Token.Nth(index: 3, inner: inner)) == ".x:nth-child(3){font-weight:bold}";
+    assert modifierCss(Token.NthLast(index: 5, inner: inner)) == ".x:nth-last-child(5){font-weight:bold}";
+}
+
 test "dark — the `Media` strategy is an at-rule over the bare ampersand" {
     val th = defaultTheme();
     assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
@@ -510,6 +813,42 @@ test "a breakpoint override reaches both directions of the ladder" {
 }
 
 // ── the two indexed rows ──────────────────────────────────────────────────
+
+test "Nth — three indices, including a two-digit one" {
+    val inner = boldInner();
+    assert modifierCss(Token.Nth(index: 1, inner: inner)) == ".x:nth-child(1){font-weight:bold}";
+    assert modifierCss(Token.Nth(index: 3, inner: inner)) == ".x:nth-child(3){font-weight:bold}";
+    assert modifierCss(Token.Nth(index: 12, inner: inner)) == ".x:nth-child(12){font-weight:bold}";
+    assert nthVariant(7).atRule == "";
+    assert nthVariant(7).selector == "&:nth-child(7)";
+}
+
+test "NthLast — the same three, counted from the end" {
+    val inner = boldInner();
+    assert modifierCss(Token.NthLast(index: 1, inner: inner)) == ".x:nth-last-child(1){font-weight:bold}";
+    assert modifierCss(Token.NthLast(index: 5, inner: inner)) == ".x:nth-last-child(5){font-weight:bold}";
+    assert modifierCss(Token.NthLast(index: 12, inner: inner)) == ".x:nth-last-child(12){font-weight:bold}";
+    assert nthLastVariant(7).selector == "&:nth-last-child(7)";
+}
+
+// ── the rows whose text is easy to get wrong ──────────────────────────────
+
+// The reference spells this row `&:open, &:popover-open` — two `&`, which
+// front 56 refuses. `:is()` holds the two states instead, so the comma is
+// INSIDE one selector and never a separator emilia added.
+
+test "the two states of `open` live inside one selector, not a selector list" {
+    assert openVariant().selector == "&:is(:open, :popover-open)";
+    val inner = boldInner();
+    assert modifierCss(Token.Open(inner)) == ".x:is(:open, :popover-open){font-weight:bold}";
+    assert tokenToSheet(Token.Open(inner), defaultTheme()).rules.length == 1;
+}
+
+test "`inert` is the attribute pair the reference gives, not a pseudo-class" {
+    assert inertVariant().selector == "&:is([inert], [inert] *)";
+}
+
+// ── Important — decision 81, and the one row that is not a variant ─────────
 
 //// ═══ END FRONT 34 ═════════════════════════════════════════════════════════════════
 
