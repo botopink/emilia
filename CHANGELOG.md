@@ -38,6 +38,15 @@
   body that is a bare `if` expression is bound to a `val` first, because the bare form
   lowers to `undefined` on commonJS. Measured: 24/24 + 17/17 on both targets.
 
+- **`spacing(n)`** (front `54-emilia-theme`, step 4). New module
+  `modules/emilia/src/spacing.bp`. `spacing(4)` answers `calc(var(--spacing) * 4)`,
+  `spacing(0)` answers `0`, `spacing(-4)` answers `calc(var(--spacing) * -4)`, and
+  `spacingHalf(n)` covers the closed set of fractional steps. **emilia never resolves a
+  spacing value**: emitting the `rem` literal would be byte-different from upstream for
+  every spacing utility and would make a consumer's `--spacing: 4px` override silently
+  ineffective. `i32` rather than `f64`, so the emitted string never depends on a
+  backend's float formatting. Measured: 6/6 + 24/24 + 17/17 on both targets.
+
 - **The repository is a workspace** (`02-packaging` step 2; decisions 75 and 76 of
   1.0.10-beta). `botopink.json` at the root is `{ name, version, description, targets
   [commonJS, erlang], workspaces ["modules/*", "examples/*"] }` — no `src`, `files`,

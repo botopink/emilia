@@ -229,6 +229,30 @@ extendTheme(defaultTheme(), [ThemeEntry(name: "--gutter", value: "1rem")]);
 // with one of the nineteen prefixes of `Ns` (…)
 ```
 
+### Spacing — `spacing(n)`
+
+| Function | What it answers |
+| --- | --- |
+| `spacing(n) -> string` | `calc(var(--spacing) * n)`; `spacing(0)` is `0` |
+| `spacingHalf(n) -> string` | `calc(var(--spacing) * n.5)` |
+
+emilia **never resolves a spacing value**. Every spacing utility is a multiplier
+of `var(--spacing)`, resolved by the browser, so the same token list renders
+differently under a theme whose `--spacing` is `4px` and one whose `--spacing`
+is `0.25rem`. Emitting `1rem` instead would make that override silently
+ineffective.
+
+```bp
+assert spacing(0) == "0";
+assert spacing(4) == "calc(var(--spacing) * 4)";
+assert spacing(-4) == "calc(var(--spacing) * -4)";
+assert spacingHalf(1) == "calc(var(--spacing) * 1.5)";
+```
+
+Negative steps need no second function. `spacing` takes an `i32`, not an `f64`,
+so the emitted string never depends on a backend's float formatting; the
+fractional steps are a closed set that `spacingHalf` covers exactly.
+
 ### The colour palette is not here
 
 `defaultTheme()` carries `--color-black` and `--color-white` and nothing else.

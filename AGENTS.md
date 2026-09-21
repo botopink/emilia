@@ -119,17 +119,24 @@ emilia/
 │       ├── botopink.json  name emilia · src src/ · entry root.bp ·
 │       │                    target commonJS · targets [commonJS, erlang] ·
 │       │                    files: root.bp · tokens.bp · theme.bp ·
-│       │                    emilia.bp · no dependencies
+│       │                    spacing.bp · emilia.bp · no dependencies
 │       └── src/
 │           ├── root.bp    ← `pub mod tokens; pub mod theme;
-│           │                pub default mod emilia;` (the
+│           │                pub mod spacing; pub default mod emilia;` (the
 │           │                v0 build folded the `stylesheet` module into
 │           │                `emilia.bp` — see the README's "Deferred")
 │           ├── theme.bp   ← front 54: the theme as a FLAT `ThemeEntry[]`
 │           │                with validated namespace prefixes (`Ns` +
 │           │                `nsPrefix`, the only place a prefix is
-│           │                written), `DarkMode`, and the extend /
-│           │                override / clear / empty / read operations
+│           │                written), `DarkMode`, `defaultTheme()`, and
+│           │                the extendTheme / clearNamespace /
+│           │                emptyTheme / namespace / themeValue /
+│           │                themeVar operations
+│           ├── spacing.bp ← front 54: `spacing(n)` = `calc(var(--spacing)
+│           │                * n)` and `spacingHalf(n)`. emilia NEVER
+│           │                resolves a spacing value — the seven `rem`
+│           │                ladders still in `emilia.bp` are front 35's
+│           │                to delete
 │           ├── tokens.bp  ← the `Token` enum-shaped `type`
 │           │                (`pub type Token { … }`, 1.0.3 surface): every
 │           │                section + the modifier variants. Section

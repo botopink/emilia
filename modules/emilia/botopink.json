@@ -10,6 +10,7 @@
     "root.bp",
     "tokens.bp",
     "theme.bp",
+    "spacing.bp",
     "emilia.bp"
   ]
 }
