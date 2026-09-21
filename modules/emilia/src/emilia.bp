@@ -2715,23 +2715,19 @@ pub fn paletteVar(family: string, shade: string) -> string {
 // unchanged, as the proof that a string payload splices (see the note under
 // the tests).
 //
-// BLOCKED — SIX OF THE 286 CELLS ARE DECLARED AND UNREACHABLE.
+// CLOSED — the six cells that were unreachable now resolve.
 // `.Color.Red.100`, `.Color.Red.500`, `.Color.Red.700`, `.Color.Gray.100`,
-// `.Color.Gray.500` and `.Color.Gray.700` do not compile in any spelling.
-// `tryResolveEnumSectionPath` (compiler-core `comptime/infer.zig`) resolves a
-// leading-dot path by iterating `env.typeDefs` — a hash map that holds the
-// SYNTHESISED SECTION ENUMS beside the real ones — and returning the first
-// enum whose section tree carries the path. `Token` carries `Color.Red.500`
-// and so does `__Token__Border` (front 40's `Border.Color` stub, whose Red and
-// Gray also run 100/500/700), so the winner is decided by hash order and the
-// expected type is never consulted: `val t: Token = .Color.Red.500;` reds with
-// `type mismatch: expected Token, got __Token__Border`, and so does the array
-// literal, the call argument and the fully-qualified `Token.Color.Red.500`
-// (which the resolver does not accept at all). It fails LOUDLY at the call
-// site rather than emitting the wrong CSS. The fix is the compiler's: prefer
-// the enum the expected type names, and refuse rather than guess when two
-// enums match. Until it lands, `.Bg.Color.Red.500` reaches the same shade —
-// `Bg` is a head segment no other enum carries.
+// `.Color.Gray.500` and `.Color.Gray.700` used to compile in no spelling:
+// `tryResolveEnumSectionPath` (compiler-core `comptime/infer.zig`) resolved a
+// leading-dot path by iterating `env.typeDefs` — a hash map holding the
+// SYNTHESISED SECTION ENUMS beside the real ones — and returned the first enum
+// whose section tree carried the path, so `Token` and `__Token__Border` (front
+// 40's `Border.Color` stub, whose Red and Gray also run 100/500/700) were
+// decided between by hash order and the expected type was never consulted. It
+// failed loudly at the call site rather than emitting the wrong CSS, and it
+// flipped when the typedef set grew. The compiler now prefers the enum the
+// expected type names, accepts the fully qualified `Token.Color.Red.500`, and
+// refuses an ambiguous path naming both candidates instead of picking one.
 
 fn colorTokenToCss(t: Token.Color, th: Theme) -> string {
     val out = case t {
@@ -3049,15 +3045,15 @@ test "a colour token still renders as one utilities rule on the bare ampersand" 
     assert r.declarations == "color:var(--color-sky-500)";
 }
 
-// red: 100, 500, 700 are DECLARED and unreachable — no spelling resolves them
-// while `Token.Border.Color.Red` carries the same leaves. See the
-// BLOCKED note above.
-test "palette — red, eight shades on `color`" {
+test "palette — red, eleven shades on `color`" {
     assert tokenDeclarations(.Color.Red.50) == "color:var(--color-red-50)";
+    assert tokenDeclarations(.Color.Red.100) == "color:var(--color-red-100)";
     assert tokenDeclarations(.Color.Red.200) == "color:var(--color-red-200)";
     assert tokenDeclarations(.Color.Red.300) == "color:var(--color-red-300)";
     assert tokenDeclarations(.Color.Red.400) == "color:var(--color-red-400)";
+    assert tokenDeclarations(.Color.Red.500) == "color:var(--color-red-500)";
     assert tokenDeclarations(.Color.Red.600) == "color:var(--color-red-600)";
+    assert tokenDeclarations(.Color.Red.700) == "color:var(--color-red-700)";
     assert tokenDeclarations(.Color.Red.800) == "color:var(--color-red-800)";
     assert tokenDeclarations(.Color.Red.900) == "color:var(--color-red-900)";
     assert tokenDeclarations(.Color.Red.950) == "color:var(--color-red-950)";
@@ -3301,15 +3297,15 @@ test "palette — slate, eleven shades on `color`" {
     assert tokenDeclarations(.Color.Slate.950) == "color:var(--color-slate-950)";
 }
 
-// gray: 100, 500, 700 are DECLARED and unreachable — no spelling resolves them
-// while `Token.Border.Color.Gray` carries the same leaves. See the
-// BLOCKED note above.
-test "palette — gray, eight shades on `color`" {
+test "palette — gray, eleven shades on `color`" {
     assert tokenDeclarations(.Color.Gray.50) == "color:var(--color-gray-50)";
+    assert tokenDeclarations(.Color.Gray.100) == "color:var(--color-gray-100)";
     assert tokenDeclarations(.Color.Gray.200) == "color:var(--color-gray-200)";
     assert tokenDeclarations(.Color.Gray.300) == "color:var(--color-gray-300)";
     assert tokenDeclarations(.Color.Gray.400) == "color:var(--color-gray-400)";
+    assert tokenDeclarations(.Color.Gray.500) == "color:var(--color-gray-500)";
     assert tokenDeclarations(.Color.Gray.600) == "color:var(--color-gray-600)";
+    assert tokenDeclarations(.Color.Gray.700) == "color:var(--color-gray-700)";
     assert tokenDeclarations(.Color.Gray.800) == "color:var(--color-gray-800)";
     assert tokenDeclarations(.Color.Gray.900) == "color:var(--color-gray-900)";
     assert tokenDeclarations(.Color.Gray.950) == "color:var(--color-gray-950)";
