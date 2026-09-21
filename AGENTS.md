@@ -434,10 +434,10 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **233/233** on
+  refuses) runs every module's in-file `test {}` blocks, **235/235** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 145 (`emilia.bp`). `emilia.bp`'s 145 are front 56's 33
-  (below) plus front 33's 81 plus front 35's 31. Front 35's 31 cover the scale
+  (`output.bp`) + 147 (`emilia.bp`). `emilia.bp`'s 147 are front 56's 33
+  (below) plus front 33's 81 plus front 35's 31 plus front 36's 2. Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
   the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
   named container and breakpoint widths read back through `themeValue`), the

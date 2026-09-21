@@ -362,6 +362,29 @@ proposal rather than a transcription, and the `--tw-space-*-reverse` names are
 upstream-internal and unverified. Both are pinned by a test, so changing them
 is a visible change.
 
+### Layout — `§ 5`
+
+`Layout` is two things at once. The **eleven display values are the section's
+own leaves**, so `.Layout.Flex` is a display value and not a flex container:
+
+```bp
+.Layout.Block        // display:block
+.Layout.InlineBlock  // display:inline-block
+.Layout.Inline       // display:inline
+.Layout.Flex         // display:flex
+.Layout.InlineFlex   // display:inline-flex
+.Layout.Grid         // display:grid
+.Layout.InlineGrid   // display:inline-grid
+.Layout.Contents     // display:contents
+.Layout.FlowRoot     // display:flow-root
+.Layout.ListItem     // display:list-item
+.Layout.Hidden       // display:none
+```
+
+`hidden` is the one row whose Tailwind name is not its CSS value: `.Layout.Hidden`
+is `display:none`. The flex and grid CONTAINER properties — direction, wrap,
+alignment, `gap` — are `Token.Flex`'s, not `Layout`'s.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

@@ -2,6 +2,19 @@
 
 ## Unreleased — v0.beta.22
 
+- **The eleven display values, and the front 36 banner in both files**
+  (1.0.10-beta front `36-emilia-layout`, step 1). `Layout` carried six of
+  `§ 5.8`'s eleven display values; `InlineFlex`, `InlineGrid`, `Contents`,
+  `FlowRoot` and `ListItem` are added as BARE SIBLINGS of the six, inside
+  `Layout` itself and not under a sub-section, which is what keeps
+  `.Layout.Flex` spelled the way every consumer spells it today. The six that
+  predate this front emit byte-identical CSS, pinned by an assertion that lists
+  them first. `// ── front 36 — layout ──` now fences the section in `tokens.bp`
+  and `layoutTokenToCss` with its sub-dispatchers in `emilia.bp`; the front's
+  tests live beside the dispatchers, not at the end of the file, for the reason
+  front 35 records — two fronts appending to the same last line cannot be
+  merged.
+
 - **`examples/emilia-card` stops pinning a compiler defect.** The commonJS
   `case`-over-a-uniquely-named-variant defect recorded further down this file
   is **fixed upstream**: such an arm now compares the `tag` string instead of

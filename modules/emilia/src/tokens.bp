@@ -58,7 +58,10 @@
 ////              string. XReverse/YReverse set the upstream `--tw-space-*-
 ////              reverse` custom property. Front 40's `divide-*` separates the
 ////              same children and must call `siblingSelector()`
-////   Layout   — Block/InlineBlock/Inline/Hidden/Flex/Grid
+////   Layout   — front 36: the `§ 5` vocabulary. The eleven display values are
+////              the section's OWN leaves (Block, InlineBlock, Inline,
+////              InlineFlex, InlineGrid, Contents, FlowRoot, ListItem, Hidden,
+////              Flex, Grid), so `.Layout.Flex` keeps its pre-36 spelling
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
@@ -529,14 +532,30 @@ pub type Token {
 
     // ── end front 35 ─────────────────────────────────────────────────────────
 
+    // ── front 36 — layout ────────────────────────────────────────────────────
+    //
+    // `Layout` is the `§ 5` vocabulary: the eleven display values as the
+    // section's OWN leaves (so `.Layout.Flex` keeps its pre-36 spelling), then
+    // one sub-section per property group. `Inset` is the only numeric family
+    // here and it is a MULTIPLIER of `--spacing`, exactly like front 35's
+    // `Pad`/`Margin` — `.Layout.Inset.T.4` and `.Pad.T.4` read the same length
+    // because both answer `spacing(4)`. `Gap` is front 37's; `Pad`, `Margin`,
+    // `Size` and `Space` are front 35's, even where they space things the same
+    // way.
     Layout {
         Block,
         InlineBlock,
         Inline,
+        InlineFlex,
+        InlineGrid,
+        Contents,
+        FlowRoot,
+        ListItem,
         Hidden,
         Flex,
         Grid,
     }
+    // ── end front 36 ─────────────────────────────────────────────────────────
 
     Flex {
         Row,

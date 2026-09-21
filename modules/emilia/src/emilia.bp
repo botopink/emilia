@@ -2207,17 +2207,65 @@ test "end to end — a stacked thread spaces its children and pulls one back up"
 
 // ── end front 35 ─────────────────────────────────────────────────────────────
 
+// ── front 36 — layout ────────────────────────────────────────────────────────
+//
+// FRONT 36 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the
+// `Layout` section of `tokens.bp` and `layoutTokenToCss` with its
+// sub-dispatchers. `Flex`/`Grid` the CONTAINER properties are front 37's —
+// `display:flex` is here only because it is a display value.
+//
+// EMILIA NEVER RESOLVES A LENGTH. `Inset` answers `spacing(n)` /
+// `spacingHalf(n)` from `spacing.bp`, the same two functions front 35's
+// `Pad`/`Margin` answer, so `.Layout.Inset.T.4` and `.Pad.T.4` carry identical
+// length text BY CONSTRUCTION and not by coincidence. A `rem` literal in this
+// block would make a project's `--spacing` override silently ineffective
+// (`contracts.md` 4a).
+//
+// `Z` is the one numeric family here that is NOT a length: `z-50` is
+// `z-index:50`, a bare integer, and it never reaches `spacing`.
 fn layoutTokenToCss(t: Token.Layout) -> string {
     val out = case t {
         Block -> "display:block";
         InlineBlock -> "display:inline-block";
         Inline -> "display:inline";
+        InlineFlex -> "display:inline-flex";
+        InlineGrid -> "display:inline-grid";
+        Contents -> "display:contents";
+        FlowRoot -> "display:flow-root";
+        ListItem -> "display:list-item";
         Hidden -> "display:none";
         Flex -> "display:flex";
         Grid -> "display:grid";
     };
     return out;
 }
+
+// ── tests · front 36 ─────────────────────────────────────────────────────────
+//
+// The front's assertions live HERE, beside the dispatchers they cover, for the
+// reason front 35 records: front 33 appends its block to the end of the file,
+// and two fronts appending to the same line cannot be merged.
+
+test "display — the eleven `§ 5.8` values, the six that predate front 36 first" {
+    assert tokenDeclarations(.Layout.Block) == "display:block";
+    assert tokenDeclarations(.Layout.InlineBlock) == "display:inline-block";
+    assert tokenDeclarations(.Layout.Inline) == "display:inline";
+    assert tokenDeclarations(.Layout.Hidden) == "display:none";
+    assert tokenDeclarations(.Layout.Flex) == "display:flex";
+    assert tokenDeclarations(.Layout.Grid) == "display:grid";
+    assert tokenDeclarations(.Layout.InlineFlex) == "display:inline-flex";
+    assert tokenDeclarations(.Layout.InlineGrid) == "display:inline-grid";
+    assert tokenDeclarations(.Layout.Contents) == "display:contents";
+    assert tokenDeclarations(.Layout.FlowRoot) == "display:flow-root";
+    assert tokenDeclarations(.Layout.ListItem) == "display:list-item";
+}
+
+test "display — `hidden` is `display:none`, the one row whose name is not its value" {
+    assert tokenDeclarations(.Layout.Hidden) == "display:none";
+    assert tokenDeclarations(.Layout.Hidden).indexOf("hidden") == -1;
+}
+
+// ── end front 36 ─────────────────────────────────────────────────────────────
 
 fn flexTokenToCss(t: Token.Flex) -> string {
     val out = case t {
