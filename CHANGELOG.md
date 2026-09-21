@@ -138,6 +138,128 @@
   would notwithstanding. 11 tests; 225 → 236 in `modules/emilia`, green on
   commonJS and on erlang.
 
+- **`examples/emilia-grid/` — the worked example** (1.0.10-beta front
+  `37-emilia-grid`). The new workspace member composes the two shapes the gap
+  was blocking: a toolbar that is a row from `sm` up and a stack below it, whose
+  heading takes the remaining space (`flex:1 1 0%` beside `flex-basis:0`) and
+  whose action neither shrinks nor leaves the end of the order; and a
+  twelve-column dashboard that reflows one → six → twelve across `md` and `lg`,
+  with a chart panel spanning eight of the twelve and a sidebar whose rows size
+  to content. Neither was expressible before — a flex item could not grow and
+  grid had no token at all. Its last two tests are the front's argument: halving
+  `--spacing` gives the same class with the same declarations, and no token in
+  the example resolves a length. The two compositions sit outside that walk ON
+  PURPOSE and the file says why: a BREAKPOINT QUERY reads `--breakpoint-md`,
+  which IS a `rem`, and that at-rule is front 34's and front 54's, not a
+  declaration this front writes. 13 in-file tests, green on commonJS and on
+  erlang; it builds and runs.
+  **The spec named two flat files, `examples/flex-example.bp` and
+  `examples/grid-example.bp`.** emilia is a workspace since decision 75 and an
+  example is a MEMBER with its own manifest, so the two are one member,
+  `examples/emilia-grid/`, covering both — the same resolution front 36 made.
+- **The dispatchers, the walk, and the SEVENTH `rem` ladder** (1.0.10-beta front
+  `37-emilia-grid`, steps 4–5). `Gap` is a TOP-LEVEL section — `gap`,
+  `column-gap` and `row-gap` separate the items of a grid exactly as they
+  separate the items of a flex row, so a sub-section of `Flex` was the wrong
+  home for it. `All`, `X` and `Y` carry front 35's full scale and answer front
+  54's `spacing(n)` / `spacingHalf(n)`.
+  **`flexGapScale` is deleted.** It answered `__1 -> "0.25rem"`, `__4 ->
+  "1rem"` — the last of the seven hand-written `rem` ladders front 54 found in
+  `emilia.bp`, and the one front 35 could not take because `Gap` is this
+  front's section under the milestone's ownership rule. `.Flex.Gap.{1,2,4,8}`
+  still compiles and now emits what `.Gap.All.N` emits; the two spellings are
+  compared to EACH OTHER rather than each to an expected string, so they cannot
+  drift again. **`spacing.bp`'s docblock still claimed all seven for front 35**
+  — front 35's README says six and lists `Gap` under *Does not touch* — and the
+  docblock was the drift; it is corrected here. **No literal `rem` ladder is
+  left in `emilia.bp`.**
+  `flexTokenToCss`, `gridTokenToCss` and `gapTokenToCss` all take `th: Theme`,
+  all are `val out = case …; return out;` with arrow arms only, and all are
+  exhaustive with no `_`. Two arms joined the shared `case` in front-number
+  order, after `Flex` and before `Border`.
+  **THE FRONT'S REGRESSION.** A walk over all **356** leaves — 126 `Flex`, 125
+  `Grid`, 105 `Gap` — asserts no declaration carries a `rem`, that every one
+  carries a `:`, and that none carries a Tailwind class fragment (`gap-1`,
+  `basis-`, `order-`, `flex-1`, `grid-cols-`, `col-span-`, `auto-cols-`,
+  `grid-flow-`, `place-content-`, `items-start`). **The control**:
+  `.Border.Rounded.Lg` is asserted to DO carry a `rem`, and a deliberate
+  `0.25rem` planted in one `gapScaleAll` arm was confirmed to fail the walk
+  before being taken out. A third test compares `.Gap.All.4`, `.Gap.X.12`,
+  `.Flex.Basis.8` and `.Gap.All.Half.3` to the matching `Pad` leaves
+  value-for-value rather than to literals. +7 in-file tests (245 → 252; the
+  module is 340).
+- **`Grid` — the section that did not exist** (1.0.10-beta front
+  `37-emilia-grid`, step 3). `.Layout.Grid` emitted `display:grid` and there
+  was nothing to put in the box: no `grid-template-columns`, no span, no start
+  or end, no auto-flow, no implicit tracks. `Grid.Cols`, `Grid.Rows`,
+  `Grid.Col`, `Grid.Row`, `Grid.Flow`, `Grid.AutoCols` and `Grid.AutoRows`
+  close `§ 6.8`–`§ 6.14` — 125 leaves, none of them a length.
+  **A template is a function of the leaf, not a lookup.** `gridRepeat(n)`
+  builds `repeat(N, minmax(0, 1fr))` from the numeral, so adding a column count
+  is one arm and not two, and the text is spelled in exactly one place; the
+  `minmax(0, 1fr)` inside it is `gridFr()`, the SAME string `auto-cols-fr` and
+  `auto-rows-fr` read, so the two cannot drift. A test compares the emitted
+  values to the two functions rather than to literals.
+  **`Start` and `End` run to 13** because a twelve-column grid has thirteen
+  lines; `Cols`, `Rows` and `Span` run to 12. A span is the doubled
+  `span N / span N` and `col-span-full` is the line-based `1 / -1` instead —
+  two shapes from one sub-section.
+  Two spellings that are easy to get wrong, each pinned: `grid-flow-col` is
+  `grid-auto-flow:column` — the UTILITY abbreviates and the CSS value does not
+  — and `grid-flow-row-dense` is `row dense`, one space and not a hyphen.
+  **Reference gap, recorded rather than hidden:** `§ 6.8` prints only 1–6 and
+  12, `§ 6.9` only `span-1`/`span-2`/`span-full`/`start-1`/`end-1`; the extents
+  1–12 and 1–13 are declared by interpolation and must be confirmed against
+  upstream before merge. +7 in-file tests (238 → 245).
+- **The alignment family — seven property groups that had no token at all**
+  (1.0.10-beta front `37-emilia-grid`, step 2). `§ 6.16`–`§ 6.24` is nine
+  property groups and emilia carried two of them, each a third short:
+  `Flex.Items` had four of the five `align-items` values and `Flex.Justify`
+  five of the eight `justify-content` values. Both are complete now
+  (`Baseline`; `Normal`, `Evenly`, `Stretch`), and `Flex.AlignSelf`,
+  `Flex.Content`, `Flex.JustifyItems`, `Flex.JustifySelf`,
+  `Flex.PlaceContent`, `Flex.PlaceItems` and `Flex.PlaceSelf` close the seven
+  that were missing entirely.
+  **The whole family stays under `Flex` although it applies to grid too.**
+  Moving `Items` and `Justify` to a neutral section would rename two tokens
+  that compile today, which the milestone forbids; a grid container writes
+  `.Flex.Justify.Center` and gets `justify-content:center`, which is the
+  correct CSS for a grid. Only the spelling reads as flex-only.
+  **The `flex-start`-versus-`start` asymmetry is asserted, not normalised.**
+  `justify-content`, `align-items`, `align-self` and `align-content` take
+  `flex-start`/`flex-end`; `justify-items`, `justify-self` and `place-*` take
+  `start`/`end`. One test pins all nine groups side by side and asserts
+  `flex-start` does NOT survive into the four that must not carry it.
+  **`Self` IS A LANGUAGE KEYWORD and the spec's `.Flex.Self` /
+  `.Flex.Place.Self` do not parse** — `unexpected \`Self\`` at the declaration
+  and at every arm. Unlike a section head shadowing a top-level variant, this
+  fails loudly at the right line. `align-self` is `.Flex.AlignSelf` and the
+  `place-*` trio is flattened with it — `.Flex.PlaceContent` /
+  `.Flex.PlaceItems` / `.Flex.PlaceSelf` — the way front 36 flattened `Break`
+  and the way the 1.0.8 draft spelled them. Not one emitted byte differs.
+  Recorded in `AGENTS.md` § Maintainer rules. +6 in-file tests (232 → 238).
+- **A flex item can finally grow, shrink, reorder and set a basis**
+  (1.0.10-beta front `37-emilia-grid`, step 1). Before this, `Flex` was seven
+  paths — four direction/wrap leaves, `Items`, `Justify` and a four-value
+  `Gap` — so emilia could say `display:flex` and then almost nothing: no
+  `flex-1`, no `grow`, no `shrink`, no `basis`, no `order`, and not one of the
+  three REVERSE rows of `§ 6.2`/`§ 6.3`. `Flex.Value`, `Flex.Grow`,
+  `Flex.Shrink`, `Flex.Basis` and `Flex.Order` close `§ 6.1` and
+  `§ 6.4`–`§ 6.7`, and `RowReverse`/`ColReverse`/`WrapReverse` join the four
+  leaves that compiled before, which emit exactly what they emitted.
+  **The shorthand's sub-section is `Value`, not `Flex`** — a section cannot
+  carry a sub-section of its own name — and `flex-none` is the one row whose
+  value is the KEYWORD `none` and not `0 0 auto`, asserted both ways.
+  `Basis` is the only length in the step and it is front 35's scale answering
+  front 54's `spacing(n)`/`spacingHalf(n)`, so `.Flex.Basis.4` and `.Pad.All.4`
+  are the same length by construction; its fractions are compared to
+  `.Size.W.Frac.*` rather than to literals, because `basis-1/3` and `w-1/3` are
+  one fraction and must not drift into two. `Grow`, `Shrink` and `Order` are
+  BARE NUMBERS and reach `spacing` never — `order-first` is the sentinel
+  `-9999`, `order-last` `9999`, and `order-none` is `0`, with `order:none`
+  asserted absent. +7 in-file tests (225 → 232 in `emilia.bp`), green on
+  commonJS and on erlang.
+
 - **`examples/emilia-layout/` — the worked example** (1.0.10-beta front
   `36-emilia-layout`). The new workspace member composes what the front
   unblocked: a media card that CLIPS its overflow, isolates a stacking context

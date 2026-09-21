@@ -10,9 +10,14 @@
 ////
 //// This module is the whole spacing ladder. Fronts 35 and after call it
 //// instead of writing a `case` of `rem` literals; `emilia.bp`'s seven
-//// hand-written ladders — which have already drifted apart, one of them
+//// hand-written ladders — which had already drifted apart, one of them
 //// emitting `m-0.25` (a class name, not a CSS value) under a `margin-x:`
-//// property that does not exist — are front 35's to delete.
+//// property that does not exist — were SIX front 35's and ONE front 37's.
+//// Front 35 deleted `padScaleX/Y/All` and `marginScaleX/Y/All`; the seventh,
+//// `flexGapScale`, was `Flex.Gap`'s and `Gap` is front 37's section under this
+//// milestone's ownership rule, so front 35 said so rather than reaching across
+//// the boundary. Front 37 deleted it with the rest of `§ 6`. ALL SEVEN ARE
+//// GONE and no literal `rem` ladder is left in `emilia.bp`.
 ////
 //// `spacing` takes an `i32` rather than an `f64` because the ladder's
 //// fractional steps are a closed set (0.5, 1.5, 2.5, 3.5) that `spacingHalf`

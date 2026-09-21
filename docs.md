@@ -638,6 +638,188 @@ byte of any `Layout` rule.
 overflow, isolates a stacking context and crops a 16:9 image; and a sticky
 header over a one-axis scroll panel with a badge on a negative inset.
 
+### Flex — `§ 6`
+
+`Flex` is the flex CONTAINER and the flex ITEM. `display:flex` is not here — it
+is a display value and lives on `Layout` (`.Layout.Flex`); this section is
+everything a box that already declares it can say next.
+
+#### Direction and wrap
+
+```bp
+.Flex.Row          // flex-direction:row
+.Flex.RowReverse   // flex-direction:row-reverse
+.Flex.Col          // flex-direction:column
+.Flex.ColReverse   // flex-direction:column-reverse
+.Flex.Wrap         // flex-wrap:wrap
+.Flex.WrapReverse  // flex-wrap:wrap-reverse
+.Flex.NoWrap       // flex-wrap:nowrap
+```
+
+#### The shorthand, grow, shrink, basis and order
+
+```bp
+.Flex.Value.One       // flex:1 1 0%
+.Flex.Value.Auto      // flex:1 1 auto
+.Flex.Value.Initial   // flex:0 1 auto
+.Flex.Value.None      // flex:none      ← the keyword, not `0 0 auto`
+
+.Flex.Grow.1          // flex-grow:1
+.Flex.Grow.0          // flex-grow:0
+.Flex.Shrink.1        // flex-shrink:1
+.Flex.Shrink.0        // flex-shrink:0
+
+.Flex.Basis.0         // flex-basis:0
+.Flex.Basis.4         // flex-basis:calc(var(--spacing) * 4)
+.Flex.Basis.Half.1    // flex-basis:calc(var(--spacing) * 1.5)
+.Flex.Basis.Px        // flex-basis:1px
+.Flex.Basis.Auto      // flex-basis:auto
+.Flex.Basis.Full      // flex-basis:100%
+.Flex.Basis.Frac.Third // flex-basis:33.333333%
+
+.Flex.Order.1         // order:1
+.Flex.Order.12        // order:12
+.Flex.Order.First     // order:-9999
+.Flex.Order.Last      // order:9999
+.Flex.Order.None      // order:0        ← `order:none` is not a value
+```
+
+The sub-section is `Value` and not `Flex`, because a section cannot carry a
+sub-section of its own name.
+
+`Basis` is the only family here that is a **length**, and it is front 35's
+scale answering front 54's `spacing(n)` / `spacingHalf(n)` — `.Flex.Basis.4`
+and `.Pad.All.4` carry the same length text because they call the same
+function. Its fractions are front 35's percentages to the last decimal, and a
+test compares `.Flex.Basis.Frac.Third` to `.Size.W.Frac.Third` rather than to a
+literal.
+
+`Grow`, `Shrink` and `Order` are **bare numbers**: `order-1` is `order:1`, a
+count and not a length, so nothing in them reaches the theme. `order-first`
+and `order-last` are the sentinels `-9999` and `9999`, and `order-none` is `0`.
+
+#### Alignment — nine property groups, all under `Flex`
+
+```bp
+.Flex.Justify.Normal        // justify-content:normal
+.Flex.Justify.Start         // justify-content:flex-start
+.Flex.Justify.Between       // justify-content:space-between
+.Flex.Justify.Evenly        // justify-content:space-evenly
+.Flex.Justify.Stretch       // justify-content:stretch
+
+.Flex.Items.Center          // align-items:center
+.Flex.Items.Baseline        // align-items:baseline
+
+.Flex.AlignSelf.Start       // align-self:flex-start
+.Flex.Content.Between       // align-content:space-between
+
+.Flex.JustifyItems.Start    // justify-items:start     ← not `flex-start`
+.Flex.JustifySelf.Center    // justify-self:center
+
+.Flex.PlaceContent.Between  // place-content:space-between
+.Flex.PlaceItems.Center     // place-items:center
+.Flex.PlaceSelf.Stretch     // place-self:stretch
+```
+
+**Alignment applies to grid as much as to flex, and it lives under `Flex`
+anyway.** `align-items` and `justify-content` were spelled that way before this
+front, and renaming a token that compiles today is what the milestone forbids.
+A grid container writes `.Flex.Justify.Center` and gets
+`justify-content:center`, which is the correct CSS for a grid; only the token's
+spelling reads as though it were flex-only.
+
+**Upstream is not internally consistent and emilia copies it rather than
+smoothing it.** `justify-content`, `align-items`, `align-self` and
+`align-content` take `flex-start` / `flex-end`; `justify-items`,
+`justify-self` and the whole `place-*` family take `start` / `end`. One test is
+dedicated to the asymmetry, asserting both spellings come out of the right
+tokens.
+
+`AlignSelf` and the flat `PlaceContent` / `PlaceItems` / `PlaceSelf`, rather
+than `Self` and a nested `Place { … }`: **`Self` is a language keyword**, so a
+section cannot be named it. The family is flattened the way `Break` is, and no
+emitted byte differs.
+
+### Grid — `§ 6.8`–`§ 6.14`
+
+`display:grid` is `Layout`'s (`.Layout.Grid`) and used to be all emilia had:
+there was no template, no span, no start, no end, no flow and no implicit
+track, so nothing could be put inside the box it declares.
+
+```bp
+.Grid.Cols.12        // grid-template-columns:repeat(12, minmax(0, 1fr))
+.Grid.Cols.None      // grid-template-columns:none
+.Grid.Cols.Subgrid   // grid-template-columns:subgrid
+.Grid.Rows.3         // grid-template-rows:repeat(3, minmax(0, 1fr))
+
+.Grid.Col.Auto       // grid-column:auto
+.Grid.Col.Span.2     // grid-column:span 2 / span 2
+.Grid.Col.Span.Full  // grid-column:1 / -1
+.Grid.Col.Start.13   // grid-column-start:13
+.Grid.Col.End.Auto   // grid-column-end:auto
+.Grid.Row.Span.2     // grid-row:span 2 / span 2
+.Grid.Row.End.3      // grid-row-end:3
+
+.Grid.Flow.Col       // grid-auto-flow:column   ← `col` abbreviates, CSS does not
+.Grid.Flow.RowDense  // grid-auto-flow:row dense   ← one space, not a hyphen
+.Grid.AutoCols.Min   // grid-auto-columns:min-content
+.Grid.AutoRows.Fr    // grid-auto-rows:minmax(0, 1fr)
+```
+
+A template is a **function of the leaf**, not a lookup: `gridRepeat(n)` builds
+`repeat(N, minmax(0, 1fr))` — one space after each comma — and it is the only
+place that text is spelled. The `minmax(0, 1fr)` inside it is `gridFr()`, the
+same string the implicit `fr` tracks read, so the two cannot drift.
+
+`Cols`, `Rows` and `Span` run **1 … 12**; `Start` and `End` run **1 … 13**,
+because a twelve-column grid has thirteen lines.
+
+**Nothing in `Grid` is a length.** A column count, a span and a line number are
+integers, so no leaf reaches `spacing(n)` and none spells a `rem`.
+
+**Not declared:** every arbitrary-value form (`grid-cols-[200px_1fr]`,
+`col-start-[7]`), which belongs to the escape-hatch front.
+
+### Gap — `§ 6.15`
+
+```bp
+.Gap.All.0        // gap:0
+.Gap.All.4        // gap:calc(var(--spacing) * 4)
+.Gap.All.Half.1   // gap:calc(var(--spacing) * 1.5)
+.Gap.All.Px       // gap:1px
+.Gap.X.2          // column-gap:calc(var(--spacing) * 2)
+.Gap.Y.6          // row-gap:calc(var(--spacing) * 6)
+```
+
+`Gap` is a **top-level section**, not a sub-section of `Flex`, because `gap`,
+`column-gap` and `row-gap` separate the items of a grid exactly as they separate
+the items of a flex row. It carries front 35's full scale — the thirty
+multipliers `0 … 96`, the `Px` step and `Half { 0, 1, 2, 3 }` — on each of
+`All`, `X` and `Y`.
+
+`.Gap.All.4` and `.Pad.All.4` carry the same length because both answer
+`spacing(4)`. Overriding `--spacing` moves both and rewrites neither rule.
+
+The pre-front-37 `.Flex.Gap.{1,2,4,8}` paths **still compile and still emit
+`gap:`** — the same declaration by a narrower name. They used to answer a
+hand-written `rem` ladder (`gap-4` was `gap:1rem`, the last of the seven front
+54 found); they answer `spacing(n)` now, and a test compares the two spellings
+to **each other** so they cannot drift apart again.
+
+#### Nothing in `Flex`, `Grid` or `Gap` resolves a length
+
+The three sections declare **356 leaves** (126 + 125 + 105), and a test walks
+every one of them asserting the emitted declaration carries no `rem`, carries a
+`:`, and carries no Tailwind class fragment. Only `Flex.Basis` and `Gap` are
+lengths and both go through `spacing(n)` / `spacingHalf(n)`; a grow factor, an
+order, a column count, a span and a line number are bare integers. The same
+test asserts `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
+discriminate rather than to pass vacuously.
+
+`examples/emilia-grid/` is the worked example: a toolbar whose heading takes the
+remaining space and which stacks under `sm`, and a twelve-column dashboard that
+reflows one → six → twelve across `md` and `lg`.
+
 ### Modifiers — the variant table
 
 A modifier is the only way a token reaches a state, a breakpoint or a
