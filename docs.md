@@ -292,6 +292,20 @@ The full palette is front 33's data, handed over as
 `paletteEntries() -> ThemeEntry[]`; a project that wants it writes
 `extendTheme(defaultTheme(), paletteEntries())`.
 
+### A theme is a module
+
+Upstream shares a theme between projects by importing a CSS file. In botopink a
+theme is a **function in a module**, so sharing one is an ordinary package
+dependency: a package exports `brandTheme() -> Theme` or a bare
+`entries() -> ThemeEntry[]`, and the consumer composes it with `extendTheme`.
+[`examples/emilia-theme/`](examples/emilia-theme/) is the worked example.
+
+```bp
+val composed = extendTheme(defaultTheme(), vendorEntries());
+assert themeValue(composed, "--radius-pill") == "9999px";   // the vendor's
+assert themeValue(composed, "--radius-lg") == "0.5rem";     // emilia's
+```
+
 ## What's coming (v0.beta.21+)
 
 The spec authors a richer surface that v0 does not yet ship:

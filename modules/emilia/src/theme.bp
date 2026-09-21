@@ -734,3 +734,17 @@ test "darkMode — switching the strategy changes nothing else about the theme" 
     assert keyframeCss(byClass).length == keyframeCss(base).length;
     assert byClass.entries.length == base.entries.length;
 }
+
+test "a theme is a module — a second package's entries compose with the default" {
+    val vendor: ThemeEntry[] = [
+        ThemeEntry(name: "--radius-pill", value: "9999px"),
+        ThemeEntry(name: "--shadow-card", value: "0 1px 3px 0 rgb(0 0 0 / 0.1)"),
+    ];
+    val composed = extendTheme(defaultTheme(), vendor);
+    assert themeValue(composed, "--radius-pill") == "9999px";
+    assert themeValue(composed, "--shadow-card") == "0 1px 3px 0 rgb(0 0 0 / 0.1)";
+    assert themeValue(composed, "--radius-lg") == "0.5rem";
+    assert themeValue(composed, "--spacing") == "0.25rem";
+    assert themeValue(composed, "--animate-spin") == "spin 1s linear infinite";
+    assert composed.entries.length == defaultTheme().entries.length + 2;
+}

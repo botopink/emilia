@@ -65,6 +65,20 @@
   and the four keyframes blocks are **byte-identical to the 70 expected lines** of the
   milestone's own `05-emilia/test-snap.md`. Measured: 6/6 + 36/36 + 17/17 on both targets.
 
+- **A theme is a module** (front `54-emilia-theme`, step 7). Upstream shares a theme
+  between projects by importing a CSS file; in botopink a theme is a function in a module,
+  so sharing it is an ordinary package dependency. New workspace member
+  `examples/emilia-theme/` (application, `emilia` via `{ "workspace": true }` and nothing
+  else) defines a brand theme in one function, clears the stock colour namespace, composes
+  a second package's entries over the default, reads values back through `themeValue`, and
+  styles a card with `spacing(4)`. It is the proof that the front 54 surface crosses a
+  package boundary through `from "emilia"`. 6/6 on commonJS and on erlang; it builds and
+  runs. The flushed document does not yet carry the theme — that is front 56's
+  `withTheme`/`flushWith`. `theme.bp` carries the same composition assertion inline, so
+  the front's own suite covers it without the example. Measured: 6/6 (spacing.bp) + 37/37
+  (theme.bp) + 17/17 (emilia.bp) in `modules/emilia/`, 6/6 in `examples/emilia-theme/`,
+  both targets.
+
 - **The repository is a workspace** (`02-packaging` step 2; decisions 75 and 76 of
   1.0.10-beta). `botopink.json` at the root is `{ name, version, description, targets
   [commonJS, erlang], workspaces ["modules/*", "examples/*"] }` — no `src`, `files`,

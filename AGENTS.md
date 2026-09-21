@@ -101,7 +101,7 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `botopink.json` declares members and is never a package — no `src`, `files`,
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
-command inside one of its members: emilia, emilia-card`. Every `modules/*/`
+command inside one of its members: emilia, emilia-card, emilia-theme`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -150,6 +150,15 @@ emilia/
 │                            `import { Token } from "tokens";` — naming the
 │                            sibling module is **required**, see "Gotchas"
 ├── examples/
+│   ├── emilia-theme/  ← member `emilia-theme` (an application: entry main.bp,
+│   │                    targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } and NOTHING else — it is the
+│   │                    front 54 showcase and the proof that the theme
+│   │                    surface crosses a package boundary through
+│   │                    `from "emilia"`. 6 in-file `test {}`; the flushed
+│   │                    document does NOT yet carry the theme — wrapping
+│   │                    `themeCss`/`keyframeCss` in cascade layers is
+│   │                    front 56's `withTheme`/`flushWith`)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
 │                        target commonJS, `emilia` via { "workspace": true },
 │                        `jhonstart` still by { git, branch } until jhonstart
@@ -267,6 +276,14 @@ to the commonJS row and runs once.
   inside **jhonstart** (never inside emilia) is gone, and the example's line was
   deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
   a listed example that builds fails the gate just as a red one does.
+
+- `examples/emilia-theme/` is the member `emilia-theme` and carries 6 in-file tests over
+  the front 54 surface, imported across a package boundary (`from "emilia"`, the
+  `{ "workspace": true }` form). It is green on commonJS and on erlang, builds, and runs
+  (`botopink run` prints the resolved brand value, the `var(…)` reference form,
+  `padding:calc(var(--spacing) * 4)`, the class name, the dark at-rule + selector, and
+  the `<style>` block). The flushed document does **not** yet carry the theme: wrapping
+  `themeCss`/`keyframeCss` in cascade layers is front 56's `withTheme`/`flushWith`.
 
 ## Spec / phase status
 
