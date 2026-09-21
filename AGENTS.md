@@ -581,8 +581,9 @@ to the commonJS row and runs once.
   (`output.bp`) + 260 (`emilia.bp`). The 313 before front 39 were 311 on
   commonJS — `.Layout.Block` was dead beside `output.bp`'s record of the same
   name, and the pre-commit gate (which runs the manifest target) was red; see
-  § Maintainer rules. `emilia.bp`'s 225 are front 56's 33
-  (below) plus front 33's 81 plus front 35's 31 plus front 34's 50 — two per
+  § Maintainer rules. `emilia.bp`'s 260 are front 56's 33
+  (below) plus front 33's 81 plus front 35's 31 plus front 39's 35 plus front
+  34's 50 — two per
   variant family (the `Variant` halves and the CSS the row renders), the three
   dark-mode strategies a cell each, the ranges, a three-deep chain, the indexed
   rows, `Important`, the empty inner list, six walks over the whole table, and
@@ -592,7 +593,25 @@ to the commonJS row and runs once.
   carries a Tailwind class fragment (`inset-x-`, `top-`, `z-50`,
   `overflow-auto`, `float-start`, `box-border`); the same test asserts
   `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
-  discriminate rather than to pass vacuously. Front 35's 31 cover the scale
+  discriminate rather than to pass vacuously. Front 39's 35 cover the seven
+  keyword sub-sections of `Bg` (with the two-word positions asserted
+  individually and again as a space count, and `bg-clip-text` on its own), the
+  eight gradient directions, the three stops and their five named colours, the
+  palette agreement between `.Gradient.From.Indigo.500` and
+  `.Bg.Color.Indigo.500`, the `From` + `Via` + `Stop` composition and the
+  reversal that shows token order is load-bearing, the legacy `Bg` leaves
+  pinned byte-identical, and three end-to-end documents. Six of the 35 are the
+  front's REGRESSION: a walk over all **910** leaves — the 29 keyword leaves,
+  the eight directions and the 873 stops — asserting every one declares
+  something non-empty carrying a `:`, that none resolves a colour or a length
+  (`#`, `oklch(`, `rgb(`, `rem`) and that none emits a Tailwind class fragment.
+  Each walk has a CONTROL beside it: the predicates take a declaration STRING
+  rather than a token, so `.Bg.White` and `.Border.Rounded.Lg` are shown to
+  fail the literal one and four hand-built strings the fragment one, and the
+  well-formedness walk is re-run over the SAME list under a predicate known to
+  be false for part of it. The well-formedness walk is not boilerplate — a
+  shadowed arm falls out of its `case` and declares the EMPTY STRING, which is
+  how `.Layout.Block` was found dead. Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
   the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
   named container and breakpoint widths read back through `themeValue`), the
