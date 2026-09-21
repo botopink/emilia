@@ -528,29 +528,37 @@ to the commonJS row and runs once.
   the top-level variant list before adding it. Reported to botopink-lang: a
   name that cannot be constructed should not capture a constructor that can.
 
-- **A RECORD TYPE name shadows an enum LEAF of the same name, and the `case`
-  arm over it goes DEAD.** `output.bp` declares `pub type Block(header, body)`
-  and `tokens.bp` declares the leaf `Layout.Block`; the arm `Block ->
-  "display:block"` in `layoutTokenToCss` then matched nothing, the `case` fell
-  through, and `.Layout.Block` answered the EMPTY STRING on commonJS while
-  erlang stayed right — two of front 36's tests red on one target only, one of
-  them the 776-leaf walk, which is what caught it. The bare name in a pattern
-  resolves to the record's CONSTRUCTOR: `val b: Token.Layout = .Block;` reds
-  with `type mismatch: expected __Token__Layout, got function`, which is the
-  same resolution seen from the value side. **The fix is the zero-arity
-  constructor pattern — `Block() -> …`** — which is one character class, changes
-  no emitted CSS, and keeps the public path `.Layout.Block` as authored;
-  renaming either the record or the leaf would have moved a published surface.
-  A qualified pattern does NOT help: `Token.Layout.Block ->`, `Layout.Block ->`
-  and the leading-dot `.Block ->` all still fall through.
-  This is the SECTION-HEAD rule above one level down, and it needs its own
-  audit: a new leaf must be checked against the record type names of the whole
-  module — today `Rule`, `Block`, `Sheet`, `Variant`, `Options`, `Placed`,
-  `Drained` (`output.bp`), `ThemeEntry`, `DarkMode`, `Theme`, `Ns` (`theme.bp`)
-  and `Token` itself — as well as against the top-level variant list. Confirmed
-  causally rather than by inspection: a throwaway `type Grid(a: string)` beside
-  the existing leaf `Layout.Grid` reproduced it on a leaf that was green, and
-  the same probe named `ProbeGrid` did not.
+- **FIXED — a record type name used to shadow an enum LEAF of the same name,
+  and the `case` arm over it went DEAD.** `output.bp` declares `pub type
+  Block(header, body)` and `tokens.bp` the leaf `Layout.Block`; on a compiler
+  before botopink-lang `ef2604af` the arm `Block -> "display:block"` in
+  `layoutTokenToCss` matched nothing, the `case` fell through, and
+  `.Layout.Block` answered the EMPTY STRING on commonJS while erlang stayed
+  right. **It is fixed and needs no workaround** — `modules/emilia` is 313/313
+  on `e22cf80` unmodified, with the plain `Block ->` pattern, on both targets.
+  Front 39 briefly carried a `Block() ->` workaround measured against a STALE
+  BINARY and reverted it once the compiler was rebuilt; **do not reintroduce
+  it**, and do not audit a new leaf against the module's record type names —
+  that rule was written from the same stale measurement and is not true.
+  Kept because the failure MODE is the thing worth recognising, not the
+  instance: a shadowed pattern does not red, it falls out of the `case` and the
+  token declares nothing, on one target only. The section-head rule above is
+  the form of it that is still live, and front 39's 910-leaf walk asserts every
+  leaf declares something non-empty for exactly this reason.
+  Measured on `ef2604af`, not inferred: a throwaway `type Grid(a: string)`
+  beside the existing leaf `Layout.Grid` now leaves `.Layout.Grid` green, where
+  on the stale binary the same probe reddened it.
+
+- **`val x: Token.<Section> = .Leaf;` does not resolve — for ANY leaf — and a
+  record sharing the name only changes the error TEXT.** The single-segment
+  leading-dot form in a section-typed context reds `unbound variable 'Grid'`
+  and `unbound variable 'Hidden'`; the same line written `.Block`, where
+  `output.bp` has a record of that name, reds `type mismatch: expected
+  __Token__Layout, got function` instead, because the record's constructor is
+  the thing in scope. The differing message is misleading and cost this library
+  a wrong diagnosis once: it reads like a shadow and is a general limitation.
+  A section leaf is written from the enum root — `.Layout.Block` as a `Token`,
+  never `.Block` as a `Token.Layout`.
 
 - **A consumer must import a type's TRANSITIVE types too, and the error points
   at the wrong line.** `import { Theme } from "emilia";` alone reds `unknown
@@ -578,10 +586,7 @@ to the commonJS row and runs once.
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
   refuses) runs every module's in-file `test {}` blocks, **348/348** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 260 (`emilia.bp`). The 313 before front 39 were 311 on
-  commonJS — `.Layout.Block` was dead beside `output.bp`'s record of the same
-  name, and the pre-commit gate (which runs the manifest target) was red; see
-  § Maintainer rules. `emilia.bp`'s 260 are front 56's 33
+  (`output.bp`) + 260 (`emilia.bp`), up from **313** before front 39. `emilia.bp`'s 260 are front 56's 33
   (below) plus front 33's 81 plus front 35's 31 plus front 39's 35 plus front
   34's 50 — two per
   variant family (the `Variant` halves and the CSS the row renders), the three
@@ -610,8 +615,8 @@ to the commonJS row and runs once.
   fail the literal one and four hand-built strings the fragment one, and the
   well-formedness walk is re-run over the SAME list under a predicate known to
   be false for part of it. The well-formedness walk is not boilerplate — a
-  shadowed arm falls out of its `case` and declares the EMPTY STRING, which is
-  how `.Layout.Block` was found dead. Front 35's 31 cover the scale
+  shadowed arm falls out of its `case` and declares the EMPTY STRING rather
+  than redding, which is the shape front 36's `Break` section was bitten by. Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
   the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
   named container and breakpoint widths read back through `themeValue`), the

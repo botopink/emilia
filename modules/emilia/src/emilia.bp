@@ -3515,7 +3515,7 @@ test "end to end — a stacked thread spaces its children and pulls one back up"
 // `z-index:50`, a bare integer, and it never reaches `spacing`.
 fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
     val out = case t {
-        Block() -> "display:block";
+        Block -> "display:block";
         InlineBlock -> "display:inline-block";
         Inline -> "display:inline";
         InlineFlex -> "display:inline-flex";
@@ -8963,11 +8963,13 @@ test "end to end — a hero photograph covers its box and is anchored to the top
 // to violate it. A walk that cannot be made to fail proves nothing, which is
 // the lesson fronts 35 and 36 wrote down; the controls under each walk are it.
 //
-// `bgIsWellFormed` is not boilerplate: an arm whose pattern is shadowed does
+// `bgIsWellFormed` is not boilerplate: an arm whose pattern is SHADOWED does
 // not red, it falls out of the `case` and the token declares the EMPTY STRING.
-// That is how `.Layout.Block` was found dead beside `output.bp`'s record of the
-// same name — on commonJS only, with erlang green. 910 leaves through this
-// predicate is this front's guard against declaring the same thing silently.
+// Front 36 was bitten by the live form of that — a section head named like a
+// top-level payload variant (`Layout.Break { After, Before }` beside front 34's
+// `After`/`Before`), which broke the OTHER front's payload projection and
+// showed up nowhere near the section that caused it. 910 leaves through this
+// predicate is this front's guard against declaring nothing silently.
 
 fn bgIsWellFormed(decl: string) -> bool {
     return decl.length > 0 && decl.indexOf(":") != -1;

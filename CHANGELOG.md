@@ -2,6 +2,28 @@
 
 ## Unreleased — v0.beta.22
 
+- **Two `AGENTS.md` rules corrected against a rebuilt compiler** (1.0.10-beta
+  front `39-emilia-backgrounds`, follow-up). Front 39 measured its baseline
+  against a binary built BEFORE botopink-lang's shared-name `case` fix and
+  concluded that a record type name shadows an enum leaf of the same name,
+  killing the arm: `.Layout.Block` answered the empty string on commonJS beside
+  `output.bp`'s record `Block`. On `ef2604af` that is **fixed** — emilia's
+  `feat` `e22cf80`, unmodified and with the plain `Block ->` pattern, is
+  **313/313** on commonJS and on erlang. The `Block() ->` workaround the front
+  had added is REVERTED, and the leaf-versus-record-name audit it came with is
+  withdrawn: a workaround for a fixed defect is worse than none, because it
+  teaches the next front a shape it does not need. The rule is kept only as
+  FIXED, for the failure MODE — a shadowed pattern does not red, it falls out
+  of the `case` and the token declares nothing, on one target only — which the
+  section-head rule beside it still exhibits and front 39's 910-leaf walk still
+  guards.
+  What IS true and is now recorded: **`val x: Token.<Section> = .Leaf;` does
+  not resolve for any leaf**, and a record sharing the name only changes the
+  error text — `unbound variable 'Grid'` for an ordinary leaf against `type
+  mismatch: expected __Token__Layout, got function` for `.Block`. The differing
+  message reads like a shadow and is a general limitation; it is what made the
+  wrong diagnosis look confirmed. A section leaf is written from the enum root.
+
 - **`examples/emilia-backgrounds/` — the worked example** (1.0.10-beta front
   `39-emilia-backgrounds`). The new workspace member composes what the front
   unblocked: a hero panel whose photograph COVERS its box and is anchored to
@@ -65,8 +87,8 @@
   this list is known to be able to answer false. Planting a `#ec4899` in one
   stop arm and a `bg-cover` in one keyword arm was confirmed to red both walks.
   The well-formedness walk is not boilerplate: a shadowed arm does not red, it
-  falls out of the `case` and the token declares the EMPTY STRING — which is
-  exactly how `.Layout.Block` was found dead this session.
+  falls out of the `case` and the token declares the EMPTY STRING, on one
+  target only — the shape front 36's `Break` section was bitten by.
   20 tests; 240 → 260 in `modules/emilia`, green on commonJS and on erlang.
 
 - **Gradient direction — `Gradient.To`, the eight phrases of `§ 10.4`**
@@ -115,23 +137,6 @@
   not fold them into `background-color`, the docs' earlier promise that it
   would notwithstanding. 11 tests; 225 → 236 in `modules/emilia`, green on
   commonJS and on erlang.
-
-- **`.Layout.Block` was answering the empty string on commonJS, and the gate
-  was red before this front started** (1.0.10-beta front
-  `39-emilia-backgrounds`, an unblocker outside its ownership). `output.bp`'s
-  record `Block` and `tokens.bp`'s leaf `Layout.Block` share a name, and the
-  bare pattern `Block ->` in `layoutTokenToCss` resolves to the record's
-  CONSTRUCTOR rather than to the leaf: the arm went dead, the `case` fell
-  through, and the token declared nothing. erlang was unaffected, so this was
-  green on one target and silently wrong on the other — the failure mode front
-  36's 776-leaf walk exists to catch, and it did catch it (`display` and the
-  walk, 311/313 on commonJS against 313/313 on erlang).
-  The fix is the **zero-arity constructor pattern**, `Block() ->`: no emitted
-  CSS changes, no published path moves, and neither the record nor the leaf is
-  renamed. A qualified pattern does not help — `Token.Layout.Block ->`,
-  `Layout.Block ->` and `.Block ->` all still fall through. Recorded in
-  `AGENTS.md` § Maintainer rules as the section-head shadow one level down,
-  with the record-name list a new leaf must now be audited against.
 
 - **`examples/emilia-layout/` — the worked example** (1.0.10-beta front
   `36-emilia-layout`). The new workspace member composes what the front
