@@ -147,6 +147,9 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Flex(_inner) -> declSheet(flexTokenToCss(_inner));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
+        // ── front 39 — backgrounds ─────────────────────────
+        Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
+        // ── end front 39 ─────────────────────────────
         Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
         // ── front 34 — modifiers ─────────────────────────────────────────
         Sm(inner) -> nestVariant(tokensToSheet(inner, th), smVariant(th));
@@ -7849,4 +7852,90 @@ test "the legacy `Bg` leaves are byte-identical after this front" {
     assert tokenDeclarations(.Bg.Blue.100) == "background:blue";
     assert tokenDeclarations(.Bg.Gray.900) == "background:gray";
     assert tokenDeclarations(.Bg.Color.Indigo.500) == "background-color:var(--color-indigo-500)";
+}
+
+// ── `Gradient` · `§ 10.4` ────────────────────────────────────────────────────
+//
+// `To` is the DIRECTION and `Stop` the terminal colour — the one place this
+// front diverges from Tailwind's own naming, where `bg-gradient-to-r` and
+// `to-pink-500` share the word `to` while setting unrelated things.
+
+fn gradientTokenToCss(g: Token.Gradient, th: Theme) -> string {
+    val out = case g {
+        To(_inner) -> gradientToTokenToCss(_inner, th);
+    };
+    return out;
+}
+
+// The eight direction PHRASES are spelled here and nowhere else, and the
+// declaration around them is `linearGradient`'s: adding a direction is one arm
+// and adding a gradient function is one function.
+//
+// The phrase is `to top right` and not `to top-right`: two CSS keywords after
+// the `to`, exactly as `§ 10.4` prints them, and exactly one space after the
+// comma that separates the direction from the stop list.
+fn gradientToTokenToCss(d: Token.Gradient.To, th: Theme) -> string {
+    val out = case d {
+        T -> linearGradient("to top");
+        Tr -> linearGradient("to top right");
+        R -> linearGradient("to right");
+        Br -> linearGradient("to bottom right");
+        B -> linearGradient("to bottom");
+        Bl -> linearGradient("to bottom left");
+        L -> linearGradient("to left");
+        Tl -> linearGradient("to top left");
+    };
+    return out;
+}
+
+fn linearGradient(phrase: string) -> string {
+    return "background-image:linear-gradient(" + phrase + ", " + gradientStopsRef() + ")";
+}
+
+// `--tw-gradient-stops` is the one name the direction and the three stops have
+// to agree on, so it is written once and read from both sides.
+fn gradientStopsVar() -> string {
+    return "--tw-gradient-stops";
+}
+
+fn gradientStopsRef() -> string {
+    return "var(" + gradientStopsVar() + ")";
+}
+
+test "gradient direction — the eight phrases of `§ 10.4`" {
+    assert tokenDeclarations(.Gradient.To.T)
+        == "background-image:linear-gradient(to top, var(--tw-gradient-stops))";
+    assert tokenDeclarations(.Gradient.To.Tr)
+        == "background-image:linear-gradient(to top right, var(--tw-gradient-stops))";
+    assert tokenDeclarations(.Gradient.To.R)
+        == "background-image:linear-gradient(to right, var(--tw-gradient-stops))";
+    assert tokenDeclarations(.Gradient.To.Br)
+        == "background-image:linear-gradient(to bottom right, var(--tw-gradient-stops))";
+    assert tokenDeclarations(.Gradient.To.B)
+        == "background-image:linear-gradient(to bottom, var(--tw-gradient-stops))";
+    assert tokenDeclarations(.Gradient.To.Bl)
+        == "background-image:linear-gradient(to bottom left, var(--tw-gradient-stops))";
+    assert tokenDeclarations(.Gradient.To.L)
+        == "background-image:linear-gradient(to left, var(--tw-gradient-stops))";
+    assert tokenDeclarations(.Gradient.To.Tl)
+        == "background-image:linear-gradient(to top left, var(--tw-gradient-stops))";
+}
+
+test "gradient direction — a corner is two keywords, not a hyphenated one" {
+    assert tokenDeclarations(.Gradient.To.Tr).indexOf("to top-right") == -1;
+    assert tokenDeclarations(.Gradient.To.Bl).indexOf("to bottom-left") == -1;
+    assert tokenDeclarations(.Gradient.To.Tr).indexOf("to top right") != -1;
+    assert tokenDeclarations(.Gradient.To.Bl).indexOf("to bottom left") != -1;
+}
+
+test "gradient direction — exactly one space after the comma, on all eight" {
+    assert tokenDeclarations(.Gradient.To.T).indexOf(",  ") == -1;
+    assert tokenDeclarations(.Gradient.To.T).indexOf(",var") == -1;
+    assert tokenDeclarations(.Gradient.To.R).indexOf(", var(--tw-gradient-stops))") != -1;
+    assert tokenDeclarations(.Gradient.To.Bl).indexOf(", var(--tw-gradient-stops))") != -1;
+}
+
+test "gradient direction — `.Gradient.To` is the direction, never a colour" {
+    assert tokenDeclarations(.Gradient.To.R).indexOf("--color-") == -1;
+    assert tokenDeclarations(.Gradient.To.R).indexOf("background-image:") == 0;
 }

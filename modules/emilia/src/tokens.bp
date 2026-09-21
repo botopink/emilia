@@ -95,6 +95,13 @@
 ////              `.Layout.Columns.Md` is `columns:var(--container-md)`, the
 ////              same reference `.Size.MaxW.Md` reads — and no leaf in the
 ////              section spells a `rem`
+////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
+////              stop sets a custom property and not `background-image`, and a
+////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
+////              L, Tl } is the DIRECTION, spelled `to top right` and never
+////              `to top-right`; `Stop` (below, step 3) is the terminal
+////              colour. Tailwind spells both with the word `to` while they
+////              set unrelated things; emilia does not
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
@@ -955,6 +962,23 @@ pub type Token {
             100,
         }
     }
+
+    // ── front 39 — backgrounds ──────────────────────────────────
+    //
+    // Gradients are a TOP-LEVEL section and not a sub-section of `Bg`, for two
+    // reasons. The stop colours are not `background-image` at all — they are
+    // custom properties the gradient reads — so nesting them under `Bg.Image`
+    // would put three properties under one name. And a stop is a four-segment
+    // path already (`.Gradient.From.Indigo.500`); nesting it one deeper would
+    // make it five for no gain.
+    //
+    // `To` is the DIRECTION and `Stop` the terminal colour. That is a
+    // deliberate divergence from Tailwind, where `bg-gradient-to-r` and
+    // `to-pink-500` share the word `to` while setting unrelated things.
+    Gradient {
+        To { T, Tr, R, Br, B, Bl, L, Tl, }
+    }
+    // ── end front 39 ────────────────────────────────────────
 
     Alpha(percent: i32, inner: Token[]),
 

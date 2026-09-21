@@ -2,6 +2,28 @@
 
 ## Unreleased — v0.beta.22
 
+- **Gradient direction — `Gradient.To`, the eight phrases of `§ 10.4`**
+  (1.0.10-beta front `39-emilia-backgrounds`, step 2). `Gradient` is a
+  TOP-LEVEL section and not a sub-section of `Bg`: a stop sets a custom
+  property and not `background-image`, so nesting the stops under `Bg.Image`
+  would put three properties under one name, and a stop path
+  (`.Gradient.From.Indigo.500`) is four segments already.
+  **`To` is the direction and `Stop` is the terminal colour** — the one place
+  this front diverges from Tailwind's own naming, where `bg-gradient-to-r` and
+  `to-pink-500` share the word `to` while setting unrelated things.
+  The eight phrases are spelled in exactly one place; `linearGradient(phrase)`
+  builds the declaration around them and `gradientStopsVar()` is the single
+  spelling of `--tw-gradient-stops`, read by the direction and by the stops.
+  A corner is TWO KEYWORDS — `to top right`, never `to top-right` — and there
+  is exactly one space after the comma, both pinned as absences as well as by
+  `==`. 4 tests; 236 → 240, green on commonJS and on erlang.
+  **Upstream check** (the front's own *Reference gaps* demanded one):
+  `tailwindcss.com/docs/background-image` prints
+  `background-image: linear-gradient(to top, var(--tw-gradient-stops))`, which
+  is this spelling to the byte, space included. It also shows the v4 utility is
+  now named `bg-linear-to-t`, `bg-gradient-to-t` being the kept v3 alias — the
+  emitted CSS is the same, and the emilia path is named after neither.
+
 - **`Bg` is no longer a colour section — `§ 10.1`, `§ 10.2`, `§ 10.5`–`§ 10.8`
   and the non-gradient half of `§ 10.4`** (1.0.10-beta front
   `39-emilia-backgrounds`, step 1). Seven keyword sub-sections sit beside front

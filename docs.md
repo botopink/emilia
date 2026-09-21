@@ -219,6 +219,37 @@ shape as `.Bg.Color` beside the top-level `Color`.
 Nothing else in `§ 10.4` is a token: `bg-[url(…)]`, `bg-size-[…]` and
 `bg-position-[…]` are arbitrary values and belong to the escape-hatch front.
 
+### Gradient — `§ 10.4`
+
+Gradients are their own top-level section, not a sub-section of `Bg`. The stop
+colours are not `background-image` at all — they are custom properties the
+gradient reads — so nesting them under `Bg.Image` would put three properties
+under one name; and a stop is a four-segment path already.
+
+**`To` is the direction. `Stop` is the terminal colour.** Tailwind spells both
+with the word `to` (`bg-gradient-to-r` and `to-pink-500`) while they set
+unrelated things; emilia does not.
+
+```bp
+.Gradient.To.T              // background-image:linear-gradient(to top, var(--tw-gradient-stops))
+.Gradient.To.Tr             // … linear-gradient(to top right, …)
+.Gradient.To.R              // … linear-gradient(to right, …)
+.Gradient.To.Br             // … linear-gradient(to bottom right, …)
+.Gradient.To.B              // … linear-gradient(to bottom, …)
+.Gradient.To.Bl             // … linear-gradient(to bottom left, …)
+.Gradient.To.L              // … linear-gradient(to left, …)
+.Gradient.To.Tl             // … linear-gradient(to top left, …)
+```
+
+A corner is **two keywords** — `to top right`, never `to top-right` — and there
+is exactly one space after the comma. The eight phrases are spelled in one
+place in `emilia.bp`, so adding a direction is one arm.
+
+Radial and conic gradients (`bg-radial`, `bg-conic`) and the interpolation
+suffixes (`bg-linear-to-r/oklch`) are **not** tokens: a radial gradient is a
+different function with a position argument, and specifying it from memory
+would be guessing.
+
 ### `Color.Hex("#abc")` is declared and unconstructible
 
 The `Hex(value: string)` leaf is kept — it is the proof that a string payload
