@@ -385,16 +385,21 @@ to the commonJS row and runs once.
   resolved inside the lambda; a direct receiver (`s.contains(…)`) and a record
   field outside a lambda both work. Hoist to a typed `val`, or use `endsWith` /
   `indexOf(…) != -1`.
-- **The commonJS `String` prelude's `charCodeAt` patch is self-recursive.** The
-  backend installs the whole `String` behavior prelude into any module that uses
-  a member needing a patch — `slice` is one, `split`/`indexOf`/`startsWith` are
-  not — and that prelude writes `String.prototype.charCodeAt = function(index)
-  { return ((this.valueOf().charCodeAt(index) ?? -1) | 0); }`, which calls the
-  patch it has just installed. One `s.slice(…)` anywhere in a module therefore
-  makes every `.charCodeAt(…)` in the PROGRAM blow the stack — `hashHex`'s host
-  template does, so every non-empty class body did. Never call `String.slice` in
-  this library: split on the separator instead. erlang is unaffected, so the
-  suite is green on one target and dead on the other. Reported to botopink-lang.
+- **FIXED — the commonJS `String` prelude's `charCodeAt` patch used to be
+  self-recursive.** The backend installs the whole `String` behavior prelude
+  into any module that uses a member needing a patch — `slice` is one,
+  `split`/`indexOf`/`startsWith` are not — and that prelude wrote
+  `String.prototype.charCodeAt = function(index) { return
+  ((this.valueOf().charCodeAt(index) ?? -1) | 0); }`, which called the patch it
+  had just installed. One `s.slice(…)` anywhere in a module therefore made every
+  `.charCodeAt(…)` in the PROGRAM blow the stack — `hashHex`'s host template
+  does, so every non-empty class body did. **The ban on `String.slice` in this
+  library is lifted**: botopink-lang's prelude now calls `codePointAt`, which
+  also fixed a second defect the first was hiding (the `?? -1` was dead, since
+  native `charCodeAt` answers `NaN`, so commonJS answered `0` out of range where
+  erlang answered `-1`), and a test now walks the embedded prelude and fails if
+  any template calls the method it patches. Code that split on a separator to
+  avoid `slice` is correct as written and need not be unwound.
 - **FIXED — a `case` arm over a uniquely-named variant used to lower to
   `instanceof`, which does not cross a package boundary.** The commonJS backend
   lowered an arm whose variant name was unique in the program to `_s instanceof
@@ -408,14 +413,15 @@ to the commonJS row and runs once.
   for a uniquely-named variant too; the example asserts the full class bodies
   and is green. Kept here as the reason a cross-package `case` is worth a
   runnable example.
-- **`Array.reverse()` mutates its receiver on commonJS and does not on erlang.**
-  `val rev = xs.reverse();` leaves `xs` reversed on commonJS (native
-  `Array.prototype.reverse` is in-place and the codegen calls it directly) and
-  leaves it untouched on erlang (`lists:reverse/1` is pure), so any code that
-  reads the receiver again after reversing it answers differently per target —
-  the suite is green on one and silently wrong on the other. Never call
-  `reverse()` for its return value: `output.bp`'s `wrapAtRules` maps the list
-  twice instead. Reported to botopink-lang as a codegen defect.
+- **FIXED — `Array.reverse()` used to mutate its receiver on commonJS and not on
+  erlang.** `val rev = xs.reverse();` left `xs` reversed on commonJS (native
+  `Array.prototype.reverse` is in-place and the codegen called it directly) and
+  untouched on erlang (`lists:reverse/1` is pure), so code reading the receiver
+  again answered differently per target — green on one, silently wrong on the
+  other. botopink-lang now emits `toReversed()`, which answers a new array. The
+  workaround in `output.bp`'s `wrapAtRules` (mapping the list twice) is no
+  longer required and may be simplified by whichever front next touches it.
+  Kept as the reason a per-target divergence is worth a cell rather than a note.
 - **A sibling-module import always names its module** — `import { Token } from
   "tokens";`, never the bare `import { Token };`. Both type-check, but commonJS
   lowers the bare form to `require("../module")`: a path that resolves while
