@@ -20,6 +20,21 @@
   (`var(--color-white)` / `var(--color-black)`), which rewrites five front-56
   assertions and the two examples that pinned the hex.
 
+- **`paletteEntries()` — the 286 numeric values, as data** (front
+  `33-emilia-color-palette`, step 3). The other half of the mechanism: the
+  utility emits `var(--color-red-500)` and this declares it. A plain
+  `ThemeEntry[]`, not a rendered block, so a consumer composes it —
+  `extendTheme(defaultTheme(), paletteEntries())` — and front 54's `themeCss`
+  renders it into the `theme` layer. Keeping it a list is what lets a project
+  that already imports upstream's own theme leave it out and still use every
+  colour token; `emilia(...)` emits no `@theme` block of its own at any size of
+  token list. Transcribed from upstream `tailwindcss` **4.3.2**'s `theme.css`;
+  `--color-white` / `--color-black` stay front 54's and are not duplicated.
+  **The two anchor values are in upstream's spelling, not the reference's**:
+  `§ 3.6` prints `oklch(0.637 0.237 25.331)` for red-500 and upstream writes
+  `oklch(63.7% 0.237 25.331)` — the same lightness, two spellings — and
+  byte-parity with the emitted block is what is worth having.
+
 - **`Bg.Color` — the palette on `background-color`** (front
   `33-emilia-color-palette`, step 2). The same 26 x 11 grid and the same five
   named colours under a sub-section of `Bg`, and **all 286 cells resolve**:

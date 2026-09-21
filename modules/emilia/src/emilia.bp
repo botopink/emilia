@@ -1,6 +1,6 @@
 import {Token} from "tokens";
 import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
-import {Ns, nsPrefix, themeVar} from "theme";
+import {Ns, nsPrefix, themeVar, namespace} from "theme";
 import {Rule, Block, Sheet, Variant, Options} from "output";
 import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant} from "output";
 import {encodeSheet, decodeSheet, carriesSeparator} from "output";
@@ -2246,3 +2246,576 @@ test "palette — taupe, eleven shades on `background-color`" {
     assert tokenDeclarations(.Bg.Color.Taupe.900) == "background-color:var(--color-taupe-900)";
     assert tokenDeclarations(.Bg.Color.Taupe.950) == "background-color:var(--color-taupe-950)";
 }
+
+// ── the theme contribution · the 286 numeric values ──────────────────────────
+//
+// The other half of the mechanism. The utility side emits
+// `var(--color-red-500)`; SOMETHING has to declare `--color-red-500`, and this
+// is it — as a plain `ThemeEntry[]`, not as a rendered block, so a consumer
+// composes it with front 54's `extendTheme` and front 54's `themeCss` renders
+// it into the `theme` layer:
+//
+//     val th = extendTheme(defaultTheme(), paletteEntries());
+//     val doc = await flushWith(withTheme(defaultOptions(), th));
+//
+// KEEPING IT A LIST RATHER THAN A STRING is what lets a project that already
+// imports upstream's own theme leave it out and still use every colour token —
+// the tokens name variables, and whoever declares them is the consumer's call.
+// `emilia(...)` emits no `@theme` block of its own, at any size of token list.
+//
+// SOURCE: upstream `tailwindcss` **4.3.2**, `theme.css`, transcribed
+// mechanically — 26 families x 11 shades = 286 entries, in the reference's own
+// family order (17 chromatic, then 9 neutral). `--color-white` and
+// `--color-black` are NOT here: `defaultTheme()` already carries them, and
+// `extendTheme` would override in place rather than duplicate, which would
+// still be a second author for a value that has one.
+//
+// ON THE TWO ANCHOR VALUES. `§ 3.6` prints exactly two of the 286, and it
+// prints them in the decimal-lightness spelling — `oklch(0.637 0.237 25.331)`
+// for red-500, `oklch(0.623 0.214 259.815)` for blue-500. Upstream's own
+// `theme.css` writes the SAME TWO COLOURS as `oklch(63.7% 0.237 25.331)` and
+// `oklch(62.3% 0.214 259.815)`: `63.7%` and `0.637` are the same lightness in
+// OKLCH, so the reference and upstream agree on the colour and disagree on the
+// spelling. This front takes upstream's, because byte-parity with the emitted
+// `@theme` block is the thing worth having and because two of 286 entries in a
+// second spelling would be a table with two authors. The test below pins both
+// anchors AND their decimal equivalents, so the disagreement is recorded where
+// it would otherwise be discovered.
+
+pub fn paletteEntries() -> ThemeEntry[] {
+    return paletteRedEntries()
+        .append(paletteOrangeEntries())
+        .append(paletteAmberEntries())
+        .append(paletteYellowEntries())
+        .append(paletteLimeEntries())
+        .append(paletteGreenEntries())
+        .append(paletteEmeraldEntries())
+        .append(paletteTealEntries())
+        .append(paletteCyanEntries())
+        .append(paletteSkyEntries())
+        .append(paletteBlueEntries())
+        .append(paletteIndigoEntries())
+        .append(paletteVioletEntries())
+        .append(palettePurpleEntries())
+        .append(paletteFuchsiaEntries())
+        .append(palettePinkEntries())
+        .append(paletteRoseEntries())
+        .append(paletteSlateEntries())
+        .append(paletteGrayEntries())
+        .append(paletteZincEntries())
+        .append(paletteNeutralEntries())
+        .append(paletteStoneEntries())
+        .append(paletteMauveEntries())
+        .append(paletteOliveEntries())
+        .append(paletteMistEntries())
+        .append(paletteTaupeEntries());
+}
+
+
+fn paletteRedEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-red-50", value: "oklch(97.1% 0.013 17.38)"),
+        ThemeEntry(name: "--color-red-100", value: "oklch(93.6% 0.032 17.717)"),
+        ThemeEntry(name: "--color-red-200", value: "oklch(88.5% 0.062 18.334)"),
+        ThemeEntry(name: "--color-red-300", value: "oklch(80.8% 0.114 19.571)"),
+        ThemeEntry(name: "--color-red-400", value: "oklch(70.4% 0.191 22.216)"),
+        ThemeEntry(name: "--color-red-500", value: "oklch(63.7% 0.237 25.331)"),
+        ThemeEntry(name: "--color-red-600", value: "oklch(57.7% 0.245 27.325)"),
+        ThemeEntry(name: "--color-red-700", value: "oklch(50.5% 0.213 27.518)"),
+        ThemeEntry(name: "--color-red-800", value: "oklch(44.4% 0.177 26.899)"),
+        ThemeEntry(name: "--color-red-900", value: "oklch(39.6% 0.141 25.723)"),
+        ThemeEntry(name: "--color-red-950", value: "oklch(25.8% 0.092 26.042)"),
+    ];
+    return out;
+}
+
+fn paletteOrangeEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-orange-50", value: "oklch(98% 0.016 73.684)"),
+        ThemeEntry(name: "--color-orange-100", value: "oklch(95.4% 0.038 75.164)"),
+        ThemeEntry(name: "--color-orange-200", value: "oklch(90.1% 0.076 70.697)"),
+        ThemeEntry(name: "--color-orange-300", value: "oklch(83.7% 0.128 66.29)"),
+        ThemeEntry(name: "--color-orange-400", value: "oklch(75% 0.183 55.934)"),
+        ThemeEntry(name: "--color-orange-500", value: "oklch(70.5% 0.213 47.604)"),
+        ThemeEntry(name: "--color-orange-600", value: "oklch(64.6% 0.222 41.116)"),
+        ThemeEntry(name: "--color-orange-700", value: "oklch(55.3% 0.195 38.402)"),
+        ThemeEntry(name: "--color-orange-800", value: "oklch(47% 0.157 37.304)"),
+        ThemeEntry(name: "--color-orange-900", value: "oklch(40.8% 0.123 38.172)"),
+        ThemeEntry(name: "--color-orange-950", value: "oklch(26.6% 0.079 36.259)"),
+    ];
+    return out;
+}
+
+fn paletteAmberEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-amber-50", value: "oklch(98.7% 0.022 95.277)"),
+        ThemeEntry(name: "--color-amber-100", value: "oklch(96.2% 0.059 95.617)"),
+        ThemeEntry(name: "--color-amber-200", value: "oklch(92.4% 0.12 95.746)"),
+        ThemeEntry(name: "--color-amber-300", value: "oklch(87.9% 0.169 91.605)"),
+        ThemeEntry(name: "--color-amber-400", value: "oklch(82.8% 0.189 84.429)"),
+        ThemeEntry(name: "--color-amber-500", value: "oklch(76.9% 0.188 70.08)"),
+        ThemeEntry(name: "--color-amber-600", value: "oklch(66.6% 0.179 58.318)"),
+        ThemeEntry(name: "--color-amber-700", value: "oklch(55.5% 0.163 48.998)"),
+        ThemeEntry(name: "--color-amber-800", value: "oklch(47.3% 0.137 46.201)"),
+        ThemeEntry(name: "--color-amber-900", value: "oklch(41.4% 0.112 45.904)"),
+        ThemeEntry(name: "--color-amber-950", value: "oklch(27.9% 0.077 45.635)"),
+    ];
+    return out;
+}
+
+fn paletteYellowEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-yellow-50", value: "oklch(98.7% 0.026 102.212)"),
+        ThemeEntry(name: "--color-yellow-100", value: "oklch(97.3% 0.071 103.193)"),
+        ThemeEntry(name: "--color-yellow-200", value: "oklch(94.5% 0.129 101.54)"),
+        ThemeEntry(name: "--color-yellow-300", value: "oklch(90.5% 0.182 98.111)"),
+        ThemeEntry(name: "--color-yellow-400", value: "oklch(85.2% 0.199 91.936)"),
+        ThemeEntry(name: "--color-yellow-500", value: "oklch(79.5% 0.184 86.047)"),
+        ThemeEntry(name: "--color-yellow-600", value: "oklch(68.1% 0.162 75.834)"),
+        ThemeEntry(name: "--color-yellow-700", value: "oklch(55.4% 0.135 66.442)"),
+        ThemeEntry(name: "--color-yellow-800", value: "oklch(47.6% 0.114 61.907)"),
+        ThemeEntry(name: "--color-yellow-900", value: "oklch(42.1% 0.095 57.708)"),
+        ThemeEntry(name: "--color-yellow-950", value: "oklch(28.6% 0.066 53.813)"),
+    ];
+    return out;
+}
+
+fn paletteLimeEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-lime-50", value: "oklch(98.6% 0.031 120.757)"),
+        ThemeEntry(name: "--color-lime-100", value: "oklch(96.7% 0.067 122.328)"),
+        ThemeEntry(name: "--color-lime-200", value: "oklch(93.8% 0.127 124.321)"),
+        ThemeEntry(name: "--color-lime-300", value: "oklch(89.7% 0.196 126.665)"),
+        ThemeEntry(name: "--color-lime-400", value: "oklch(84.1% 0.238 128.85)"),
+        ThemeEntry(name: "--color-lime-500", value: "oklch(76.8% 0.233 130.85)"),
+        ThemeEntry(name: "--color-lime-600", value: "oklch(64.8% 0.2 131.684)"),
+        ThemeEntry(name: "--color-lime-700", value: "oklch(53.2% 0.157 131.589)"),
+        ThemeEntry(name: "--color-lime-800", value: "oklch(45.3% 0.124 130.933)"),
+        ThemeEntry(name: "--color-lime-900", value: "oklch(40.5% 0.101 131.063)"),
+        ThemeEntry(name: "--color-lime-950", value: "oklch(27.4% 0.072 132.109)"),
+    ];
+    return out;
+}
+
+fn paletteGreenEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-green-50", value: "oklch(98.2% 0.018 155.826)"),
+        ThemeEntry(name: "--color-green-100", value: "oklch(96.2% 0.044 156.743)"),
+        ThemeEntry(name: "--color-green-200", value: "oklch(92.5% 0.084 155.995)"),
+        ThemeEntry(name: "--color-green-300", value: "oklch(87.1% 0.15 154.449)"),
+        ThemeEntry(name: "--color-green-400", value: "oklch(79.2% 0.209 151.711)"),
+        ThemeEntry(name: "--color-green-500", value: "oklch(72.3% 0.219 149.579)"),
+        ThemeEntry(name: "--color-green-600", value: "oklch(62.7% 0.194 149.214)"),
+        ThemeEntry(name: "--color-green-700", value: "oklch(52.7% 0.154 150.069)"),
+        ThemeEntry(name: "--color-green-800", value: "oklch(44.8% 0.119 151.328)"),
+        ThemeEntry(name: "--color-green-900", value: "oklch(39.3% 0.095 152.535)"),
+        ThemeEntry(name: "--color-green-950", value: "oklch(26.6% 0.065 152.934)"),
+    ];
+    return out;
+}
+
+fn paletteEmeraldEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-emerald-50", value: "oklch(97.9% 0.021 166.113)"),
+        ThemeEntry(name: "--color-emerald-100", value: "oklch(95% 0.052 163.051)"),
+        ThemeEntry(name: "--color-emerald-200", value: "oklch(90.5% 0.093 164.15)"),
+        ThemeEntry(name: "--color-emerald-300", value: "oklch(84.5% 0.143 164.978)"),
+        ThemeEntry(name: "--color-emerald-400", value: "oklch(76.5% 0.177 163.223)"),
+        ThemeEntry(name: "--color-emerald-500", value: "oklch(69.6% 0.17 162.48)"),
+        ThemeEntry(name: "--color-emerald-600", value: "oklch(59.6% 0.145 163.225)"),
+        ThemeEntry(name: "--color-emerald-700", value: "oklch(50.8% 0.118 165.612)"),
+        ThemeEntry(name: "--color-emerald-800", value: "oklch(43.2% 0.095 166.913)"),
+        ThemeEntry(name: "--color-emerald-900", value: "oklch(37.8% 0.077 168.94)"),
+        ThemeEntry(name: "--color-emerald-950", value: "oklch(26.2% 0.051 172.552)"),
+    ];
+    return out;
+}
+
+fn paletteTealEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-teal-50", value: "oklch(98.4% 0.014 180.72)"),
+        ThemeEntry(name: "--color-teal-100", value: "oklch(95.3% 0.051 180.801)"),
+        ThemeEntry(name: "--color-teal-200", value: "oklch(91% 0.096 180.426)"),
+        ThemeEntry(name: "--color-teal-300", value: "oklch(85.5% 0.138 181.071)"),
+        ThemeEntry(name: "--color-teal-400", value: "oklch(77.7% 0.152 181.912)"),
+        ThemeEntry(name: "--color-teal-500", value: "oklch(70.4% 0.14 182.503)"),
+        ThemeEntry(name: "--color-teal-600", value: "oklch(60% 0.118 184.704)"),
+        ThemeEntry(name: "--color-teal-700", value: "oklch(51.1% 0.096 186.391)"),
+        ThemeEntry(name: "--color-teal-800", value: "oklch(43.7% 0.078 188.216)"),
+        ThemeEntry(name: "--color-teal-900", value: "oklch(38.6% 0.063 188.416)"),
+        ThemeEntry(name: "--color-teal-950", value: "oklch(27.7% 0.046 192.524)"),
+    ];
+    return out;
+}
+
+fn paletteCyanEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-cyan-50", value: "oklch(98.4% 0.019 200.873)"),
+        ThemeEntry(name: "--color-cyan-100", value: "oklch(95.6% 0.045 203.388)"),
+        ThemeEntry(name: "--color-cyan-200", value: "oklch(91.7% 0.08 205.041)"),
+        ThemeEntry(name: "--color-cyan-300", value: "oklch(86.5% 0.127 207.078)"),
+        ThemeEntry(name: "--color-cyan-400", value: "oklch(78.9% 0.154 211.53)"),
+        ThemeEntry(name: "--color-cyan-500", value: "oklch(71.5% 0.143 215.221)"),
+        ThemeEntry(name: "--color-cyan-600", value: "oklch(60.9% 0.126 221.723)"),
+        ThemeEntry(name: "--color-cyan-700", value: "oklch(52% 0.105 223.128)"),
+        ThemeEntry(name: "--color-cyan-800", value: "oklch(45% 0.085 224.283)"),
+        ThemeEntry(name: "--color-cyan-900", value: "oklch(39.8% 0.07 227.392)"),
+        ThemeEntry(name: "--color-cyan-950", value: "oklch(30.2% 0.056 229.695)"),
+    ];
+    return out;
+}
+
+fn paletteSkyEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-sky-50", value: "oklch(97.7% 0.013 236.62)"),
+        ThemeEntry(name: "--color-sky-100", value: "oklch(95.1% 0.026 236.824)"),
+        ThemeEntry(name: "--color-sky-200", value: "oklch(90.1% 0.058 230.902)"),
+        ThemeEntry(name: "--color-sky-300", value: "oklch(82.8% 0.111 230.318)"),
+        ThemeEntry(name: "--color-sky-400", value: "oklch(74.6% 0.16 232.661)"),
+        ThemeEntry(name: "--color-sky-500", value: "oklch(68.5% 0.169 237.323)"),
+        ThemeEntry(name: "--color-sky-600", value: "oklch(58.8% 0.158 241.966)"),
+        ThemeEntry(name: "--color-sky-700", value: "oklch(50% 0.134 242.749)"),
+        ThemeEntry(name: "--color-sky-800", value: "oklch(44.3% 0.11 240.79)"),
+        ThemeEntry(name: "--color-sky-900", value: "oklch(39.1% 0.09 240.876)"),
+        ThemeEntry(name: "--color-sky-950", value: "oklch(29.3% 0.066 243.157)"),
+    ];
+    return out;
+}
+
+fn paletteBlueEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-blue-50", value: "oklch(97% 0.014 254.604)"),
+        ThemeEntry(name: "--color-blue-100", value: "oklch(93.2% 0.032 255.585)"),
+        ThemeEntry(name: "--color-blue-200", value: "oklch(88.2% 0.059 254.128)"),
+        ThemeEntry(name: "--color-blue-300", value: "oklch(80.9% 0.105 251.813)"),
+        ThemeEntry(name: "--color-blue-400", value: "oklch(70.7% 0.165 254.624)"),
+        ThemeEntry(name: "--color-blue-500", value: "oklch(62.3% 0.214 259.815)"),
+        ThemeEntry(name: "--color-blue-600", value: "oklch(54.6% 0.245 262.881)"),
+        ThemeEntry(name: "--color-blue-700", value: "oklch(48.8% 0.243 264.376)"),
+        ThemeEntry(name: "--color-blue-800", value: "oklch(42.4% 0.199 265.638)"),
+        ThemeEntry(name: "--color-blue-900", value: "oklch(37.9% 0.146 265.522)"),
+        ThemeEntry(name: "--color-blue-950", value: "oklch(28.2% 0.091 267.935)"),
+    ];
+    return out;
+}
+
+fn paletteIndigoEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-indigo-50", value: "oklch(96.2% 0.018 272.314)"),
+        ThemeEntry(name: "--color-indigo-100", value: "oklch(93% 0.034 272.788)"),
+        ThemeEntry(name: "--color-indigo-200", value: "oklch(87% 0.065 274.039)"),
+        ThemeEntry(name: "--color-indigo-300", value: "oklch(78.5% 0.115 274.713)"),
+        ThemeEntry(name: "--color-indigo-400", value: "oklch(67.3% 0.182 276.935)"),
+        ThemeEntry(name: "--color-indigo-500", value: "oklch(58.5% 0.233 277.117)"),
+        ThemeEntry(name: "--color-indigo-600", value: "oklch(51.1% 0.262 276.966)"),
+        ThemeEntry(name: "--color-indigo-700", value: "oklch(45.7% 0.24 277.023)"),
+        ThemeEntry(name: "--color-indigo-800", value: "oklch(39.8% 0.195 277.366)"),
+        ThemeEntry(name: "--color-indigo-900", value: "oklch(35.9% 0.144 278.697)"),
+        ThemeEntry(name: "--color-indigo-950", value: "oklch(25.7% 0.09 281.288)"),
+    ];
+    return out;
+}
+
+fn paletteVioletEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-violet-50", value: "oklch(96.9% 0.016 293.756)"),
+        ThemeEntry(name: "--color-violet-100", value: "oklch(94.3% 0.029 294.588)"),
+        ThemeEntry(name: "--color-violet-200", value: "oklch(89.4% 0.057 293.283)"),
+        ThemeEntry(name: "--color-violet-300", value: "oklch(81.1% 0.111 293.571)"),
+        ThemeEntry(name: "--color-violet-400", value: "oklch(70.2% 0.183 293.541)"),
+        ThemeEntry(name: "--color-violet-500", value: "oklch(60.6% 0.25 292.717)"),
+        ThemeEntry(name: "--color-violet-600", value: "oklch(54.1% 0.281 293.009)"),
+        ThemeEntry(name: "--color-violet-700", value: "oklch(49.1% 0.27 292.581)"),
+        ThemeEntry(name: "--color-violet-800", value: "oklch(43.2% 0.232 292.759)"),
+        ThemeEntry(name: "--color-violet-900", value: "oklch(38% 0.189 293.745)"),
+        ThemeEntry(name: "--color-violet-950", value: "oklch(28.3% 0.141 291.089)"),
+    ];
+    return out;
+}
+
+fn palettePurpleEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-purple-50", value: "oklch(97.7% 0.014 308.299)"),
+        ThemeEntry(name: "--color-purple-100", value: "oklch(94.6% 0.033 307.174)"),
+        ThemeEntry(name: "--color-purple-200", value: "oklch(90.2% 0.063 306.703)"),
+        ThemeEntry(name: "--color-purple-300", value: "oklch(82.7% 0.119 306.383)"),
+        ThemeEntry(name: "--color-purple-400", value: "oklch(71.4% 0.203 305.504)"),
+        ThemeEntry(name: "--color-purple-500", value: "oklch(62.7% 0.265 303.9)"),
+        ThemeEntry(name: "--color-purple-600", value: "oklch(55.8% 0.288 302.321)"),
+        ThemeEntry(name: "--color-purple-700", value: "oklch(49.6% 0.265 301.924)"),
+        ThemeEntry(name: "--color-purple-800", value: "oklch(43.8% 0.218 303.724)"),
+        ThemeEntry(name: "--color-purple-900", value: "oklch(38.1% 0.176 304.987)"),
+        ThemeEntry(name: "--color-purple-950", value: "oklch(29.1% 0.149 302.717)"),
+    ];
+    return out;
+}
+
+fn paletteFuchsiaEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-fuchsia-50", value: "oklch(97.7% 0.017 320.058)"),
+        ThemeEntry(name: "--color-fuchsia-100", value: "oklch(95.2% 0.037 318.852)"),
+        ThemeEntry(name: "--color-fuchsia-200", value: "oklch(90.3% 0.076 319.62)"),
+        ThemeEntry(name: "--color-fuchsia-300", value: "oklch(83.3% 0.145 321.434)"),
+        ThemeEntry(name: "--color-fuchsia-400", value: "oklch(74% 0.238 322.16)"),
+        ThemeEntry(name: "--color-fuchsia-500", value: "oklch(66.7% 0.295 322.15)"),
+        ThemeEntry(name: "--color-fuchsia-600", value: "oklch(59.1% 0.293 322.896)"),
+        ThemeEntry(name: "--color-fuchsia-700", value: "oklch(51.8% 0.253 323.949)"),
+        ThemeEntry(name: "--color-fuchsia-800", value: "oklch(45.2% 0.211 324.591)"),
+        ThemeEntry(name: "--color-fuchsia-900", value: "oklch(40.1% 0.17 325.612)"),
+        ThemeEntry(name: "--color-fuchsia-950", value: "oklch(29.3% 0.136 325.661)"),
+    ];
+    return out;
+}
+
+fn palettePinkEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-pink-50", value: "oklch(97.1% 0.014 343.198)"),
+        ThemeEntry(name: "--color-pink-100", value: "oklch(94.8% 0.028 342.258)"),
+        ThemeEntry(name: "--color-pink-200", value: "oklch(89.9% 0.061 343.231)"),
+        ThemeEntry(name: "--color-pink-300", value: "oklch(82.3% 0.12 346.018)"),
+        ThemeEntry(name: "--color-pink-400", value: "oklch(71.8% 0.202 349.761)"),
+        ThemeEntry(name: "--color-pink-500", value: "oklch(65.6% 0.241 354.308)"),
+        ThemeEntry(name: "--color-pink-600", value: "oklch(59.2% 0.249 0.584)"),
+        ThemeEntry(name: "--color-pink-700", value: "oklch(52.5% 0.223 3.958)"),
+        ThemeEntry(name: "--color-pink-800", value: "oklch(45.9% 0.187 3.815)"),
+        ThemeEntry(name: "--color-pink-900", value: "oklch(40.8% 0.153 2.432)"),
+        ThemeEntry(name: "--color-pink-950", value: "oklch(28.4% 0.109 3.907)"),
+    ];
+    return out;
+}
+
+fn paletteRoseEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-rose-50", value: "oklch(96.9% 0.015 12.422)"),
+        ThemeEntry(name: "--color-rose-100", value: "oklch(94.1% 0.03 12.58)"),
+        ThemeEntry(name: "--color-rose-200", value: "oklch(89.2% 0.058 10.001)"),
+        ThemeEntry(name: "--color-rose-300", value: "oklch(81% 0.117 11.638)"),
+        ThemeEntry(name: "--color-rose-400", value: "oklch(71.2% 0.194 13.428)"),
+        ThemeEntry(name: "--color-rose-500", value: "oklch(64.5% 0.246 16.439)"),
+        ThemeEntry(name: "--color-rose-600", value: "oklch(58.6% 0.253 17.585)"),
+        ThemeEntry(name: "--color-rose-700", value: "oklch(51.4% 0.222 16.935)"),
+        ThemeEntry(name: "--color-rose-800", value: "oklch(45.5% 0.188 13.697)"),
+        ThemeEntry(name: "--color-rose-900", value: "oklch(41% 0.159 10.272)"),
+        ThemeEntry(name: "--color-rose-950", value: "oklch(27.1% 0.105 12.094)"),
+    ];
+    return out;
+}
+
+fn paletteSlateEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-slate-50", value: "oklch(98.4% 0.003 247.858)"),
+        ThemeEntry(name: "--color-slate-100", value: "oklch(96.8% 0.007 247.896)"),
+        ThemeEntry(name: "--color-slate-200", value: "oklch(92.9% 0.013 255.508)"),
+        ThemeEntry(name: "--color-slate-300", value: "oklch(86.9% 0.022 252.894)"),
+        ThemeEntry(name: "--color-slate-400", value: "oklch(70.4% 0.04 256.788)"),
+        ThemeEntry(name: "--color-slate-500", value: "oklch(55.4% 0.046 257.417)"),
+        ThemeEntry(name: "--color-slate-600", value: "oklch(44.6% 0.043 257.281)"),
+        ThemeEntry(name: "--color-slate-700", value: "oklch(37.2% 0.044 257.287)"),
+        ThemeEntry(name: "--color-slate-800", value: "oklch(27.9% 0.041 260.031)"),
+        ThemeEntry(name: "--color-slate-900", value: "oklch(20.8% 0.042 265.755)"),
+        ThemeEntry(name: "--color-slate-950", value: "oklch(12.9% 0.042 264.695)"),
+    ];
+    return out;
+}
+
+fn paletteGrayEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-gray-50", value: "oklch(98.5% 0.002 247.839)"),
+        ThemeEntry(name: "--color-gray-100", value: "oklch(96.7% 0.003 264.542)"),
+        ThemeEntry(name: "--color-gray-200", value: "oklch(92.8% 0.006 264.531)"),
+        ThemeEntry(name: "--color-gray-300", value: "oklch(87.2% 0.01 258.338)"),
+        ThemeEntry(name: "--color-gray-400", value: "oklch(70.7% 0.022 261.325)"),
+        ThemeEntry(name: "--color-gray-500", value: "oklch(55.1% 0.027 264.364)"),
+        ThemeEntry(name: "--color-gray-600", value: "oklch(44.6% 0.03 256.802)"),
+        ThemeEntry(name: "--color-gray-700", value: "oklch(37.3% 0.034 259.733)"),
+        ThemeEntry(name: "--color-gray-800", value: "oklch(27.8% 0.033 256.848)"),
+        ThemeEntry(name: "--color-gray-900", value: "oklch(21% 0.034 264.665)"),
+        ThemeEntry(name: "--color-gray-950", value: "oklch(13% 0.028 261.692)"),
+    ];
+    return out;
+}
+
+fn paletteZincEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-zinc-50", value: "oklch(98.5% 0 0)"),
+        ThemeEntry(name: "--color-zinc-100", value: "oklch(96.7% 0.001 286.375)"),
+        ThemeEntry(name: "--color-zinc-200", value: "oklch(92% 0.004 286.32)"),
+        ThemeEntry(name: "--color-zinc-300", value: "oklch(87.1% 0.006 286.286)"),
+        ThemeEntry(name: "--color-zinc-400", value: "oklch(70.5% 0.015 286.067)"),
+        ThemeEntry(name: "--color-zinc-500", value: "oklch(55.2% 0.016 285.938)"),
+        ThemeEntry(name: "--color-zinc-600", value: "oklch(44.2% 0.017 285.786)"),
+        ThemeEntry(name: "--color-zinc-700", value: "oklch(37% 0.013 285.805)"),
+        ThemeEntry(name: "--color-zinc-800", value: "oklch(27.4% 0.006 286.033)"),
+        ThemeEntry(name: "--color-zinc-900", value: "oklch(21% 0.006 285.885)"),
+        ThemeEntry(name: "--color-zinc-950", value: "oklch(14.1% 0.005 285.823)"),
+    ];
+    return out;
+}
+
+fn paletteNeutralEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-neutral-50", value: "oklch(98.5% 0 0)"),
+        ThemeEntry(name: "--color-neutral-100", value: "oklch(97% 0 0)"),
+        ThemeEntry(name: "--color-neutral-200", value: "oklch(92.2% 0 0)"),
+        ThemeEntry(name: "--color-neutral-300", value: "oklch(87% 0 0)"),
+        ThemeEntry(name: "--color-neutral-400", value: "oklch(70.8% 0 0)"),
+        ThemeEntry(name: "--color-neutral-500", value: "oklch(55.6% 0 0)"),
+        ThemeEntry(name: "--color-neutral-600", value: "oklch(43.9% 0 0)"),
+        ThemeEntry(name: "--color-neutral-700", value: "oklch(37.1% 0 0)"),
+        ThemeEntry(name: "--color-neutral-800", value: "oklch(26.9% 0 0)"),
+        ThemeEntry(name: "--color-neutral-900", value: "oklch(20.5% 0 0)"),
+        ThemeEntry(name: "--color-neutral-950", value: "oklch(14.5% 0 0)"),
+    ];
+    return out;
+}
+
+fn paletteStoneEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-stone-50", value: "oklch(98.5% 0.001 106.423)"),
+        ThemeEntry(name: "--color-stone-100", value: "oklch(97% 0.001 106.424)"),
+        ThemeEntry(name: "--color-stone-200", value: "oklch(92.3% 0.003 48.717)"),
+        ThemeEntry(name: "--color-stone-300", value: "oklch(86.9% 0.005 56.366)"),
+        ThemeEntry(name: "--color-stone-400", value: "oklch(70.9% 0.01 56.259)"),
+        ThemeEntry(name: "--color-stone-500", value: "oklch(55.3% 0.013 58.071)"),
+        ThemeEntry(name: "--color-stone-600", value: "oklch(44.4% 0.011 73.639)"),
+        ThemeEntry(name: "--color-stone-700", value: "oklch(37.4% 0.01 67.558)"),
+        ThemeEntry(name: "--color-stone-800", value: "oklch(26.8% 0.007 34.298)"),
+        ThemeEntry(name: "--color-stone-900", value: "oklch(21.6% 0.006 56.043)"),
+        ThemeEntry(name: "--color-stone-950", value: "oklch(14.7% 0.004 49.25)"),
+    ];
+    return out;
+}
+
+fn paletteMauveEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-mauve-50", value: "oklch(98.5% 0 0)"),
+        ThemeEntry(name: "--color-mauve-100", value: "oklch(96% 0.003 325.6)"),
+        ThemeEntry(name: "--color-mauve-200", value: "oklch(92.2% 0.005 325.62)"),
+        ThemeEntry(name: "--color-mauve-300", value: "oklch(86.5% 0.012 325.68)"),
+        ThemeEntry(name: "--color-mauve-400", value: "oklch(71.1% 0.019 323.02)"),
+        ThemeEntry(name: "--color-mauve-500", value: "oklch(54.2% 0.034 322.5)"),
+        ThemeEntry(name: "--color-mauve-600", value: "oklch(43.5% 0.029 321.78)"),
+        ThemeEntry(name: "--color-mauve-700", value: "oklch(36.4% 0.029 323.89)"),
+        ThemeEntry(name: "--color-mauve-800", value: "oklch(26.3% 0.024 320.12)"),
+        ThemeEntry(name: "--color-mauve-900", value: "oklch(21.2% 0.019 322.12)"),
+        ThemeEntry(name: "--color-mauve-950", value: "oklch(14.5% 0.008 326)"),
+    ];
+    return out;
+}
+
+fn paletteOliveEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-olive-50", value: "oklch(98.8% 0.003 106.5)"),
+        ThemeEntry(name: "--color-olive-100", value: "oklch(96.6% 0.005 106.5)"),
+        ThemeEntry(name: "--color-olive-200", value: "oklch(93% 0.007 106.5)"),
+        ThemeEntry(name: "--color-olive-300", value: "oklch(88% 0.011 106.6)"),
+        ThemeEntry(name: "--color-olive-400", value: "oklch(73.7% 0.021 106.9)"),
+        ThemeEntry(name: "--color-olive-500", value: "oklch(58% 0.031 107.3)"),
+        ThemeEntry(name: "--color-olive-600", value: "oklch(46.6% 0.025 107.3)"),
+        ThemeEntry(name: "--color-olive-700", value: "oklch(39.4% 0.023 107.4)"),
+        ThemeEntry(name: "--color-olive-800", value: "oklch(28.6% 0.016 107.4)"),
+        ThemeEntry(name: "--color-olive-900", value: "oklch(22.8% 0.013 107.4)"),
+        ThemeEntry(name: "--color-olive-950", value: "oklch(15.3% 0.006 107.1)"),
+    ];
+    return out;
+}
+
+fn paletteMistEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-mist-50", value: "oklch(98.7% 0.002 197.1)"),
+        ThemeEntry(name: "--color-mist-100", value: "oklch(96.3% 0.002 197.1)"),
+        ThemeEntry(name: "--color-mist-200", value: "oklch(92.5% 0.005 214.3)"),
+        ThemeEntry(name: "--color-mist-300", value: "oklch(87.2% 0.007 219.6)"),
+        ThemeEntry(name: "--color-mist-400", value: "oklch(72.3% 0.014 214.4)"),
+        ThemeEntry(name: "--color-mist-500", value: "oklch(56% 0.021 213.5)"),
+        ThemeEntry(name: "--color-mist-600", value: "oklch(45% 0.017 213.2)"),
+        ThemeEntry(name: "--color-mist-700", value: "oklch(37.8% 0.015 216)"),
+        ThemeEntry(name: "--color-mist-800", value: "oklch(27.5% 0.011 216.9)"),
+        ThemeEntry(name: "--color-mist-900", value: "oklch(21.8% 0.008 223.9)"),
+        ThemeEntry(name: "--color-mist-950", value: "oklch(14.8% 0.004 228.8)"),
+    ];
+    return out;
+}
+
+fn paletteTaupeEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--color-taupe-50", value: "oklch(98.6% 0.002 67.8)"),
+        ThemeEntry(name: "--color-taupe-100", value: "oklch(96% 0.002 17.2)"),
+        ThemeEntry(name: "--color-taupe-200", value: "oklch(92.2% 0.005 34.3)"),
+        ThemeEntry(name: "--color-taupe-300", value: "oklch(86.8% 0.007 39.5)"),
+        ThemeEntry(name: "--color-taupe-400", value: "oklch(71.4% 0.014 41.2)"),
+        ThemeEntry(name: "--color-taupe-500", value: "oklch(54.7% 0.021 43.1)"),
+        ThemeEntry(name: "--color-taupe-600", value: "oklch(43.8% 0.017 39.3)"),
+        ThemeEntry(name: "--color-taupe-700", value: "oklch(36.7% 0.016 35.7)"),
+        ThemeEntry(name: "--color-taupe-800", value: "oklch(26.8% 0.011 36.5)"),
+        ThemeEntry(name: "--color-taupe-900", value: "oklch(21.4% 0.009 43.1)"),
+        ThemeEntry(name: "--color-taupe-950", value: "oklch(14.7% 0.004 49.3)"),
+    ];
+    return out;
+}
+
+// The value `paletteEntries()` carries for a name, or `""` when it carries
+// none. `themeValue` reads a `Theme`; this reads the list before it is one.
+fn paletteValue(name: string) -> string {
+    return paletteEntries()
+        .filter({ e -> e.name == name })
+        .map({ e -> e.value })
+        .join("");
+}
+
+
+// ── tests · the theme contribution ───────────────────────────────────────────
+
+test "paletteEntries — 286 entries, 26 families x 11 shades, and nothing else" {
+    assert paletteEntries().length == 286;
+    assert paletteEntries().filter({ e -> e.name.startsWith("--color-") }).length == 286;
+    assert paletteEntries().filter({ e -> e.name.startsWith("--color-red-") }).length == 11;
+    assert paletteEntries().filter({ e -> e.name.startsWith("--color-taupe-") }).length == 11;
+}
+
+test "paletteEntries — the two values the reference prints, in upstream's spelling" {
+    assert paletteValue("--color-red-500") == "oklch(63.7% 0.237 25.331)";
+    assert paletteValue("--color-blue-500") == "oklch(62.3% 0.214 259.815)";
+}
+
+test "paletteEntries — white and black stay front 54's and are not duplicated" {
+    assert paletteValue("--color-white") == "";
+    assert paletteValue("--color-black") == "";
+    assert themeValue(defaultTheme(), "--color-white") == "#fff";
+    assert themeValue(defaultTheme(), "--color-black") == "#000";
+}
+
+test "paletteEntries — every entry's name is one a utility can reference" {
+    val th = extendTheme(defaultTheme(), paletteEntries());
+    assert themeValue(th, "--color-red-500") == "oklch(63.7% 0.237 25.331)";
+    assert themeValue(th, "--color-slate-900") == "oklch(20.8% 0.042 265.755)";
+    assert themeValue(th, "--color-mist-50") != "";
+    assert paletteVar("red", "500") == "var(--color-red-500)";
+    assert themeValue(th, "--color-white") == "#fff";
+}
+
+test "paletteEntries — composing it does not disturb the rest of the theme" {
+    val th = extendTheme(defaultTheme(), paletteEntries());
+    assert themeValue(th, "--spacing") == "0.25rem";
+    assert themeValue(th, "--breakpoint-md") == "48rem";
+    assert namespace(th, Ns.Color).length == 288;
+    assert th.keyframes.length == defaultTheme().keyframes.length;
+}
+
+test "emilia emits no @theme block of its own — composing the palette is the caller's" {
+    val tokens: Token[] = [.Color.Sky.500, .Bg.Color.Slate.900];
+    val _cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("@theme") == -1;
+    assert styles.indexOf("oklch") == -1;
+    assert styles.indexOf("var(--color-sky-500)") != -1;
+}
+
+test "end to end — a two-token list renders one rule of two theme references" {
+    val tokens: Token[] = [.Bg.Color.Slate.900, .Color.Slate.50];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-color:var(--color-slate-900);color:var(--color-slate-50)}}</style>";
+}
+

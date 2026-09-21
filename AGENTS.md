@@ -380,15 +380,18 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **182/182** on
+  refuses) runs every module's in-file `test {}` blocks, **189/189** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 94 (`emilia.bp`). `emilia.bp`'s 94 are front 56's 33 (below)
-  plus front 33's 61: 26 one-per-family `Color` grid tests (280 of the 286
+  (`output.bp`) + 101 (`emilia.bp`). `emilia.bp`'s 101 are front 56's 33 (below)
+  plus front 33's 68: 26 one-per-family `Color` grid tests (280 of the 286
   cells — the six unreachable ones are named in § Maintainer rules) and 26 for
   the `Bg.Color` mirror (all 286), plus `paletteVar`, the shade-survives pin,
   the named colours on both properties, the pre-33 paths, the legacy `Bg`
-  leaves, the longhand/shorthand split and the rule shape of a colour token.
-  Front 56's 33:
+  leaves, the longhand/shorthand split, the rule shape of a colour token, and
+  seven over `paletteEntries()` — its 286 entries, the two anchor values in
+  upstream's spelling, white/black not duplicated, composition through
+  `extendTheme`, the absence of an `@theme` block in emilia's own output and
+  the end-to-end two-token document. Front 56's 33:
   - 8 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
     Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md,
     plus the shape of a section rule) — `Color.Black` reads
