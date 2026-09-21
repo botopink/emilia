@@ -453,6 +453,18 @@ to the commonJS row and runs once.
   workaround in `output.bp`'s `wrapAtRules` (mapping the list twice) is no
   longer required and may be simplified by whichever front next touches it.
   Kept as the reason a per-target divergence is worth a cell rather than a note.
+- **A consumer must import a type's TRANSITIVE types too, and the error points
+  at the wrong line.** `import { Theme } from "emilia";` alone reds `unknown
+  type 'DarkMode'` because `Theme` carries a `DarkMode` field; `Options` needs
+  `Rule`, `Block` and `Sheet` imported beside it for the same reason. Neither
+  name is written anywhere in the consumer. Worse, the reported location is a
+  COMMENT several lines away from any import — `src/main.bp:59:15` pointing
+  into a banner — so the message is the only usable signal. The working import
+  block for an example that touches the theme and `Options` is the one
+  `examples/emilia-spacing/` and `examples/emilia-layout/` share:
+  `{Theme, ThemeEntry, DarkMode, defaultTheme, extendTheme}` plus
+  `{Rule, Block, Sheet, Options}`. Copy it rather than rediscover it.
+
 - **A sibling-module import always names its module** — `import { Token } from
   "tokens";`, never the bare `import { Token };`. Both type-check, but commonJS
   lowers the bare form to `require("../module")`: a path that resolves while
