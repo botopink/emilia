@@ -1,11 +1,12 @@
 import {Token} from "tokens";
 import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
+import {darkAtRule, darkSelector, withDarkMode} from "theme";
 import {Ns, nsPrefix, themeVar, namespace} from "theme";
 import {spacing, spacingHalf} from "spacing";
 import {Rule, Block, Sheet, Variant, Options} from "output";
-import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant} from "output";
+import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant, markImportant} from "output";
 import {encodeSheet, decodeSheet, carriesSeparator} from "output";
-import {defaultOptions, withTheme, renderDocument} from "output";
+import {defaultOptions, withTheme, renderRule, renderDocument} from "output";
 
 //// ═══ FRONT 56 · the host cells and the public entry points ═══════════════
 ////
@@ -147,12 +148,91 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
         Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
-        Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
-        Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
-        Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
+        // ── front 34 — modifiers ─────────────────────────────────────────
+        Sm(inner) -> nestVariant(tokensToSheet(inner, th), smVariant(th));
         Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th));
         Lg(inner) -> nestVariant(tokensToSheet(inner, th), lgVariant(th));
         Xl(inner) -> nestVariant(tokensToSheet(inner, th), xlVariant(th));
+        X2xl(inner) -> nestVariant(tokensToSheet(inner, th), x2xlVariant(th));
+        MaxSm(inner) -> nestVariant(tokensToSheet(inner, th), maxSmVariant(th));
+        MaxMd(inner) -> nestVariant(tokensToSheet(inner, th), maxMdVariant(th));
+        MaxLg(inner) -> nestVariant(tokensToSheet(inner, th), maxLgVariant(th));
+        MaxXl(inner) -> nestVariant(tokensToSheet(inner, th), maxXlVariant(th));
+        MaxX2xl(inner) -> nestVariant(tokensToSheet(inner, th), maxX2xlVariant(th));
+        Dark(inner) -> nestVariant(tokensToSheet(inner, th), darkVariant(th));
+        Print(inner) -> nestVariant(tokensToSheet(inner, th), printVariant());
+        Portrait(inner) -> nestVariant(tokensToSheet(inner, th), portraitVariant());
+        Landscape(inner) -> nestVariant(tokensToSheet(inner, th), landscapeVariant());
+        MotionSafe(inner) -> nestVariant(tokensToSheet(inner, th), motionSafeVariant());
+        MotionReduce(inner) -> nestVariant(tokensToSheet(inner, th), motionReduceVariant());
+        ContrastMore(inner) -> nestVariant(tokensToSheet(inner, th), contrastMoreVariant());
+        ContrastLess(inner) -> nestVariant(tokensToSheet(inner, th), contrastLessVariant());
+        ForcedColors(inner) -> nestVariant(tokensToSheet(inner, th), forcedColorsVariant());
+        Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
+        Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
+        FocusWithin(inner) -> nestVariant(tokensToSheet(inner, th), focusWithinVariant());
+        FocusVisible(inner) -> nestVariant(tokensToSheet(inner, th), focusVisibleVariant());
+        Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
+        Visited(inner) -> nestVariant(tokensToSheet(inner, th), visitedVariant());
+        Target(inner) -> nestVariant(tokensToSheet(inner, th), targetVariant());
+        Open(inner) -> nestVariant(tokensToSheet(inner, th), openVariant());
+        Inert(inner) -> nestVariant(tokensToSheet(inner, th), inertVariant());
+        Disabled(inner) -> nestVariant(tokensToSheet(inner, th), disabledVariant());
+        Enabled(inner) -> nestVariant(tokensToSheet(inner, th), enabledVariant());
+        Checked(inner) -> nestVariant(tokensToSheet(inner, th), checkedVariant());
+        Indeterminate(inner) -> nestVariant(tokensToSheet(inner, th), indeterminateVariant());
+        Default(inner) -> nestVariant(tokensToSheet(inner, th), defaultVariant());
+        Optional(inner) -> nestVariant(tokensToSheet(inner, th), optionalVariant());
+        Required(inner) -> nestVariant(tokensToSheet(inner, th), requiredVariant());
+        Valid(inner) -> nestVariant(tokensToSheet(inner, th), validVariant());
+        Invalid(inner) -> nestVariant(tokensToSheet(inner, th), invalidVariant());
+        UserValid(inner) -> nestVariant(tokensToSheet(inner, th), userValidVariant());
+        UserInvalid(inner) -> nestVariant(tokensToSheet(inner, th), userInvalidVariant());
+        InRange(inner) -> nestVariant(tokensToSheet(inner, th), inRangeVariant());
+        OutOfRange(inner) -> nestVariant(tokensToSheet(inner, th), outOfRangeVariant());
+        PlaceholderShown(inner) -> nestVariant(tokensToSheet(inner, th), placeholderShownVariant());
+        Autofill(inner) -> nestVariant(tokensToSheet(inner, th), autofillVariant());
+        ReadOnly(inner) -> nestVariant(tokensToSheet(inner, th), readOnlyVariant());
+        First(inner) -> nestVariant(tokensToSheet(inner, th), firstVariant());
+        Last(inner) -> nestVariant(tokensToSheet(inner, th), lastVariant());
+        Only(inner) -> nestVariant(tokensToSheet(inner, th), onlyVariant());
+        Odd(inner) -> nestVariant(tokensToSheet(inner, th), oddVariant());
+        Even(inner) -> nestVariant(tokensToSheet(inner, th), evenVariant());
+        FirstOfType(inner) -> nestVariant(tokensToSheet(inner, th), firstOfTypeVariant());
+        LastOfType(inner) -> nestVariant(tokensToSheet(inner, th), lastOfTypeVariant());
+        OnlyOfType(inner) -> nestVariant(tokensToSheet(inner, th), onlyOfTypeVariant());
+        Empty(inner) -> nestVariant(tokensToSheet(inner, th), emptyVariant());
+        Nth(index, inner) -> nestVariant(tokensToSheet(inner, th), nthVariant(index));
+        NthLast(index, inner) -> nestVariant(tokensToSheet(inner, th), nthLastVariant(index));
+        Before(inner) -> nestVariant(tokensToSheet(inner, th), beforeVariant());
+        After(inner) -> nestVariant(tokensToSheet(inner, th), afterVariant());
+        FirstLetter(inner) -> nestVariant(tokensToSheet(inner, th), firstLetterVariant());
+        FirstLine(inner) -> nestVariant(tokensToSheet(inner, th), firstLineVariant());
+        Placeholder(inner) -> nestVariant(tokensToSheet(inner, th), placeholderVariant());
+        File(inner) -> nestVariant(tokensToSheet(inner, th), fileVariant());
+        Marker(inner) -> nestVariant(tokensToSheet(inner, th), markerVariant());
+        Selection(inner) -> nestVariant(tokensToSheet(inner, th), selectionVariant());
+        Backdrop(inner) -> nestVariant(tokensToSheet(inner, th), backdropVariant());
+        GroupHover(inner) -> nestVariant(tokensToSheet(inner, th), groupHoverVariant());
+        GroupFocus(inner) -> nestVariant(tokensToSheet(inner, th), groupFocusVariant());
+        GroupActive(inner) -> nestVariant(tokensToSheet(inner, th), groupActiveVariant());
+        GroupVisited(inner) -> nestVariant(tokensToSheet(inner, th), groupVisitedVariant());
+        GroupDisabled(inner) -> nestVariant(tokensToSheet(inner, th), groupDisabledVariant());
+        GroupOpen(inner) -> nestVariant(tokensToSheet(inner, th), groupOpenVariant());
+        PeerHover(inner) -> nestVariant(tokensToSheet(inner, th), peerHoverVariant());
+        PeerFocus(inner) -> nestVariant(tokensToSheet(inner, th), peerFocusVariant());
+        PeerActive(inner) -> nestVariant(tokensToSheet(inner, th), peerActiveVariant());
+        PeerChecked(inner) -> nestVariant(tokensToSheet(inner, th), peerCheckedVariant());
+        PeerInvalid(inner) -> nestVariant(tokensToSheet(inner, th), peerInvalidVariant());
+        PeerRequired(inner) -> nestVariant(tokensToSheet(inner, th), peerRequiredVariant());
+        PeerDisabled(inner) -> nestVariant(tokensToSheet(inner, th), peerDisabledVariant());
+        PeerPlaceholderShown(inner) -> nestVariant(tokensToSheet(inner, th), peerPlaceholderShownVariant());
+        Rtl(inner) -> nestVariant(tokensToSheet(inner, th), rtlVariant());
+        Ltr(inner) -> nestVariant(tokensToSheet(inner, th), ltrVariant());
+        Children(inner) -> nestVariant(tokensToSheet(inner, th), childrenVariant());
+        Descendants(inner) -> nestVariant(tokensToSheet(inner, th), descendantsVariant());
+        Important(inner) -> markImportant(tokensToSheet(inner, th));
+        // ── end front 34 ─────────────────────────────────────────────────
     };
     return out;
 }
@@ -164,33 +244,81 @@ fn tokensToSheet(tokens: Token[], th: Theme) -> Sheet {
     return tokens.fold(emptySheet(), { acc, t -> mergeSheet(acc, tokenToSheet(t, th)) });
 }
 
-// ── the six V1 modifiers, as variants ───────────────────────────────────
-//
-// FRONT 34 OWNS THE VARIANT TABLE. These six are the modifiers the V1 `Token`
-// enum already carries, written against the reference's variant table rather
-// than against the literals they used to emit: `hover` is
-// `@media (hover: hover) { &:hover }` and not a bare `:hover`, and a breakpoint
-// is `@media (width >= 48rem)` and not `@media(min-width:768px)`. Front 34
-// moves them into its own table and adds the other ninety.
-//
-// A breakpoint reads its width FROM THE THEME, so a project that overrides
-// `--breakpoint-md` gets its own media query rather than emilia's — and so the
-// theme is genuinely an input to the class hash, which is the clause of
-// contract 4 this front amends.
-pub fn hoverVariant() -> Variant {
-    return Variant(atRule: "@media (hover: hover)", selector: "&:hover");
+//// ═══ END FRONT 56 — everything below is fronts 33-47, 57 and 58 ═════════
+
+//// ═══ FRONT 34 · the modifier variant table ═══════════════════════════════
+////
+//// A modifier is the only way a token reaches a state, a breakpoint or a
+//// pseudo-element. There are eighty-three, and every one of them is the same
+//// two things: a top-level `Token` variant carrying `inner: Token[]`
+//// (`tokens.bp`, same banner), and ONE `Variant`-returning fn here.
+////
+//// THIS FRONT OWNS NO WRAPPING LOGIC. `Variant(atRule, selector)`,
+//// `nestVariant` and the one-`&` nesting template are front 56's, and no
+//// function below builds a `{` or a `}` or concatenates an inner sheet.
+//// Two consequences worth stating, because they are what makes the two
+//// fields enough for the whole reference table:
+////
+////   - a variant is nested by SUBSTITUTING the inner rule's `&` with the
+////     outer variant's selector, so `[dir="rtl"] &` and `:is(& > *)` — where
+////     the class is not leading — go through the same field as `&:focus`;
+////   - an empty `atRule` means the variant is purely a selector, and a `"&"`
+////     selector means it is purely an at-rule.
+////
+//// A BREAKPOINT READS THE THEME (decision 82), both ways round: `mdVariant`
+//// and `maxMdVariant` both resolve `--breakpoint-md`, so a project that
+//// overrides the ladder gets its own queries and its own class hashes.
+//// `darkVariant` likewise consumes front 54's `darkAtRule`/`darkSelector`
+//// rather than re-deciding the strategy: `DarkMode.Media` answers an at-rule
+//// and a bare `&`, `DarkMode.Class` and `DarkMode.Attribute` answer no
+//// at-rule and a `:where(…)` selector, and this front never learns which.
+////
+//// `Important` is the one row that is not a variant at all — decision 81
+//// gives front 34 upstream's per-utility `!`, and it is one line on top of
+//// front 56's `markImportant`.
+
+// ── the shapes a variant takes ────────────────────────────────────────────
+
+// Purely a selector — the reference's `focus`, `before`, `rtl`, `group-*` rows.
+fn selectorVariant(selector: string) -> Variant {
+    return Variant(atRule: "", selector: selector);
 }
 
-pub fn focusVariant() -> Variant {
-    return Variant(atRule: "", selector: "&:focus");
+// Purely an at-rule — the reference's `print`, `portrait`, `motion-*` rows.
+// The selector is the bare `&`, so the rule it wraps keeps its own.
+fn atRuleVariant(atRule: string) -> Variant {
+    return Variant(atRule: atRule, selector: "&");
 }
 
-pub fn activeVariant() -> Variant {
-    return Variant(atRule: "", selector: "&:active");
-}
-
+// `sm:` … `2xl:`, upstream's `width >= <breakpoint>` form. The width is the
+// THEME's, never a literal: `--breakpoint-md` is `48rem` in the stock theme
+// and whatever the project says otherwise.
 fn breakpointVariant(th: Theme, name: string) -> Variant {
     return Variant(atRule: "@media (width >= " + themeValue(th, name) + ")", selector: "&");
+}
+
+// `max-sm:` … `max-2xl:`, the same entry read as an exclusive upper bound. A
+// RANGE is nesting and not a variant: `md:max-xl:` is `Md([MaxXl([…])])`.
+fn maxBreakpointVariant(th: Theme, name: string) -> Variant {
+    return Variant(atRule: "@media (width < " + themeValue(th, name) + ")", selector: "&");
+}
+
+// The reference gives `group-*` as one template with the state substituted in,
+// so it is written once. `.group` is a class the CONSUMER's markup carries;
+// emilia never emits it.
+fn groupVariant(state: string) -> Variant {
+    return selectorVariant("&:is(:where(.group)" + state + " *)");
+}
+
+// The same, for the sibling form. `.peer` is the consumer's too.
+fn peerVariant(state: string) -> Variant {
+    return selectorVariant("&:is(:where(.peer)" + state + " ~ *)");
+}
+
+// ── breakpoints — min-width, read from the theme's `--breakpoint-*` ladder ───
+
+pub fn smVariant(th: Theme) -> Variant {
+    return breakpointVariant(th, "--breakpoint-sm");
 }
 
 pub fn mdVariant(th: Theme) -> Variant {
@@ -205,7 +333,1157 @@ pub fn xlVariant(th: Theme) -> Variant {
     return breakpointVariant(th, "--breakpoint-xl");
 }
 
-//// ═══ END FRONT 56 — everything below is fronts 33-47, 57 and 58 ═════════
+pub fn x2xlVariant(th: Theme) -> Variant {
+    return breakpointVariant(th, "--breakpoint-2xl");
+}
+
+// ── breakpoints — max-width, the same ladder read the other way ──────────
+
+pub fn maxSmVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-sm");
+}
+
+pub fn maxMdVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-md");
+}
+
+pub fn maxLgVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-lg");
+}
+
+pub fn maxXlVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-xl");
+}
+
+pub fn maxX2xlVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-2xl");
+}
+
+// ── dark mode and the other media features ───────────────────────────────
+
+pub fn darkVariant(th: Theme) -> Variant {
+    return Variant(atRule: darkAtRule(th), selector: darkSelector(th));
+}
+
+pub fn printVariant() -> Variant {
+    return atRuleVariant("@media print");
+}
+
+pub fn portraitVariant() -> Variant {
+    return atRuleVariant("@media (orientation: portrait)");
+}
+
+pub fn landscapeVariant() -> Variant {
+    return atRuleVariant("@media (orientation: landscape)");
+}
+
+pub fn motionSafeVariant() -> Variant {
+    return atRuleVariant("@media (prefers-reduced-motion: no-preference)");
+}
+
+pub fn motionReduceVariant() -> Variant {
+    return atRuleVariant("@media (prefers-reduced-motion: reduce)");
+}
+
+pub fn contrastMoreVariant() -> Variant {
+    return atRuleVariant("@media (prefers-contrast: more)");
+}
+
+pub fn contrastLessVariant() -> Variant {
+    return atRuleVariant("@media (prefers-contrast: less)");
+}
+
+pub fn forcedColorsVariant() -> Variant {
+    return atRuleVariant("@media (forced-colors: active)");
+}
+
+// ── interaction state ────────────────────────────────────────────────────
+
+pub fn hoverVariant() -> Variant {
+    return Variant(atRule: "@media (hover: hover)", selector: "&:hover");
+}
+
+pub fn focusVariant() -> Variant {
+    return selectorVariant("&:focus");
+}
+
+pub fn focusWithinVariant() -> Variant {
+    return selectorVariant("&:focus-within");
+}
+
+pub fn focusVisibleVariant() -> Variant {
+    return selectorVariant("&:focus-visible");
+}
+
+pub fn activeVariant() -> Variant {
+    return selectorVariant("&:active");
+}
+
+pub fn visitedVariant() -> Variant {
+    return selectorVariant("&:visited");
+}
+
+pub fn targetVariant() -> Variant {
+    return selectorVariant("&:target");
+}
+
+// THE REFERENCE ROW DOES NOT SURVIVE FRONT 56. `§ 3.2` spells `open` as
+// `&:open, &:popover-open`, which carries TWO `&` and is refused by
+// `checkVariantSelector` with no opt-out — correctly, since the two-`&` form
+// duplicates the rule it wraps. The two states go inside one `:is()` instead:
+// one `&`, the same match set, and no selector list for front 56 to split.
+//
+// AND THE ROW IS A VERSION BEHIND, confirmed by the maintainer rather than
+// guessed here: upstream v4 also carries the legacy `[open]` ATTRIBUTE
+// (`&:is([open], :popover-open, :open)`), because that is what matches
+// `<details open>` on an engine without `:open`. The local reference's table
+// does not, and this front transcribed the table it could read. **The next
+// front to touch this row with upstream in hand adds `[open]`** — it is
+// recorded on the milestone's reference-coverage row, not left as a
+// suspicion. The test below pins the current spelling, so the addition shows
+// up as a change and not as a drift.
+pub fn openVariant() -> Variant {
+    return selectorVariant("&:is(:open, :popover-open)");
+}
+
+pub fn inertVariant() -> Variant {
+    return selectorVariant("&:is([inert], [inert] *)");
+}
+
+// ── form state ───────────────────────────────────────────────────────────
+
+pub fn disabledVariant() -> Variant {
+    return selectorVariant("&:disabled");
+}
+
+pub fn enabledVariant() -> Variant {
+    return selectorVariant("&:enabled");
+}
+
+pub fn checkedVariant() -> Variant {
+    return selectorVariant("&:checked");
+}
+
+pub fn indeterminateVariant() -> Variant {
+    return selectorVariant("&:indeterminate");
+}
+
+pub fn defaultVariant() -> Variant {
+    return selectorVariant("&:default");
+}
+
+pub fn optionalVariant() -> Variant {
+    return selectorVariant("&:optional");
+}
+
+pub fn requiredVariant() -> Variant {
+    return selectorVariant("&:required");
+}
+
+pub fn validVariant() -> Variant {
+    return selectorVariant("&:valid");
+}
+
+pub fn invalidVariant() -> Variant {
+    return selectorVariant("&:invalid");
+}
+
+pub fn userValidVariant() -> Variant {
+    return selectorVariant("&:user-valid");
+}
+
+pub fn userInvalidVariant() -> Variant {
+    return selectorVariant("&:user-invalid");
+}
+
+pub fn inRangeVariant() -> Variant {
+    return selectorVariant("&:in-range");
+}
+
+pub fn outOfRangeVariant() -> Variant {
+    return selectorVariant("&:out-of-range");
+}
+
+pub fn placeholderShownVariant() -> Variant {
+    return selectorVariant("&:placeholder-shown");
+}
+
+pub fn autofillVariant() -> Variant {
+    return selectorVariant("&:autofill");
+}
+
+pub fn readOnlyVariant() -> Variant {
+    return selectorVariant("&:read-only");
+}
+
+// ── structural position ──────────────────────────────────────────────────
+
+pub fn firstVariant() -> Variant {
+    return selectorVariant("&:first-child");
+}
+
+pub fn lastVariant() -> Variant {
+    return selectorVariant("&:last-child");
+}
+
+pub fn onlyVariant() -> Variant {
+    return selectorVariant("&:only-child");
+}
+
+pub fn oddVariant() -> Variant {
+    return selectorVariant("&:nth-child(odd)");
+}
+
+pub fn evenVariant() -> Variant {
+    return selectorVariant("&:nth-child(even)");
+}
+
+pub fn firstOfTypeVariant() -> Variant {
+    return selectorVariant("&:first-of-type");
+}
+
+pub fn lastOfTypeVariant() -> Variant {
+    return selectorVariant("&:last-of-type");
+}
+
+pub fn onlyOfTypeVariant() -> Variant {
+    return selectorVariant("&:only-of-type");
+}
+
+pub fn emptyVariant() -> Variant {
+    return selectorVariant("&:empty");
+}
+
+pub fn nthVariant(index: i32) -> Variant {
+    return selectorVariant("&:nth-child(" + index.toString() + ")");
+}
+
+pub fn nthLastVariant(index: i32) -> Variant {
+    return selectorVariant("&:nth-last-child(" + index.toString() + ")");
+}
+
+// ── pseudo-elements ──────────────────────────────────────────────────────
+
+pub fn beforeVariant() -> Variant {
+    return selectorVariant("&::before");
+}
+
+pub fn afterVariant() -> Variant {
+    return selectorVariant("&::after");
+}
+
+pub fn firstLetterVariant() -> Variant {
+    return selectorVariant("&::first-letter");
+}
+
+pub fn firstLineVariant() -> Variant {
+    return selectorVariant("&::first-line");
+}
+
+pub fn placeholderVariant() -> Variant {
+    return selectorVariant("&::placeholder");
+}
+
+pub fn fileVariant() -> Variant {
+    return selectorVariant("&::file-selector-button");
+}
+
+pub fn markerVariant() -> Variant {
+    return selectorVariant("& ::marker");
+}
+
+pub fn selectionVariant() -> Variant {
+    return selectorVariant("& ::selection");
+}
+
+pub fn backdropVariant() -> Variant {
+    return selectorVariant("&::backdrop");
+}
+
+// ── parent state — the `.group` class is the consumer's, never emilia's ───
+
+pub fn groupHoverVariant() -> Variant {
+    return groupVariant(":hover");
+}
+
+pub fn groupFocusVariant() -> Variant {
+    return groupVariant(":focus");
+}
+
+pub fn groupActiveVariant() -> Variant {
+    return groupVariant(":active");
+}
+
+pub fn groupVisitedVariant() -> Variant {
+    return groupVariant(":visited");
+}
+
+pub fn groupDisabledVariant() -> Variant {
+    return groupVariant(":disabled");
+}
+
+pub fn groupOpenVariant() -> Variant {
+    return groupVariant(":open");
+}
+
+// ── sibling state — the `.peer` class is the consumer's, never emilia's ───
+
+pub fn peerHoverVariant() -> Variant {
+    return peerVariant(":hover");
+}
+
+pub fn peerFocusVariant() -> Variant {
+    return peerVariant(":focus");
+}
+
+pub fn peerActiveVariant() -> Variant {
+    return peerVariant(":active");
+}
+
+pub fn peerCheckedVariant() -> Variant {
+    return peerVariant(":checked");
+}
+
+pub fn peerInvalidVariant() -> Variant {
+    return peerVariant(":invalid");
+}
+
+pub fn peerRequiredVariant() -> Variant {
+    return peerVariant(":required");
+}
+
+pub fn peerDisabledVariant() -> Variant {
+    return peerVariant(":disabled");
+}
+
+pub fn peerPlaceholderShownVariant() -> Variant {
+    return peerVariant(":placeholder-shown");
+}
+
+// ── writing direction and descent ────────────────────────────────────────
+
+pub fn rtlVariant() -> Variant {
+    return selectorVariant("[dir=\"rtl\"] &");
+}
+
+pub fn ltrVariant() -> Variant {
+    return selectorVariant("[dir=\"ltr\"] &");
+}
+
+pub fn childrenVariant() -> Variant {
+    return selectorVariant(":is(& > *)");
+}
+
+pub fn descendantsVariant() -> Variant {
+    return selectorVariant(":is(& *)");
+}
+
+// ── front 34 · tests ─────────────────────────────────────────────────────
+//
+// Each family gets two: the `Variant` halves against the reference's two
+// columns, and the CSS the row renders once front 56's `nestVariant` and
+// `renderRule` have applied it. The rendered form is what a reader checks
+// against upstream; the halves are what this front actually writes.
+
+fn boldInner() -> Token[] {
+    val out: Token[] = [.Text.Bold];
+    return out;
+}
+
+// The CSS one modifier renders around `font-weight:bold`, on a class called
+// `x` and with the theme layer switched off, so the assertion is the row.
+fn modifierCssWith(t: Token, th: Theme) -> string {
+    return renderRule("x", firstRuleOf(tokenToSheet(t, th)), bareOptions());
+}
+
+fn modifierCss(t: Token) -> string {
+    return modifierCssWith(t, defaultTheme());
+}
+
+test "breakpoints, min-width — the two halves of every Variant in the family" {
+    val th = defaultTheme();
+    assert smVariant(th).atRule == "@media (width >= 40rem)";
+    assert smVariant(th).selector == "&";
+    assert mdVariant(th).atRule == "@media (width >= 48rem)";
+    assert mdVariant(th).selector == "&";
+    assert lgVariant(th).atRule == "@media (width >= 64rem)";
+    assert lgVariant(th).selector == "&";
+    assert xlVariant(th).atRule == "@media (width >= 80rem)";
+    assert xlVariant(th).selector == "&";
+    assert x2xlVariant(th).atRule == "@media (width >= 96rem)";
+    assert x2xlVariant(th).selector == "&";
+}
+
+test "breakpoints, min-width — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Sm(inner)) == "@media (width >= 40rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.Md(inner)) == "@media (width >= 48rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.Lg(inner)) == "@media (width >= 64rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.Xl(inner)) == "@media (width >= 80rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.X2xl(inner)) == "@media (width >= 96rem){.x{font-weight:bold}}";
+}
+
+test "breakpoints, max-width — the two halves of every Variant in the family" {
+    val th = defaultTheme();
+    assert maxSmVariant(th).atRule == "@media (width < 40rem)";
+    assert maxSmVariant(th).selector == "&";
+    assert maxMdVariant(th).atRule == "@media (width < 48rem)";
+    assert maxMdVariant(th).selector == "&";
+    assert maxLgVariant(th).atRule == "@media (width < 64rem)";
+    assert maxLgVariant(th).selector == "&";
+    assert maxXlVariant(th).atRule == "@media (width < 80rem)";
+    assert maxXlVariant(th).selector == "&";
+    assert maxX2xlVariant(th).atRule == "@media (width < 96rem)";
+    assert maxX2xlVariant(th).selector == "&";
+}
+
+test "breakpoints, max-width — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.MaxSm(inner)) == "@media (width < 40rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxMd(inner)) == "@media (width < 48rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxLg(inner)) == "@media (width < 64rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxXl(inner)) == "@media (width < 80rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxX2xl(inner)) == "@media (width < 96rem){.x{font-weight:bold}}";
+}
+
+test "dark mode and the other media features — the two halves of every Variant in the family" {
+    val th = defaultTheme();
+    assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
+    assert darkVariant(th).selector == "&";
+    assert printVariant().atRule == "@media print";
+    assert printVariant().selector == "&";
+    assert portraitVariant().atRule == "@media (orientation: portrait)";
+    assert portraitVariant().selector == "&";
+    assert landscapeVariant().atRule == "@media (orientation: landscape)";
+    assert landscapeVariant().selector == "&";
+    assert motionSafeVariant().atRule == "@media (prefers-reduced-motion: no-preference)";
+    assert motionSafeVariant().selector == "&";
+    assert motionReduceVariant().atRule == "@media (prefers-reduced-motion: reduce)";
+    assert motionReduceVariant().selector == "&";
+    assert contrastMoreVariant().atRule == "@media (prefers-contrast: more)";
+    assert contrastMoreVariant().selector == "&";
+    assert contrastLessVariant().atRule == "@media (prefers-contrast: less)";
+    assert contrastLessVariant().selector == "&";
+    assert forcedColorsVariant().atRule == "@media (forced-colors: active)";
+    assert forcedColorsVariant().selector == "&";
+}
+
+test "dark mode and the other media features — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Dark(inner)) == "@media (prefers-color-scheme: dark){.x{font-weight:bold}}";
+    assert modifierCss(Token.Print(inner)) == "@media print{.x{font-weight:bold}}";
+    assert modifierCss(Token.Portrait(inner)) == "@media (orientation: portrait){.x{font-weight:bold}}";
+    assert modifierCss(Token.Landscape(inner)) == "@media (orientation: landscape){.x{font-weight:bold}}";
+    assert modifierCss(Token.MotionSafe(inner)) == "@media (prefers-reduced-motion: no-preference){.x{font-weight:bold}}";
+    assert modifierCss(Token.MotionReduce(inner)) == "@media (prefers-reduced-motion: reduce){.x{font-weight:bold}}";
+    assert modifierCss(Token.ContrastMore(inner)) == "@media (prefers-contrast: more){.x{font-weight:bold}}";
+    assert modifierCss(Token.ContrastLess(inner)) == "@media (prefers-contrast: less){.x{font-weight:bold}}";
+    assert modifierCss(Token.ForcedColors(inner)) == "@media (forced-colors: active){.x{font-weight:bold}}";
+}
+
+test "interaction state — the two halves of every Variant in the family" {
+    assert hoverVariant().atRule == "@media (hover: hover)";
+    assert hoverVariant().selector == "&:hover";
+    assert focusVariant().atRule == "";
+    assert focusVariant().selector == "&:focus";
+    assert focusWithinVariant().atRule == "";
+    assert focusWithinVariant().selector == "&:focus-within";
+    assert focusVisibleVariant().atRule == "";
+    assert focusVisibleVariant().selector == "&:focus-visible";
+    assert activeVariant().atRule == "";
+    assert activeVariant().selector == "&:active";
+    assert visitedVariant().atRule == "";
+    assert visitedVariant().selector == "&:visited";
+    assert targetVariant().atRule == "";
+    assert targetVariant().selector == "&:target";
+    assert openVariant().atRule == "";
+    assert openVariant().selector == "&:is(:open, :popover-open)";
+    assert inertVariant().atRule == "";
+    assert inertVariant().selector == "&:is([inert], [inert] *)";
+}
+
+test "interaction state — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Hover(inner)) == "@media (hover: hover){.x:hover{font-weight:bold}}";
+    assert modifierCss(Token.Focus(inner)) == ".x:focus{font-weight:bold}";
+    assert modifierCss(Token.FocusWithin(inner)) == ".x:focus-within{font-weight:bold}";
+    assert modifierCss(Token.FocusVisible(inner)) == ".x:focus-visible{font-weight:bold}";
+    assert modifierCss(Token.Active(inner)) == ".x:active{font-weight:bold}";
+    assert modifierCss(Token.Visited(inner)) == ".x:visited{font-weight:bold}";
+    assert modifierCss(Token.Target(inner)) == ".x:target{font-weight:bold}";
+    assert modifierCss(Token.Open(inner)) == ".x:is(:open, :popover-open){font-weight:bold}";
+    assert modifierCss(Token.Inert(inner)) == ".x:is([inert], [inert] *){font-weight:bold}";
+}
+
+test "form state — the two halves of every Variant in the family" {
+    assert disabledVariant().atRule == "";
+    assert disabledVariant().selector == "&:disabled";
+    assert enabledVariant().atRule == "";
+    assert enabledVariant().selector == "&:enabled";
+    assert checkedVariant().atRule == "";
+    assert checkedVariant().selector == "&:checked";
+    assert indeterminateVariant().atRule == "";
+    assert indeterminateVariant().selector == "&:indeterminate";
+    assert defaultVariant().atRule == "";
+    assert defaultVariant().selector == "&:default";
+    assert optionalVariant().atRule == "";
+    assert optionalVariant().selector == "&:optional";
+    assert requiredVariant().atRule == "";
+    assert requiredVariant().selector == "&:required";
+    assert validVariant().atRule == "";
+    assert validVariant().selector == "&:valid";
+    assert invalidVariant().atRule == "";
+    assert invalidVariant().selector == "&:invalid";
+    assert userValidVariant().atRule == "";
+    assert userValidVariant().selector == "&:user-valid";
+    assert userInvalidVariant().atRule == "";
+    assert userInvalidVariant().selector == "&:user-invalid";
+    assert inRangeVariant().atRule == "";
+    assert inRangeVariant().selector == "&:in-range";
+    assert outOfRangeVariant().atRule == "";
+    assert outOfRangeVariant().selector == "&:out-of-range";
+    assert placeholderShownVariant().atRule == "";
+    assert placeholderShownVariant().selector == "&:placeholder-shown";
+    assert autofillVariant().atRule == "";
+    assert autofillVariant().selector == "&:autofill";
+    assert readOnlyVariant().atRule == "";
+    assert readOnlyVariant().selector == "&:read-only";
+}
+
+test "form state — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Disabled(inner)) == ".x:disabled{font-weight:bold}";
+    assert modifierCss(Token.Enabled(inner)) == ".x:enabled{font-weight:bold}";
+    assert modifierCss(Token.Checked(inner)) == ".x:checked{font-weight:bold}";
+    assert modifierCss(Token.Indeterminate(inner)) == ".x:indeterminate{font-weight:bold}";
+    assert modifierCss(Token.Default(inner)) == ".x:default{font-weight:bold}";
+    assert modifierCss(Token.Optional(inner)) == ".x:optional{font-weight:bold}";
+    assert modifierCss(Token.Required(inner)) == ".x:required{font-weight:bold}";
+    assert modifierCss(Token.Valid(inner)) == ".x:valid{font-weight:bold}";
+    assert modifierCss(Token.Invalid(inner)) == ".x:invalid{font-weight:bold}";
+    assert modifierCss(Token.UserValid(inner)) == ".x:user-valid{font-weight:bold}";
+    assert modifierCss(Token.UserInvalid(inner)) == ".x:user-invalid{font-weight:bold}";
+    assert modifierCss(Token.InRange(inner)) == ".x:in-range{font-weight:bold}";
+    assert modifierCss(Token.OutOfRange(inner)) == ".x:out-of-range{font-weight:bold}";
+    assert modifierCss(Token.PlaceholderShown(inner)) == ".x:placeholder-shown{font-weight:bold}";
+    assert modifierCss(Token.Autofill(inner)) == ".x:autofill{font-weight:bold}";
+    assert modifierCss(Token.ReadOnly(inner)) == ".x:read-only{font-weight:bold}";
+}
+
+test "structural position — the two halves of every Variant in the family" {
+    assert firstVariant().atRule == "";
+    assert firstVariant().selector == "&:first-child";
+    assert lastVariant().atRule == "";
+    assert lastVariant().selector == "&:last-child";
+    assert onlyVariant().atRule == "";
+    assert onlyVariant().selector == "&:only-child";
+    assert oddVariant().atRule == "";
+    assert oddVariant().selector == "&:nth-child(odd)";
+    assert evenVariant().atRule == "";
+    assert evenVariant().selector == "&:nth-child(even)";
+    assert firstOfTypeVariant().atRule == "";
+    assert firstOfTypeVariant().selector == "&:first-of-type";
+    assert lastOfTypeVariant().atRule == "";
+    assert lastOfTypeVariant().selector == "&:last-of-type";
+    assert onlyOfTypeVariant().atRule == "";
+    assert onlyOfTypeVariant().selector == "&:only-of-type";
+    assert emptyVariant().atRule == "";
+    assert emptyVariant().selector == "&:empty";
+    assert nthVariant(3).atRule == "";
+    assert nthVariant(3).selector == "&:nth-child(3)";
+    assert nthLastVariant(5).atRule == "";
+    assert nthLastVariant(5).selector == "&:nth-last-child(5)";
+}
+
+test "structural position — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.First(inner)) == ".x:first-child{font-weight:bold}";
+    assert modifierCss(Token.Last(inner)) == ".x:last-child{font-weight:bold}";
+    assert modifierCss(Token.Only(inner)) == ".x:only-child{font-weight:bold}";
+    assert modifierCss(Token.Odd(inner)) == ".x:nth-child(odd){font-weight:bold}";
+    assert modifierCss(Token.Even(inner)) == ".x:nth-child(even){font-weight:bold}";
+    assert modifierCss(Token.FirstOfType(inner)) == ".x:first-of-type{font-weight:bold}";
+    assert modifierCss(Token.LastOfType(inner)) == ".x:last-of-type{font-weight:bold}";
+    assert modifierCss(Token.OnlyOfType(inner)) == ".x:only-of-type{font-weight:bold}";
+    assert modifierCss(Token.Empty(inner)) == ".x:empty{font-weight:bold}";
+    assert modifierCss(Token.Nth(index: 3, inner: inner)) == ".x:nth-child(3){font-weight:bold}";
+    assert modifierCss(Token.NthLast(index: 5, inner: inner)) == ".x:nth-last-child(5){font-weight:bold}";
+}
+
+test "pseudo-elements — the two halves of every Variant in the family" {
+    assert beforeVariant().atRule == "";
+    assert beforeVariant().selector == "&::before";
+    assert afterVariant().atRule == "";
+    assert afterVariant().selector == "&::after";
+    assert firstLetterVariant().atRule == "";
+    assert firstLetterVariant().selector == "&::first-letter";
+    assert firstLineVariant().atRule == "";
+    assert firstLineVariant().selector == "&::first-line";
+    assert placeholderVariant().atRule == "";
+    assert placeholderVariant().selector == "&::placeholder";
+    assert fileVariant().atRule == "";
+    assert fileVariant().selector == "&::file-selector-button";
+    assert markerVariant().atRule == "";
+    assert markerVariant().selector == "& ::marker";
+    assert selectionVariant().atRule == "";
+    assert selectionVariant().selector == "& ::selection";
+    assert backdropVariant().atRule == "";
+    assert backdropVariant().selector == "&::backdrop";
+}
+
+test "pseudo-elements — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Before(inner)) == ".x::before{font-weight:bold}";
+    assert modifierCss(Token.After(inner)) == ".x::after{font-weight:bold}";
+    assert modifierCss(Token.FirstLetter(inner)) == ".x::first-letter{font-weight:bold}";
+    assert modifierCss(Token.FirstLine(inner)) == ".x::first-line{font-weight:bold}";
+    assert modifierCss(Token.Placeholder(inner)) == ".x::placeholder{font-weight:bold}";
+    assert modifierCss(Token.File(inner)) == ".x::file-selector-button{font-weight:bold}";
+    assert modifierCss(Token.Marker(inner)) == ".x ::marker{font-weight:bold}";
+    assert modifierCss(Token.Selection(inner)) == ".x ::selection{font-weight:bold}";
+    assert modifierCss(Token.Backdrop(inner)) == ".x::backdrop{font-weight:bold}";
+}
+
+test "parent state (`group-*`) — the two halves of every Variant in the family" {
+    assert groupHoverVariant().atRule == "";
+    assert groupHoverVariant().selector == "&:is(:where(.group):hover *)";
+    assert groupFocusVariant().atRule == "";
+    assert groupFocusVariant().selector == "&:is(:where(.group):focus *)";
+    assert groupActiveVariant().atRule == "";
+    assert groupActiveVariant().selector == "&:is(:where(.group):active *)";
+    assert groupVisitedVariant().atRule == "";
+    assert groupVisitedVariant().selector == "&:is(:where(.group):visited *)";
+    assert groupDisabledVariant().atRule == "";
+    assert groupDisabledVariant().selector == "&:is(:where(.group):disabled *)";
+    assert groupOpenVariant().atRule == "";
+    assert groupOpenVariant().selector == "&:is(:where(.group):open *)";
+}
+
+test "parent state (`group-*`) — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.GroupHover(inner)) == ".x:is(:where(.group):hover *){font-weight:bold}";
+    assert modifierCss(Token.GroupFocus(inner)) == ".x:is(:where(.group):focus *){font-weight:bold}";
+    assert modifierCss(Token.GroupActive(inner)) == ".x:is(:where(.group):active *){font-weight:bold}";
+    assert modifierCss(Token.GroupVisited(inner)) == ".x:is(:where(.group):visited *){font-weight:bold}";
+    assert modifierCss(Token.GroupDisabled(inner)) == ".x:is(:where(.group):disabled *){font-weight:bold}";
+    assert modifierCss(Token.GroupOpen(inner)) == ".x:is(:where(.group):open *){font-weight:bold}";
+}
+
+test "sibling state (`peer-*`) — the two halves of every Variant in the family" {
+    assert peerHoverVariant().atRule == "";
+    assert peerHoverVariant().selector == "&:is(:where(.peer):hover ~ *)";
+    assert peerFocusVariant().atRule == "";
+    assert peerFocusVariant().selector == "&:is(:where(.peer):focus ~ *)";
+    assert peerActiveVariant().atRule == "";
+    assert peerActiveVariant().selector == "&:is(:where(.peer):active ~ *)";
+    assert peerCheckedVariant().atRule == "";
+    assert peerCheckedVariant().selector == "&:is(:where(.peer):checked ~ *)";
+    assert peerInvalidVariant().atRule == "";
+    assert peerInvalidVariant().selector == "&:is(:where(.peer):invalid ~ *)";
+    assert peerRequiredVariant().atRule == "";
+    assert peerRequiredVariant().selector == "&:is(:where(.peer):required ~ *)";
+    assert peerDisabledVariant().atRule == "";
+    assert peerDisabledVariant().selector == "&:is(:where(.peer):disabled ~ *)";
+    assert peerPlaceholderShownVariant().atRule == "";
+    assert peerPlaceholderShownVariant().selector == "&:is(:where(.peer):placeholder-shown ~ *)";
+}
+
+test "sibling state (`peer-*`) — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.PeerHover(inner)) == ".x:is(:where(.peer):hover ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerFocus(inner)) == ".x:is(:where(.peer):focus ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerActive(inner)) == ".x:is(:where(.peer):active ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerChecked(inner)) == ".x:is(:where(.peer):checked ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerInvalid(inner)) == ".x:is(:where(.peer):invalid ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerRequired(inner)) == ".x:is(:where(.peer):required ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerDisabled(inner)) == ".x:is(:where(.peer):disabled ~ *){font-weight:bold}";
+    assert modifierCss(Token.PeerPlaceholderShown(inner)) == ".x:is(:where(.peer):placeholder-shown ~ *){font-weight:bold}";
+}
+
+test "writing direction and descent — the two halves of every Variant in the family" {
+    assert rtlVariant().atRule == "";
+    assert rtlVariant().selector == "[dir=\"rtl\"] &";
+    assert ltrVariant().atRule == "";
+    assert ltrVariant().selector == "[dir=\"ltr\"] &";
+    assert childrenVariant().atRule == "";
+    assert childrenVariant().selector == ":is(& > *)";
+    assert descendantsVariant().atRule == "";
+    assert descendantsVariant().selector == ":is(& *)";
+}
+
+test "writing direction and descent — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Rtl(inner)) == "[dir=\"rtl\"] .x{font-weight:bold}";
+    assert modifierCss(Token.Ltr(inner)) == "[dir=\"ltr\"] .x{font-weight:bold}";
+    assert modifierCss(Token.Children(inner)) == ":is(.x > *){font-weight:bold}";
+    assert modifierCss(Token.Descendants(inner)) == ":is(.x *){font-weight:bold}";
+}
+
+// ── the walks ────────────────────────────────────────────────────────────
+//
+// The table is long, so the invariants are asserted over the WHOLE of it
+// rather than row by row. `everyVariant` is every `Variant`-returning fn in
+// this front; `everyModifier` is every top-level variant `tokens.bp`
+// declares under the same banner, each wrapping one declaration.
+
+fn everyVariant(th: Theme) -> Variant[] {
+    val out: Variant[] = [
+        smVariant(th),
+        mdVariant(th),
+        lgVariant(th),
+        xlVariant(th),
+        x2xlVariant(th),
+        maxSmVariant(th),
+        maxMdVariant(th),
+        maxLgVariant(th),
+        maxXlVariant(th),
+        maxX2xlVariant(th),
+        darkVariant(th),
+        printVariant(),
+        portraitVariant(),
+        landscapeVariant(),
+        motionSafeVariant(),
+        motionReduceVariant(),
+        contrastMoreVariant(),
+        contrastLessVariant(),
+        forcedColorsVariant(),
+        hoverVariant(),
+        focusVariant(),
+        focusWithinVariant(),
+        focusVisibleVariant(),
+        activeVariant(),
+        visitedVariant(),
+        targetVariant(),
+        openVariant(),
+        inertVariant(),
+        disabledVariant(),
+        enabledVariant(),
+        checkedVariant(),
+        indeterminateVariant(),
+        defaultVariant(),
+        optionalVariant(),
+        requiredVariant(),
+        validVariant(),
+        invalidVariant(),
+        userValidVariant(),
+        userInvalidVariant(),
+        inRangeVariant(),
+        outOfRangeVariant(),
+        placeholderShownVariant(),
+        autofillVariant(),
+        readOnlyVariant(),
+        firstVariant(),
+        lastVariant(),
+        onlyVariant(),
+        oddVariant(),
+        evenVariant(),
+        firstOfTypeVariant(),
+        lastOfTypeVariant(),
+        onlyOfTypeVariant(),
+        emptyVariant(),
+        nthVariant(3),
+        nthLastVariant(5),
+        beforeVariant(),
+        afterVariant(),
+        firstLetterVariant(),
+        firstLineVariant(),
+        placeholderVariant(),
+        fileVariant(),
+        markerVariant(),
+        selectionVariant(),
+        backdropVariant(),
+        groupHoverVariant(),
+        groupFocusVariant(),
+        groupActiveVariant(),
+        groupVisitedVariant(),
+        groupDisabledVariant(),
+        groupOpenVariant(),
+        peerHoverVariant(),
+        peerFocusVariant(),
+        peerActiveVariant(),
+        peerCheckedVariant(),
+        peerInvalidVariant(),
+        peerRequiredVariant(),
+        peerDisabledVariant(),
+        peerPlaceholderShownVariant(),
+        rtlVariant(),
+        ltrVariant(),
+        childrenVariant(),
+        descendantsVariant(),
+    ];
+    return out;
+}
+
+fn everyModifier() -> Token[] {
+    val inner = boldInner();
+    val out: Token[] = [
+        Token.Sm(inner),
+        Token.Md(inner),
+        Token.Lg(inner),
+        Token.Xl(inner),
+        Token.X2xl(inner),
+        Token.MaxSm(inner),
+        Token.MaxMd(inner),
+        Token.MaxLg(inner),
+        Token.MaxXl(inner),
+        Token.MaxX2xl(inner),
+        Token.Dark(inner),
+        Token.Print(inner),
+        Token.Portrait(inner),
+        Token.Landscape(inner),
+        Token.MotionSafe(inner),
+        Token.MotionReduce(inner),
+        Token.ContrastMore(inner),
+        Token.ContrastLess(inner),
+        Token.ForcedColors(inner),
+        Token.Hover(inner),
+        Token.Focus(inner),
+        Token.FocusWithin(inner),
+        Token.FocusVisible(inner),
+        Token.Active(inner),
+        Token.Visited(inner),
+        Token.Target(inner),
+        Token.Open(inner),
+        Token.Inert(inner),
+        Token.Disabled(inner),
+        Token.Enabled(inner),
+        Token.Checked(inner),
+        Token.Indeterminate(inner),
+        Token.Default(inner),
+        Token.Optional(inner),
+        Token.Required(inner),
+        Token.Valid(inner),
+        Token.Invalid(inner),
+        Token.UserValid(inner),
+        Token.UserInvalid(inner),
+        Token.InRange(inner),
+        Token.OutOfRange(inner),
+        Token.PlaceholderShown(inner),
+        Token.Autofill(inner),
+        Token.ReadOnly(inner),
+        Token.First(inner),
+        Token.Last(inner),
+        Token.Only(inner),
+        Token.Odd(inner),
+        Token.Even(inner),
+        Token.FirstOfType(inner),
+        Token.LastOfType(inner),
+        Token.OnlyOfType(inner),
+        Token.Empty(inner),
+        Token.Nth(index: 3, inner: inner),
+        Token.NthLast(index: 5, inner: inner),
+        Token.Before(inner),
+        Token.After(inner),
+        Token.FirstLetter(inner),
+        Token.FirstLine(inner),
+        Token.Placeholder(inner),
+        Token.File(inner),
+        Token.Marker(inner),
+        Token.Selection(inner),
+        Token.Backdrop(inner),
+        Token.GroupHover(inner),
+        Token.GroupFocus(inner),
+        Token.GroupActive(inner),
+        Token.GroupVisited(inner),
+        Token.GroupDisabled(inner),
+        Token.GroupOpen(inner),
+        Token.PeerHover(inner),
+        Token.PeerFocus(inner),
+        Token.PeerActive(inner),
+        Token.PeerChecked(inner),
+        Token.PeerInvalid(inner),
+        Token.PeerRequired(inner),
+        Token.PeerDisabled(inner),
+        Token.PeerPlaceholderShown(inner),
+        Token.Rtl(inner),
+        Token.Ltr(inner),
+        Token.Children(inner),
+        Token.Descendants(inner),
+        Token.Important(inner),
+    ];
+    return out;
+}
+
+test "the table — 82 Variant fns and 83 modifier tokens, and no row is a copy" {
+    assert everyVariant(defaultTheme()).length == 82;
+    assert everyModifier().length == 83;
+}
+
+// The distinct-pair fold: two rows that resolved to the same at-rule and the
+// same selector would be two names for one variant, which the reference has
+// nowhere in its table.
+fn pushDistinctString(acc: string[], s: string) -> string[] {
+    val present = acc.any({ x -> x == s });
+    val one: string[] = [s];
+    val out = if (present) acc else acc.append(one);
+    return out;
+}
+
+fn distinctStrings(xs: string[]) -> string[] {
+    val seed: string[] = [];
+    return xs.fold(seed, { acc, x -> pushDistinctString(acc, x) });
+}
+
+test "the walk — every selector template carries exactly one ampersand" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> v.selector.split("&").length == 2 });
+}
+
+test "the walk — this front builds no brace, and every at-rule is an at-rule" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> v.selector.split("{").length == 1 });
+    assert vs.all({ v -> v.selector.split("}").length == 1 });
+    assert vs.all({ v -> v.atRule.split("{").length == 1 });
+    assert vs.all({ v -> v.atRule == "" || v.atRule.startsWith("@") });
+}
+
+test "the walk — no two rows resolve to the same pair" {
+    val vs = everyVariant(defaultTheme());
+    val pairs = vs.map({ v -> v.atRule + " <> " + v.selector });
+    assert distinctStrings(pairs).length == pairs.length;
+}
+
+test "the walk — every modifier wraps its declaration, and none drops it" {
+    val ms = everyModifier();
+    val sheets = ms.map({ m -> tokenToSheet(m, defaultTheme()) });
+    assert sheets.all({ s -> s.rules.length == 1 });
+    assert sheets.all({ s -> declarationsOf(s).join("") == "font-weight:bold" });
+}
+
+test "the walk — no breakpoint query resolves a pixel, and none is min-width" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> v.atRule.split("px").length == 1 });
+    assert vs.all({ v -> v.atRule.split("min-width").length == 1 });
+    assert vs.all({ v -> v.atRule.split("max-width").length == 1 });
+}
+
+test "the walk — no variant carries a codec separator" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> carriesSeparator(v.selector) == false });
+    assert vs.all({ v -> carriesSeparator(v.atRule) == false });
+}
+
+// ── dark mode — one cell per strategy, all three from front 54 ─────────────
+//
+// This front does not know which strategy is in force: it asks `darkAtRule`
+// and `darkSelector` and hands the pair to `nestVariant`. The three tests
+// below are the proof that the pair is enough — `Media` puts the whole
+// strategy in the at-rule, `Class` and `Attribute` put it in the selector, and
+// the `Dark` token is the same token in all three.
+
+test "dark — the `Media` strategy is an at-rule over the bare ampersand" {
+    val th = defaultTheme();
+    assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
+    assert darkVariant(th).selector == "&";
+    val inner = boldInner();
+    assert modifierCssWith(Token.Dark(inner), th)
+        == "@media (prefers-color-scheme: dark){.x{font-weight:bold}}";
+}
+
+test "dark — the `Class` strategy is a selector and no at-rule at all" {
+    val th = withDarkMode(defaultTheme(), DarkMode.Class(name: "dark"));
+    assert darkVariant(th).atRule == "";
+    assert darkVariant(th).selector == "&:where(.dark, .dark *)";
+    val inner = boldInner();
+    assert modifierCssWith(Token.Dark(inner), th)
+        == ".x:where(.dark, .dark *){font-weight:bold}";
+}
+
+test "dark — the `Attribute` strategy is the same shape, on a data attribute" {
+    val th = withDarkMode(defaultTheme(), DarkMode.Attribute(name: "data-theme", value: "dark"));
+    assert darkVariant(th).atRule == "";
+    assert darkVariant(th).selector == "&:where([data-theme=dark], [data-theme=dark] *)";
+    val inner = boldInner();
+    assert modifierCssWith(Token.Dark(inner), th)
+        == ".x:where([data-theme=dark], [data-theme=dark] *){font-weight:bold}";
+}
+
+test "dark — the strategy is an input to the class, because the rule differs" {
+    val inner = boldInner();
+    val tokens: Token[] = [Token.Dark(inner)];
+    val byMedia = defaultTheme();
+    val byClass = withDarkMode(byMedia, DarkMode.Class(name: "dark"));
+    assert emiliaWith(tokens, byMedia) != emiliaWith(tokens, byClass);
+    val _drop = await flush();
+}
+
+// ── ranges, order and depth ───────────────────────────────────────────────
+
+test "a breakpoint RANGE is nesting, not a variant — `md:max-xl:`" {
+    val inner = boldInner();
+    val mid: Token[] = [Token.MaxXl(inner)];
+    assert modifierCss(Token.Md(mid))
+        == "@media (width >= 48rem){@media (width < 80rem){.x{font-weight:bold}}}";
+}
+
+test "the other range the reference shows — `sm:max-md:`" {
+    val inner = boldInner();
+    val mid: Token[] = [Token.MaxMd(inner)];
+    assert modifierCss(Token.Sm(mid))
+        == "@media (width >= 40rem){@media (width < 48rem){.x{font-weight:bold}}}";
+}
+
+test "three deep — `dark:md:hover:` comes out in source order" {
+    val inner = boldInner();
+    val hover: Token[] = [Token.Hover(inner)];
+    val md: Token[] = [Token.Md(hover)];
+    assert modifierCss(Token.Dark(md))
+        == "@media (prefers-color-scheme: dark){@media (width >= 48rem){@media (hover: hover){.x:hover{font-weight:bold}}}}";
+}
+
+test "a pseudo-element under a state nests the right way round" {
+    val inner = boldInner();
+    val before: Token[] = [Token.Before(inner)];
+    assert modifierCss(Token.Hover(before))
+        == "@media (hover: hover){.x:hover::before{font-weight:bold}}";
+}
+
+test "a breakpoint override reaches both directions of the ladder" {
+    val wide: ThemeEntry[] = [ThemeEntry(name: "--breakpoint-md", value: "50rem")];
+    val th = extendTheme(defaultTheme(), wide);
+    val inner = boldInner();
+    assert modifierCssWith(Token.Md(inner), th) == "@media (width >= 50rem){.x{font-weight:bold}}";
+    assert modifierCssWith(Token.MaxMd(inner), th) == "@media (width < 50rem){.x{font-weight:bold}}";
+}
+
+// ── the two indexed rows ──────────────────────────────────────────────────
+
+test "Nth — three indices, including a two-digit one" {
+    val inner = boldInner();
+    assert modifierCss(Token.Nth(index: 1, inner: inner)) == ".x:nth-child(1){font-weight:bold}";
+    assert modifierCss(Token.Nth(index: 3, inner: inner)) == ".x:nth-child(3){font-weight:bold}";
+    assert modifierCss(Token.Nth(index: 12, inner: inner)) == ".x:nth-child(12){font-weight:bold}";
+    assert nthVariant(7).atRule == "";
+    assert nthVariant(7).selector == "&:nth-child(7)";
+}
+
+test "NthLast — the same three, counted from the end" {
+    val inner = boldInner();
+    assert modifierCss(Token.NthLast(index: 1, inner: inner)) == ".x:nth-last-child(1){font-weight:bold}";
+    assert modifierCss(Token.NthLast(index: 5, inner: inner)) == ".x:nth-last-child(5){font-weight:bold}";
+    assert modifierCss(Token.NthLast(index: 12, inner: inner)) == ".x:nth-last-child(12){font-weight:bold}";
+    assert nthLastVariant(7).selector == "&:nth-last-child(7)";
+}
+
+// ── the rows whose text is easy to get wrong ──────────────────────────────
+
+// The reference spells this row `&:open, &:popover-open` — two `&`, which
+// front 56 refuses. `:is()` holds the two states instead, so the comma is
+// INSIDE one selector and never a separator emilia added.
+
+test "the two states of `open` live inside one selector, not a selector list" {
+    assert openVariant().selector == "&:is(:open, :popover-open)";
+    val inner = boldInner();
+    assert modifierCss(Token.Open(inner)) == ".x:is(:open, :popover-open){font-weight:bold}";
+    assert tokenToSheet(Token.Open(inner), defaultTheme()).rules.length == 1;
+}
+
+test "`marker` and `selection` carry the space before `::`, and the others do not" {
+    assert markerVariant().selector == "& ::marker";
+    assert selectionVariant().selector == "& ::selection";
+    assert beforeVariant().selector == "&::before";
+    assert placeholderVariant().selector == "&::placeholder";
+}
+
+test "`rtl` and `ltr` put the ampersand LAST, and the class still lands there" {
+    val inner = boldInner();
+    assert modifierCss(Token.Rtl(inner)) == "[dir=\"rtl\"] .x{font-weight:bold}";
+    assert modifierCss(Token.Ltr(inner)) == "[dir=\"ltr\"] .x{font-weight:bold}";
+}
+
+test "`*:` and `**:` wrap the ampersand rather than following it" {
+    val inner = boldInner();
+    assert modifierCss(Token.Children(inner)) == ":is(.x > *){font-weight:bold}";
+    assert modifierCss(Token.Descendants(inner)) == ":is(.x *){font-weight:bold}";
+}
+
+test "`inert` is the attribute pair the reference gives, not a pseudo-class" {
+    assert inertVariant().selector == "&:is([inert], [inert] *)";
+}
+
+// ── Important — decision 81, and the one row that is not a variant ─────────
+
+test "Important — the wrapper sets the flag; it adds no selector and no at-rule" {
+    val inner = boldInner();
+    val r = firstRuleOf(tokenToSheet(Token.Important(inner), defaultTheme()));
+    assert r.important == true;
+    assert r.selector == "&";
+    assert r.atRules.length == 0;
+    assert modifierCss(Token.Important(inner)) == ".x{font-weight:bold!important}";
+}
+
+test "Important — every rule it wraps is flagged, and a variant nests over it" {
+    val two: Token[] = [.Text.Bold, .Layout.Flex];
+    val marked: Token[] = [Token.Important(two)];
+    val s = tokenToSheet(Token.Hover(marked), defaultTheme());
+    assert s.rules.length == 2;
+    assert s.rules.all({ r -> r.important });
+    val css = s.rules.map({ r -> renderRule("x", r, bareOptions()) }).join("");
+    assert css == "@media (hover: hover){.x:hover{font-weight:bold!important}}"
+        + "@media (hover: hover){.x:hover{display:flex!important}}";
+}
+
+// ── the empty list ────────────────────────────────────────────────────────
+
+test "a modifier whose inner list is empty produces an empty sheet, and is dropped" {
+    val none: Token[] = [];
+    assert tokenToSheet(Token.Hover(none), defaultTheme()).rules.length == 0;
+    assert tokenToSheet(Token.Dark(none), defaultTheme()).rules.length == 0;
+    assert tokenToSheet(Token.Nth(index: 2, inner: none), defaultTheme()).rules.length == 0;
+    assert tokenToSheet(Token.Important(none), defaultTheme()).rules.length == 0;
+}
+
+test "an empty modifier beside a real token leaves exactly the real rule" {
+    val none: Token[] = [];
+    val tokens: Token[] = [.Text.Bold, Token.Focus(none)];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{font-weight:bold}}</style>";
+}
+
+// ── end to end ────────────────────────────────────────────────────────────
+
+test "end to end — a light background and its dark override, as one document" {
+    val dark: Token[] = [.Bg.Color.Slate.900];
+    val tokens: Token[] = [.Bg.Color.White, Token.Dark(dark)];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-color:var(--color-white)}@media (prefers-color-scheme: dark){."
+        + cls + "{background-color:var(--color-slate-900)}}}</style>";
+}
+
+test "end to end — a responsive, stateful button is one class and four rules" {
+    val hover: Token[] = [.Bg.Color.Blue.700];
+    val focus: Token[] = [.Text.Underline];
+    val md: Token[] = [.Text.Size.Lg];
+    val tokens: Token[] = [
+        .Bg.Color.Blue.600,
+        Token.Hover(hover),
+        Token.FocusVisible(focus),
+        Token.Md(md),
+    ];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-color:var(--color-blue-600)}."
+        + cls + ":focus-visible{text-decoration:underline}@media (hover: hover){."
+        + cls + ":hover{background-color:var(--color-blue-700)}}@media (width >= 48rem){."
+        + cls + "{font-size:1.125rem}}}</style>";
+}
+
+test "end to end — a peer-driven error message reaches its sibling" {
+    val peer: Token[] = [.Bg.Color.Red.600];
+    val tokens: Token[] = [.Layout.Hidden, Token.PeerInvalid(peer)];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{display:none}."
+        + cls + ":is(:where(.peer):invalid ~ *){background-color:var(--color-red-600)}}</style>";
+}
+
+//// ═══ END FRONT 34 ═════════════════════════════════════════════════════════════════
 
 fn textTokenToCss(t: Token.Text) -> string {
     val out = case t {
@@ -2248,7 +3526,9 @@ fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
         Object(_inner) -> layoutObjectToCss(_inner, th);
         Aspect(_inner) -> layoutAspectToCss(_inner, th);
         Columns(_inner) -> layoutColumnsToCss(_inner, th);
-        Break(_inner) -> layoutBreakToCss(_inner, th);
+        BreakAfter(_inner) -> layoutBreakAfterToCss(_inner, th);
+        BreakBefore(_inner) -> layoutBreakBeforeToCss(_inner, th);
+        BreakInside(_inner) -> layoutBreakInsideToCss(_inner, th);
         Box(_inner) -> layoutBoxToCss(_inner, th);
         BoxDecoration(_inner) -> layoutBoxDecorationToCss(_inner, th);
     };
@@ -3046,16 +4326,7 @@ fn layoutColumnsToCss(c: Token.Layout.Columns, th: Theme) -> string {
     return out;
 }
 
-fn layoutBreakToCss(b: Token.Layout.Break, th: Theme) -> string {
-    val out = case b {
-        After(_inner) -> layoutBreakAfterToCss(_inner, th);
-        Before(_inner) -> layoutBreakBeforeToCss(_inner, th);
-        Inside(_inner) -> layoutBreakInsideToCss(_inner, th);
-    };
-    return out;
-}
-
-fn layoutBreakAfterToCss(b: Token.Layout.Break.After, th: Theme) -> string {
+fn layoutBreakAfterToCss(b: Token.Layout.BreakAfter, th: Theme) -> string {
     val out = case b {
         Auto -> "break-after:auto";
         Avoid -> "break-after:avoid";
@@ -3068,7 +4339,7 @@ fn layoutBreakAfterToCss(b: Token.Layout.Break.After, th: Theme) -> string {
     return out;
 }
 
-fn layoutBreakBeforeToCss(b: Token.Layout.Break.Before, th: Theme) -> string {
+fn layoutBreakBeforeToCss(b: Token.Layout.BreakBefore, th: Theme) -> string {
     val out = case b {
         Auto -> "break-before:auto";
         Avoid -> "break-before:avoid";
@@ -3081,10 +4352,20 @@ fn layoutBreakBeforeToCss(b: Token.Layout.Break.Before, th: Theme) -> string {
     return out;
 }
 
+// THE THREE BREAK SUB-SECTIONS ARE FLAT, and that is not a style choice. The
+// spec spells them `Break { After, Before, Inside }`, and that spelling does
+// not survive beside front 34: a section head whose name equals a top-level
+// payload variant's name breaks THAT VARIANT's payload projection, so
+// `Token.Before(inner)` built a record with no `inner` field and three of front
+// 34's tests died on `undefined.fold` — in another front's block, with nothing
+// pointing back here. `After` and `Before` were the only two collisions;
+// `Columns.Md` and the other leaf-level ones are harmless. The 1.0.8 draft's
+// flat spelling is the one that cannot collide, so it is the one used.
+//
 // `break-inside` carries a SHORTER leaf set than the other two — `§ 5.5` has no
 // `all`, no `page`, no `left` and no `right` — so it is its own sub-section
 // rather than a third caller of one shared list.
-fn layoutBreakInsideToCss(b: Token.Layout.Break.Inside, th: Theme) -> string {
+fn layoutBreakInsideToCss(b: Token.Layout.BreakInside, th: Theme) -> string {
     val out = case b {
         Auto -> "break-inside:auto";
         Avoid -> "break-inside:avoid";
@@ -3567,13 +4848,13 @@ fn layoutLeaves() -> Token[] {
         .Layout.Columns.Auto, .Layout.Columns.X3xs, .Layout.Columns.X2xs, .Layout.Columns.Xs,
         .Layout.Columns.Sm, .Layout.Columns.Md, .Layout.Columns.Lg, .Layout.Columns.Xl,
         .Layout.Columns.X2xl, .Layout.Columns.X3xl, .Layout.Columns.X4xl, .Layout.Columns.X5xl,
-        .Layout.Columns.X6xl, .Layout.Columns.X7xl, .Layout.Break.After.Auto,
-        .Layout.Break.Before.Auto, .Layout.Break.After.Avoid, .Layout.Break.Before.Avoid,
-        .Layout.Break.After.All, .Layout.Break.Before.All, .Layout.Break.After.Page,
-        .Layout.Break.Before.Page, .Layout.Break.After.Left, .Layout.Break.Before.Left,
-        .Layout.Break.After.Right, .Layout.Break.Before.Right, .Layout.Break.After.Column,
-        .Layout.Break.Before.Column, .Layout.Break.Inside.Auto, .Layout.Break.Inside.Avoid,
-        .Layout.Break.Inside.AvoidPage, .Layout.Break.Inside.AvoidColumn, .Layout.Box.Border,
+        .Layout.Columns.X6xl, .Layout.Columns.X7xl, .Layout.BreakAfter.Auto,
+        .Layout.BreakBefore.Auto, .Layout.BreakAfter.Avoid, .Layout.BreakBefore.Avoid,
+        .Layout.BreakAfter.All, .Layout.BreakBefore.All, .Layout.BreakAfter.Page,
+        .Layout.BreakBefore.Page, .Layout.BreakAfter.Left, .Layout.BreakBefore.Left,
+        .Layout.BreakAfter.Right, .Layout.BreakBefore.Right, .Layout.BreakAfter.Column,
+        .Layout.BreakBefore.Column, .Layout.BreakInside.Auto, .Layout.BreakInside.Avoid,
+        .Layout.BreakInside.AvoidPage, .Layout.BreakInside.AvoidColumn, .Layout.Box.Border,
         .Layout.Box.Content, .Layout.BoxDecoration.Clone, .Layout.BoxDecoration.Slice,
     ];
     return leaves;
@@ -3637,24 +4918,24 @@ test "columns — all fourteen named widths, and the ladder is one ladder" {
 }
 
 test "break — the three properties, with `inside`'s shorter leaf set of its own" {
-    assert tokenDeclarations(.Layout.Break.After.Auto) == "break-after:auto";
-    assert tokenDeclarations(.Layout.Break.After.Avoid) == "break-after:avoid";
-    assert tokenDeclarations(.Layout.Break.After.All) == "break-after:all";
-    assert tokenDeclarations(.Layout.Break.After.Page) == "break-after:page";
-    assert tokenDeclarations(.Layout.Break.After.Left) == "break-after:left";
-    assert tokenDeclarations(.Layout.Break.After.Right) == "break-after:right";
-    assert tokenDeclarations(.Layout.Break.After.Column) == "break-after:column";
-    assert tokenDeclarations(.Layout.Break.Before.Auto) == "break-before:auto";
-    assert tokenDeclarations(.Layout.Break.Before.Avoid) == "break-before:avoid";
-    assert tokenDeclarations(.Layout.Break.Before.All) == "break-before:all";
-    assert tokenDeclarations(.Layout.Break.Before.Page) == "break-before:page";
-    assert tokenDeclarations(.Layout.Break.Before.Left) == "break-before:left";
-    assert tokenDeclarations(.Layout.Break.Before.Right) == "break-before:right";
-    assert tokenDeclarations(.Layout.Break.Before.Column) == "break-before:column";
-    assert tokenDeclarations(.Layout.Break.Inside.Auto) == "break-inside:auto";
-    assert tokenDeclarations(.Layout.Break.Inside.Avoid) == "break-inside:avoid";
-    assert tokenDeclarations(.Layout.Break.Inside.AvoidPage) == "break-inside:avoid-page";
-    assert tokenDeclarations(.Layout.Break.Inside.AvoidColumn) == "break-inside:avoid-column";
+    assert tokenDeclarations(.Layout.BreakAfter.Auto) == "break-after:auto";
+    assert tokenDeclarations(.Layout.BreakAfter.Avoid) == "break-after:avoid";
+    assert tokenDeclarations(.Layout.BreakAfter.All) == "break-after:all";
+    assert tokenDeclarations(.Layout.BreakAfter.Page) == "break-after:page";
+    assert tokenDeclarations(.Layout.BreakAfter.Left) == "break-after:left";
+    assert tokenDeclarations(.Layout.BreakAfter.Right) == "break-after:right";
+    assert tokenDeclarations(.Layout.BreakAfter.Column) == "break-after:column";
+    assert tokenDeclarations(.Layout.BreakBefore.Auto) == "break-before:auto";
+    assert tokenDeclarations(.Layout.BreakBefore.Avoid) == "break-before:avoid";
+    assert tokenDeclarations(.Layout.BreakBefore.All) == "break-before:all";
+    assert tokenDeclarations(.Layout.BreakBefore.Page) == "break-before:page";
+    assert tokenDeclarations(.Layout.BreakBefore.Left) == "break-before:left";
+    assert tokenDeclarations(.Layout.BreakBefore.Right) == "break-before:right";
+    assert tokenDeclarations(.Layout.BreakBefore.Column) == "break-before:column";
+    assert tokenDeclarations(.Layout.BreakInside.Auto) == "break-inside:auto";
+    assert tokenDeclarations(.Layout.BreakInside.Avoid) == "break-inside:avoid";
+    assert tokenDeclarations(.Layout.BreakInside.AvoidPage) == "break-inside:avoid-page";
+    assert tokenDeclarations(.Layout.BreakInside.AvoidColumn) == "break-inside:avoid-column";
 }
 
 test "box-sizing and box-decoration-break — the suffix moves off the name" {

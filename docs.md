@@ -111,17 +111,16 @@ rule emits, and it means a project that overrides `--color-red-500` moves every
 rule that names it. The numbers live in the theme, not in the rule — see
 [The colour palette](#the-colour-palette).
 
-**Six cells are declared and unreachable.** `.Color.Red.100`, `.Color.Red.500`,
-`.Color.Red.700`, `.Color.Gray.100`, `.Color.Gray.500` and `.Color.Gray.700`
-do not compile in any spelling: the compiler resolves a leading-dot section
-path by scanning every registered enum — the synthesised section enums
-included — and returning the first whose tree carries the path, without ever
-consulting the expected type. `Token` carries `Color.Red.500` and so does
-`Token.Border.Color`, whose Red and Gray also run 100/500/700, so the winner is
-decided by hash order. It reds at the call site (`type mismatch: expected
-Token, got __Token__Border`) rather than emitting the wrong CSS. Until the
-resolver is fixed, reach those six shades through `.Bg.Color.<Family>.<shade>`
-(whose head segment `Bg` is unique) or pick a neighbouring shade.
+**All 286 cells are reachable.** Six of them — `.Color.Red.{100,500,700}` and
+`.Color.Gray.{100,500,700}` — used to compile in no spelling, because the
+compiler resolved a leading-dot section path by scanning every registered enum
+(the synthesised section enums included) and returning the first whose tree
+carried the path, without consulting the expected type: `Token` carries
+`Color.Red.500` and so does `Token.Border.Color`, whose Red and Gray also run
+100/500/700, so the winner was decided by hash order. It red at the call site
+rather than emitting the wrong CSS. The resolver now prefers the enum the
+expected type names, accepts the fully qualified `Token.Color.Red.500`, and
+refuses an ambiguous path instead of guessing.
 
 ### Bg.Color — the same palette on `background-color`
 
@@ -458,8 +457,8 @@ aspect ratios keep the spaces around the slash the way `§ 5.1` prints them.
 ```bp
 .Layout.Columns.2                  // columns:2
 .Layout.Columns.Md                 // columns:var(--container-md)
-.Layout.Break.After.Page           // break-after:page
-.Layout.Break.Inside.AvoidColumn   // break-inside:avoid-column
+.Layout.BreakAfter.Page            // break-after:page
+.Layout.BreakInside.AvoidColumn    // break-inside:avoid-column
 .Layout.Box.Border                 // box-sizing:border-box
 .Layout.BoxDecoration.Clone        // box-decoration-break:clone
 ```
@@ -471,6 +470,11 @@ by definition, so they are the same reference, and a project that overrides
 
 `break-inside` carries a shorter leaf set than `break-after` / `break-before`:
 `§ 5.5` has no `all`, no `page`, no `left` and no `right`.
+
+The three are **flat sub-sections**, not `Break { After, Before, Inside }`. A
+section head named like a top-level modifier variant silently shadows that
+variant's payload, and `After`/`Before` are modifiers — see `AGENTS.md`
+§ Maintainer rules.
 
 **Not declared:** `columns-4` … `columns-12`, which resolve upstream through the
 bare-integer rule rather than through a theme key; arbitrary `aspect-[4/3]` and
@@ -489,30 +493,182 @@ byte of any `Layout` rule.
 overflow, isolates a stacking context and crops a 16:9 image; and a sticky
 header over a one-axis scroll panel with a badge on a negative inset.
 
-### Modifiers — state + breakpoint variants
+### Modifiers — the variant table
 
-Each modifier carries a `Token[]` payload. A modifier is **not** a block
-nested inside the class body — it is a `Variant`, and the tokens it carries
-become **sibling rules** with their own selector and their own at-rule, hoisted
-out of the class. The table below is the pre-front-56 shape and is kept only
-because the token spellings are still current; the emitted CSS is in
-§ The cascade and the output.
-
-```bp
-Token.Hover([Token.BgRed700])           // :hover{background:#ef4444}        (BgRed700 maps if added)
-Token.Focus([Token.ColorBlue500])       // :focus{color:#3b82f6}
-Token.Active([Token.TextUnderline])     // :active{text-decoration:underline}
-Token.Md([Token.TextSizeLg])            // @media(min-width:768px){font-size:1.125rem}
-Token.Lg([.Pad.X.8])                    // padding-left:calc(var(--spacing) * 8);padding-right:…
-Token.Xl([.Pad.X.16])                   // padding-left:calc(var(--spacing) * 16);padding-right:…
-```
-
-Modifiers nest:
+A modifier is the only way a token reaches a state, a breakpoint or a
+pseudo-element. Each one carries a `Token[]` payload and is **not** a block
+nested inside the class body — it is a `Variant` (an at-rule and a selector
+template with exactly one `&`), and the tokens it carries become **sibling
+rules** hoisted out of the class with their own selector and at-rule.
 
 ```bp
-Token.Md([Token.Hover([Token.BgBlack])])
-// @media(min-width:768px){:hover{background:#000000}}
+emilia([.Bg.Color.White, Token.Dark([.Bg.Color.Slate.900])])
+// .e_x{background-color:var(--color-white)}
+// @media (prefers-color-scheme: dark){.e_x{background-color:var(--color-slate-900)}}
 ```
+
+Modifiers nest, and the OUTER one is outermost in the selector and in the
+at-rule list alike — which is how a `dark:md:hover:` chain reads upstream:
+
+```bp
+Token.Dark([Token.Md([Token.Hover([.Text.Bold])])])
+// @media (prefers-color-scheme: dark){@media (width >= 48rem){
+//   @media (hover: hover){.e_x:hover{font-weight:bold}}}}
+```
+
+A breakpoint RANGE is nesting too, not a variant of its own — upstream's
+`md:max-xl:` is `Token.Md([Token.MaxXl([…])])`. Every breakpoint reads the
+theme's `--breakpoint-*` entry, both ways round, so overriding the ladder
+moves the queries and the class hashes with it.
+
+**Breakpoints — min-width, read from the theme's `--breakpoint-*` ladder**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `sm:` | `Token.Sm(inner)` | `@media (width >= 40rem){…}` |
+| `md:` | `Token.Md(inner)` | `@media (width >= 48rem){…}` |
+| `lg:` | `Token.Lg(inner)` | `@media (width >= 64rem){…}` |
+| `xl:` | `Token.Xl(inner)` | `@media (width >= 80rem){…}` |
+| `2xl:` | `Token.X2xl(inner)` | `@media (width >= 96rem){…}` |
+
+**Breakpoints — max-width, the same ladder read the other way**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `max-sm:` | `Token.MaxSm(inner)` | `@media (width < 40rem){…}` |
+| `max-md:` | `Token.MaxMd(inner)` | `@media (width < 48rem){…}` |
+| `max-lg:` | `Token.MaxLg(inner)` | `@media (width < 64rem){…}` |
+| `max-xl:` | `Token.MaxXl(inner)` | `@media (width < 80rem){…}` |
+| `max-2xl:` | `Token.MaxX2xl(inner)` | `@media (width < 96rem){…}` |
+
+**Dark mode and the other media features**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `dark:` | `Token.Dark(inner)` | `@media (prefers-color-scheme: dark){…}` |
+| `print:` | `Token.Print(inner)` | `@media print{…}` |
+| `portrait:` | `Token.Portrait(inner)` | `@media (orientation: portrait){…}` |
+| `landscape:` | `Token.Landscape(inner)` | `@media (orientation: landscape){…}` |
+| `motion-safe:` | `Token.MotionSafe(inner)` | `@media (prefers-reduced-motion: no-preference){…}` |
+| `motion-reduce:` | `Token.MotionReduce(inner)` | `@media (prefers-reduced-motion: reduce){…}` |
+| `contrast-more:` | `Token.ContrastMore(inner)` | `@media (prefers-contrast: more){…}` |
+| `contrast-less:` | `Token.ContrastLess(inner)` | `@media (prefers-contrast: less){…}` |
+| `forced-colors:` | `Token.ForcedColors(inner)` | `@media (forced-colors: active){…}` |
+
+**Interaction state**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `hover:` | `Token.Hover(inner)` | `@media (hover: hover){&:hover{…}}` |
+| `focus:` | `Token.Focus(inner)` | `&:focus{…}` |
+| `focus-within:` | `Token.FocusWithin(inner)` | `&:focus-within{…}` |
+| `focus-visible:` | `Token.FocusVisible(inner)` | `&:focus-visible{…}` |
+| `active:` | `Token.Active(inner)` | `&:active{…}` |
+| `visited:` | `Token.Visited(inner)` | `&:visited{…}` |
+| `target:` | `Token.Target(inner)` | `&:target{…}` |
+| `open:` | `Token.Open(inner)` | `&:is(:open, :popover-open){…}` |
+| `inert:` | `Token.Inert(inner)` | `&:is([inert], [inert] *){…}` |
+
+**Form state**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `disabled:` | `Token.Disabled(inner)` | `&:disabled{…}` |
+| `enabled:` | `Token.Enabled(inner)` | `&:enabled{…}` |
+| `checked:` | `Token.Checked(inner)` | `&:checked{…}` |
+| `indeterminate:` | `Token.Indeterminate(inner)` | `&:indeterminate{…}` |
+| `default:` | `Token.Default(inner)` | `&:default{…}` |
+| `optional:` | `Token.Optional(inner)` | `&:optional{…}` |
+| `required:` | `Token.Required(inner)` | `&:required{…}` |
+| `valid:` | `Token.Valid(inner)` | `&:valid{…}` |
+| `invalid:` | `Token.Invalid(inner)` | `&:invalid{…}` |
+| `user-valid:` | `Token.UserValid(inner)` | `&:user-valid{…}` |
+| `user-invalid:` | `Token.UserInvalid(inner)` | `&:user-invalid{…}` |
+| `in-range:` | `Token.InRange(inner)` | `&:in-range{…}` |
+| `out-of-range:` | `Token.OutOfRange(inner)` | `&:out-of-range{…}` |
+| `placeholder-shown:` | `Token.PlaceholderShown(inner)` | `&:placeholder-shown{…}` |
+| `autofill:` | `Token.Autofill(inner)` | `&:autofill{…}` |
+| `read-only:` | `Token.ReadOnly(inner)` | `&:read-only{…}` |
+
+**Structural position**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `first:` | `Token.First(inner)` | `&:first-child{…}` |
+| `last:` | `Token.Last(inner)` | `&:last-child{…}` |
+| `only:` | `Token.Only(inner)` | `&:only-child{…}` |
+| `odd:` | `Token.Odd(inner)` | `&:nth-child(odd){…}` |
+| `even:` | `Token.Even(inner)` | `&:nth-child(even){…}` |
+| `first-of-type:` | `Token.FirstOfType(inner)` | `&:first-of-type{…}` |
+| `last-of-type:` | `Token.LastOfType(inner)` | `&:last-of-type{…}` |
+| `only-of-type:` | `Token.OnlyOfType(inner)` | `&:only-of-type{…}` |
+| `empty:` | `Token.Empty(inner)` | `&:empty{…}` |
+| `nth-N:` | `Token.Nth(index, inner)` | `&:nth-child(3){…}` |
+| `nth-last-N:` | `Token.NthLast(index, inner)` | `&:nth-last-child(5){…}` |
+
+**Pseudo-elements**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `before:` | `Token.Before(inner)` | `&::before{…}` |
+| `after:` | `Token.After(inner)` | `&::after{…}` |
+| `first-letter:` | `Token.FirstLetter(inner)` | `&::first-letter{…}` |
+| `first-line:` | `Token.FirstLine(inner)` | `&::first-line{…}` |
+| `placeholder:` | `Token.Placeholder(inner)` | `&::placeholder{…}` |
+| `file:` | `Token.File(inner)` | `&::file-selector-button{…}` |
+| `marker:` | `Token.Marker(inner)` | `& ::marker{…}` |
+| `selection:` | `Token.Selection(inner)` | `& ::selection{…}` |
+| `backdrop:` | `Token.Backdrop(inner)` | `&::backdrop{…}` |
+
+**Parent state — the `.group` class is the consumer's, never emilia's**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `group-hover:` | `Token.GroupHover(inner)` | `&:is(:where(.group):hover *){…}` |
+| `group-focus:` | `Token.GroupFocus(inner)` | `&:is(:where(.group):focus *){…}` |
+| `group-active:` | `Token.GroupActive(inner)` | `&:is(:where(.group):active *){…}` |
+| `group-visited:` | `Token.GroupVisited(inner)` | `&:is(:where(.group):visited *){…}` |
+| `group-disabled:` | `Token.GroupDisabled(inner)` | `&:is(:where(.group):disabled *){…}` |
+| `group-open:` | `Token.GroupOpen(inner)` | `&:is(:where(.group):open *){…}` |
+
+**Sibling state — the `.peer` class is the consumer's, never emilia's**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `peer-hover:` | `Token.PeerHover(inner)` | `&:is(:where(.peer):hover ~ *){…}` |
+| `peer-focus:` | `Token.PeerFocus(inner)` | `&:is(:where(.peer):focus ~ *){…}` |
+| `peer-active:` | `Token.PeerActive(inner)` | `&:is(:where(.peer):active ~ *){…}` |
+| `peer-checked:` | `Token.PeerChecked(inner)` | `&:is(:where(.peer):checked ~ *){…}` |
+| `peer-invalid:` | `Token.PeerInvalid(inner)` | `&:is(:where(.peer):invalid ~ *){…}` |
+| `peer-required:` | `Token.PeerRequired(inner)` | `&:is(:where(.peer):required ~ *){…}` |
+| `peer-disabled:` | `Token.PeerDisabled(inner)` | `&:is(:where(.peer):disabled ~ *){…}` |
+| `peer-placeholder-shown:` | `Token.PeerPlaceholderShown(inner)` | `&:is(:where(.peer):placeholder-shown ~ *){…}` |
+
+**Writing direction and descent**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `rtl:` | `Token.Rtl(inner)` | `[dir="rtl"] &{…}` |
+| `ltr:` | `Token.Ltr(inner)` | `[dir="ltr"] &{…}` |
+| `*:` | `Token.Children(inner)` | `:is(& > *){…}` |
+| `**:` | `Token.Descendants(inner)` | `:is(& *){…}` |
+
+**The priority wrapper — not a variant, a flag on every rule it wraps**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `…!` | `Token.Important(inner)` | `!important` on every declaration it wraps |
+
+`.group` and `.peer` are classes the **consumer's markup** carries: emilia
+emits the selector that reads them and never the class itself.
+
+`Important` is the one row that is not a variant — it adds no selector and
+no at-rule, it sets the `!important` flag on every rule it wraps, which is
+upstream's per-utility `!` suffix.
+
+`examples/emilia-modifiers/` is the worked example: a responsive navigation
+bar, a peer-driven form field, a self-striping table, and one panel rendered
+under all three dark-mode strategies.
 
 ## The runtime — `emilia(tokens)` and `flush()`
 

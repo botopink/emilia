@@ -11,7 +11,8 @@
 //// leaves are valid inside a section (the language extension's two
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
-//// payload — siblings of section heads at the top level.
+//// payload — siblings of section heads at the top level. Front 34 widened
+//// them from six to 83; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -75,7 +76,12 @@
 ////              a bare integer — and Isolation; then Float and Clear (whose
 ////              logical values are `inline-start`/`inline-end`, not
 ////              `start`/`end`), Object { Fit, Pos } and Aspect; and Columns,
-////              Break { After, Before, Inside }, Box and BoxDecoration.
+////              BreakAfter, BreakBefore, BreakInside, Box and BoxDecoration.
+////              The three Break sub-sections are FLAT and not `Break { After,
+////              Before, Inside }`: a section head whose name equals a
+////              top-level payload variant's breaks that variant's payload
+////              projection, and front 34 carries `After(inner: Token[])` and
+////              `Before(inner: Token[])`. See AGENTS.md § Maintainer rules.
 ////              Columns' named widths are the THEME's container ladder —
 ////              `.Layout.Columns.Md` is `columns:var(--container-md)`, the
 ////              same reference `.Size.MaxW.Md` reads — and no leaf in the
@@ -96,13 +102,118 @@
 ////                              constructed, so it is a TOP-LEVEL variant with
 ////                              a builtin-typed field.
 ////
-//// MODIFIERS:
-////   .Hover([Token])  → ":hover{…}"
-////   .Focus([Token])  → ":focus{…}"
-////   .Active([Token]) → ":active{…}"
-////   .Md([Token])     → "@media(min-width:768px){…}"
-////   .Lg([Token])     → "@media(min-width:1024px){…}"
-////   .Xl([Token])     → "@media(min-width:1280px){…}"
+//// MODIFIERS — front 34's table. A modifier is the only way a token reaches
+//// a state, a breakpoint or a pseudo-element. Each is a top-level variant
+//// carrying `inner: Token[]` and answers one `Variant` (an at-rule and a
+//// selector template with exactly one `&`); `nestVariant` in `output.bp`
+//// applies it, and nothing here builds a brace. `Nth`/`NthLast` carry an
+//// `i32` beside the list; `Important` is the one that is a FLAG, not a
+//// variant. `.group`/`.peer` are classes the CONSUMER's markup carries.
+////
+////   breakpoints — min-width, read from the theme's `--breakpoint-*` ladder
+////     .Sm([Token])               sm:              → @media (width >= <--breakpoint-sm>){…}
+////     .Md([Token])               md:              → @media (width >= <--breakpoint-md>){…}
+////     .Lg([Token])               lg:              → @media (width >= <--breakpoint-lg>){…}
+////     .Xl([Token])               xl:              → @media (width >= <--breakpoint-xl>){…}
+////     .X2xl([Token])             2xl:             → @media (width >= <--breakpoint-2xl>){…}
+////
+////   breakpoints — max-width, the same ladder read the other way
+////     .MaxSm([Token])            max-sm:          → @media (width < <--breakpoint-sm>){…}
+////     .MaxMd([Token])            max-md:          → @media (width < <--breakpoint-md>){…}
+////     .MaxLg([Token])            max-lg:          → @media (width < <--breakpoint-lg>){…}
+////     .MaxXl([Token])            max-xl:          → @media (width < <--breakpoint-xl>){…}
+////     .MaxX2xl([Token])          max-2xl:         → @media (width < <--breakpoint-2xl>){…}
+////
+////   dark mode and the other media features
+////     .Dark([Token])             dark:            → darkAtRule(th){darkSelector(th){…}} — all three strategies
+////     .Print([Token])            print:           → @media print{…}
+////     .Portrait([Token])         portrait:        → @media (orientation: portrait){…}
+////     .Landscape([Token])        landscape:       → @media (orientation: landscape){…}
+////     .MotionSafe([Token])       motion-safe:     → @media (prefers-reduced-motion: no-preference){…}
+////     .MotionReduce([Token])     motion-reduce:   → @media (prefers-reduced-motion: reduce){…}
+////     .ContrastMore([Token])     contrast-more:   → @media (prefers-contrast: more){…}
+////     .ContrastLess([Token])     contrast-less:   → @media (prefers-contrast: less){…}
+////     .ForcedColors([Token])     forced-colors:   → @media (forced-colors: active){…}
+////
+////   interaction state
+////     .Hover([Token])            hover:           → @media (hover: hover){&:hover{…}}
+////     .Focus([Token])            focus:           → &:focus{…}
+////     .FocusWithin([Token])      focus-within:    → &:focus-within{…}
+////     .FocusVisible([Token])     focus-visible:   → &:focus-visible{…}
+////     .Active([Token])           active:          → &:active{…}
+////     .Visited([Token])          visited:         → &:visited{…}
+////     .Target([Token])           target:          → &:target{…}
+////     .Open([Token])             open:            → &:is(:open, :popover-open){…}
+////     .Inert([Token])            inert:           → &:is([inert], [inert] *){…}
+////
+////   form state
+////     .Disabled([Token])         disabled:        → &:disabled{…}
+////     .Enabled([Token])          enabled:         → &:enabled{…}
+////     .Checked([Token])          checked:         → &:checked{…}
+////     .Indeterminate([Token])    indeterminate:   → &:indeterminate{…}
+////     .Default([Token])          default:         → &:default{…}
+////     .Optional([Token])         optional:        → &:optional{…}
+////     .Required([Token])         required:        → &:required{…}
+////     .Valid([Token])            valid:           → &:valid{…}
+////     .Invalid([Token])          invalid:         → &:invalid{…}
+////     .UserValid([Token])        user-valid:      → &:user-valid{…}
+////     .UserInvalid([Token])      user-invalid:    → &:user-invalid{…}
+////     .InRange([Token])          in-range:        → &:in-range{…}
+////     .OutOfRange([Token])       out-of-range:    → &:out-of-range{…}
+////     .PlaceholderShown([Token]) placeholder-shown: → &:placeholder-shown{…}
+////     .Autofill([Token])         autofill:        → &:autofill{…}
+////     .ReadOnly([Token])         read-only:       → &:read-only{…}
+////
+////   structural position
+////     .First([Token])            first:           → &:first-child{…}
+////     .Last([Token])             last:            → &:last-child{…}
+////     .Only([Token])             only:            → &:only-child{…}
+////     .Odd([Token])              odd:             → &:nth-child(odd){…}
+////     .Even([Token])             even:            → &:nth-child(even){…}
+////     .FirstOfType([Token])      first-of-type:   → &:first-of-type{…}
+////     .LastOfType([Token])       last-of-type:    → &:last-of-type{…}
+////     .OnlyOfType([Token])       only-of-type:    → &:only-of-type{…}
+////     .Empty([Token])            empty:           → &:empty{…}
+////     .Nth(index, [Token])       nth-N:           → &:nth-child(N){…}
+////     .NthLast(index, [Token])   nth-last-N:      → &:nth-last-child(N){…}
+////
+////   pseudo-elements
+////     .Before([Token])           before:          → &::before{…}
+////     .After([Token])            after:           → &::after{…}
+////     .FirstLetter([Token])      first-letter:    → &::first-letter{…}
+////     .FirstLine([Token])        first-line:      → &::first-line{…}
+////     .Placeholder([Token])      placeholder:     → &::placeholder{…}
+////     .File([Token])             file:            → &::file-selector-button{…}
+////     .Marker([Token])           marker:          → & ::marker{…}
+////     .Selection([Token])        selection:       → & ::selection{…}
+////     .Backdrop([Token])         backdrop:        → &::backdrop{…}
+////
+////   parent state — the `.group` class is the consumer's, never emilia's
+////     .GroupHover([Token])       group-hover:     → &:is(:where(.group):hover *){…}
+////     .GroupFocus([Token])       group-focus:     → &:is(:where(.group):focus *){…}
+////     .GroupActive([Token])      group-active:    → &:is(:where(.group):active *){…}
+////     .GroupVisited([Token])     group-visited:   → &:is(:where(.group):visited *){…}
+////     .GroupDisabled([Token])    group-disabled:  → &:is(:where(.group):disabled *){…}
+////     .GroupOpen([Token])        group-open:      → &:is(:where(.group):open *){…}
+////
+////   sibling state — the `.peer` class is the consumer's, never emilia's
+////     .PeerHover([Token])        peer-hover:      → &:is(:where(.peer):hover ~ *){…}
+////     .PeerFocus([Token])        peer-focus:      → &:is(:where(.peer):focus ~ *){…}
+////     .PeerActive([Token])       peer-active:     → &:is(:where(.peer):active ~ *){…}
+////     .PeerChecked([Token])      peer-checked:    → &:is(:where(.peer):checked ~ *){…}
+////     .PeerInvalid([Token])      peer-invalid:    → &:is(:where(.peer):invalid ~ *){…}
+////     .PeerRequired([Token])     peer-required:   → &:is(:where(.peer):required ~ *){…}
+////     .PeerDisabled([Token])     peer-disabled:   → &:is(:where(.peer):disabled ~ *){…}
+////     .PeerPlaceholderShown([Token]) peer-placeholder-shown: → &:is(:where(.peer):placeholder-shown ~ *){…}
+////
+////   writing direction and descent
+////     .Rtl([Token])              rtl:             → [dir="rtl"] &{…}
+////     .Ltr([Token])              ltr:             → [dir="ltr"] &{…}
+////     .Children([Token])         *:               → :is(& > *){…}
+////     .Descendants([Token])      **:              → :is(& *){…}
+////
+////   the priority wrapper — not a variant, a flag on every rule it wraps
+////     .Important([Token])        …!               → !important on every declaration it wraps
 
 pub type Token {
     Text {
@@ -738,11 +849,9 @@ pub type Token {
             Auto,
             X3xs, X2xs, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, X5xl, X6xl, X7xl,
         }
-        Break {
-            After { Auto, Avoid, All, Page, Left, Right, Column }
-            Before { Auto, Avoid, All, Page, Left, Right, Column }
-            Inside { Auto, Avoid, AvoidPage, AvoidColumn }
-        }
+        BreakAfter { Auto, Avoid, All, Page, Left, Right, Column }
+        BreakBefore { Auto, Avoid, All, Page, Left, Right, Column }
+        BreakInside { Auto, Avoid, AvoidPage, AvoidColumn }
         Box { Border, Content, }
         BoxDecoration { Clone, Slice, }
     }
@@ -819,10 +928,118 @@ pub type Token {
     }
 
     Alpha(percent: i32, inner: Token[]),
-    Hover(inner: Token[]),
-    Focus(inner: Token[]),
-    Active(inner: Token[]),
+
+    // ── front 34 — modifiers ─────────────────────────────────────────────────
+    //
+    // Every variant below wraps OTHER fronts' declarations; this front adds
+    // none of its own. Each answers one `Variant` — an at-rule and a selector
+    // template with exactly one `&` — and `nestVariant` in `output.bp` applies
+    // it. The map from a name to its emitted CSS is the table in the module
+    // docblock above; the functions are in `emilia.bp` under the same banner.
+    //
+    // breakpoints — min-width, read from the theme's `--breakpoint-*` ladder
+    Sm(inner: Token[]),
     Md(inner: Token[]),
     Lg(inner: Token[]),
     Xl(inner: Token[]),
+    X2xl(inner: Token[]),
+    //
+    // breakpoints — max-width, the same ladder read the other way
+    MaxSm(inner: Token[]),
+    MaxMd(inner: Token[]),
+    MaxLg(inner: Token[]),
+    MaxXl(inner: Token[]),
+    MaxX2xl(inner: Token[]),
+    //
+    // dark mode and the other media features
+    Dark(inner: Token[]),
+    Print(inner: Token[]),
+    Portrait(inner: Token[]),
+    Landscape(inner: Token[]),
+    MotionSafe(inner: Token[]),
+    MotionReduce(inner: Token[]),
+    ContrastMore(inner: Token[]),
+    ContrastLess(inner: Token[]),
+    ForcedColors(inner: Token[]),
+    //
+    // interaction state
+    Hover(inner: Token[]),
+    Focus(inner: Token[]),
+    FocusWithin(inner: Token[]),
+    FocusVisible(inner: Token[]),
+    Active(inner: Token[]),
+    Visited(inner: Token[]),
+    Target(inner: Token[]),
+    Open(inner: Token[]),
+    Inert(inner: Token[]),
+    //
+    // form state
+    Disabled(inner: Token[]),
+    Enabled(inner: Token[]),
+    Checked(inner: Token[]),
+    Indeterminate(inner: Token[]),
+    Default(inner: Token[]),
+    Optional(inner: Token[]),
+    Required(inner: Token[]),
+    Valid(inner: Token[]),
+    Invalid(inner: Token[]),
+    UserValid(inner: Token[]),
+    UserInvalid(inner: Token[]),
+    InRange(inner: Token[]),
+    OutOfRange(inner: Token[]),
+    PlaceholderShown(inner: Token[]),
+    Autofill(inner: Token[]),
+    ReadOnly(inner: Token[]),
+    //
+    // structural position
+    First(inner: Token[]),
+    Last(inner: Token[]),
+    Only(inner: Token[]),
+    Odd(inner: Token[]),
+    Even(inner: Token[]),
+    FirstOfType(inner: Token[]),
+    LastOfType(inner: Token[]),
+    OnlyOfType(inner: Token[]),
+    Empty(inner: Token[]),
+    Nth(index: i32, inner: Token[]),
+    NthLast(index: i32, inner: Token[]),
+    //
+    // pseudo-elements
+    Before(inner: Token[]),
+    After(inner: Token[]),
+    FirstLetter(inner: Token[]),
+    FirstLine(inner: Token[]),
+    Placeholder(inner: Token[]),
+    File(inner: Token[]),
+    Marker(inner: Token[]),
+    Selection(inner: Token[]),
+    Backdrop(inner: Token[]),
+    //
+    // parent state — the `.group` class is the consumer's, never emilia's
+    GroupHover(inner: Token[]),
+    GroupFocus(inner: Token[]),
+    GroupActive(inner: Token[]),
+    GroupVisited(inner: Token[]),
+    GroupDisabled(inner: Token[]),
+    GroupOpen(inner: Token[]),
+    //
+    // sibling state — the `.peer` class is the consumer's, never emilia's
+    PeerHover(inner: Token[]),
+    PeerFocus(inner: Token[]),
+    PeerActive(inner: Token[]),
+    PeerChecked(inner: Token[]),
+    PeerInvalid(inner: Token[]),
+    PeerRequired(inner: Token[]),
+    PeerDisabled(inner: Token[]),
+    PeerPlaceholderShown(inner: Token[]),
+    //
+    // writing direction and descent
+    Rtl(inner: Token[]),
+    Ltr(inner: Token[]),
+    Children(inner: Token[]),
+    Descendants(inner: Token[]),
+    //
+    // the priority wrapper — not a variant, a flag on every rule it wraps
+    Important(inner: Token[]),
+    // ── end front 34 ─────────────────────────────────────────────────────────
 }

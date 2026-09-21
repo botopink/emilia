@@ -29,8 +29,8 @@ Three named imports from `from "emilia"`:
    `flushWith(defaultOptions())`.
 3. **`Token` enum** — the typed authored surface (see `tokens.bp`).
    Sections: Text, Font, Color, Bg, Pad, Margin, Layout, Flex, Border,
-   Effect + modifier variants (`Hover`/`Focus`/`Active`/`Md`/`Lg`/`Xl`)
-   carrying a nested `Token[]`. Front 33 widened **`Color`** to the
+   Effect + the 83 modifier variants of front 34, each carrying a nested
+   `Token[]` (see below and `docs.md` § Modifiers). Front 33 widened **`Color`** to the
    26-family x 11-shade grid (17 chromatic Red..Rose + 9 neutral
    Slate..Taupe, each `50 100 … 900 950`) plus
    `White`/`Black`/`Transparent`/`Current`/`Inherit` and the `Hex(string)`
@@ -88,6 +88,22 @@ dispatcher and the public entry points, **not** the per-section ones, so a
 front that needs the theme adds the parameter to its own function and to its
 own one line of the shared `case` — still one line each, and no front-56 commit
 touching a file two other fronts are editing.
+
+Front 34 owns the **modifier table** — the variants under the
+`// ── front 34 — modifiers ──` banner in `tokens.bp`, the block of the same name
+in `emilia.bp` (one `Variant`-returning fn per name, plus its arms of the shared
+`case`), and nothing about emission. There are **83** of them, 82 variants and
+the one flag: five breakpoints and their five `max-` mirrors (all ten read the
+theme's `--breakpoint-*`, so an override moves the query AND the class hash),
+`Dark` and eight other media features, nine interaction states, sixteen form
+states, nine structural positions plus the indexed `Nth`/`NthLast`, nine
+pseudo-elements, six `Group*` and eight `Peer*`, `Rtl`/`Ltr`/`Children`/
+`Descendants`, and `Important` (decision 81), which is `markImportant` rather
+than a `Variant`. `Dark` consumes front 54's `darkAtRule`/`darkSelector` and
+never learns which `DarkMode` strategy is in force: `Media` puts the whole
+strategy in the at-rule, `Class` and `Attribute` in the selector, and a cell
+proves each. A RANGE is nesting, not a name — `md:max-xl:` is
+`Token.Md([Token.MaxXl([…])])`.
 
 Front 36 owns the **layout section** — `Layout` in `tokens.bp` and
 `layoutTokenToCss` with its sub-dispatchers in `emilia.bp`, fenced by the
@@ -198,7 +214,7 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
 command inside one of its members: emilia, emilia-card, emilia-cascade,
-emilia-spacing, emilia-theme`. Every `modules/*/`
+emilia-layout, emilia-modifiers, emilia-spacing, emilia-theme`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -291,6 +307,15 @@ emilia/
 │   │                    the front's whole argument: halving `--spacing`
 │   │                    moves the `:root` block and not one byte of any
 │   │                    rule. 12 in-file `test {}`, green on both targets)
+│   ├── emilia-modifiers/ ← member `emilia-modifiers` (an application: entry
+│   │                    main.bp, targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } — the front 34 showcase: a
+│   │                    responsive dark-surfaced nav whose links read the
+│   │                    bar's hover through `.group`, a field whose error is
+│   │                    shown by its SIBLING's invalid state, a table striped
+│   │                    by Odd/Even/Nth with one Important declaration, and
+│   │                    one panel under all three DarkMode strategies. 16
+│   │                    in-file `test {}`, green on both targets)
 │   ├── emilia-layout/ ← member `emilia-layout` (an application: entry main.bp,
 │   │                    targets [commonJS, erlang], `emilia` via
 │   │                    { "workspace": true } — the front 36 showcase: the
@@ -335,6 +360,23 @@ to the commonJS row and runs once.
 
 ## Maintainer rules
 
+- **A variant selector carries exactly ONE `&`, and a reference row that
+  carries two is the reference's problem.** `§ 3.2` spells `open` as
+  `&:open, &:popover-open`; front 56's `checkVariantSelector` refuses it, and it
+  is right to — a two-`&` template duplicates the rule it wraps, which is a
+  stylesheet that is silently wrong in a browser days later. The fix is a
+  selector, not an escape hatch: the two states go inside one `:is()`
+  (`&:is(:open, :popover-open)`), which matches the same elements through one
+  `&`. Any future row spelled as a selector LIST takes the same treatment.
+  Separately and confirmed by the maintainer: **upstream v4 also carries the
+  legacy `[open]` attribute in that row** (`&:is([open], :popover-open,
+  :open)`), which the local reference's table omits — the next front to touch
+  the row with upstream in hand adds it, and the test pinning today's spelling
+  is what makes that show up as a change.
+- **`markImportant` is not a `Variant`, so `Important` is not a variant arm.**
+  Its arm answers `markImportant(tokensToSheet(inner, th))` and it adds no
+  selector and no at-rule; it also produces ONE RULE PER INNER TOKEN, so a test
+  over two tokens reads two rules rather than one rule of two declarations.
 - **camelCase** all method/fn names (`tokenToCss`, `flushSheet`,
   `hashHex` — never `token_to_css` — memory:
   `feedback_camelcase_naming`).
@@ -365,21 +407,25 @@ to the commonJS row and runs once.
   `examples/emilia-card/` prints `Formatted src/main.bp` — the formatter moved
   under the compiler since the last `style(src)` sweep. Reformatting is a
   source change and belongs to a `style(src)` commit, not to a packaging one.
-- **`.Color.Red.500` and five siblings are DECLARED AND UNREACHABLE.** The
-  compiler resolves a leading-dot section path (`tryResolveEnumSectionPath`,
-  compiler-core `comptime/infer.zig`) by iterating `env.typeDefs` — which holds
-  the synthesised section enums beside the real ones — and returning the first
-  enum whose section tree carries the path. The expected type is never
-  consulted. `Token` carries `Color.Red.500` and so does `__Token__Border`
-  (`Token.Border.Color`, whose Red and Gray run 100/500/700), so hash order
-  decides, and today it decides against us for `.Color.Red.{100,500,700}` and
-  `.Color.Gray.{100,500,700}`. Every spelling reds — the typed `val`, the typed
-  array literal, the call argument, and `Token.Color.Red.500`, which the
-  resolver does not accept at all. It is loud (`type mismatch: expected Token,
-  got __Token__Border`), never silently-wrong CSS. Reported to botopink-lang;
-  the fix is to prefer the enum the expected type names and to refuse rather
-  than guess when two match. **Do not "fix" it by adding or renaming a type to
-  flip the hash order** — that is invisible and the next front re-breaks it.
+- **FIXED — `.Color.Red.500` and five siblings used to be DECLARED AND
+  UNREACHABLE.** The compiler resolved a leading-dot section path
+  (`tryResolveEnumSectionPath`, compiler-core `comptime/infer.zig`) by iterating
+  `env.typeDefs` — which holds the synthesised section enums beside the real
+  ones — and returning the first enum whose section tree carried the path,
+  never consulting the expected type. `Token` carries `Color.Red.500` and so
+  does `__Token__Border` (`Token.Border.Color`, whose Red and Gray run
+  100/500/700), so hash order decided, and it decided against us for
+  `.Color.Red.{100,500,700}` and `.Color.Gray.{100,500,700}`: every spelling
+  red, including the fully qualified `Token.Color.Red.500`, which the resolver
+  did not accept at all. It failed loudly (`type mismatch: expected Token, got
+  __Token__Border`) rather than emitting the wrong CSS, and it flipped whenever
+  the typedef set grew. botopink-lang `f01c508a` now prefers the enum the
+  expected type names, accepts the fully qualified spelling, and refuses an
+  ambiguous path naming both candidates instead of picking one; emilia
+  `1cd39b2` asserts all six cells, and the two palette tests went from eight
+  shades to eleven. **The standing rule survives the fix**: never resolve a
+  collision like this by adding or renaming a type to flip the hash order —
+  that is invisible, and the next front re-breaks it.
 - **A section of `Token` is a type written by its path** — `Token.Text`,
   `Token.Text.Size`, `Token.Border.Color` (botopink-lang decision 8 §5.3b).
   The flat spelling (`TokenText`) names nothing and reds with a hint; a
@@ -453,6 +499,21 @@ to the commonJS row and runs once.
   workaround in `output.bp`'s `wrapAtRules` (mapping the list twice) is no
   longer required and may be simplified by whichever front next touches it.
   Kept as the reason a per-target divergence is worth a cell rather than a note.
+- **A SECTION HEAD may not be named like a TOP-LEVEL payload variant.** A
+  section named `After` beside the top-level `After(inner: Token[])` does not
+  red — it silently breaks the TOP-LEVEL variant's payload projection, so
+  `Token.Before(inner)` builds a record with no `inner` field and the first
+  thing to touch it dies on `Cannot read properties of undefined (reading
+  'fold')`. The crash lands in the OTHER front's tests, with nothing pointing
+  at the section that caused it. Front 36 hit this with
+  `Layout.Break { After, Before, Inside }` against front 34's `After`/`Before`
+  modifiers; the fix is the flat `Layout.BreakAfter` / `BreakBefore` /
+  `BreakInside`, and not one byte of emitted CSS changed. **LEAF names are
+  safe** — `Columns.Md` and `Size.MaxW.Md` coexist with the `Md` modifier and
+  always have; it is the HEAD that shadows. Check a new section's name against
+  the top-level variant list before adding it. Reported to botopink-lang: a
+  name that cannot be constructed should not capture a constructor that can.
+
 - **A consumer must import a type's TRANSITIVE types too, and the error points
   at the wrong line.** `import { Theme } from "emilia";` alone reds `unknown
   type 'DarkMode'` because `Theme` carries a `DarkMode` field; `Options` needs
@@ -477,14 +538,18 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **263/263** on
+  refuses) runs every module's in-file `test {}` blocks, **313/313** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 175 (`emilia.bp`). `emilia.bp`'s 175 are front 56's 33
-  (below) plus front 33's 81 plus front 35's 31 plus front 36's 30. Three of
-  front 36's 30 are the front's REGRESSION: a walk over all **776** `Layout`
-  leaves asserting no declaration carries a `rem`, that every one carries a
-  `:`, and that none carries a Tailwind class fragment (`inset-x-`, `top-`,
-  `z-50`, `overflow-auto`, `float-start`, `box-border`); the same test asserts
+  (`output.bp`) + 225 (`emilia.bp`). `emilia.bp`'s 225 are front 56's 33
+  (below) plus front 33's 81 plus front 35's 31 plus front 34's 50 — two per
+  variant family (the `Variant` halves and the CSS the row renders), the three
+  dark-mode strategies a cell each, the ranges, a three-deep chain, the indexed
+  rows, `Important`, the empty inner list, six walks over the whole table, and
+  three end-to-end documents — plus front 36's 30. Three of front 36's 30 are
+  that front's REGRESSION: a walk over all **776** `Layout` leaves asserting no
+  declaration carries a `rem`, that every one carries a `:`, and that none
+  carries a Tailwind class fragment (`inset-x-`, `top-`, `z-50`,
+  `overflow-auto`, `float-start`, `box-border`); the same test asserts
   `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
   discriminate rather than to pass vacuously. Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
@@ -495,8 +560,8 @@ to the commonJS row and runs once.
   leaves asserting the output carries no `rem`, none of `padding-x`,
   `padding-y`, `margin-x`, `margin-y`, and none of `m-0.25`, `m-0.5`, `m-1`,
   `m-2`, `margin-auto`; a fourth walks all **566** `Size` leaves for the same
-  `rem`. Front 33's 81: 26 one-per-family `Color` grid tests (280 of the 286
-  cells — the six unreachable ones are named in § Maintainer rules) and 26 for
+  `rem`. Front 33's 81: 26 one-per-family `Color` grid tests (all 286
+  cells since `1cd39b2` closed the resolver defect) and 26 for
   the `Bg.Color` mirror (all 286), plus `paletteVar`, the shade-survives pin,
   the named colours on both properties, the pre-33 paths, the legacy `Bg`
   leaves, the longhand/shorthand split, the rule shape of a colour token, and
@@ -539,6 +604,20 @@ to the commonJS row and runs once.
   inside **jhonstart** (never inside emilia) is gone, and the example's line was
   deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
   a listed example that builds fails the gate just as a red one does.
+
+- `examples/emilia-modifiers/` is the member `emilia-modifiers` and is front
+  34's worked example: a navigation bar that is stacked and dark-surfaced on a
+  phone and a row from `md:` up, whose links read the bar's hover through
+  `.group`; a form field whose error message is shown by its SIBLING's invalid
+  state and nothing else; a table that stripes itself with `Odd`/`Even`/`Nth`
+  and pins one declaration with `Important`; and the same panel rendered under
+  all three `DarkMode` strategies, which give three different classes because
+  the strategy reaches the rule. 16 in-file tests, green on commonJS and on
+  erlang; it builds and runs. Two of its assertions pin OTHER fronts' output
+  and say so — `Margin.*.__0` is `margin-left:0` rather than a `calc`, and
+  `Border.Color.Red.__500` is still `border-color:red` because `Border.Color`
+  is pre-front-33 and front 40 owns the rewrite; what this example pins there
+  is the selector, which is front 34's.
 
 - `examples/emilia-layout/` is the member `emilia-layout` and is front 36's
   worked example: the eleven display values in one rule, the nine inset
@@ -595,9 +674,10 @@ to the commonJS row and runs once.
 | F4 — `flush()` per-render | DONE — async (`@Future<string>`); test bodies await via implicit future context (bot-lang `<test-runner-async>` commit) |
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
-| 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **Six cells — `.Color.Red.{100,500,700}`, `.Color.Gray.{100,500,700}` — are declared and unreachable** until the compiler's leading-dot resolver stops guessing between `Token` and `__Token__Border`; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
+| 1.0.10-beta front 34 — modifiers | DONE — the variant table in `tokens.bp` + `emilia.bp` under the front's banner; 83 modifiers; steps 1-7. One `Variant`-returning fn per name and no wrapping logic: front 56's `nestVariant` applies them |
+| 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **All 286 cells are reachable since `1cd39b2`**: `.Color.Red.{100,500,700}` and `.Color.Gray.{100,500,700}` were declared and unreachable while the compiler's leading-dot resolver guessed between `Token` and `__Token__Border`, and botopink-lang `f01c508a` closed it; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
 | 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
-| 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). 233 → 263 inline tests in `modules/emilia`, green on commonJS and erlang. **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
+| 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). +30 inline tests in `modules/emilia`, which is **313** on commonJS and on erlang with front 34 merged in. **`Break` is FLAT** — `BreakAfter`/`BreakBefore`/`BreakInside`, not the spec's `Break { After, Before, Inside }`: a section head named like a top-level payload variant shadows that variant's payload projection, and front 34 carries `After`/`Before` (§ Maintainer rules). **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

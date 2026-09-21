@@ -2,19 +2,6 @@
 
 ## Unreleased — v0.beta.22
 
-- **The eleven display values, and the front 36 banner in both files**
-  (1.0.10-beta front `36-emilia-layout`, step 1). `Layout` carried six of
-  `§ 5.8`'s eleven display values; `InlineFlex`, `InlineGrid`, `Contents`,
-  `FlowRoot` and `ListItem` are added as BARE SIBLINGS of the six, inside
-  `Layout` itself and not under a sub-section, which is what keeps
-  `.Layout.Flex` spelled the way every consumer spells it today. The six that
-  predate this front emit byte-identical CSS, pinned by an assertion that lists
-  them first. `// ── front 36 — layout ──` now fences the section in `tokens.bp`
-  and `layoutTokenToCss` with its sub-dispatchers in `emilia.bp`; the front's
-  tests live beside the dispatchers, not at the end of the file, for the reason
-  front 35 records — two fronts appending to the same last line cannot be
-  merged.
-
 - **`examples/emilia-layout/` — the worked example** (1.0.10-beta front
   `36-emilia-layout`). The new workspace member composes what the front
   unblocked: a media card that CLIPS its overflow, isolates a stacking context
@@ -32,7 +19,6 @@
   `examples/position-example.bp`.** emilia is a workspace since decision 75 and
   an example is a MEMBER with its own manifest, so the two are one member,
   `examples/emilia-layout/`, covering both.
-
 - **The dispatcher contract, and 776 leaves walked for a resolved length**
   (1.0.10-beta front `36-emilia-layout`, step 6). `layoutTokenToCss(t, th)` and
   every sub-dispatcher under the front 36 banner now carry `th: Theme`, each is
@@ -47,7 +33,6 @@
   `.Border.Rounded.Lg` DOES carry a `rem`, so the probe is known to
   discriminate; a deliberate `0.25rem` planted in one inset arm was confirmed
   to fail it.
-
 - **Multi-column, fragmentation and box-sizing — and the column widths are the
   theme's** (1.0.10-beta front `36-emilia-layout`, step 5). `Layout.Columns`,
   `Layout.Break { After, Before, Inside }`, `Layout.Box` and
@@ -64,10 +49,21 @@
   The three counts are not lengths — `columns-2` is `columns:2` — and
   `break-inside` keeps its own shorter leaf set, `§ 5.5` having no `all`, no
   `page`, no `left` and no `right`.
+  **`Break` is FLAT — `BreakAfter` / `BreakBefore` / `BreakInside` — and the
+  spec's `Break { After, Before, Inside }` does not survive beside front 34.**
+  A section head named like a TOP-LEVEL payload variant does not red; it
+  silently breaks THAT variant's payload projection, so `Token.Before(inner)`
+  built a record with no `inner` field and three of front 34's tests died on
+  `undefined.fold` — in another front's block, with nothing pointing back at
+  the section that caused it. `After` and `Before` were the only two
+  collisions; leaf names such as `Columns.Md` beside the `Md` modifier are
+  harmless, and always were. The flat spelling is the 1.0.8 draft's, it cannot
+  collide, and not one byte of emitted CSS changed. Recorded in `AGENTS.md`
+  § Maintainer rules and reported to botopink-lang: a name that cannot be
+  constructed should not capture a constructor that can.
   **Reference gap, recorded rather than hidden:** `columns-4` … `columns-12`
   resolve upstream through the bare-integer rule rather than through a theme
   key, so they are left undeclared until that is confirmed.
-
 - **Float, clear, and an image that can be cropped** (1.0.10-beta front
   `36-emilia-layout`, step 4). `Layout.Float` and `Layout.Clear` answer
   `§ 5.9`/`§ 5.10`, `Layout.Object` the `Fit`/`Pos` split of `§ 5.12`/`§ 5.13`,
@@ -80,7 +76,6 @@
   `object-position:left bottom`, and a test asserts `left-bottom` does not
   survive into the declaration; and `aspect-square` is **`1 / 1` with spaces
   around the slash**, the way `§ 5.1` prints it, with `16/9` asserted absent.
-
 - **A scroll container, a stacking order and a box that keeps its space**
   (1.0.10-beta front `36-emilia-layout`, step 3). `§ 5.14`, `§ 5.15`, `§ 5.18`,
   `§ 5.19` and `§ 5.11` had no token: emilia could not clip, could not scroll,
@@ -96,7 +91,6 @@
   `Z` is the one numeric family in this front that is not a length: `z-50` is
   `z-index:50`, a bare integer that never reaches `spacing` and that a test
   pins as carrying no `calc`, no `rem` and no `px`.
-
 - **`position` and the whole inset family** (1.0.10-beta front
   `36-emilia-layout`, step 2). Nothing in emilia could be positioned, and no
   positioned box could be placed: `§ 5.16` and `§ 5.17` had no token at all.
@@ -114,6 +108,136 @@
   `layoutTokenToCss` takes `th: Theme` from this step on, which is this front's
   one line of the shared `case` and nothing else of it.
 
+- **The eleven display values, and the front 36 banner in both files**
+  (1.0.10-beta front `36-emilia-layout`, step 1). `Layout` carried six of
+  `§ 5.8`'s eleven display values; `InlineFlex`, `InlineGrid`, `Contents`,
+  `FlowRoot` and `ListItem` are added as BARE SIBLINGS of the six, inside
+  `Layout` itself and not under a sub-section, which is what keeps
+  `.Layout.Flex` spelled the way every consumer spells it today. The six that
+  predate this front emit byte-identical CSS, pinned by an assertion that lists
+  them first. `// ── front 36 — layout ──` now fences the section in `tokens.bp`
+  and `layoutTokenToCss` with its sub-dispatchers in `emilia.bp`; the front's
+  tests live beside the dispatchers, not at the end of the file, for the reason
+  front 35 records — two fronts appending to the same last line cannot be
+  merged.
+
+- **`examples/emilia-modifiers/`, the front's worked example** (1.0.10-beta
+  front `34-emilia-modifiers`, § Examples). A new workspace member, and the
+  first thing in this repository that uses the table across a PACKAGE
+  BOUNDARY — which is where the commonJS `case`-over-a-unique-variant defect
+  used to bite, so it is worth a runnable example rather than an inline test.
+  A navigation bar stacked and dark-surfaced on a phone and a row from `md:`
+  up, whose links read the bar's hover through `.group` and their own through
+  `:hover`; a form field whose error message is shown by its SIBLING's invalid
+  state and by nothing else; a self-striping table that also carries
+  `Important`; and one panel rendered under all three `DarkMode` strategies,
+  which give three different classes because the strategy reaches the rule. Two
+  assertions pin other fronts' output and say so in place — `Margin.*.__0` is
+  `margin-left:0`, and `Border.Color.Red.__500` is still `border-color:red`
+  because that section is pre-front-33 and front 40 owns the rewrite; what the
+  example pins there is the SELECTOR. 16 in-file tests, green on commonJS and
+  on erlang; it builds and runs.
+
+- **`Important`, the walks, and the table closed at 83**
+  (1.0.10-beta front `34-emilia-modifiers`, step 7). `Important(inner)` is
+  decision 81's row and the one that is not a variant at all: it adds no
+  selector and no at-rule, it is one line on top of front 56's `markImportant`,
+  and it flags every rule it wraps. The front's own regression is six walks
+  over the WHOLE table rather than row by row — every selector template carries
+  exactly one `&`; no selector and no at-rule carries a brace, because **this
+  front builds none**; every at-rule starts with `@`; no two rows resolve to
+  the same `(atRule, selector)` pair; every modifier wraps its declaration and
+  none drops it; no query resolves a pixel or says `min-width`/`max-width`; and
+  no variant carries a codec separator. An empty inner list produces an empty
+  `Sheet`, which `declSheet`'s contract already drops, and that is tested on
+  four shapes rather than asserted in prose. Three end-to-end documents close
+  it: a dark override, a responsive stateful button whose four rules come out
+  in cascade order, and a peer-driven error message.
+  **283/283** on commonJS and on erlang (145 → 195 in `emilia.bp`), every
+  example builds.
+
+- **Parent, sibling, direction and descent** (1.0.10-beta front
+  `34-emilia-modifiers`, step 6). Six `Group*` and eight `Peer*`, each built by
+  substituting a state into the reference's two templates, written once:
+  `groupVariant(state)` is `&:is(:where(.group)<state> *)` and
+  `peerVariant(state)` is `&:is(:where(.peer)<state> ~ *)`. **`.group` and
+  `.peer` are the consumer's classes** — emilia emits the selector that reads
+  them and never the class itself, which is now stated in `docs.md` beside the
+  table. `GroupVisited`, `PeerActive` and `PeerRequired` come from the front's
+  *Carried from 1.0.8-beta* section, translated into the v4.3 template as that
+  section spells out. `Rtl` and `Ltr` are the rows where the class is NOT
+  leading — `[dir="rtl"] &` — and `Children`/`Descendants` are the rows where
+  it is wrapped — `:is(& > *)` and `:is(& *)`; all four go through the same
+  `selector` field as `&:focus`, which is the whole argument for the one-`&`
+  template. 269/269 on both targets.
+
+- **The nine pseudo-elements** (1.0.10-beta front `34-emilia-modifiers`,
+  step 5). `Before`, `After`, `FirstLetter`, `FirstLine`, `Placeholder`,
+  `File` (`&::file-selector-button`) and `Backdrop` take `&::`; `Marker` and
+  `Selection` take `& ::` — **the space is the reference's and is copied, not
+  corrected**, and a test asserts the two spellings against each other so a
+  tidy-up shows up as a change. The nesting direction matters here and is
+  pinned: `Hover([Before([…])])` flattens to `&:hover::before`, never to
+  `&::before:hover`, because front 56 substitutes the INNER rule's `&` with the
+  OUTER variant's selector. `Before`/`After` stay useless until front 38
+  delivers `Text.Content.*`. 261/261 on both targets.
+
+- **Thirty-six state variants, and the two that take an index**
+  (1.0.10-beta front `34-emilia-modifiers`, step 4). Six more interaction
+  states (`FocusWithin`, `FocusVisible`, `Visited`, `Target`, `Open`,
+  `Inert`), the sixteen form states a form cannot be styled without
+  (`Disabled` … `ReadOnly`), nine structural positions, and `Nth(index, inner)`
+  / `NthLast(index, inner)`, which build their selector from an `i32` payload
+  carried beside the list.
+  **One reference row did not survive front 56.** `§ 3.2` spells `open` as
+  `&:open, &:popover-open` — two `&`, which `checkVariantSelector` refuses with
+  no opt-out, correctly: a two-`&` template DUPLICATES the rule it wraps. The
+  two states go inside one `:is()` instead — `&:is(:open, :popover-open)` —
+  which is one `&`, the same match set, and no selector list for front 56 to
+  split. Worth a reader's attention: upstream v4.1 additionally carries the
+  legacy `[open]` attribute in that row, which the local reference's table does
+  not, so the row is transcribed from the reference and not from upstream.
+  257/257 on both targets.
+
+- **`Dark`, and the other eight media features** (1.0.10-beta front
+  `34-emilia-modifiers`, step 3). `darkVariant(th)` is
+  `Variant(atRule: darkAtRule(th), selector: darkSelector(th))` — it consumes
+  front 54's pair and **never learns which `DarkMode` strategy is in force**,
+  which is what makes all three work from one row: `Media` puts the whole
+  strategy in the at-rule over a bare `&`, `Class` and `Attribute` put it in a
+  `:where()` selector with no at-rule at all. A cell proves each, and a fourth
+  pins that the strategy reaches the class hash. **This is where the README is
+  out of date**: its step 3 calls the class- and attribute-based forms
+  `@custom-variant` registrations and rules them out of scope, which was true
+  before front 54 shipped `DarkMode` and decision 82 assigned the consumption
+  to this front. `Print`, `Portrait`, `Landscape`, `MotionSafe`,
+  `MotionReduce`, `ContrastMore`, `ContrastLess` and `ForcedColors` are
+  at-rule-only rows beside it. 247/247 on both targets.
+
+- **Ten breakpoints, both directions, every one of them read from the theme**
+  (1.0.10-beta front `34-emilia-modifiers`, step 2). `Sm` and `X2xl` close the
+  two ends the enum could not address at all, and `MaxSm`/`MaxMd`/`MaxLg`/
+  `MaxXl`/`MaxX2xl` are the `max-*` mirrors. `breakpointVariant` emits
+  `@media (width >= <n>)` and `maxBreakpointVariant` `@media (width < <n>)`,
+  both resolving the SAME `--breakpoint-*` entry (decision 82), so a project
+  that moves `md` moves `md:` and `max-md:` together — and moves the class
+  hash with them, which a test pins. No breakpoint resolves a pixel: the
+  `rem` values are the theme's. A RANGE is nesting and not a name — upstream's
+  `md:max-xl:` is `Token.Md([Token.MaxXl([…])])`. 240/240 on both targets.
+
+- **The six modifiers move under front 34's banner, unchanged**
+  (1.0.10-beta front `34-emilia-modifiers`, step 1). Front 56 had already
+  corrected what they emit — `hover` is `@media (hover: hover){&:hover}` and a
+  breakpoint is `@media (width >= 48rem)` read from `--breakpoint-md`, not
+  `:hover` and `@media(min-width:768px)` — and had said so in a comment naming
+  front 34 as the owner. **Step 1 of the front's README is therefore already
+  landed**: the six `Variant`-returning fns and the four helper shapes move
+  into the `// ── front 34 — modifiers ──` block, the arms of `tokenToSheet`
+  are fenced by the same banner, and not one byte of CSS changes. The README's
+  step 1 also names five assertions in `src/emilia.bp` that the correction
+  breaks; front 56 updated them when it made the correction, and there is
+  nothing left to update. 233/233 on commonJS and on erlang, unchanged.
+
 - **`examples/emilia-card` stops pinning a compiler defect.** The commonJS
   `case`-over-a-uniquely-named-variant defect recorded further down this file
   is **fixed upstream**: such an arm now compares the `tag` string instead of
@@ -126,9 +250,9 @@
   them pinned is gone. Nothing in the library changed; `botopink test` in
   `examples/emilia-card` is 4/4 on its one declared target, commonJS. The
   example's 600 shades stay 600: front 33 moved them off 500 to dodge the
-  leading-dot section resolver, and **that defect is still live** —
-  `.Color.Red.500` and `.Color.Gray.500` still red with `type mismatch:
-  expected Token, got __Token__Border`. See the BLOCKED note in `emilia.bp`.
+  leading-dot section resolver. **That defect is closed since `1cd39b2`** —
+  `.Color.Red.500` and `.Color.Gray.500` resolve, and the note above
+  `colorTokenToCss` records it rather than blocking on it.
 
 - **`examples/emilia-spacing/`, and the front 35 block is fenced in both files**
   (1.0.10-beta front `35-emilia-spacing-sizing`, step 5). The

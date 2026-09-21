@@ -116,8 +116,8 @@ pub fn columnLadder() -> Token[] {
         .Layout.Columns.2,
         .Layout.Columns.Md,
         .Layout.Columns.Auto,
-        .Layout.Break.Inside.AvoidColumn,
-        .Layout.Break.After.Page,
+        .Layout.BreakInside.AvoidColumn,
+        .Layout.BreakAfter.Page,
     ];
     return out;
 }
