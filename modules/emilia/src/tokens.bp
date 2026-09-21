@@ -12,7 +12,7 @@
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
 //// payload — siblings of section heads at the top level. Front 34 widened
-//// them from six to 82; the full map is under MODIFIERS below.
+//// them from six to 83; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -185,6 +185,9 @@
 ////     .Ltr([Token])              ltr:             → [dir="ltr"] &{…}
 ////     .Children([Token])         *:               → :is(& > *){…}
 ////     .Descendants([Token])      **:              → :is(& *){…}
+////
+////   the priority wrapper — not a variant, a flag on every rule it wraps
+////     .Important([Token])        …!               → !important on every declaration it wraps
 
 pub type Token {
     Text {
@@ -822,5 +825,8 @@ pub type Token {
     Ltr(inner: Token[]),
     Children(inner: Token[]),
     Descendants(inner: Token[]),
+    //
+    // the priority wrapper — not a variant, a flag on every rule it wraps
+    Important(inner: Token[]),
     // ── end front 34 ─────────────────────────────────────────────────────────
 }

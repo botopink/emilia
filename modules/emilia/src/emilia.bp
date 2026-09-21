@@ -231,6 +231,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Ltr(inner) -> nestVariant(tokensToSheet(inner, th), ltrVariant());
         Children(inner) -> nestVariant(tokensToSheet(inner, th), childrenVariant());
         Descendants(inner) -> nestVariant(tokensToSheet(inner, th), descendantsVariant());
+        Important(inner) -> markImportant(tokensToSheet(inner, th));
         // ── end front 34 ─────────────────────────────────────────────────
     };
     return out;
@@ -1008,6 +1009,258 @@ test "writing direction and descent — the CSS each row renders around one decl
     assert modifierCss(Token.Descendants(inner)) == ":is(.x *){font-weight:bold}";
 }
 
+// ── the walks ────────────────────────────────────────────────────────────
+//
+// The table is long, so the invariants are asserted over the WHOLE of it
+// rather than row by row. `everyVariant` is every `Variant`-returning fn in
+// this front; `everyModifier` is every top-level variant `tokens.bp`
+// declares under the same banner, each wrapping one declaration.
+
+fn everyVariant(th: Theme) -> Variant[] {
+    val out: Variant[] = [
+        smVariant(th),
+        mdVariant(th),
+        lgVariant(th),
+        xlVariant(th),
+        x2xlVariant(th),
+        maxSmVariant(th),
+        maxMdVariant(th),
+        maxLgVariant(th),
+        maxXlVariant(th),
+        maxX2xlVariant(th),
+        darkVariant(th),
+        printVariant(),
+        portraitVariant(),
+        landscapeVariant(),
+        motionSafeVariant(),
+        motionReduceVariant(),
+        contrastMoreVariant(),
+        contrastLessVariant(),
+        forcedColorsVariant(),
+        hoverVariant(),
+        focusVariant(),
+        focusWithinVariant(),
+        focusVisibleVariant(),
+        activeVariant(),
+        visitedVariant(),
+        targetVariant(),
+        openVariant(),
+        inertVariant(),
+        disabledVariant(),
+        enabledVariant(),
+        checkedVariant(),
+        indeterminateVariant(),
+        defaultVariant(),
+        optionalVariant(),
+        requiredVariant(),
+        validVariant(),
+        invalidVariant(),
+        userValidVariant(),
+        userInvalidVariant(),
+        inRangeVariant(),
+        outOfRangeVariant(),
+        placeholderShownVariant(),
+        autofillVariant(),
+        readOnlyVariant(),
+        firstVariant(),
+        lastVariant(),
+        onlyVariant(),
+        oddVariant(),
+        evenVariant(),
+        firstOfTypeVariant(),
+        lastOfTypeVariant(),
+        onlyOfTypeVariant(),
+        emptyVariant(),
+        nthVariant(3),
+        nthLastVariant(5),
+        beforeVariant(),
+        afterVariant(),
+        firstLetterVariant(),
+        firstLineVariant(),
+        placeholderVariant(),
+        fileVariant(),
+        markerVariant(),
+        selectionVariant(),
+        backdropVariant(),
+        groupHoverVariant(),
+        groupFocusVariant(),
+        groupActiveVariant(),
+        groupVisitedVariant(),
+        groupDisabledVariant(),
+        groupOpenVariant(),
+        peerHoverVariant(),
+        peerFocusVariant(),
+        peerActiveVariant(),
+        peerCheckedVariant(),
+        peerInvalidVariant(),
+        peerRequiredVariant(),
+        peerDisabledVariant(),
+        peerPlaceholderShownVariant(),
+        rtlVariant(),
+        ltrVariant(),
+        childrenVariant(),
+        descendantsVariant(),
+    ];
+    return out;
+}
+
+fn everyModifier() -> Token[] {
+    val inner = boldInner();
+    val out: Token[] = [
+        Token.Sm(inner),
+        Token.Md(inner),
+        Token.Lg(inner),
+        Token.Xl(inner),
+        Token.X2xl(inner),
+        Token.MaxSm(inner),
+        Token.MaxMd(inner),
+        Token.MaxLg(inner),
+        Token.MaxXl(inner),
+        Token.MaxX2xl(inner),
+        Token.Dark(inner),
+        Token.Print(inner),
+        Token.Portrait(inner),
+        Token.Landscape(inner),
+        Token.MotionSafe(inner),
+        Token.MotionReduce(inner),
+        Token.ContrastMore(inner),
+        Token.ContrastLess(inner),
+        Token.ForcedColors(inner),
+        Token.Hover(inner),
+        Token.Focus(inner),
+        Token.FocusWithin(inner),
+        Token.FocusVisible(inner),
+        Token.Active(inner),
+        Token.Visited(inner),
+        Token.Target(inner),
+        Token.Open(inner),
+        Token.Inert(inner),
+        Token.Disabled(inner),
+        Token.Enabled(inner),
+        Token.Checked(inner),
+        Token.Indeterminate(inner),
+        Token.Default(inner),
+        Token.Optional(inner),
+        Token.Required(inner),
+        Token.Valid(inner),
+        Token.Invalid(inner),
+        Token.UserValid(inner),
+        Token.UserInvalid(inner),
+        Token.InRange(inner),
+        Token.OutOfRange(inner),
+        Token.PlaceholderShown(inner),
+        Token.Autofill(inner),
+        Token.ReadOnly(inner),
+        Token.First(inner),
+        Token.Last(inner),
+        Token.Only(inner),
+        Token.Odd(inner),
+        Token.Even(inner),
+        Token.FirstOfType(inner),
+        Token.LastOfType(inner),
+        Token.OnlyOfType(inner),
+        Token.Empty(inner),
+        Token.Nth(index: 3, inner: inner),
+        Token.NthLast(index: 5, inner: inner),
+        Token.Before(inner),
+        Token.After(inner),
+        Token.FirstLetter(inner),
+        Token.FirstLine(inner),
+        Token.Placeholder(inner),
+        Token.File(inner),
+        Token.Marker(inner),
+        Token.Selection(inner),
+        Token.Backdrop(inner),
+        Token.GroupHover(inner),
+        Token.GroupFocus(inner),
+        Token.GroupActive(inner),
+        Token.GroupVisited(inner),
+        Token.GroupDisabled(inner),
+        Token.GroupOpen(inner),
+        Token.PeerHover(inner),
+        Token.PeerFocus(inner),
+        Token.PeerActive(inner),
+        Token.PeerChecked(inner),
+        Token.PeerInvalid(inner),
+        Token.PeerRequired(inner),
+        Token.PeerDisabled(inner),
+        Token.PeerPlaceholderShown(inner),
+        Token.Rtl(inner),
+        Token.Ltr(inner),
+        Token.Children(inner),
+        Token.Descendants(inner),
+        Token.Important(inner),
+    ];
+    return out;
+}
+
+test "the table — 82 Variant fns and 83 modifier tokens, and no row is a copy" {
+    assert everyVariant(defaultTheme()).length == 82;
+    assert everyModifier().length == 83;
+}
+
+// The distinct-pair fold: two rows that resolved to the same at-rule and the
+// same selector would be two names for one variant, which the reference has
+// nowhere in its table.
+fn pushDistinctString(acc: string[], s: string) -> string[] {
+    val present = acc.any({ x -> x == s });
+    val one: string[] = [s];
+    val out = if (present) acc else acc.append(one);
+    return out;
+}
+
+fn distinctStrings(xs: string[]) -> string[] {
+    val seed: string[] = [];
+    return xs.fold(seed, { acc, x -> pushDistinctString(acc, x) });
+}
+
+test "the walk — every selector template carries exactly one ampersand" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> v.selector.split("&").length == 2 });
+}
+
+test "the walk — this front builds no brace, and every at-rule is an at-rule" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> v.selector.split("{").length == 1 });
+    assert vs.all({ v -> v.selector.split("}").length == 1 });
+    assert vs.all({ v -> v.atRule.split("{").length == 1 });
+    assert vs.all({ v -> v.atRule == "" || v.atRule.startsWith("@") });
+}
+
+test "the walk — no two rows resolve to the same pair" {
+    val vs = everyVariant(defaultTheme());
+    val pairs = vs.map({ v -> v.atRule + " <> " + v.selector });
+    assert distinctStrings(pairs).length == pairs.length;
+}
+
+test "the walk — every modifier wraps its declaration, and none drops it" {
+    val ms = everyModifier();
+    val sheets = ms.map({ m -> tokenToSheet(m, defaultTheme()) });
+    assert sheets.all({ s -> s.rules.length == 1 });
+    assert sheets.all({ s -> declarationsOf(s).join("") == "font-weight:bold" });
+}
+
+test "the walk — no breakpoint query resolves a pixel, and none is min-width" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> v.atRule.split("px").length == 1 });
+    assert vs.all({ v -> v.atRule.split("min-width").length == 1 });
+    assert vs.all({ v -> v.atRule.split("max-width").length == 1 });
+}
+
+test "the walk — no variant carries a codec separator" {
+    val vs = everyVariant(defaultTheme());
+    assert vs.all({ v -> carriesSeparator(v.selector) == false });
+    assert vs.all({ v -> carriesSeparator(v.atRule) == false });
+}
+
+// ── dark mode — one cell per strategy, all three from front 54 ─────────────
+//
+// This front does not know which strategy is in force: it asks `darkAtRule`
+// and `darkSelector` and hands the pair to `nestVariant`. The three tests
+// below are the proof that the pair is enough — `Media` puts the whole
+// strategy in the at-rule, `Class` and `Attribute` put it in the selector, and
+// the `Dark` token is the same token in all three.
+
 test "dark — the `Media` strategy is an at-rule over the bare ampersand" {
     val th = defaultTheme();
     assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
@@ -1139,6 +1392,86 @@ test "`inert` is the attribute pair the reference gives, not a pseudo-class" {
 }
 
 // ── Important — decision 81, and the one row that is not a variant ─────────
+
+test "Important — the wrapper sets the flag; it adds no selector and no at-rule" {
+    val inner = boldInner();
+    val r = firstRuleOf(tokenToSheet(Token.Important(inner), defaultTheme()));
+    assert r.important == true;
+    assert r.selector == "&";
+    assert r.atRules.length == 0;
+    assert modifierCss(Token.Important(inner)) == ".x{font-weight:bold!important}";
+}
+
+test "Important — every rule it wraps is flagged, and a variant nests over it" {
+    val two: Token[] = [.Text.Bold, .Layout.Flex];
+    val marked: Token[] = [Token.Important(two)];
+    val s = tokenToSheet(Token.Hover(marked), defaultTheme());
+    assert s.rules.length == 2;
+    assert s.rules.all({ r -> r.important });
+    val css = s.rules.map({ r -> renderRule("x", r, bareOptions()) }).join("");
+    assert css == "@media (hover: hover){.x:hover{font-weight:bold!important}}"
+        + "@media (hover: hover){.x:hover{display:flex!important}}";
+}
+
+// ── the empty list ────────────────────────────────────────────────────────
+
+test "a modifier whose inner list is empty produces an empty sheet, and is dropped" {
+    val none: Token[] = [];
+    assert tokenToSheet(Token.Hover(none), defaultTheme()).rules.length == 0;
+    assert tokenToSheet(Token.Dark(none), defaultTheme()).rules.length == 0;
+    assert tokenToSheet(Token.Nth(index: 2, inner: none), defaultTheme()).rules.length == 0;
+    assert tokenToSheet(Token.Important(none), defaultTheme()).rules.length == 0;
+}
+
+test "an empty modifier beside a real token leaves exactly the real rule" {
+    val none: Token[] = [];
+    val tokens: Token[] = [.Text.Bold, Token.Focus(none)];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{font-weight:bold}}</style>";
+}
+
+// ── end to end ────────────────────────────────────────────────────────────
+
+test "end to end — a light background and its dark override, as one document" {
+    val dark: Token[] = [.Bg.Color.Slate.900];
+    val tokens: Token[] = [.Bg.Color.White, Token.Dark(dark)];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-color:var(--color-white)}@media (prefers-color-scheme: dark){."
+        + cls + "{background-color:var(--color-slate-900)}}}</style>";
+}
+
+test "end to end — a responsive, stateful button is one class and four rules" {
+    val hover: Token[] = [.Bg.Color.Blue.700];
+    val focus: Token[] = [.Text.Underline];
+    val md: Token[] = [.Text.Size.Lg];
+    val tokens: Token[] = [
+        .Bg.Color.Blue.600,
+        Token.Hover(hover),
+        Token.FocusVisible(focus),
+        Token.Md(md),
+    ];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-color:var(--color-blue-600)}."
+        + cls + ":focus-visible{text-decoration:underline}@media (hover: hover){."
+        + cls + ":hover{background-color:var(--color-blue-700)}}@media (width >= 48rem){."
+        + cls + "{font-size:1.125rem}}}</style>";
+}
+
+test "end to end — a peer-driven error message reaches its sibling" {
+    val peer: Token[] = [.Bg.Color.Red.600];
+    val tokens: Token[] = [.Layout.Hidden, Token.PeerInvalid(peer)];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{display:none}."
+        + cls + ":is(:where(.peer):invalid ~ *){background-color:var(--color-red-600)}}</style>";
+}
 
 //// ═══ END FRONT 34 ═════════════════════════════════════════════════════════════════
 

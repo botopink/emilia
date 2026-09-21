@@ -522,6 +522,12 @@ moves the queries and the class hashes with it.
 | `*:` | `Token.Children(inner)` | `:is(& > *){…}` |
 | `**:` | `Token.Descendants(inner)` | `:is(& *){…}` |
 
+**The priority wrapper — not a variant, a flag on every rule it wraps**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `…!` | `Token.Important(inner)` | `!important` on every declaration it wraps |
+
 `.group` and `.peer` are classes the **consumer's markup** carries: emilia
 emits the selector that reads them and never the class itself.
 

@@ -2,6 +2,24 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Important`, the walks, and the table closed at 83**
+  (1.0.10-beta front `34-emilia-modifiers`, step 7). `Important(inner)` is
+  decision 81's row and the one that is not a variant at all: it adds no
+  selector and no at-rule, it is one line on top of front 56's `markImportant`,
+  and it flags every rule it wraps. The front's own regression is six walks
+  over the WHOLE table rather than row by row — every selector template carries
+  exactly one `&`; no selector and no at-rule carries a brace, because **this
+  front builds none**; every at-rule starts with `@`; no two rows resolve to
+  the same `(atRule, selector)` pair; every modifier wraps its declaration and
+  none drops it; no query resolves a pixel or says `min-width`/`max-width`; and
+  no variant carries a codec separator. An empty inner list produces an empty
+  `Sheet`, which `declSheet`'s contract already drops, and that is tested on
+  four shapes rather than asserted in prose. Three end-to-end documents close
+  it: a dark override, a responsive stateful button whose four rules come out
+  in cascade order, and a peer-driven error message.
+  **283/283** on commonJS and on erlang (145 → 195 in `emilia.bp`), every
+  example builds.
+
 - **Parent, sibling, direction and descent** (1.0.10-beta front
   `34-emilia-modifiers`, step 6). Six `Group*` and eight `Peer*`, each built by
   substituting a state into the reference's two templates, written once:
