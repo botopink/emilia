@@ -145,8 +145,10 @@ colour utilities set the longhand; the shorthand the v0 stub emitted resets
 every other background property of the element as a side effect.
 
 The four **legacy** `Bg` leaves keep what they emitted before the palette
-landed, so nothing that compiled changed meaning; front 39 folds them in when
-it lands:
+landed, so nothing that compiled changed meaning. Front 39 did **not** fold
+them in: they still emit the `background` shorthand, and changing what a
+compiling path means is not something a front does to another front's surface.
+Reach for `.Bg.Color.*` in new code.
 
 ```bp
 .Bg.White                   // background:#ffffff
@@ -154,6 +156,68 @@ it lands:
 .Bg.Red.500                 // background:red
 .Bg.Gray.500                // background:gray
 ```
+
+### Bg — the rest of the background, `§ 10.1`–`§ 10.8`
+
+Seven keyword sub-sections sit beside `Bg.Color`. Each is one declaration, and
+none of them resolves a length or reads the theme.
+
+```bp
+.Bg.Attachment.Fixed        // background-attachment:fixed
+.Bg.Attachment.Local        // background-attachment:local
+.Bg.Attachment.Scroll       // background-attachment:scroll
+
+.Bg.Clip.Border             // background-clip:border-box
+.Bg.Clip.Padding            // background-clip:padding-box
+.Bg.Clip.Content            // background-clip:content-box
+.Bg.Clip.Text               // background-clip:text
+
+.Bg.Origin.Border           // background-origin:border-box
+.Bg.Origin.Padding          // background-origin:padding-box
+.Bg.Origin.Content          // background-origin:content-box
+
+.Bg.Pos.Bottom              // background-position:bottom
+.Bg.Pos.Center              // background-position:center
+.Bg.Pos.Left                // background-position:left
+.Bg.Pos.LeftBottom          // background-position:left bottom
+.Bg.Pos.LeftTop             // background-position:left top
+.Bg.Pos.Right               // background-position:right
+.Bg.Pos.RightBottom         // background-position:right bottom
+.Bg.Pos.RightTop            // background-position:right top
+.Bg.Pos.Top                 // background-position:top
+
+.Bg.Repeat.Repeat           // background-repeat:repeat
+.Bg.Repeat.None             // background-repeat:no-repeat
+.Bg.Repeat.X                // background-repeat:repeat-x
+.Bg.Repeat.Y                // background-repeat:repeat-y
+.Bg.Repeat.Round            // background-repeat:round
+.Bg.Repeat.Space            // background-repeat:space
+
+.Bg.Size.Auto               // background-size:auto
+.Bg.Size.Cover              // background-size:cover
+.Bg.Size.Contain            // background-size:contain
+
+.Bg.Image.None              // background-image:none
+```
+
+Three names are worth reading twice:
+
+- **`Pos`, not `Position`.** `.Bg.Pos.Center` sets `background-position` and
+  `.Layout.Position.Fixed` sets `position`; Tailwind spells both with the same
+  English word and they are unrelated properties. The short head keeps the path
+  four segments and keeps the two apart at a glance.
+- **`Repeat.None`, not `Repeat.NoRepeat`.** The CSS value keeps its `no-`
+  prefix; the token does not repeat the word its own section already says.
+- **`Clip.Text` is the one clip value that is not a `*-box`.** The suffix is
+  written per arm rather than derived from the leaf name, because a derived
+  rule would emit `text-box` — a different value that also exists.
+
+`.Bg.Size.*` and the top-level `Size` section are two different things:
+`background-size` and the element's own `width`/`height` ladder. The same
+shape as `.Bg.Color` beside the top-level `Color`.
+
+Nothing else in `§ 10.4` is a token: `bg-[url(…)]`, `bg-size-[…]` and
+`bg-position-[…]` are arbitrary values and belong to the escape-hatch front.
 
 ### `Color.Hex("#abc")` is declared and unconstructible
 

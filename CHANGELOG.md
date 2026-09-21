@@ -2,6 +2,31 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Bg` is no longer a colour section — `§ 10.1`, `§ 10.2`, `§ 10.5`–`§ 10.8`
+  and the non-gradient half of `§ 10.4`** (1.0.10-beta front
+  `39-emilia-backgrounds`, step 1). Seven keyword sub-sections sit beside front
+  33's `Bg.Color`, appended after it and after the legacy leaves rather than
+  interleaved: `Attachment` (3), `Clip` (4), `Origin` (3), `Pos` (9), `Repeat`
+  (6), `Size` (3) and `Image.None` — 29 leaves, one declaration each, none
+  resolving a length and none reading the theme.
+  Three names diverge from upstream's spelling on purpose. **`Pos`, not
+  `Position`**, so `.Bg.Pos.*` stays four segments and reads apart from
+  `.Layout.Position.*` — Tailwind spells two unrelated properties with the same
+  English word. **`Repeat.None`, not `Repeat.NoRepeat`** — the CSS value keeps
+  its `no-` prefix, the token does not repeat the word its section already
+  says. And **`Clip.Text` is the one clip value that is not a `*-box`**, so the
+  suffix is written per arm rather than derived from the leaf: a derived rule
+  emits `text-box`, which is a different value that also exists.
+  The four two-word positions each carry EXACTLY ONE SPACE and no hyphen
+  (`left bottom`, never `left-bottom`), asserted leaf by leaf and again as a
+  space count — a doubled or missing space is the failure mode a table
+  transcription produces and an `==` against a hand-typed string hides.
+  The **legacy `Bg.Red` / `Bg.Blue` / `Bg.Gray` / `Bg.White` / `Bg.Black`
+  leaves are byte-identical afterwards** and are pinned as such; this front did
+  not fold them into `background-color`, the docs' earlier promise that it
+  would notwithstanding. 11 tests; 225 → 236 in `modules/emilia`, green on
+  commonJS and on erlang.
+
 - **`.Layout.Block` was answering the empty string on commonJS, and the gate
   was red before this front started** (1.0.10-beta front
   `39-emilia-backgrounds`, an unblocker outside its ownership). `output.bp`'s

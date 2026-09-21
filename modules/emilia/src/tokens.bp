@@ -25,8 +25,17 @@
 ////   Bg       — front 33: the Color sub-section is the same 26 x 11 grid on
 ////              `background-color`, plus White/Black/Transparent/Current/
 ////              Inherit. The legacy Red/Blue/Gray leaves beside it emit the
-////              `background` SHORTHAND and keep their pre-33 output; the
-////              rest of Bg (gradients, images, …) is front 39's
+////              `background` SHORTHAND and keep their pre-33 output — front 39
+////              did NOT fold them in, because changing what a compiling path
+////              means is not a thing one front does to another's surface.
+////              front 39: seven keyword sub-sections beside them, one per
+////              `§ 10` property group that is not a colour — Attachment,
+////              Clip, Origin, Pos, Repeat, Size and Image. `Pos` is short so
+////              that `.Bg.Pos.*` stays four segments and reads apart from
+////              `.Layout.Position.*`; `Repeat.None` is `no-repeat` and does
+////              not repeat its section's word; `Clip.Text` is the one clip
+////              value that is not a `*-box`. Gradients are NOT here — see
+////              the Gradient section below
 ////   Pad      — front 35: nine directions — All, X, Y, T, R, B, L and the
 ////              logical pair S/E — over the 35-leaf scale: the thirty
 ////              multipliers 0..96, the Px step, and Half { 0, 1, 2, 3 } for
@@ -338,6 +347,26 @@ pub type Token {
         White,
         Black,
         Hex(value: string),
+        // ── front 39 — backgrounds ────────────────────────────────
+        //
+        // Appended AFTER front 33's `Color` block and the legacy leaves, never
+        // interleaved with them: two fronts write into these braces and an
+        // additive tail is the only diff that merges. Every sub-section below
+        // is keyword-only — one declaration, no theme lookup, no length — and
+        // the gradient half of `§ 10.4` lives in the top-level `Gradient`
+        // section rather than under `Image`, because a stop sets a custom
+        // property and not `background-image` at all.
+        Attachment { Fixed, Local, Scroll, }
+        Clip { Border, Padding, Content, Text, }
+        Origin { Border, Padding, Content, }
+        Pos {
+            Bottom, Center, Left, LeftBottom, LeftTop,
+            Right, RightBottom, RightTop, Top,
+        }
+        Repeat { Repeat, None, X, Y, Round, Space, }
+        Size { Auto, Cover, Contain, }
+        Image { None, }
+        // ── end front 39 ───────────────────────────────────────
     }
 
     // ── front 35 — spacing and sizing ────────────────────────────────────────

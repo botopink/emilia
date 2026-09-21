@@ -1550,6 +1550,15 @@ fn bgTokenToCss(t: Token.Bg, th: Theme) -> string {
         White -> "background:#ffffff";
         Black -> "background:#000000";
         Hex(value) -> "background:" + value;
+        // ── front 39 — backgrounds ────────────────────────
+        Attachment(_inner) -> bgAttachmentTokenToCss(_inner, th);
+        Clip(_inner) -> bgClipTokenToCss(_inner, th);
+        Origin(_inner) -> bgOriginTokenToCss(_inner, th);
+        Pos(_inner) -> bgPosTokenToCss(_inner, th);
+        Repeat(_inner) -> bgRepeatTokenToCss(_inner, th);
+        Size(_inner) -> bgSizeTokenToCss(_inner, th);
+        Image(_inner) -> bgImageTokenToCss(_inner, th);
+        // ── end front 39 ─────────────────────────────
     };
     return out;
 }
@@ -7643,4 +7652,201 @@ test "a project override reaches every rule, because the token emits a reference
     assert themeValue(th, "--color-red-500") == "#ff0000";
     assert tokenDeclarations(.Bg.Color.Red.500) == "background-color:var(--color-red-500)";
     assert themeValue(th, "--color-red-600") == "oklch(57.7% 0.245 27.325)";
+}
+
+// ── front 39 — backgrounds ───────────────────────────────────────────────────
+//
+// FRONT 39 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the seven
+// non-colour sub-sections of `Bg` and the top-level `Gradient` section of
+// `tokens.bp`, and the dispatchers below. `Bg.Color` and the six legacy `Bg`
+// leaves are front 33's and are not touched here; the `Bg` arms this front
+// added to `bgTokenToCss` sit under the same banner, up beside that dispatcher.
+//
+// Every declaration here is a PLAIN DECLARATION with no selector, so each
+// sub-dispatcher keeps the `fn <name>(t: Token.<section>, th: Theme) -> string`
+// shape contract 4a prescribes and front 56's `declSheet(…)` adapts it. This
+// front adds no `…TokenToSheet`.
+//
+// `th` is unused by every function below and is taken anyway: the contract is
+// what makes a front that later needs the theme a one-line change here rather
+// than a signature change in the shared dispatcher.
+
+// ── `Bg` · attachment, clip and origin — `§ 10.1`, `§ 10.2`, `§ 10.5` ────────
+
+fn bgAttachmentTokenToCss(a: Token.Bg.Attachment, th: Theme) -> string {
+    val out = case a {
+        Fixed -> "background-attachment:fixed";
+        Local -> "background-attachment:local";
+        Scroll -> "background-attachment:scroll";
+    };
+    return out;
+}
+
+// `Text` is the one clip value that is not a `*-box`, which is why the suffix
+// is spelled per arm rather than appended to the leaf's name: `bg-clip-text`
+// would come out `text-box` under any rule that derived the value from the
+// leaf, and `text-box` is a different CSS value that exists.
+fn bgClipTokenToCss(c: Token.Bg.Clip, th: Theme) -> string {
+    val out = case c {
+        Border -> "background-clip:border-box";
+        Padding -> "background-clip:padding-box";
+        Content -> "background-clip:content-box";
+        Text -> "background-clip:text";
+    };
+    return out;
+}
+
+fn bgOriginTokenToCss(o: Token.Bg.Origin, th: Theme) -> string {
+    val out = case o {
+        Border -> "background-origin:border-box";
+        Padding -> "background-origin:padding-box";
+        Content -> "background-origin:content-box";
+    };
+    return out;
+}
+
+// ── `Bg.Pos` · `§ 10.6` ──────────────────────────────────────────────────────
+//
+// The sub-section is `Pos` and not `Position`, so `.Bg.Pos.*` stays four
+// segments and reads differently from `.Layout.Position.*` — two unrelated
+// properties Tailwind spells with the same English word.
+//
+// The four two-word values carry EXACTLY ONE SPACE and no hyphen: `left bottom`
+// is two CSS keywords, and `left-bottom` is not a value.
+fn bgPosTokenToCss(p: Token.Bg.Pos, th: Theme) -> string {
+    val out = case p {
+        Bottom -> "background-position:bottom";
+        Center -> "background-position:center";
+        Left -> "background-position:left";
+        LeftBottom -> "background-position:left bottom";
+        LeftTop -> "background-position:left top";
+        Right -> "background-position:right";
+        RightBottom -> "background-position:right bottom";
+        RightTop -> "background-position:right top";
+        Top -> "background-position:top";
+    };
+    return out;
+}
+
+// ── `Bg.Repeat` and `Bg.Size` · `§ 10.7`, `§ 10.8` ───────────────────────────
+//
+// `.Bg.Repeat.None` rather than `.Bg.Repeat.NoRepeat`: the CSS value keeps its
+// `no-` prefix, the token does not repeat the word its own section already
+// says.
+fn bgRepeatTokenToCss(r: Token.Bg.Repeat, th: Theme) -> string {
+    val out = case r {
+        Repeat -> "background-repeat:repeat";
+        None -> "background-repeat:no-repeat";
+        X -> "background-repeat:repeat-x";
+        Y -> "background-repeat:repeat-y";
+        Round -> "background-repeat:round";
+        Space -> "background-repeat:space";
+    };
+    return out;
+}
+
+fn bgSizeTokenToCss(z: Token.Bg.Size, th: Theme) -> string {
+    val out = case z {
+        Auto -> "background-size:auto";
+        Cover -> "background-size:cover";
+        Contain -> "background-size:contain";
+    };
+    return out;
+}
+
+// ── `Bg.Image` · `§ 10.4`, the half that is not a gradient ───────────────────
+//
+// `bg-none` is the only `background-image` utility the reference prints that is
+// not a gradient; `bg-[url(…)]` and every other arbitrary image is front 57's
+// escape hatch. The section is a section rather than a bare `Bg.None` leaf so
+// that the escape hatch has somewhere to land.
+fn bgImageTokenToCss(i: Token.Bg.Image, th: Theme) -> string {
+    val out = case i {
+        None -> "background-image:none";
+    };
+    return out;
+}
+
+// ── front 39 · tests ─────────────────────────────────────────────────────────
+
+test "background-attachment — the three values of `§ 10.1`" {
+    assert tokenDeclarations(.Bg.Attachment.Fixed) == "background-attachment:fixed";
+    assert tokenDeclarations(.Bg.Attachment.Local) == "background-attachment:local";
+    assert tokenDeclarations(.Bg.Attachment.Scroll) == "background-attachment:scroll";
+}
+
+test "background-clip — the four values of `§ 10.2`" {
+    assert tokenDeclarations(.Bg.Clip.Border) == "background-clip:border-box";
+    assert tokenDeclarations(.Bg.Clip.Padding) == "background-clip:padding-box";
+    assert tokenDeclarations(.Bg.Clip.Content) == "background-clip:content-box";
+    assert tokenDeclarations(.Bg.Clip.Text) == "background-clip:text";
+}
+
+test "background-clip — `text` is the one value that is not a `*-box`" {
+    assert tokenDeclarations(.Bg.Clip.Text) == "background-clip:text";
+    assert tokenDeclarations(.Bg.Clip.Text).indexOf("box") == -1;
+}
+
+test "background-origin — the three values of `§ 10.5`, and no `text` among them" {
+    assert tokenDeclarations(.Bg.Origin.Border) == "background-origin:border-box";
+    assert tokenDeclarations(.Bg.Origin.Padding) == "background-origin:padding-box";
+    assert tokenDeclarations(.Bg.Origin.Content) == "background-origin:content-box";
+}
+
+test "background-position — the nine values of `§ 10.6`" {
+    assert tokenDeclarations(.Bg.Pos.Bottom) == "background-position:bottom";
+    assert tokenDeclarations(.Bg.Pos.Center) == "background-position:center";
+    assert tokenDeclarations(.Bg.Pos.Left) == "background-position:left";
+    assert tokenDeclarations(.Bg.Pos.LeftBottom) == "background-position:left bottom";
+    assert tokenDeclarations(.Bg.Pos.LeftTop) == "background-position:left top";
+    assert tokenDeclarations(.Bg.Pos.Right) == "background-position:right";
+    assert tokenDeclarations(.Bg.Pos.RightBottom) == "background-position:right bottom";
+    assert tokenDeclarations(.Bg.Pos.RightTop) == "background-position:right top";
+    assert tokenDeclarations(.Bg.Pos.Top) == "background-position:top";
+}
+
+test "background-position — each two-word value carries exactly one space and no hyphen" {
+    assert tokenDeclarations(.Bg.Pos.LeftBottom).split(" ").length == 2;
+    assert tokenDeclarations(.Bg.Pos.LeftTop).split(" ").length == 2;
+    assert tokenDeclarations(.Bg.Pos.RightBottom).split(" ").length == 2;
+    assert tokenDeclarations(.Bg.Pos.RightTop).split(" ").length == 2;
+    assert tokenDeclarations(.Bg.Pos.LeftBottom).indexOf("left-bottom") == -1;
+    assert tokenDeclarations(.Bg.Pos.RightTop).indexOf("right-top") == -1;
+    assert tokenDeclarations(.Bg.Pos.Center).split(" ").length == 1;
+}
+
+test "background-position — `.Bg.Pos` and `.Layout.Position` are two properties" {
+    assert tokenDeclarations(.Bg.Pos.Center) == "background-position:center";
+    assert tokenDeclarations(.Layout.Position.Fixed) == "position:fixed";
+    assert tokenDeclarations(.Bg.Pos.Center).indexOf("background-") != -1;
+    assert tokenDeclarations(.Layout.Position.Fixed).indexOf("background-") == -1;
+}
+
+test "background-repeat — the six values of `§ 10.7`, `None` spelling `no-repeat`" {
+    assert tokenDeclarations(.Bg.Repeat.Repeat) == "background-repeat:repeat";
+    assert tokenDeclarations(.Bg.Repeat.None) == "background-repeat:no-repeat";
+    assert tokenDeclarations(.Bg.Repeat.X) == "background-repeat:repeat-x";
+    assert tokenDeclarations(.Bg.Repeat.Y) == "background-repeat:repeat-y";
+    assert tokenDeclarations(.Bg.Repeat.Round) == "background-repeat:round";
+    assert tokenDeclarations(.Bg.Repeat.Space) == "background-repeat:space";
+}
+
+test "background-size — the three values of `§ 10.8`, beside the `Size` section" {
+    assert tokenDeclarations(.Bg.Size.Auto) == "background-size:auto";
+    assert tokenDeclarations(.Bg.Size.Cover) == "background-size:cover";
+    assert tokenDeclarations(.Bg.Size.Contain) == "background-size:contain";
+    assert tokenDeclarations(.Size.W.4) == "width:calc(var(--spacing) * 4)";
+}
+
+test "background-image — `bg-none` is the one non-gradient row of `§ 10.4`" {
+    assert tokenDeclarations(.Bg.Image.None) == "background-image:none";
+}
+
+test "the legacy `Bg` leaves are byte-identical after this front" {
+    assert tokenDeclarations(.Bg.White) == "background:#ffffff";
+    assert tokenDeclarations(.Bg.Black) == "background:#000000";
+    assert tokenDeclarations(.Bg.Red.500) == "background:red";
+    assert tokenDeclarations(.Bg.Blue.100) == "background:blue";
+    assert tokenDeclarations(.Bg.Gray.900) == "background:gray";
+    assert tokenDeclarations(.Bg.Color.Indigo.500) == "background-color:var(--color-indigo-500)";
 }
