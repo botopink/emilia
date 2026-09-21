@@ -2,6 +2,23 @@
 
 ## Unreleased — v0.beta.22
 
+- **`.Layout.Block` was answering the empty string on commonJS, and the gate
+  was red before this front started** (1.0.10-beta front
+  `39-emilia-backgrounds`, an unblocker outside its ownership). `output.bp`'s
+  record `Block` and `tokens.bp`'s leaf `Layout.Block` share a name, and the
+  bare pattern `Block ->` in `layoutTokenToCss` resolves to the record's
+  CONSTRUCTOR rather than to the leaf: the arm went dead, the `case` fell
+  through, and the token declared nothing. erlang was unaffected, so this was
+  green on one target and silently wrong on the other — the failure mode front
+  36's 776-leaf walk exists to catch, and it did catch it (`display` and the
+  walk, 311/313 on commonJS against 313/313 on erlang).
+  The fix is the **zero-arity constructor pattern**, `Block() ->`: no emitted
+  CSS changes, no published path moves, and neither the record nor the leaf is
+  renamed. A qualified pattern does not help — `Token.Layout.Block ->`,
+  `Layout.Block ->` and `.Block ->` all still fall through. Recorded in
+  `AGENTS.md` § Maintainer rules as the section-head shadow one level down,
+  with the record-name list a new leaf must now be audited against.
+
 - **`examples/emilia-layout/` — the worked example** (1.0.10-beta front
   `36-emilia-layout`). The new workspace member composes what the front
   unblocked: a media card that CLIPS its overflow, isolates a stacking context

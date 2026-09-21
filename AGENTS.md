@@ -514,6 +514,30 @@ to the commonJS row and runs once.
   the top-level variant list before adding it. Reported to botopink-lang: a
   name that cannot be constructed should not capture a constructor that can.
 
+- **A RECORD TYPE name shadows an enum LEAF of the same name, and the `case`
+  arm over it goes DEAD.** `output.bp` declares `pub type Block(header, body)`
+  and `tokens.bp` declares the leaf `Layout.Block`; the arm `Block ->
+  "display:block"` in `layoutTokenToCss` then matched nothing, the `case` fell
+  through, and `.Layout.Block` answered the EMPTY STRING on commonJS while
+  erlang stayed right — two of front 36's tests red on one target only, one of
+  them the 776-leaf walk, which is what caught it. The bare name in a pattern
+  resolves to the record's CONSTRUCTOR: `val b: Token.Layout = .Block;` reds
+  with `type mismatch: expected __Token__Layout, got function`, which is the
+  same resolution seen from the value side. **The fix is the zero-arity
+  constructor pattern — `Block() -> …`** — which is one character class, changes
+  no emitted CSS, and keeps the public path `.Layout.Block` as authored;
+  renaming either the record or the leaf would have moved a published surface.
+  A qualified pattern does NOT help: `Token.Layout.Block ->`, `Layout.Block ->`
+  and the leading-dot `.Block ->` all still fall through.
+  This is the SECTION-HEAD rule above one level down, and it needs its own
+  audit: a new leaf must be checked against the record type names of the whole
+  module — today `Rule`, `Block`, `Sheet`, `Variant`, `Options`, `Placed`,
+  `Drained` (`output.bp`), `ThemeEntry`, `DarkMode`, `Theme`, `Ns` (`theme.bp`)
+  and `Token` itself — as well as against the top-level variant list. Confirmed
+  causally rather than by inspection: a throwaway `type Grid(a: string)` beside
+  the existing leaf `Layout.Grid` reproduced it on a leaf that was green, and
+  the same probe named `ProbeGrid` did not.
+
 - **A consumer must import a type's TRANSITIVE types too, and the error points
   at the wrong line.** `import { Theme } from "emilia";` alone reds `unknown
   type 'DarkMode'` because `Theme` carries a `DarkMode` field; `Options` needs

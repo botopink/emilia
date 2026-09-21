@@ -3503,7 +3503,7 @@ test "end to end — a stacked thread spaces its children and pulls one back up"
 // `z-index:50`, a bare integer, and it never reaches `spacing`.
 fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
     val out = case t {
-        Block -> "display:block";
+        Block() -> "display:block";
         InlineBlock -> "display:inline-block";
         Inline -> "display:inline";
         InlineFlex -> "display:inline-flex";
