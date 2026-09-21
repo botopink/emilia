@@ -280,9 +280,9 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `botopink.json` declares members and is never a package — no `src`, `files`,
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
-command inside one of its members: emilia, emilia-backgrounds, emilia-card,
-emilia-cascade, emilia-grid, emilia-layout, emilia-modifiers, emilia-spacing,
-emilia-theme`. Every `modules/*/`
+command inside one of its members: emilia, emilia-backgrounds, emilia-borders,
+emilia-card, emilia-cascade, emilia-grid, emilia-layout, emilia-modifiers,
+emilia-outline-ring, emilia-spacing, emilia-theme`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -347,6 +347,27 @@ emilia/
 │                            `import { Token } from "tokens";` — naming the
 │                            sibling module is **required**, see "Gotchas"
 ├── examples/
+│   ├── emilia-borders/ ← member `emilia-borders` (an application: entry
+│   │                    main.bp, targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } — the front 40 showcase for
+│   │                    `Border`: one width per side and the two axes, the
+│   │                    logical `S`/`E` pair, the six styles, the palette
+│   │                    reaching `border-color` WITH its shade, the radius
+│   │                    ladder as `var(--radius-*)`, side and corner radii,
+│   │                    and a table-like card with a rounded top, a square
+│   │                    bottom and a dashed internal rule. 10 in-file
+│   │                    `test {}`, green on both targets)
+│   ├── emilia-outline-ring/ ← member `emilia-outline-ring` (an application:
+│   │                    entry main.bp, targets [commonJS, erlang], `emilia`
+│   │                    via { "workspace": true } — the front 40 showcase for
+│   │                    the three families that had no token at all: the four
+│   │                    outline properties, the `outline-none` trap asserted
+│   │                    in BOTH directions, a ring as a custom property plus a
+│   │                    composed `box-shadow`, the ring offset and inset, a
+│   │                    ring and a shadow in one list swapped both ways for
+│   │                    contract 4, and a divided list whose class body is
+│   │                    EMPTY because every declaration is on a child.
+│   │                    13 in-file `test {}`, green on both targets)
 │   ├── emilia-cascade/ ← member `emilia-cascade` (an application: entry main.bp,
 │   │                    targets [commonJS, erlang], `emilia` via
 │   │                    { "workspace": true } and NOTHING else — it is the
@@ -850,6 +871,33 @@ to the commonJS row and runs once.
   the SAME declarations — only the `:root` block moves. 12 in-file tests, green
   on commonJS and on erlang.
 
+- `examples/emilia-borders/` is the member `emilia-borders` and is the first
+  half of front 40's worked example: `.Border.W.{T,R,B,L}` and the two axes in
+  one class, the logical `S`/`E` pair asserted to emit NO `border-left-width`,
+  the six styles, `.Border.Color.Slate.200` with its shade, the radius ladder,
+  side radii (two corner properties) beside corner radii (one), and the
+  composition the front exists for — a card rounded across the top, squared
+  across the bottom with an explicit `Rounded.B.None`, and a dashed internal
+  rule on the bottom edge only. Its two argument tests are asserted from a
+  CONSUMER package, which is what catches the cross-package `case` failure
+  mode: three shades of one family are THREE classes (they were one, because
+  the dispatcher discarded the payload and the class name hashes the body), and
+  nothing in the document resolves a colour or a length. 10 in-file tests,
+  green on commonJS and on erlang.
+
+- `examples/emilia-outline-ring/` is the member `emilia-outline-ring` and is
+  the second half: the four outline properties in one class, a negative offset
+  as a `Neg` leaf rather than a sign on a number, and `outline-none` asserted
+  BOTH for what it emits and for what it must never emit. The ring half pins
+  the custom property beside the composed `box-shadow`, the offset pair, the
+  inset flag, and — for contract 4 — a ring and a shadow swapped both ways
+  round giving two different classes. The divide half proves the point of a
+  `…ToSheet`: the class body is EMPTY (`.cls{` does not appear at all) and the
+  width, the colour and the style merge into ONE rule on the children. Its last
+  cross-front test repeats front 35's invariant from outside the library —
+  `divide-*` and `space-y-*` reach the same children through the same selector.
+  13 in-file tests, green on commonJS and on erlang.
+
 - `examples/emilia-cascade/` is the member `emilia-cascade` and is front 56's
   worked example: the reset supplied through `withBase`, the hover hoisted into
   `@media (hover: hover){.e_x:hover{…}}`, the breakpoint hoisted into
@@ -885,7 +933,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 37 — flexbox, grid and gap | DONE — steps 1–5 + the worked example. `Flex` is the flex container AND the flex item (direction and wrap with the three reverse rows, the `Value` shorthand, `Grow`, `Shrink`, `Basis`, `Order`) plus the WHOLE alignment family of `§ 6.16`–`§ 6.24` — nine property groups, seven of which had no token at all; `Grid` is `§ 6.8`–`§ 6.14` (templates, spans, starts and ends to line 13, flow, implicit tracks); `Gap` is a TOP-LEVEL section because `gap` applies to grid as much as to flex. **356 leaves**, walked by one test, none of which resolves a length: `Flex.Basis` and all of `Gap` answer front 54's `spacing(n)`/`spacingHalf(n)` over front 35's scale, and everything else is a bare integer. `gridRepeat`/`gridFr` spell `repeat(N, minmax(0, 1fr))` and `minmax(0, 1fr)` once each. **The seventh `rem` ladder is deleted** — `flexGapScale` was `__4 -> "1rem"`, the one front 35 left because `Gap` is this front's, and `.Flex.Gap.N` now emits what `.Gap.All.N` emits, asserted side by side; `spacing.bp`'s docblock was corrected with it. **`AlignSelf` and the flat `PlaceContent`/`PlaceItems`/`PlaceSelf`**, not the spec's `.Flex.Self` / `.Flex.Place.Self`: `Self` is a language keyword and neither spelling parses (§ Maintainer rules). The alignment family stays under `Flex` although it applies to grid, because renaming `Items`/`Justify` is what the milestone forbids. `examples/emilia-grid/` is the showcase (13 tests). +27 inline tests in `modules/emilia`, which is **340** on commonJS and on erlang. **Reference gaps left undeclared**: `basis-*` fractions below thirds, and every arbitrary-value form (`grid-cols-[200px_1fr]`, `z-[999]`-style) — the escape-hatch front's. **Reference extents declared by interpolation and still to confirm upstream**: `grid-cols-7`…`11`, `col-span-3`…`12`, `col-start-2`…`13`, `order-3`…`12` |
 | 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). +30 inline tests in `modules/emilia`, which is **313** on commonJS and on erlang with front 34 merged in. **`Break` is FLAT** — `BreakAfter`/`BreakBefore`/`BreakInside`, not the spec's `Break { After, Before, Inside }`: a section head named like a top-level payload variant shadows that variant's payload projection, and front 34 carries `After`/`Before` (§ Maintainer rules). **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
 | 1.0.10-beta front 39 — backgrounds | DONE — steps 1–4. Step 1: the seven keyword sub-sections of `Bg` (`Attachment`, `Clip`, `Origin`, `Pos`, `Repeat`, `Size`, `Image.None`), 29 leaves appended after front 33's `Bg.Color` block and the legacy leaves. `Pos` not `Position` (so `.Bg.Pos.*` reads apart from `.Layout.Position.*`), `Repeat.None` not `NoRepeat`, `Clip.Text` the one clip value that is not a `*-box`. The legacy `Bg` leaves are byte-identical and pinned; this front does NOT fold them into `background-color`. Step 2: `Gradient` is a TOP-LEVEL section (a stop sets a custom property, not `background-image`), `Gradient.To` the eight directions — the phrases spelled in one place, `to top right` and never `to top-right`. Steps 3–4: `From` / `Via` / `Stop` each carry front 33's whole grid (291 leaves each) through `paletteVar(family, shade)`, so a stop and a background reference ONE custom property; token ORDER is load-bearing (`Via`'s three-stop list beats `From`'s two-stop one, and `Stop` writes no list so it cannot overwrite `Via`'s). **The stop composition diverges from the spec after the upstream check the spec demanded** — upstream's position variables and `--tw-gradient-via-stops` rest on `@property` registration emilia does not emit, so the registered `#0000` default is written as a `var(…, transparent)` fallback instead. 910 leaves walked for a literal, a length and a class fragment, each walk with a control that fails. `examples/emilia-backgrounds/` is the showcase (12 tests). +35 inline tests in `modules/emilia`, which is **375** on commonJS and on erlang with front 37 merged in. **Reference gaps left undeclared**: colour-stop positions (`from-10%`), radial and conic gradients, gradient interpolation (`bg-linear-to-r/oklch`) and every arbitrary-value form (`bg-[url(…)]`, `bg-size-[…]`) — the escape-hatch front's |
-| 1.0.10-beta front 40 — borders, outlines, rings and divides | DONE — steps 1–6. **1704 leaves** over the whole of `§ 11`. `Border.W` gains the fifth width and eight directional sub-sections (an AXIS is two declarations, a SIDE one, and `S`/`E` are `border-inline-*-width`); `Border.Style` is new; `Border.Color` goes from a two-family stub whose dispatcher DISCARDED THE SHADE (`border-color:red` for every cell) to front 33's full 26 x 11 grid through `paletteVar`; `Border.Rounded` goes from four literal `rem` leaves to a ten-leaf ladder of `var(--radius-*)` on the shorthand and on fourteen directional sub-sections. `Outline`, `Ring` and `Divide` are three new TOP-LEVEL sections — head-audited against the 84 payload variants, the fifteen section heads and the lexer's keyword table before a dispatcher was written, with no collision. **`Outline.Style.None` is the trap**: `outline:2px solid transparent;outline-offset:2px`, asserted BOTH for what it emits and for the `outline-style:none` it must never emit. `ringTokenToSheet` and `divideTokenToSheet` are the two `…ToSheet` dispatchers; `Divide` CALLS front 35's `siblingSelector()`, and the byte-identity test front 35 could not write (because `Divide` did not exist) is now in `emilia.bp`. **Upstream VERIFIED while writing**: the divide child selector really is `& > :not(:last-child)`, the zero-then-width pair, the reverse custom properties, `--tw-ring-color`, `--tw-ring-inset`, and the v4 default ring width of **1px** (v3's was 3px), so `--tw-ring-shadow` is `0 0 0 Npx` and NOT the spec's v3-shaped `calc(…)` form. **Still unverified and recorded**: the composed `box-shadow` list, and the whole `ring-offset-*` family, which v4's documentation no longer carries — declared because the spec asks for it, not because it was confirmed. 1704 leaves walked for a literal, a class fragment and well-formedness, each walk with a control that fails, plus a colour-reference walk over all 1440 cells and a 288-way distinctness walk — the literal probe alone does NOT catch a discarded shade, which is this front's own historical defect. Three planted defects were watched redden and removed. **Blast radius outside the front**: `.Border.Rounded.Lg` was fronts 36/37/39's walk CONTROL and is no longer a literal, so all three now use `.Text.Size.Lg`; `examples/emilia-modifiers` pinned `border-color:red` and `examples/emilia-layout` pinned `border-radius:0.5rem`, both updated. +44 inline tests in `modules/emilia`, which is **419** on commonJS and on erlang. **Reference gaps left undeclared**: `outline-hidden`, and every arbitrary-value form — the escape-hatch front's |
+| 1.0.10-beta front 40 — borders, outlines, rings and divides | DONE — steps 1–6 + two worked examples. **1704 leaves** over the whole of `§ 11`. `Border.W` gains the fifth width and eight directional sub-sections (an AXIS is two declarations, a SIDE one, and `S`/`E` are `border-inline-*-width`); `Border.Style` is new; `Border.Color` goes from a two-family stub whose dispatcher DISCARDED THE SHADE (`border-color:red` for every cell) to front 33's full 26 x 11 grid through `paletteVar`; `Border.Rounded` goes from four literal `rem` leaves to a ten-leaf ladder of `var(--radius-*)` on the shorthand and on fourteen directional sub-sections. `Outline`, `Ring` and `Divide` are three new TOP-LEVEL sections — head-audited against the 84 payload variants, the fifteen section heads and the lexer's keyword table before a dispatcher was written, with no collision. **`Outline.Style.None` is the trap**: `outline:2px solid transparent;outline-offset:2px`, asserted BOTH for what it emits and for the `outline-style:none` it must never emit. `ringTokenToSheet` and `divideTokenToSheet` are the two `…ToSheet` dispatchers; `Divide` CALLS front 35's `siblingSelector()`, and the byte-identity test front 35 could not write (because `Divide` did not exist) is now in `emilia.bp` and in `examples/emilia-outline-ring/`. **Upstream VERIFIED while writing**: the divide child selector really is `& > :not(:last-child)`, the zero-then-width pair, the reverse custom properties, `--tw-ring-color`, `--tw-ring-inset`, and the v4 default ring width of **1px** (v3's was 3px), so `--tw-ring-shadow` is `0 0 0 Npx` and NOT the spec's v3-shaped `calc(…)` form. **Still unverified and recorded**: the composed `box-shadow` list, and the whole `ring-offset-*` family, which v4's documentation no longer carries — declared because the spec asks for it, not because it was confirmed. 1704 leaves walked for a literal, a class fragment and well-formedness, each walk with a control that fails, plus a colour-reference walk over all 1440 cells and a 288-way distinctness walk — the literal probe alone does NOT catch a discarded shade, which is this front's own historical defect. Three planted defects were watched redden and removed. **Blast radius outside the front**: `.Border.Rounded.Lg` was fronts 36/37/39's walk CONTROL and is no longer a literal, so all three now use `.Text.Size.Lg`; `examples/emilia-modifiers` pinned `border-color:red` and `examples/emilia-layout` pinned `border-radius:0.5rem`, both updated. `examples/emilia-borders/` (10 tests) and `examples/emilia-outline-ring/` (13 tests) are the showcases. +44 inline tests in `modules/emilia`, which is **419** on commonJS and on erlang. **Reference gaps left undeclared**: `outline-hidden`, and every arbitrary-value form — the escape-hatch front's |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

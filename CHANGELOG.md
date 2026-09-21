@@ -93,12 +93,17 @@
   well as this front's, which is the single-spelling contract working in both
   directions.
 
+- **`examples/emilia-borders/` and `examples/emilia-outline-ring/`** — the two
+  worked examples, 10 and 13 tests. Both assert full class bodies from OUTSIDE
+  the library, which is what catches the cross-package `case` failure mode a
+  consumer re-emitting its own enum classes used to hit.
+
 - **`Array.lastIndexOf` does not lower on erlang** (`function lastIndexOf/2
   undefined`). Found by running the second target, not the first. Recorded in
   `AGENTS.md`; the duplicate check counts occurrences instead.
 
-  `modules/emilia` is **419** on commonJS and on erlang, up from 375; every
-  workspace member is green on both targets.
+  `modules/emilia` is **419** on commonJS and on erlang, up from 375; all ten
+  workspace members are green on both targets.
 
 - **Two `AGENTS.md` rules corrected against a rebuilt compiler** (1.0.10-beta
   front `39-emilia-backgrounds`, follow-up). Front 39 measured its baseline

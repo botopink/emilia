@@ -901,6 +901,10 @@ is as much a path as `.Border.Rounded.Tl.Lg` is.
 > rounded corner. `Full` and `None` do **not** change — upstream prints those two
 > literally, and neither is a theme entry.
 
+`examples/emilia-borders/` is the worked example: one width per side, the two
+axes, the six styles, the palette with its shade, and a table-like card with a
+rounded top, a square bottom and a dashed internal rule.
+
 ### Outline — `§ 11.5`–`§ 11.8`
 
 ```bp
@@ -995,6 +999,8 @@ and it is spelled in exactly one place in the library — `siblingSelector()`.
 `divide-*` and `space-y-*` separate the same children, and a test compares the
 two families' output **byte for byte** so that the two can never be written
 differently.
+
+`examples/emilia-outline-ring/` is the worked example for all three sections.
 
 #### Nothing in `Border`, `Outline`, `Ring` or `Divide` resolves a colour or a radius
 
