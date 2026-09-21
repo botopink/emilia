@@ -7863,6 +7863,9 @@ test "the legacy `Bg` leaves are byte-identical after this front" {
 fn gradientTokenToCss(g: Token.Gradient, th: Theme) -> string {
     val out = case g {
         To(_inner) -> gradientToTokenToCss(_inner, th);
+        From(_inner) -> gradientFromTokenToCss(_inner, th);
+        Via(_inner) -> gradientViaTokenToCss(_inner, th);
+        Stop(_inner) -> gradientStopTokenToCss(_inner, th);
     };
     return out;
 }
@@ -7899,7 +7902,21 @@ fn gradientStopsVar() -> string {
 }
 
 fn gradientStopsRef() -> string {
-    return "var(" + gradientStopsVar() + ")";
+    return cssVar(gradientStopsVar());
+}
+
+fn cssVar(name: string) -> string {
+    return "var(" + name + ")";
+}
+
+// A stop list names a custom property that a SIBLING token sets, so every
+// reference but the one the declaration itself is setting carries a fallback.
+// Upstream registers the same defaults with `@property` (`#0000` on each of
+// the three stop colours); emilia emits no `@property` block, so the fallback
+// is written into the reference, which is what the 1.0.8 draft did too. See
+// the note above `gradientFromDecl`.
+fn cssVarOr(name: string, fallback: string) -> string {
+    return "var(" + name + ", " + fallback + ")";
 }
 
 test "gradient direction — the eight phrases of `§ 10.4`" {
@@ -7939,3 +7956,1344 @@ test "gradient direction — `.Gradient.To` is the direction, never a colour" {
     assert tokenDeclarations(.Gradient.To.R).indexOf("--color-") == -1;
     assert tokenDeclarations(.Gradient.To.R).indexOf("background-image:") == 0;
 }
+
+// ── `Gradient.From` / `.Via` / `.Stop` · the colour stops ───────────────
+//
+// THE COLOUR HALF IS FRONT 33's. Every cell below is `paletteVar(family,
+// shade)` — the same function `.Bg.Color.Indigo.500` calls — so
+// `.Gradient.From.Indigo.500` and `.Bg.Color.Indigo.500` reference one custom
+// property by CONSTRUCTION rather than by two transcriptions agreeing. This
+// front holds no colour table.
+//
+// THE STOP LIST DIVERGES FROM THE FRONT's SPEC, AFTER THE UPSTREAM CHECK ITS
+// OWN *Reference gaps* ASKED FOR. The three custom-property NAMES check out
+// exactly (`--tw-gradient-from`, `--tw-gradient-via`, `--tw-gradient-to`), and
+// so does the direction's `var(--tw-gradient-stops)`. The COMPOSITION does
+// not: upstream v4 threads four position variables through the list
+// (`--tw-gradient-position`, `--tw-gradient-{from,via,to}-position`) and
+// hands `via-*` its own `--tw-gradient-via-stops` so that a later `to-*` does
+// not drop the via colour. Both rest on `@property` registration for their
+// defaults, which emilia does not emit — copying the shape without the
+// registration would emit a list that is INVALID AT COMPUTED-VALUE TIME in
+// every browser, which is worse than simplifying. Colour-stop POSITIONS are
+// not this front's, so the position variables have nothing to carry here.
+//
+// What is kept from upstream is the part that makes the simplification
+// correct rather than merely short: the `#0000` default upstream registers
+// is written as a `var(…, transparent)` FALLBACK, so `.Gradient.From.X` alone
+// still paints X → transparent instead of resolving to nothing. That is the
+// 1.0.8 draft's shape, which the front carried forward `to weigh in the
+// upstream check`; the check weighed it in.
+//
+// `Stop` sets `--tw-gradient-to` AND NOTHING ELSE, which is what makes token
+// order load-bearing in the way contract 4 wants: `Via`'s three-stop list
+// overrides `From`'s two-stop list because it is listed after it. Were `Stop`
+// to write a list too, it would overwrite `Via`'s — which is the whole reason
+// upstream needs `--tw-gradient-via-stops`, and the reason this front does
+// not need it.
+
+fn gradientFromVar() -> string {
+    return "--tw-gradient-from";
+}
+
+fn gradientViaVar() -> string {
+    return "--tw-gradient-via";
+}
+
+fn gradientToVar() -> string {
+    return "--tw-gradient-to";
+}
+
+fn gradientFromDecl(color: string) -> string {
+    return gradientFromVar() + ":" + color + ";" + gradientStopsVar() + ":"
+        + cssVar(gradientFromVar()) + ", " + cssVarOr(gradientToVar(), "transparent");
+}
+
+fn gradientViaDecl(color: string) -> string {
+    return gradientViaVar() + ":" + color + ";" + gradientStopsVar() + ":"
+        + cssVarOr(gradientFromVar(), "transparent") + ", " + cssVar(gradientViaVar())
+        + ", " + cssVarOr(gradientToVar(), "transparent");
+}
+
+fn gradientStopDecl(color: string) -> string {
+    return gradientToVar() + ":" + color;
+}
+
+fn gradientFromTokenToCss(c: Token.Gradient.From, th: Theme) -> string {
+    val out = case c {
+        Red(_inner) -> gradientFromDecl(paletteVar("red", gradientFromRedShade(_inner)));
+        Orange(_inner) -> gradientFromDecl(paletteVar("orange", gradientFromOrangeShade(_inner)));
+        Amber(_inner) -> gradientFromDecl(paletteVar("amber", gradientFromAmberShade(_inner)));
+        Yellow(_inner) -> gradientFromDecl(paletteVar("yellow", gradientFromYellowShade(_inner)));
+        Lime(_inner) -> gradientFromDecl(paletteVar("lime", gradientFromLimeShade(_inner)));
+        Green(_inner) -> gradientFromDecl(paletteVar("green", gradientFromGreenShade(_inner)));
+        Emerald(_inner) -> gradientFromDecl(paletteVar("emerald", gradientFromEmeraldShade(_inner)));
+        Teal(_inner) -> gradientFromDecl(paletteVar("teal", gradientFromTealShade(_inner)));
+        Cyan(_inner) -> gradientFromDecl(paletteVar("cyan", gradientFromCyanShade(_inner)));
+        Sky(_inner) -> gradientFromDecl(paletteVar("sky", gradientFromSkyShade(_inner)));
+        Blue(_inner) -> gradientFromDecl(paletteVar("blue", gradientFromBlueShade(_inner)));
+        Indigo(_inner) -> gradientFromDecl(paletteVar("indigo", gradientFromIndigoShade(_inner)));
+        Violet(_inner) -> gradientFromDecl(paletteVar("violet", gradientFromVioletShade(_inner)));
+        Purple(_inner) -> gradientFromDecl(paletteVar("purple", gradientFromPurpleShade(_inner)));
+        Fuchsia(_inner) -> gradientFromDecl(paletteVar("fuchsia", gradientFromFuchsiaShade(_inner)));
+        Pink(_inner) -> gradientFromDecl(paletteVar("pink", gradientFromPinkShade(_inner)));
+        Rose(_inner) -> gradientFromDecl(paletteVar("rose", gradientFromRoseShade(_inner)));
+        Slate(_inner) -> gradientFromDecl(paletteVar("slate", gradientFromSlateShade(_inner)));
+        Gray(_inner) -> gradientFromDecl(paletteVar("gray", gradientFromGrayShade(_inner)));
+        Zinc(_inner) -> gradientFromDecl(paletteVar("zinc", gradientFromZincShade(_inner)));
+        Neutral(_inner) -> gradientFromDecl(paletteVar("neutral", gradientFromNeutralShade(_inner)));
+        Stone(_inner) -> gradientFromDecl(paletteVar("stone", gradientFromStoneShade(_inner)));
+        Mauve(_inner) -> gradientFromDecl(paletteVar("mauve", gradientFromMauveShade(_inner)));
+        Olive(_inner) -> gradientFromDecl(paletteVar("olive", gradientFromOliveShade(_inner)));
+        Mist(_inner) -> gradientFromDecl(paletteVar("mist", gradientFromMistShade(_inner)));
+        Taupe(_inner) -> gradientFromDecl(paletteVar("taupe", gradientFromTaupeShade(_inner)));
+        White -> gradientFromDecl(themeVar(nsPrefix(Ns.Color) + "white"));
+        Black -> gradientFromDecl(themeVar(nsPrefix(Ns.Color) + "black"));
+        Transparent -> gradientFromDecl("transparent");
+        Current -> gradientFromDecl("currentColor");
+        Inherit -> gradientFromDecl("inherit");
+    };
+    return out;
+}
+
+fn gradientViaTokenToCss(c: Token.Gradient.Via, th: Theme) -> string {
+    val out = case c {
+        Red(_inner) -> gradientViaDecl(paletteVar("red", gradientViaRedShade(_inner)));
+        Orange(_inner) -> gradientViaDecl(paletteVar("orange", gradientViaOrangeShade(_inner)));
+        Amber(_inner) -> gradientViaDecl(paletteVar("amber", gradientViaAmberShade(_inner)));
+        Yellow(_inner) -> gradientViaDecl(paletteVar("yellow", gradientViaYellowShade(_inner)));
+        Lime(_inner) -> gradientViaDecl(paletteVar("lime", gradientViaLimeShade(_inner)));
+        Green(_inner) -> gradientViaDecl(paletteVar("green", gradientViaGreenShade(_inner)));
+        Emerald(_inner) -> gradientViaDecl(paletteVar("emerald", gradientViaEmeraldShade(_inner)));
+        Teal(_inner) -> gradientViaDecl(paletteVar("teal", gradientViaTealShade(_inner)));
+        Cyan(_inner) -> gradientViaDecl(paletteVar("cyan", gradientViaCyanShade(_inner)));
+        Sky(_inner) -> gradientViaDecl(paletteVar("sky", gradientViaSkyShade(_inner)));
+        Blue(_inner) -> gradientViaDecl(paletteVar("blue", gradientViaBlueShade(_inner)));
+        Indigo(_inner) -> gradientViaDecl(paletteVar("indigo", gradientViaIndigoShade(_inner)));
+        Violet(_inner) -> gradientViaDecl(paletteVar("violet", gradientViaVioletShade(_inner)));
+        Purple(_inner) -> gradientViaDecl(paletteVar("purple", gradientViaPurpleShade(_inner)));
+        Fuchsia(_inner) -> gradientViaDecl(paletteVar("fuchsia", gradientViaFuchsiaShade(_inner)));
+        Pink(_inner) -> gradientViaDecl(paletteVar("pink", gradientViaPinkShade(_inner)));
+        Rose(_inner) -> gradientViaDecl(paletteVar("rose", gradientViaRoseShade(_inner)));
+        Slate(_inner) -> gradientViaDecl(paletteVar("slate", gradientViaSlateShade(_inner)));
+        Gray(_inner) -> gradientViaDecl(paletteVar("gray", gradientViaGrayShade(_inner)));
+        Zinc(_inner) -> gradientViaDecl(paletteVar("zinc", gradientViaZincShade(_inner)));
+        Neutral(_inner) -> gradientViaDecl(paletteVar("neutral", gradientViaNeutralShade(_inner)));
+        Stone(_inner) -> gradientViaDecl(paletteVar("stone", gradientViaStoneShade(_inner)));
+        Mauve(_inner) -> gradientViaDecl(paletteVar("mauve", gradientViaMauveShade(_inner)));
+        Olive(_inner) -> gradientViaDecl(paletteVar("olive", gradientViaOliveShade(_inner)));
+        Mist(_inner) -> gradientViaDecl(paletteVar("mist", gradientViaMistShade(_inner)));
+        Taupe(_inner) -> gradientViaDecl(paletteVar("taupe", gradientViaTaupeShade(_inner)));
+        White -> gradientViaDecl(themeVar(nsPrefix(Ns.Color) + "white"));
+        Black -> gradientViaDecl(themeVar(nsPrefix(Ns.Color) + "black"));
+        Transparent -> gradientViaDecl("transparent");
+        Current -> gradientViaDecl("currentColor");
+        Inherit -> gradientViaDecl("inherit");
+    };
+    return out;
+}
+
+fn gradientStopTokenToCss(c: Token.Gradient.Stop, th: Theme) -> string {
+    val out = case c {
+        Red(_inner) -> gradientStopDecl(paletteVar("red", gradientStopRedShade(_inner)));
+        Orange(_inner) -> gradientStopDecl(paletteVar("orange", gradientStopOrangeShade(_inner)));
+        Amber(_inner) -> gradientStopDecl(paletteVar("amber", gradientStopAmberShade(_inner)));
+        Yellow(_inner) -> gradientStopDecl(paletteVar("yellow", gradientStopYellowShade(_inner)));
+        Lime(_inner) -> gradientStopDecl(paletteVar("lime", gradientStopLimeShade(_inner)));
+        Green(_inner) -> gradientStopDecl(paletteVar("green", gradientStopGreenShade(_inner)));
+        Emerald(_inner) -> gradientStopDecl(paletteVar("emerald", gradientStopEmeraldShade(_inner)));
+        Teal(_inner) -> gradientStopDecl(paletteVar("teal", gradientStopTealShade(_inner)));
+        Cyan(_inner) -> gradientStopDecl(paletteVar("cyan", gradientStopCyanShade(_inner)));
+        Sky(_inner) -> gradientStopDecl(paletteVar("sky", gradientStopSkyShade(_inner)));
+        Blue(_inner) -> gradientStopDecl(paletteVar("blue", gradientStopBlueShade(_inner)));
+        Indigo(_inner) -> gradientStopDecl(paletteVar("indigo", gradientStopIndigoShade(_inner)));
+        Violet(_inner) -> gradientStopDecl(paletteVar("violet", gradientStopVioletShade(_inner)));
+        Purple(_inner) -> gradientStopDecl(paletteVar("purple", gradientStopPurpleShade(_inner)));
+        Fuchsia(_inner) -> gradientStopDecl(paletteVar("fuchsia", gradientStopFuchsiaShade(_inner)));
+        Pink(_inner) -> gradientStopDecl(paletteVar("pink", gradientStopPinkShade(_inner)));
+        Rose(_inner) -> gradientStopDecl(paletteVar("rose", gradientStopRoseShade(_inner)));
+        Slate(_inner) -> gradientStopDecl(paletteVar("slate", gradientStopSlateShade(_inner)));
+        Gray(_inner) -> gradientStopDecl(paletteVar("gray", gradientStopGrayShade(_inner)));
+        Zinc(_inner) -> gradientStopDecl(paletteVar("zinc", gradientStopZincShade(_inner)));
+        Neutral(_inner) -> gradientStopDecl(paletteVar("neutral", gradientStopNeutralShade(_inner)));
+        Stone(_inner) -> gradientStopDecl(paletteVar("stone", gradientStopStoneShade(_inner)));
+        Mauve(_inner) -> gradientStopDecl(paletteVar("mauve", gradientStopMauveShade(_inner)));
+        Olive(_inner) -> gradientStopDecl(paletteVar("olive", gradientStopOliveShade(_inner)));
+        Mist(_inner) -> gradientStopDecl(paletteVar("mist", gradientStopMistShade(_inner)));
+        Taupe(_inner) -> gradientStopDecl(paletteVar("taupe", gradientStopTaupeShade(_inner)));
+        White -> gradientStopDecl(themeVar(nsPrefix(Ns.Color) + "white"));
+        Black -> gradientStopDecl(themeVar(nsPrefix(Ns.Color) + "black"));
+        Transparent -> gradientStopDecl("transparent");
+        Current -> gradientStopDecl("currentColor");
+        Inherit -> gradientStopDecl("inherit");
+    };
+    return out;
+}
+
+// 78 shade dispatchers, one per (stop, family): a section of `Token` is a type
+// written by its path, so `Token.Gradient.From.Red` and
+// `Token.Gradient.Via.Red` are two types and one `case` cannot serve both.
+// Front 33 pays the same 52 for `Color` and `Bg.Color`.
+
+fn gradientFromRedShade(s: Token.Gradient.From.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromOrangeShade(s: Token.Gradient.From.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromAmberShade(s: Token.Gradient.From.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromYellowShade(s: Token.Gradient.From.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromLimeShade(s: Token.Gradient.From.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromGreenShade(s: Token.Gradient.From.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromEmeraldShade(s: Token.Gradient.From.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromTealShade(s: Token.Gradient.From.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromCyanShade(s: Token.Gradient.From.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromSkyShade(s: Token.Gradient.From.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromBlueShade(s: Token.Gradient.From.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromIndigoShade(s: Token.Gradient.From.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromVioletShade(s: Token.Gradient.From.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromPurpleShade(s: Token.Gradient.From.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromFuchsiaShade(s: Token.Gradient.From.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromPinkShade(s: Token.Gradient.From.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromRoseShade(s: Token.Gradient.From.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromSlateShade(s: Token.Gradient.From.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromGrayShade(s: Token.Gradient.From.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromZincShade(s: Token.Gradient.From.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromNeutralShade(s: Token.Gradient.From.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromStoneShade(s: Token.Gradient.From.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromMauveShade(s: Token.Gradient.From.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromOliveShade(s: Token.Gradient.From.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromMistShade(s: Token.Gradient.From.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientFromTaupeShade(s: Token.Gradient.From.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaRedShade(s: Token.Gradient.Via.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaOrangeShade(s: Token.Gradient.Via.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaAmberShade(s: Token.Gradient.Via.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaYellowShade(s: Token.Gradient.Via.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaLimeShade(s: Token.Gradient.Via.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaGreenShade(s: Token.Gradient.Via.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaEmeraldShade(s: Token.Gradient.Via.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaTealShade(s: Token.Gradient.Via.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaCyanShade(s: Token.Gradient.Via.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaSkyShade(s: Token.Gradient.Via.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaBlueShade(s: Token.Gradient.Via.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaIndigoShade(s: Token.Gradient.Via.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaVioletShade(s: Token.Gradient.Via.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaPurpleShade(s: Token.Gradient.Via.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaFuchsiaShade(s: Token.Gradient.Via.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaPinkShade(s: Token.Gradient.Via.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaRoseShade(s: Token.Gradient.Via.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaSlateShade(s: Token.Gradient.Via.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaGrayShade(s: Token.Gradient.Via.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaZincShade(s: Token.Gradient.Via.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaNeutralShade(s: Token.Gradient.Via.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaStoneShade(s: Token.Gradient.Via.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaMauveShade(s: Token.Gradient.Via.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaOliveShade(s: Token.Gradient.Via.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaMistShade(s: Token.Gradient.Via.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientViaTaupeShade(s: Token.Gradient.Via.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopRedShade(s: Token.Gradient.Stop.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopOrangeShade(s: Token.Gradient.Stop.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopAmberShade(s: Token.Gradient.Stop.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopYellowShade(s: Token.Gradient.Stop.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopLimeShade(s: Token.Gradient.Stop.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopGreenShade(s: Token.Gradient.Stop.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopEmeraldShade(s: Token.Gradient.Stop.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopTealShade(s: Token.Gradient.Stop.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopCyanShade(s: Token.Gradient.Stop.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopSkyShade(s: Token.Gradient.Stop.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopBlueShade(s: Token.Gradient.Stop.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopIndigoShade(s: Token.Gradient.Stop.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopVioletShade(s: Token.Gradient.Stop.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopPurpleShade(s: Token.Gradient.Stop.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopFuchsiaShade(s: Token.Gradient.Stop.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopPinkShade(s: Token.Gradient.Stop.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopRoseShade(s: Token.Gradient.Stop.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopSlateShade(s: Token.Gradient.Stop.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopGrayShade(s: Token.Gradient.Stop.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopZincShade(s: Token.Gradient.Stop.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopNeutralShade(s: Token.Gradient.Stop.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopStoneShade(s: Token.Gradient.Stop.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopMauveShade(s: Token.Gradient.Stop.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopOliveShade(s: Token.Gradient.Stop.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopMistShade(s: Token.Gradient.Stop.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn gradientStopTaupeShade(s: Token.Gradient.Stop.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+// ── front 39 · tests · the stops ─────────────────────────────────────────────
+
+test "gradient stops — `From` sets its colour and the two-stop list" {
+    assert tokenDeclarations(.Gradient.From.Indigo.500)
+        == "--tw-gradient-from:var(--color-indigo-500);"
+         + "--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to, transparent)";
+}
+
+test "gradient stops — `Via` sets its colour and the three-stop list" {
+    assert tokenDeclarations(.Gradient.Via.Purple.500)
+        == "--tw-gradient-via:var(--color-purple-500);"
+         + "--tw-gradient-stops:var(--tw-gradient-from, transparent), var(--tw-gradient-via),"
+         + " var(--tw-gradient-to, transparent)";
+}
+
+test "gradient stops — `Stop` sets the terminal colour AND NOTHING ELSE" {
+    assert tokenDeclarations(.Gradient.Stop.Pink.500) == "--tw-gradient-to:var(--color-pink-500)";
+    assert tokenDeclarations(.Gradient.Stop.Pink.500).indexOf("--tw-gradient-stops") == -1;
+}
+
+test "gradient stops — the five named colours, on each of the three stops" {
+    assert tokenDeclarations(.Gradient.From.Transparent).indexOf("--tw-gradient-from:transparent") == 0;
+    assert tokenDeclarations(.Gradient.Via.Current).indexOf("--tw-gradient-via:currentColor") == 0;
+    assert tokenDeclarations(.Gradient.Stop.Transparent) == "--tw-gradient-to:transparent";
+    assert tokenDeclarations(.Gradient.Stop.Current) == "--tw-gradient-to:currentColor";
+    assert tokenDeclarations(.Gradient.Stop.Inherit) == "--tw-gradient-to:inherit";
+    assert tokenDeclarations(.Gradient.Stop.White) == "--tw-gradient-to:var(--color-white)";
+    assert tokenDeclarations(.Gradient.Stop.Black) == "--tw-gradient-to:var(--color-black)";
+}
+
+test "gradient stops — the stop and the background read ONE custom property" {
+    val shared = paletteVar("indigo", "500");
+    assert tokenDeclarations(.Gradient.From.Indigo.500).indexOf(shared) != -1;
+    assert tokenDeclarations(.Bg.Color.Indigo.500).indexOf(shared) != -1;
+    assert shared == "var(--color-indigo-500)";
+    assert tokenDeclarations(.Gradient.Via.Indigo.500).indexOf(shared) != -1;
+    assert tokenDeclarations(.Gradient.Stop.Indigo.500).indexOf(shared) != -1;
+}
+
+test "gradient stops — a project override reaches the stop, not just the background" {
+    val brand: ThemeEntry[] = [ThemeEntry(name: "--color-indigo-500", value: "#4040ff")];
+    val th = extendTheme(extendTheme(defaultTheme(), paletteEntries()), brand);
+    assert themeValue(th, "--color-indigo-500") == "#4040ff";
+    assert tokenDeclarations(.Gradient.From.Indigo.500).indexOf("#4040ff") == -1;
+    assert tokenDeclarations(.Gradient.From.Indigo.500).indexOf("var(--color-indigo-500)") != -1;
+}
+
+test "gradient stops — `From` alone still paints, because the terminal has a fallback" {
+    val decls = tokenDeclarations(.Gradient.From.Indigo.500);
+    assert decls.indexOf("var(--tw-gradient-to, transparent)") != -1;
+    assert decls.indexOf("var(--tw-gradient-to)") == -1;
+}
+
+test "gradient stops — `From` + `Stop` is a two-colour list" {
+    val toks: Token[] = [.Gradient.To.R, .Gradient.From.Indigo.500, .Gradient.Stop.Pink.500];
+    val decls = declarationsOf(tokensToSheet(toks, defaultTheme())).join(";");
+    assert decls.indexOf("linear-gradient(to right, var(--tw-gradient-stops))") != -1;
+    assert decls.indexOf("--tw-gradient-from:var(--color-indigo-500)") != -1;
+    assert decls.indexOf("--tw-gradient-to:var(--color-pink-500)") != -1;
+    assert decls.indexOf("--tw-gradient-via") == -1;
+}
+
+test "gradient stops — `From` + `Via` + `Stop` composes, and order is load-bearing" {
+    val toks: Token[] = [.Gradient.From.Indigo.500, .Gradient.Via.Purple.500, .Gradient.Stop.Pink.500];
+    val decls = declarationsOf(tokensToSheet(toks, defaultTheme())).join(";");
+    val twoStop = "--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to, transparent)";
+    val threeStop = "--tw-gradient-stops:var(--tw-gradient-from, transparent), var(--tw-gradient-via),"
+        + " var(--tw-gradient-to, transparent)";
+    assert decls.indexOf(twoStop) != -1;
+    assert decls.indexOf(threeStop) != -1;
+    assert decls.indexOf(threeStop) > decls.indexOf(twoStop);
+}
+
+test "gradient stops — reversing the two lists reverses which one wins" {
+    val forward: Token[] = [.Gradient.From.Indigo.500, .Gradient.Via.Purple.500];
+    val backward: Token[] = [.Gradient.Via.Purple.500, .Gradient.From.Indigo.500];
+    val a = declarationsOf(tokensToSheet(forward, defaultTheme())).join(";");
+    val b = declarationsOf(tokensToSheet(backward, defaultTheme())).join(";");
+    assert a != b;
+    assert a.indexOf("--tw-gradient-via),") != -1;
+    assert b.indexOf("--tw-gradient-via),") != -1;
+    assert a.indexOf("var(--tw-gradient-from),") != -1;
+    assert b.indexOf("var(--tw-gradient-from),") != -1;
+    assert a.indexOf("--tw-gradient-via),") > a.indexOf("var(--tw-gradient-from),");
+    assert b.indexOf("--tw-gradient-via),") < b.indexOf("var(--tw-gradient-from),");
+}
+
+test "end to end — a gradient call to action is one class and one rule" {
+    val cta: Token[] = [.Gradient.To.R, .Gradient.From.Indigo.500, .Gradient.Stop.Pink.500];
+    val cls = emilia(cta);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-image:linear-gradient(to right, var(--tw-gradient-stops));"
+        + "--tw-gradient-from:var(--color-indigo-500);"
+        + "--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to, transparent);"
+        + "--tw-gradient-to:var(--color-pink-500)}}</style>";
+}
+
+test "end to end — gradient text is a clip and a gradient in one rule" {
+    val heading: Token[] = [.Bg.Clip.Text, .Gradient.To.Br, .Gradient.From.Sky.400,
+        .Gradient.Stop.Fuchsia.600, .Color.Transparent];
+    val cls = emilia(heading);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("background-clip:text") != -1;
+    assert styles.indexOf("linear-gradient(to bottom right, var(--tw-gradient-stops))") != -1;
+    assert styles.indexOf("--tw-gradient-from:var(--color-sky-400)") != -1;
+    assert styles.indexOf("--tw-gradient-to:var(--color-fuchsia-600)") != -1;
+    assert styles.indexOf("." + cls + "{") != -1;
+}
+
+test "end to end — a hero photograph covers its box and is anchored to the top" {
+    val hero: Token[] = [.Bg.Size.Cover, .Bg.Pos.Top, .Bg.Repeat.None, .Bg.Attachment.Fixed];
+    val cls = emilia(hero);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background-size:cover;background-position:top;"
+        + "background-repeat:no-repeat;background-attachment:fixed}}</style>";
+}
+
+// ── front 39 · the regression ────────────────────────────────────
+//
+// The three predicates below take a DECLARATION STRING rather than a token, so
+// the same function that walks 910 leaves can be handed a string that is known
+// to violate it. A walk that cannot be made to fail proves nothing, which is
+// the lesson fronts 35 and 36 wrote down; the controls under each walk are it.
+//
+// `bgIsWellFormed` is not boilerplate: an arm whose pattern is shadowed does
+// not red, it falls out of the `case` and the token declares the EMPTY STRING.
+// That is how `.Layout.Block` was found dead beside `output.bp`'s record of the
+// same name — on commonJS only, with erlang green. 910 leaves through this
+// predicate is this front's guard against declaring the same thing silently.
+
+fn bgIsWellFormed(decl: string) -> bool {
+    return decl.length > 0 && decl.indexOf(":") != -1;
+}
+
+// No background leaf resolves a colour or a length: a stop is a reference to
+// front 33's palette and a keyword leaf is a CSS keyword. A `#`, an `oklch(`,
+// an `rgb(` or a `rem` here is a literal that escaped the theme.
+fn bgCarriesNoLiteral(decl: string) -> bool {
+    return decl.indexOf("#") == -1 && decl.indexOf("oklch(") == -1
+        && decl.indexOf("rgb(") == -1 && decl.indexOf("rem") == -1;
+}
+
+// No leaf emits a Tailwind CLASS NAME where a CSS value belongs — the failure
+// mode of transcribing a reference table into the value column.
+fn bgCarriesNoClassFragment(decl: string) -> bool {
+    return decl.indexOf("bg-") == -1 && decl.indexOf("from-") == -1
+        && decl.indexOf("via-") == -1 && decl.indexOf("gradient-to-") == -1;
+}
+
+// Every leaf of this front, in one list: the 29 keyword leaves of `Bg`, the
+// eight directions, and the 873 stops (three stops over front 33's 286 cells
+// plus its five named colours).
+fn backgroundLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Bg.Attachment.Fixed, .Bg.Attachment.Local, .Bg.Attachment.Scroll,
+        .Bg.Clip.Border, .Bg.Clip.Padding, .Bg.Clip.Content,
+        .Bg.Clip.Text, .Bg.Origin.Border, .Bg.Origin.Padding,
+        .Bg.Origin.Content, .Bg.Pos.Bottom, .Bg.Pos.Center,
+        .Bg.Pos.Left, .Bg.Pos.LeftBottom, .Bg.Pos.LeftTop,
+        .Bg.Pos.Right, .Bg.Pos.RightBottom, .Bg.Pos.RightTop,
+        .Bg.Pos.Top, .Bg.Repeat.Repeat, .Bg.Repeat.None,
+        .Bg.Repeat.X, .Bg.Repeat.Y, .Bg.Repeat.Round,
+        .Bg.Repeat.Space, .Bg.Size.Auto, .Bg.Size.Cover,
+        .Bg.Size.Contain, .Bg.Image.None,
+        .Gradient.To.T, .Gradient.To.Tr, .Gradient.To.R, .Gradient.To.Br, .Gradient.To.B, .Gradient.To.Bl, .Gradient.To.L, .Gradient.To.Tl,
+        .Gradient.From.Red.50, .Gradient.From.Red.100, .Gradient.From.Red.200, .Gradient.From.Red.300,
+        .Gradient.From.Red.400, .Gradient.From.Red.500, .Gradient.From.Red.600, .Gradient.From.Red.700,
+        .Gradient.From.Red.800, .Gradient.From.Red.900, .Gradient.From.Red.950,
+        .Gradient.From.Orange.50, .Gradient.From.Orange.100, .Gradient.From.Orange.200, .Gradient.From.Orange.300,
+        .Gradient.From.Orange.400, .Gradient.From.Orange.500, .Gradient.From.Orange.600, .Gradient.From.Orange.700,
+        .Gradient.From.Orange.800, .Gradient.From.Orange.900, .Gradient.From.Orange.950,
+        .Gradient.From.Amber.50, .Gradient.From.Amber.100, .Gradient.From.Amber.200, .Gradient.From.Amber.300,
+        .Gradient.From.Amber.400, .Gradient.From.Amber.500, .Gradient.From.Amber.600, .Gradient.From.Amber.700,
+        .Gradient.From.Amber.800, .Gradient.From.Amber.900, .Gradient.From.Amber.950,
+        .Gradient.From.Yellow.50, .Gradient.From.Yellow.100, .Gradient.From.Yellow.200, .Gradient.From.Yellow.300,
+        .Gradient.From.Yellow.400, .Gradient.From.Yellow.500, .Gradient.From.Yellow.600, .Gradient.From.Yellow.700,
+        .Gradient.From.Yellow.800, .Gradient.From.Yellow.900, .Gradient.From.Yellow.950,
+        .Gradient.From.Lime.50, .Gradient.From.Lime.100, .Gradient.From.Lime.200, .Gradient.From.Lime.300,
+        .Gradient.From.Lime.400, .Gradient.From.Lime.500, .Gradient.From.Lime.600, .Gradient.From.Lime.700,
+        .Gradient.From.Lime.800, .Gradient.From.Lime.900, .Gradient.From.Lime.950,
+        .Gradient.From.Green.50, .Gradient.From.Green.100, .Gradient.From.Green.200, .Gradient.From.Green.300,
+        .Gradient.From.Green.400, .Gradient.From.Green.500, .Gradient.From.Green.600, .Gradient.From.Green.700,
+        .Gradient.From.Green.800, .Gradient.From.Green.900, .Gradient.From.Green.950,
+        .Gradient.From.Emerald.50, .Gradient.From.Emerald.100, .Gradient.From.Emerald.200, .Gradient.From.Emerald.300,
+        .Gradient.From.Emerald.400, .Gradient.From.Emerald.500, .Gradient.From.Emerald.600, .Gradient.From.Emerald.700,
+        .Gradient.From.Emerald.800, .Gradient.From.Emerald.900, .Gradient.From.Emerald.950,
+        .Gradient.From.Teal.50, .Gradient.From.Teal.100, .Gradient.From.Teal.200, .Gradient.From.Teal.300,
+        .Gradient.From.Teal.400, .Gradient.From.Teal.500, .Gradient.From.Teal.600, .Gradient.From.Teal.700,
+        .Gradient.From.Teal.800, .Gradient.From.Teal.900, .Gradient.From.Teal.950,
+        .Gradient.From.Cyan.50, .Gradient.From.Cyan.100, .Gradient.From.Cyan.200, .Gradient.From.Cyan.300,
+        .Gradient.From.Cyan.400, .Gradient.From.Cyan.500, .Gradient.From.Cyan.600, .Gradient.From.Cyan.700,
+        .Gradient.From.Cyan.800, .Gradient.From.Cyan.900, .Gradient.From.Cyan.950,
+        .Gradient.From.Sky.50, .Gradient.From.Sky.100, .Gradient.From.Sky.200, .Gradient.From.Sky.300,
+        .Gradient.From.Sky.400, .Gradient.From.Sky.500, .Gradient.From.Sky.600, .Gradient.From.Sky.700,
+        .Gradient.From.Sky.800, .Gradient.From.Sky.900, .Gradient.From.Sky.950,
+        .Gradient.From.Blue.50, .Gradient.From.Blue.100, .Gradient.From.Blue.200, .Gradient.From.Blue.300,
+        .Gradient.From.Blue.400, .Gradient.From.Blue.500, .Gradient.From.Blue.600, .Gradient.From.Blue.700,
+        .Gradient.From.Blue.800, .Gradient.From.Blue.900, .Gradient.From.Blue.950,
+        .Gradient.From.Indigo.50, .Gradient.From.Indigo.100, .Gradient.From.Indigo.200, .Gradient.From.Indigo.300,
+        .Gradient.From.Indigo.400, .Gradient.From.Indigo.500, .Gradient.From.Indigo.600, .Gradient.From.Indigo.700,
+        .Gradient.From.Indigo.800, .Gradient.From.Indigo.900, .Gradient.From.Indigo.950,
+        .Gradient.From.Violet.50, .Gradient.From.Violet.100, .Gradient.From.Violet.200, .Gradient.From.Violet.300,
+        .Gradient.From.Violet.400, .Gradient.From.Violet.500, .Gradient.From.Violet.600, .Gradient.From.Violet.700,
+        .Gradient.From.Violet.800, .Gradient.From.Violet.900, .Gradient.From.Violet.950,
+        .Gradient.From.Purple.50, .Gradient.From.Purple.100, .Gradient.From.Purple.200, .Gradient.From.Purple.300,
+        .Gradient.From.Purple.400, .Gradient.From.Purple.500, .Gradient.From.Purple.600, .Gradient.From.Purple.700,
+        .Gradient.From.Purple.800, .Gradient.From.Purple.900, .Gradient.From.Purple.950,
+        .Gradient.From.Fuchsia.50, .Gradient.From.Fuchsia.100, .Gradient.From.Fuchsia.200, .Gradient.From.Fuchsia.300,
+        .Gradient.From.Fuchsia.400, .Gradient.From.Fuchsia.500, .Gradient.From.Fuchsia.600, .Gradient.From.Fuchsia.700,
+        .Gradient.From.Fuchsia.800, .Gradient.From.Fuchsia.900, .Gradient.From.Fuchsia.950,
+        .Gradient.From.Pink.50, .Gradient.From.Pink.100, .Gradient.From.Pink.200, .Gradient.From.Pink.300,
+        .Gradient.From.Pink.400, .Gradient.From.Pink.500, .Gradient.From.Pink.600, .Gradient.From.Pink.700,
+        .Gradient.From.Pink.800, .Gradient.From.Pink.900, .Gradient.From.Pink.950,
+        .Gradient.From.Rose.50, .Gradient.From.Rose.100, .Gradient.From.Rose.200, .Gradient.From.Rose.300,
+        .Gradient.From.Rose.400, .Gradient.From.Rose.500, .Gradient.From.Rose.600, .Gradient.From.Rose.700,
+        .Gradient.From.Rose.800, .Gradient.From.Rose.900, .Gradient.From.Rose.950,
+        .Gradient.From.Slate.50, .Gradient.From.Slate.100, .Gradient.From.Slate.200, .Gradient.From.Slate.300,
+        .Gradient.From.Slate.400, .Gradient.From.Slate.500, .Gradient.From.Slate.600, .Gradient.From.Slate.700,
+        .Gradient.From.Slate.800, .Gradient.From.Slate.900, .Gradient.From.Slate.950,
+        .Gradient.From.Gray.50, .Gradient.From.Gray.100, .Gradient.From.Gray.200, .Gradient.From.Gray.300,
+        .Gradient.From.Gray.400, .Gradient.From.Gray.500, .Gradient.From.Gray.600, .Gradient.From.Gray.700,
+        .Gradient.From.Gray.800, .Gradient.From.Gray.900, .Gradient.From.Gray.950,
+        .Gradient.From.Zinc.50, .Gradient.From.Zinc.100, .Gradient.From.Zinc.200, .Gradient.From.Zinc.300,
+        .Gradient.From.Zinc.400, .Gradient.From.Zinc.500, .Gradient.From.Zinc.600, .Gradient.From.Zinc.700,
+        .Gradient.From.Zinc.800, .Gradient.From.Zinc.900, .Gradient.From.Zinc.950,
+        .Gradient.From.Neutral.50, .Gradient.From.Neutral.100, .Gradient.From.Neutral.200, .Gradient.From.Neutral.300,
+        .Gradient.From.Neutral.400, .Gradient.From.Neutral.500, .Gradient.From.Neutral.600, .Gradient.From.Neutral.700,
+        .Gradient.From.Neutral.800, .Gradient.From.Neutral.900, .Gradient.From.Neutral.950,
+        .Gradient.From.Stone.50, .Gradient.From.Stone.100, .Gradient.From.Stone.200, .Gradient.From.Stone.300,
+        .Gradient.From.Stone.400, .Gradient.From.Stone.500, .Gradient.From.Stone.600, .Gradient.From.Stone.700,
+        .Gradient.From.Stone.800, .Gradient.From.Stone.900, .Gradient.From.Stone.950,
+        .Gradient.From.Mauve.50, .Gradient.From.Mauve.100, .Gradient.From.Mauve.200, .Gradient.From.Mauve.300,
+        .Gradient.From.Mauve.400, .Gradient.From.Mauve.500, .Gradient.From.Mauve.600, .Gradient.From.Mauve.700,
+        .Gradient.From.Mauve.800, .Gradient.From.Mauve.900, .Gradient.From.Mauve.950,
+        .Gradient.From.Olive.50, .Gradient.From.Olive.100, .Gradient.From.Olive.200, .Gradient.From.Olive.300,
+        .Gradient.From.Olive.400, .Gradient.From.Olive.500, .Gradient.From.Olive.600, .Gradient.From.Olive.700,
+        .Gradient.From.Olive.800, .Gradient.From.Olive.900, .Gradient.From.Olive.950,
+        .Gradient.From.Mist.50, .Gradient.From.Mist.100, .Gradient.From.Mist.200, .Gradient.From.Mist.300,
+        .Gradient.From.Mist.400, .Gradient.From.Mist.500, .Gradient.From.Mist.600, .Gradient.From.Mist.700,
+        .Gradient.From.Mist.800, .Gradient.From.Mist.900, .Gradient.From.Mist.950,
+        .Gradient.From.Taupe.50, .Gradient.From.Taupe.100, .Gradient.From.Taupe.200, .Gradient.From.Taupe.300,
+        .Gradient.From.Taupe.400, .Gradient.From.Taupe.500, .Gradient.From.Taupe.600, .Gradient.From.Taupe.700,
+        .Gradient.From.Taupe.800, .Gradient.From.Taupe.900, .Gradient.From.Taupe.950,
+        .Gradient.From.White, .Gradient.From.Black, .Gradient.From.Transparent, .Gradient.From.Current, .Gradient.From.Inherit,
+        .Gradient.Via.Red.50, .Gradient.Via.Red.100, .Gradient.Via.Red.200, .Gradient.Via.Red.300,
+        .Gradient.Via.Red.400, .Gradient.Via.Red.500, .Gradient.Via.Red.600, .Gradient.Via.Red.700,
+        .Gradient.Via.Red.800, .Gradient.Via.Red.900, .Gradient.Via.Red.950,
+        .Gradient.Via.Orange.50, .Gradient.Via.Orange.100, .Gradient.Via.Orange.200, .Gradient.Via.Orange.300,
+        .Gradient.Via.Orange.400, .Gradient.Via.Orange.500, .Gradient.Via.Orange.600, .Gradient.Via.Orange.700,
+        .Gradient.Via.Orange.800, .Gradient.Via.Orange.900, .Gradient.Via.Orange.950,
+        .Gradient.Via.Amber.50, .Gradient.Via.Amber.100, .Gradient.Via.Amber.200, .Gradient.Via.Amber.300,
+        .Gradient.Via.Amber.400, .Gradient.Via.Amber.500, .Gradient.Via.Amber.600, .Gradient.Via.Amber.700,
+        .Gradient.Via.Amber.800, .Gradient.Via.Amber.900, .Gradient.Via.Amber.950,
+        .Gradient.Via.Yellow.50, .Gradient.Via.Yellow.100, .Gradient.Via.Yellow.200, .Gradient.Via.Yellow.300,
+        .Gradient.Via.Yellow.400, .Gradient.Via.Yellow.500, .Gradient.Via.Yellow.600, .Gradient.Via.Yellow.700,
+        .Gradient.Via.Yellow.800, .Gradient.Via.Yellow.900, .Gradient.Via.Yellow.950,
+        .Gradient.Via.Lime.50, .Gradient.Via.Lime.100, .Gradient.Via.Lime.200, .Gradient.Via.Lime.300,
+        .Gradient.Via.Lime.400, .Gradient.Via.Lime.500, .Gradient.Via.Lime.600, .Gradient.Via.Lime.700,
+        .Gradient.Via.Lime.800, .Gradient.Via.Lime.900, .Gradient.Via.Lime.950,
+        .Gradient.Via.Green.50, .Gradient.Via.Green.100, .Gradient.Via.Green.200, .Gradient.Via.Green.300,
+        .Gradient.Via.Green.400, .Gradient.Via.Green.500, .Gradient.Via.Green.600, .Gradient.Via.Green.700,
+        .Gradient.Via.Green.800, .Gradient.Via.Green.900, .Gradient.Via.Green.950,
+        .Gradient.Via.Emerald.50, .Gradient.Via.Emerald.100, .Gradient.Via.Emerald.200, .Gradient.Via.Emerald.300,
+        .Gradient.Via.Emerald.400, .Gradient.Via.Emerald.500, .Gradient.Via.Emerald.600, .Gradient.Via.Emerald.700,
+        .Gradient.Via.Emerald.800, .Gradient.Via.Emerald.900, .Gradient.Via.Emerald.950,
+        .Gradient.Via.Teal.50, .Gradient.Via.Teal.100, .Gradient.Via.Teal.200, .Gradient.Via.Teal.300,
+        .Gradient.Via.Teal.400, .Gradient.Via.Teal.500, .Gradient.Via.Teal.600, .Gradient.Via.Teal.700,
+        .Gradient.Via.Teal.800, .Gradient.Via.Teal.900, .Gradient.Via.Teal.950,
+        .Gradient.Via.Cyan.50, .Gradient.Via.Cyan.100, .Gradient.Via.Cyan.200, .Gradient.Via.Cyan.300,
+        .Gradient.Via.Cyan.400, .Gradient.Via.Cyan.500, .Gradient.Via.Cyan.600, .Gradient.Via.Cyan.700,
+        .Gradient.Via.Cyan.800, .Gradient.Via.Cyan.900, .Gradient.Via.Cyan.950,
+        .Gradient.Via.Sky.50, .Gradient.Via.Sky.100, .Gradient.Via.Sky.200, .Gradient.Via.Sky.300,
+        .Gradient.Via.Sky.400, .Gradient.Via.Sky.500, .Gradient.Via.Sky.600, .Gradient.Via.Sky.700,
+        .Gradient.Via.Sky.800, .Gradient.Via.Sky.900, .Gradient.Via.Sky.950,
+        .Gradient.Via.Blue.50, .Gradient.Via.Blue.100, .Gradient.Via.Blue.200, .Gradient.Via.Blue.300,
+        .Gradient.Via.Blue.400, .Gradient.Via.Blue.500, .Gradient.Via.Blue.600, .Gradient.Via.Blue.700,
+        .Gradient.Via.Blue.800, .Gradient.Via.Blue.900, .Gradient.Via.Blue.950,
+        .Gradient.Via.Indigo.50, .Gradient.Via.Indigo.100, .Gradient.Via.Indigo.200, .Gradient.Via.Indigo.300,
+        .Gradient.Via.Indigo.400, .Gradient.Via.Indigo.500, .Gradient.Via.Indigo.600, .Gradient.Via.Indigo.700,
+        .Gradient.Via.Indigo.800, .Gradient.Via.Indigo.900, .Gradient.Via.Indigo.950,
+        .Gradient.Via.Violet.50, .Gradient.Via.Violet.100, .Gradient.Via.Violet.200, .Gradient.Via.Violet.300,
+        .Gradient.Via.Violet.400, .Gradient.Via.Violet.500, .Gradient.Via.Violet.600, .Gradient.Via.Violet.700,
+        .Gradient.Via.Violet.800, .Gradient.Via.Violet.900, .Gradient.Via.Violet.950,
+        .Gradient.Via.Purple.50, .Gradient.Via.Purple.100, .Gradient.Via.Purple.200, .Gradient.Via.Purple.300,
+        .Gradient.Via.Purple.400, .Gradient.Via.Purple.500, .Gradient.Via.Purple.600, .Gradient.Via.Purple.700,
+        .Gradient.Via.Purple.800, .Gradient.Via.Purple.900, .Gradient.Via.Purple.950,
+        .Gradient.Via.Fuchsia.50, .Gradient.Via.Fuchsia.100, .Gradient.Via.Fuchsia.200, .Gradient.Via.Fuchsia.300,
+        .Gradient.Via.Fuchsia.400, .Gradient.Via.Fuchsia.500, .Gradient.Via.Fuchsia.600, .Gradient.Via.Fuchsia.700,
+        .Gradient.Via.Fuchsia.800, .Gradient.Via.Fuchsia.900, .Gradient.Via.Fuchsia.950,
+        .Gradient.Via.Pink.50, .Gradient.Via.Pink.100, .Gradient.Via.Pink.200, .Gradient.Via.Pink.300,
+        .Gradient.Via.Pink.400, .Gradient.Via.Pink.500, .Gradient.Via.Pink.600, .Gradient.Via.Pink.700,
+        .Gradient.Via.Pink.800, .Gradient.Via.Pink.900, .Gradient.Via.Pink.950,
+        .Gradient.Via.Rose.50, .Gradient.Via.Rose.100, .Gradient.Via.Rose.200, .Gradient.Via.Rose.300,
+        .Gradient.Via.Rose.400, .Gradient.Via.Rose.500, .Gradient.Via.Rose.600, .Gradient.Via.Rose.700,
+        .Gradient.Via.Rose.800, .Gradient.Via.Rose.900, .Gradient.Via.Rose.950,
+        .Gradient.Via.Slate.50, .Gradient.Via.Slate.100, .Gradient.Via.Slate.200, .Gradient.Via.Slate.300,
+        .Gradient.Via.Slate.400, .Gradient.Via.Slate.500, .Gradient.Via.Slate.600, .Gradient.Via.Slate.700,
+        .Gradient.Via.Slate.800, .Gradient.Via.Slate.900, .Gradient.Via.Slate.950,
+        .Gradient.Via.Gray.50, .Gradient.Via.Gray.100, .Gradient.Via.Gray.200, .Gradient.Via.Gray.300,
+        .Gradient.Via.Gray.400, .Gradient.Via.Gray.500, .Gradient.Via.Gray.600, .Gradient.Via.Gray.700,
+        .Gradient.Via.Gray.800, .Gradient.Via.Gray.900, .Gradient.Via.Gray.950,
+        .Gradient.Via.Zinc.50, .Gradient.Via.Zinc.100, .Gradient.Via.Zinc.200, .Gradient.Via.Zinc.300,
+        .Gradient.Via.Zinc.400, .Gradient.Via.Zinc.500, .Gradient.Via.Zinc.600, .Gradient.Via.Zinc.700,
+        .Gradient.Via.Zinc.800, .Gradient.Via.Zinc.900, .Gradient.Via.Zinc.950,
+        .Gradient.Via.Neutral.50, .Gradient.Via.Neutral.100, .Gradient.Via.Neutral.200, .Gradient.Via.Neutral.300,
+        .Gradient.Via.Neutral.400, .Gradient.Via.Neutral.500, .Gradient.Via.Neutral.600, .Gradient.Via.Neutral.700,
+        .Gradient.Via.Neutral.800, .Gradient.Via.Neutral.900, .Gradient.Via.Neutral.950,
+        .Gradient.Via.Stone.50, .Gradient.Via.Stone.100, .Gradient.Via.Stone.200, .Gradient.Via.Stone.300,
+        .Gradient.Via.Stone.400, .Gradient.Via.Stone.500, .Gradient.Via.Stone.600, .Gradient.Via.Stone.700,
+        .Gradient.Via.Stone.800, .Gradient.Via.Stone.900, .Gradient.Via.Stone.950,
+        .Gradient.Via.Mauve.50, .Gradient.Via.Mauve.100, .Gradient.Via.Mauve.200, .Gradient.Via.Mauve.300,
+        .Gradient.Via.Mauve.400, .Gradient.Via.Mauve.500, .Gradient.Via.Mauve.600, .Gradient.Via.Mauve.700,
+        .Gradient.Via.Mauve.800, .Gradient.Via.Mauve.900, .Gradient.Via.Mauve.950,
+        .Gradient.Via.Olive.50, .Gradient.Via.Olive.100, .Gradient.Via.Olive.200, .Gradient.Via.Olive.300,
+        .Gradient.Via.Olive.400, .Gradient.Via.Olive.500, .Gradient.Via.Olive.600, .Gradient.Via.Olive.700,
+        .Gradient.Via.Olive.800, .Gradient.Via.Olive.900, .Gradient.Via.Olive.950,
+        .Gradient.Via.Mist.50, .Gradient.Via.Mist.100, .Gradient.Via.Mist.200, .Gradient.Via.Mist.300,
+        .Gradient.Via.Mist.400, .Gradient.Via.Mist.500, .Gradient.Via.Mist.600, .Gradient.Via.Mist.700,
+        .Gradient.Via.Mist.800, .Gradient.Via.Mist.900, .Gradient.Via.Mist.950,
+        .Gradient.Via.Taupe.50, .Gradient.Via.Taupe.100, .Gradient.Via.Taupe.200, .Gradient.Via.Taupe.300,
+        .Gradient.Via.Taupe.400, .Gradient.Via.Taupe.500, .Gradient.Via.Taupe.600, .Gradient.Via.Taupe.700,
+        .Gradient.Via.Taupe.800, .Gradient.Via.Taupe.900, .Gradient.Via.Taupe.950,
+        .Gradient.Via.White, .Gradient.Via.Black, .Gradient.Via.Transparent, .Gradient.Via.Current, .Gradient.Via.Inherit,
+        .Gradient.Stop.Red.50, .Gradient.Stop.Red.100, .Gradient.Stop.Red.200, .Gradient.Stop.Red.300,
+        .Gradient.Stop.Red.400, .Gradient.Stop.Red.500, .Gradient.Stop.Red.600, .Gradient.Stop.Red.700,
+        .Gradient.Stop.Red.800, .Gradient.Stop.Red.900, .Gradient.Stop.Red.950,
+        .Gradient.Stop.Orange.50, .Gradient.Stop.Orange.100, .Gradient.Stop.Orange.200, .Gradient.Stop.Orange.300,
+        .Gradient.Stop.Orange.400, .Gradient.Stop.Orange.500, .Gradient.Stop.Orange.600, .Gradient.Stop.Orange.700,
+        .Gradient.Stop.Orange.800, .Gradient.Stop.Orange.900, .Gradient.Stop.Orange.950,
+        .Gradient.Stop.Amber.50, .Gradient.Stop.Amber.100, .Gradient.Stop.Amber.200, .Gradient.Stop.Amber.300,
+        .Gradient.Stop.Amber.400, .Gradient.Stop.Amber.500, .Gradient.Stop.Amber.600, .Gradient.Stop.Amber.700,
+        .Gradient.Stop.Amber.800, .Gradient.Stop.Amber.900, .Gradient.Stop.Amber.950,
+        .Gradient.Stop.Yellow.50, .Gradient.Stop.Yellow.100, .Gradient.Stop.Yellow.200, .Gradient.Stop.Yellow.300,
+        .Gradient.Stop.Yellow.400, .Gradient.Stop.Yellow.500, .Gradient.Stop.Yellow.600, .Gradient.Stop.Yellow.700,
+        .Gradient.Stop.Yellow.800, .Gradient.Stop.Yellow.900, .Gradient.Stop.Yellow.950,
+        .Gradient.Stop.Lime.50, .Gradient.Stop.Lime.100, .Gradient.Stop.Lime.200, .Gradient.Stop.Lime.300,
+        .Gradient.Stop.Lime.400, .Gradient.Stop.Lime.500, .Gradient.Stop.Lime.600, .Gradient.Stop.Lime.700,
+        .Gradient.Stop.Lime.800, .Gradient.Stop.Lime.900, .Gradient.Stop.Lime.950,
+        .Gradient.Stop.Green.50, .Gradient.Stop.Green.100, .Gradient.Stop.Green.200, .Gradient.Stop.Green.300,
+        .Gradient.Stop.Green.400, .Gradient.Stop.Green.500, .Gradient.Stop.Green.600, .Gradient.Stop.Green.700,
+        .Gradient.Stop.Green.800, .Gradient.Stop.Green.900, .Gradient.Stop.Green.950,
+        .Gradient.Stop.Emerald.50, .Gradient.Stop.Emerald.100, .Gradient.Stop.Emerald.200, .Gradient.Stop.Emerald.300,
+        .Gradient.Stop.Emerald.400, .Gradient.Stop.Emerald.500, .Gradient.Stop.Emerald.600, .Gradient.Stop.Emerald.700,
+        .Gradient.Stop.Emerald.800, .Gradient.Stop.Emerald.900, .Gradient.Stop.Emerald.950,
+        .Gradient.Stop.Teal.50, .Gradient.Stop.Teal.100, .Gradient.Stop.Teal.200, .Gradient.Stop.Teal.300,
+        .Gradient.Stop.Teal.400, .Gradient.Stop.Teal.500, .Gradient.Stop.Teal.600, .Gradient.Stop.Teal.700,
+        .Gradient.Stop.Teal.800, .Gradient.Stop.Teal.900, .Gradient.Stop.Teal.950,
+        .Gradient.Stop.Cyan.50, .Gradient.Stop.Cyan.100, .Gradient.Stop.Cyan.200, .Gradient.Stop.Cyan.300,
+        .Gradient.Stop.Cyan.400, .Gradient.Stop.Cyan.500, .Gradient.Stop.Cyan.600, .Gradient.Stop.Cyan.700,
+        .Gradient.Stop.Cyan.800, .Gradient.Stop.Cyan.900, .Gradient.Stop.Cyan.950,
+        .Gradient.Stop.Sky.50, .Gradient.Stop.Sky.100, .Gradient.Stop.Sky.200, .Gradient.Stop.Sky.300,
+        .Gradient.Stop.Sky.400, .Gradient.Stop.Sky.500, .Gradient.Stop.Sky.600, .Gradient.Stop.Sky.700,
+        .Gradient.Stop.Sky.800, .Gradient.Stop.Sky.900, .Gradient.Stop.Sky.950,
+        .Gradient.Stop.Blue.50, .Gradient.Stop.Blue.100, .Gradient.Stop.Blue.200, .Gradient.Stop.Blue.300,
+        .Gradient.Stop.Blue.400, .Gradient.Stop.Blue.500, .Gradient.Stop.Blue.600, .Gradient.Stop.Blue.700,
+        .Gradient.Stop.Blue.800, .Gradient.Stop.Blue.900, .Gradient.Stop.Blue.950,
+        .Gradient.Stop.Indigo.50, .Gradient.Stop.Indigo.100, .Gradient.Stop.Indigo.200, .Gradient.Stop.Indigo.300,
+        .Gradient.Stop.Indigo.400, .Gradient.Stop.Indigo.500, .Gradient.Stop.Indigo.600, .Gradient.Stop.Indigo.700,
+        .Gradient.Stop.Indigo.800, .Gradient.Stop.Indigo.900, .Gradient.Stop.Indigo.950,
+        .Gradient.Stop.Violet.50, .Gradient.Stop.Violet.100, .Gradient.Stop.Violet.200, .Gradient.Stop.Violet.300,
+        .Gradient.Stop.Violet.400, .Gradient.Stop.Violet.500, .Gradient.Stop.Violet.600, .Gradient.Stop.Violet.700,
+        .Gradient.Stop.Violet.800, .Gradient.Stop.Violet.900, .Gradient.Stop.Violet.950,
+        .Gradient.Stop.Purple.50, .Gradient.Stop.Purple.100, .Gradient.Stop.Purple.200, .Gradient.Stop.Purple.300,
+        .Gradient.Stop.Purple.400, .Gradient.Stop.Purple.500, .Gradient.Stop.Purple.600, .Gradient.Stop.Purple.700,
+        .Gradient.Stop.Purple.800, .Gradient.Stop.Purple.900, .Gradient.Stop.Purple.950,
+        .Gradient.Stop.Fuchsia.50, .Gradient.Stop.Fuchsia.100, .Gradient.Stop.Fuchsia.200, .Gradient.Stop.Fuchsia.300,
+        .Gradient.Stop.Fuchsia.400, .Gradient.Stop.Fuchsia.500, .Gradient.Stop.Fuchsia.600, .Gradient.Stop.Fuchsia.700,
+        .Gradient.Stop.Fuchsia.800, .Gradient.Stop.Fuchsia.900, .Gradient.Stop.Fuchsia.950,
+        .Gradient.Stop.Pink.50, .Gradient.Stop.Pink.100, .Gradient.Stop.Pink.200, .Gradient.Stop.Pink.300,
+        .Gradient.Stop.Pink.400, .Gradient.Stop.Pink.500, .Gradient.Stop.Pink.600, .Gradient.Stop.Pink.700,
+        .Gradient.Stop.Pink.800, .Gradient.Stop.Pink.900, .Gradient.Stop.Pink.950,
+        .Gradient.Stop.Rose.50, .Gradient.Stop.Rose.100, .Gradient.Stop.Rose.200, .Gradient.Stop.Rose.300,
+        .Gradient.Stop.Rose.400, .Gradient.Stop.Rose.500, .Gradient.Stop.Rose.600, .Gradient.Stop.Rose.700,
+        .Gradient.Stop.Rose.800, .Gradient.Stop.Rose.900, .Gradient.Stop.Rose.950,
+        .Gradient.Stop.Slate.50, .Gradient.Stop.Slate.100, .Gradient.Stop.Slate.200, .Gradient.Stop.Slate.300,
+        .Gradient.Stop.Slate.400, .Gradient.Stop.Slate.500, .Gradient.Stop.Slate.600, .Gradient.Stop.Slate.700,
+        .Gradient.Stop.Slate.800, .Gradient.Stop.Slate.900, .Gradient.Stop.Slate.950,
+        .Gradient.Stop.Gray.50, .Gradient.Stop.Gray.100, .Gradient.Stop.Gray.200, .Gradient.Stop.Gray.300,
+        .Gradient.Stop.Gray.400, .Gradient.Stop.Gray.500, .Gradient.Stop.Gray.600, .Gradient.Stop.Gray.700,
+        .Gradient.Stop.Gray.800, .Gradient.Stop.Gray.900, .Gradient.Stop.Gray.950,
+        .Gradient.Stop.Zinc.50, .Gradient.Stop.Zinc.100, .Gradient.Stop.Zinc.200, .Gradient.Stop.Zinc.300,
+        .Gradient.Stop.Zinc.400, .Gradient.Stop.Zinc.500, .Gradient.Stop.Zinc.600, .Gradient.Stop.Zinc.700,
+        .Gradient.Stop.Zinc.800, .Gradient.Stop.Zinc.900, .Gradient.Stop.Zinc.950,
+        .Gradient.Stop.Neutral.50, .Gradient.Stop.Neutral.100, .Gradient.Stop.Neutral.200, .Gradient.Stop.Neutral.300,
+        .Gradient.Stop.Neutral.400, .Gradient.Stop.Neutral.500, .Gradient.Stop.Neutral.600, .Gradient.Stop.Neutral.700,
+        .Gradient.Stop.Neutral.800, .Gradient.Stop.Neutral.900, .Gradient.Stop.Neutral.950,
+        .Gradient.Stop.Stone.50, .Gradient.Stop.Stone.100, .Gradient.Stop.Stone.200, .Gradient.Stop.Stone.300,
+        .Gradient.Stop.Stone.400, .Gradient.Stop.Stone.500, .Gradient.Stop.Stone.600, .Gradient.Stop.Stone.700,
+        .Gradient.Stop.Stone.800, .Gradient.Stop.Stone.900, .Gradient.Stop.Stone.950,
+        .Gradient.Stop.Mauve.50, .Gradient.Stop.Mauve.100, .Gradient.Stop.Mauve.200, .Gradient.Stop.Mauve.300,
+        .Gradient.Stop.Mauve.400, .Gradient.Stop.Mauve.500, .Gradient.Stop.Mauve.600, .Gradient.Stop.Mauve.700,
+        .Gradient.Stop.Mauve.800, .Gradient.Stop.Mauve.900, .Gradient.Stop.Mauve.950,
+        .Gradient.Stop.Olive.50, .Gradient.Stop.Olive.100, .Gradient.Stop.Olive.200, .Gradient.Stop.Olive.300,
+        .Gradient.Stop.Olive.400, .Gradient.Stop.Olive.500, .Gradient.Stop.Olive.600, .Gradient.Stop.Olive.700,
+        .Gradient.Stop.Olive.800, .Gradient.Stop.Olive.900, .Gradient.Stop.Olive.950,
+        .Gradient.Stop.Mist.50, .Gradient.Stop.Mist.100, .Gradient.Stop.Mist.200, .Gradient.Stop.Mist.300,
+        .Gradient.Stop.Mist.400, .Gradient.Stop.Mist.500, .Gradient.Stop.Mist.600, .Gradient.Stop.Mist.700,
+        .Gradient.Stop.Mist.800, .Gradient.Stop.Mist.900, .Gradient.Stop.Mist.950,
+        .Gradient.Stop.Taupe.50, .Gradient.Stop.Taupe.100, .Gradient.Stop.Taupe.200, .Gradient.Stop.Taupe.300,
+        .Gradient.Stop.Taupe.400, .Gradient.Stop.Taupe.500, .Gradient.Stop.Taupe.600, .Gradient.Stop.Taupe.700,
+        .Gradient.Stop.Taupe.800, .Gradient.Stop.Taupe.900, .Gradient.Stop.Taupe.950,
+        .Gradient.Stop.White, .Gradient.Stop.Black, .Gradient.Stop.Transparent, .Gradient.Stop.Current, .Gradient.Stop.Inherit,
+    ];
+    return leaves;
+}
+
+test "regression — every one of the 910 leaves declares something" {
+    val leaves = backgroundLeaves();
+    assert leaves.length == 910;
+    assert leaves.all({ t -> bgIsWellFormed(tokenDeclarations(t)) });
+}
+
+test "regression — the well-formedness walk discriminates" {
+    assert bgIsWellFormed("") == false;
+    assert bgIsWellFormed("background-size") == false;
+    assert bgIsWellFormed("background-size:cover");
+    val leaves = backgroundLeaves();
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf("background") != -1 }) == false;
+    assert leaves.all({ t -> tokenDeclarations(t).indexOf(";") != -1 }) == false;
+}
+
+test "regression — no background leaf resolves a colour or a length" {
+    val leaves = backgroundLeaves();
+    assert leaves.all({ t -> bgCarriesNoLiteral(tokenDeclarations(t)) });
+}
+
+test "regression — the literal walk discriminates, on real tokens" {
+    assert bgCarriesNoLiteral(tokenDeclarations(.Bg.White)) == false;
+    assert bgCarriesNoLiteral(tokenDeclarations(.Border.Rounded.Lg)) == false;
+    assert bgCarriesNoLiteral(tokenDeclarations(.Bg.Color.Red.500));
+    val strays: Token[] = [.Bg.White];
+    val planted: Token[] = backgroundLeaves().append(strays);
+    assert planted.all({ t -> bgCarriesNoLiteral(tokenDeclarations(t)) }) == false;
+}
+
+test "regression — no background leaf emits a Tailwind class fragment" {
+    val leaves = backgroundLeaves();
+    assert leaves.all({ t -> bgCarriesNoClassFragment(tokenDeclarations(t)) });
+}
+
+test "regression — the class-fragment walk discriminates" {
+    assert bgCarriesNoClassFragment("background-image:bg-gradient-to-r") == false;
+    assert bgCarriesNoClassFragment("background-clip:bg-clip-text") == false;
+    assert bgCarriesNoClassFragment("--tw-gradient-from:from-indigo-500") == false;
+    assert bgCarriesNoClassFragment("--tw-gradient-via:via-purple-500") == false;
+    assert bgCarriesNoClassFragment("background-size:cover");
+}
+
+test "regression — every colour stop is a reference, and every one is distinct" {
+    val cells: Token[] = [.Gradient.From.Red.50, .Gradient.From.Red.950,
+        .Gradient.Via.Taupe.500, .Gradient.Stop.Mist.300];
+    assert cells.all({ t -> tokenDeclarations(t).indexOf("var(--color-") != -1 });
+    assert tokenDeclarations(.Gradient.From.Red.50) != tokenDeclarations(.Gradient.From.Red.950);
+    assert tokenDeclarations(.Gradient.From.Red.500) != tokenDeclarations(.Gradient.Via.Red.500);
+    assert tokenDeclarations(.Gradient.Via.Red.500) != tokenDeclarations(.Gradient.Stop.Red.500);
+}
+
+// ── end front 39 ────────────────────────────────────────────

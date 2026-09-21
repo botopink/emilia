@@ -2,6 +2,51 @@
 
 ## Unreleased — v0.beta.22
 
+- **Gradient stops — `From`, `Via` and `Stop` over the whole palette, and 910
+  leaves walked for a literal** (1.0.10-beta front `39-emilia-backgrounds`,
+  steps 3–4). Each of the three stops carries front 33's grid — 26 families x
+  11 shades plus `White`/`Black`/`Transparent`/`Current`/`Inherit`, 291 leaves
+  each — and **the colour half of every one is `paletteVar(family, shade)`**,
+  the same function `.Bg.Color.*` calls. `.Gradient.From.Indigo.500` and
+  `.Bg.Color.Indigo.500` reference one custom property BY CONSTRUCTION rather
+  than by two transcriptions agreeing, asserted as the shared substring and
+  again through a project override that moves both.
+  **Token order is load-bearing and deliberately so**: `Via` writes a
+  three-stop list and `From` a two-stop one, whichever is listed last wins, and
+  `Stop` writes no list at all so that it cannot overwrite `Via`'s. Reversing
+  the two tokens reverses which list survives, pinned.
+  **The stop shape diverges from this front's spec, on the strength of the
+  upstream check the spec's own *Reference gaps* demanded.** The three
+  custom-property NAMES check out exactly against
+  `tailwindcss.com/docs/background-image` and the v4 source's
+  `gradientStopUtility`. The COMPOSITION does not: upstream threads four
+  position variables through the list (`--tw-gradient-position`,
+  `--tw-gradient-{from,via,to}-position`) and gives `via-*` its own
+  `--tw-gradient-via-stops`, both resting on `@property` registration for their
+  defaults. emilia emits no `@property` block and this front declares no
+  colour-stop positions, so copying that shape would emit a stop list that is
+  INVALID AT COMPUTED-VALUE TIME in every browser. What is kept is the part
+  that makes the simplification correct rather than merely short: upstream's
+  registered `#0000` default is written as a `var(…, transparent)` FALLBACK, so
+  `.Gradient.From.Indigo.500` alone still paints indigo → transparent instead
+  of resolving to nothing. That is the 1.0.8 draft's shape, which this front
+  carried forward `to weigh in the upstream check`; the check weighed it in.
+  The front's REGRESSION walks **all 910 leaves** — the 29 keyword leaves of
+  `Bg`, the eight directions and the 873 stops — through three predicates that
+  take a DECLARATION STRING rather than a token, so each can be handed a value
+  known to violate it: every leaf declares something non-empty carrying a `:`,
+  none resolves a colour or a length (`#`, `oklch(`, `rgb(`, `rem`), and none
+  emits a Tailwind class fragment. Each walk has its **control**: `.Bg.White`
+  and `.Border.Rounded.Lg` fail the literal predicate, four hand-built strings
+  fail the fragment one, and the well-formedness walk is run again over the
+  SAME list with a predicate known to be false for part of it, so `.all` over
+  this list is known to be able to answer false. Planting a `#ec4899` in one
+  stop arm and a `bg-cover` in one keyword arm was confirmed to red both walks.
+  The well-formedness walk is not boilerplate: a shadowed arm does not red, it
+  falls out of the `case` and the token declares the EMPTY STRING — which is
+  exactly how `.Layout.Block` was found dead this session.
+  20 tests; 240 → 260 in `modules/emilia`, green on commonJS and on erlang.
+
 - **Gradient direction — `Gradient.To`, the eight phrases of `§ 10.4`**
   (1.0.10-beta front `39-emilia-backgrounds`, step 2). `Gradient` is a
   TOP-LEVEL section and not a sub-section of `Bg`: a stop sets a custom
