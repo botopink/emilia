@@ -385,6 +385,37 @@ own leaves**, so `.Layout.Flex` is a display value and not a flex container:
 is `display:none`. The flex and grid CONTAINER properties — direction, wrap,
 alignment, `gap` — are `Token.Flex`'s, not `Layout`'s.
 
+Everything else in `§ 5` is a **sub-section** beside those leaves.
+
+#### Position and inset
+
+```bp
+.Layout.Position.Absolute   // position:absolute
+.Layout.Position.Sticky     // position:sticky
+
+.Layout.Inset.All.0         // inset:0
+.Layout.Inset.X.0           // left:0;right:0
+.Layout.Inset.Y.0           // top:0;bottom:0
+.Layout.Inset.T.4           // top:calc(var(--spacing) * 4)
+.Layout.Inset.T.Neg.4       // top:calc(var(--spacing) * -4)
+.Layout.Inset.T.Half.0      // top:calc(var(--spacing) * 0.5)
+.Layout.Inset.T.Frac.Half   // top:50%
+.Layout.Inset.T.Full        // top:100%
+.Layout.Inset.T.Auto        // top:auto
+.Layout.Inset.S.0           // inset-inline-start:0
+.Layout.Inset.E.0           // inset-inline-end:0
+```
+
+`Inset` carries the **nine directions** `Pad` and `Margin` carry — `All`, `X`,
+`Y`, `T`, `R`, `B`, `L` and the logical pair `S`/`E` — over the **same scale**,
+answering the **same** `spacing(n)` / `spacingHalf(n)`. That is not a
+coincidence to be maintained: `.Layout.Inset.T.4` and `.Pad.T.4` differ only in
+the property name, and a test asserts the two length strings are equal.
+
+`inset` is a real CSS shorthand, so `All` is one declaration. `left`/`right` and
+`top`/`bottom` have none, so `X` and `Y` expand to two — which is how `§ 5.17`
+prints `inset-x-0`.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

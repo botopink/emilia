@@ -61,7 +61,14 @@
 ////   Layout   — front 36: the `§ 5` vocabulary. The eleven display values are
 ////              the section's OWN leaves (Block, InlineBlock, Inline,
 ////              InlineFlex, InlineGrid, Contents, FlowRoot, ListItem, Hidden,
-////              Flex, Grid), so `.Layout.Flex` keeps its pre-36 spelling
+////              Flex, Grid), so `.Layout.Flex` keeps its pre-36 spelling, and
+////              one sub-section per property group sits beside them:
+////              Position, and Inset over the nine directions front 35's Pad
+////              and Margin use — All, X, Y, T, R, B, L, S, E — on the same
+////              scale, answering the same `spacing(n)`/`spacingHalf(n)`, plus
+////              Auto, Full and Frac { Half, Third, TwoThirds }. `inset` is a
+////              real CSS shorthand so All is ONE declaration; X and Y expand
+////              to two, which is how §5.17 prints `inset-x-0`
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
@@ -554,6 +561,144 @@ pub type Token {
         Hidden,
         Flex,
         Grid,
+        Position { Static, Fixed, Absolute, Relative, Sticky, }
+        Inset {
+            All {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            X {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            Y {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            T {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            R {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            B {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            L {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            S {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+            E {
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                Px,
+                Auto,
+                Full,
+                Frac { Half, Third, TwoThirds }
+                Half { 0, 1, 2, 3 }
+                Neg {
+                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
+                    40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
+                    Px,
+                    Half { 1, 2, 3 }
+                }
+            }
+        }
     }
     // ── end front 36 ─────────────────────────────────────────────────────────
 

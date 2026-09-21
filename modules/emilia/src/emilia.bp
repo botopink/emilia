@@ -142,7 +142,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Margin(_inner) -> declSheet(marginTokenToCss(_inner, th));
         Size(_inner) -> declSheet(sizeTokenToCss(_inner, th));
         Space(_inner) -> spaceTokenToSheet(_inner, th);
-        Layout(_inner) -> declSheet(layoutTokenToCss(_inner));
+        Layout(_inner) -> declSheet(layoutTokenToCss(_inner, th));
         Flex(_inner) -> declSheet(flexTokenToCss(_inner));
         Border(_inner) -> declSheet(borderTokenToCss(_inner));
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
@@ -2223,7 +2223,7 @@ test "end to end — a stacked thread spaces its children and pulls one back up"
 //
 // `Z` is the one numeric family here that is NOT a length: `z-50` is
 // `z-index:50`, a bare integer, and it never reaches `spacing`.
-fn layoutTokenToCss(t: Token.Layout) -> string {
+fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
     val out = case t {
         Block -> "display:block";
         InlineBlock -> "display:inline-block";
@@ -2236,6 +2236,583 @@ fn layoutTokenToCss(t: Token.Layout) -> string {
         Hidden -> "display:none";
         Flex -> "display:flex";
         Grid -> "display:grid";
+        Position(_inner) -> layoutPositionToCss(_inner);
+        Inset(_inner) -> layoutInsetToCss(_inner, th);
+    };
+    return out;
+}
+
+fn layoutPositionToCss(p: Token.Layout.Position) -> string {
+    val out = case p {
+        Static -> "position:static";
+        Fixed -> "position:fixed";
+        Absolute -> "position:absolute";
+        Relative -> "position:relative";
+        Sticky -> "position:sticky";
+    };
+    return out;
+}
+
+// THE NINE DIRECTIONS OF INSET. Upstream's `inset-`, `inset-x-`, `inset-y-`,
+// `top-`, `right-`, `bottom-`, `left-` and the logical pair `start-`/`end-`.
+// `inset` is a real CSS shorthand, so `All` is ONE declaration; `left`/`right`
+// and `top`/`bottom` have no shorthand, so `X` and `Y` expand to two — which is
+// how `§ 5.17` prints `inset-x-0`.
+//
+// `oneDecl` and `axisDecl` are front 35's, reused rather than re-spelled: two
+// fronts writing `prop + ":" + value` by hand are two fronts that will
+// eventually write it differently.
+fn layoutInsetToCss(t: Token.Layout.Inset, th: Theme) -> string {
+    val out = case t {
+        All(_inner) -> oneDecl("inset", insetScaleAll(_inner, th));
+        X(_inner) -> axisDecl("left", "right", insetScaleX(_inner, th));
+        Y(_inner) -> axisDecl("top", "bottom", insetScaleY(_inner, th));
+        T(_inner) -> oneDecl("top", insetScaleT(_inner, th));
+        R(_inner) -> oneDecl("right", insetScaleR(_inner, th));
+        B(_inner) -> oneDecl("bottom", insetScaleB(_inner, th));
+        L(_inner) -> oneDecl("left", insetScaleL(_inner, th));
+        S(_inner) -> oneDecl("inset-inline-start", insetScaleS(_inner, th));
+        E(_inner) -> oneDecl("inset-inline-end", insetScaleE(_inner, th));
+    };
+    return out;
+}
+
+fn insetScaleAll(s: Token.Layout.Inset.All, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracAll(_inner, th);
+        Half(_inner) -> insetHalfAll(_inner, th);
+        Neg(_inner) -> insetNegAll(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracAll(f: Token.Layout.Inset.All.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfAll(h: Token.Layout.Inset.All.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegAll(s: Token.Layout.Inset.All.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfAll(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfAll(h: Token.Layout.Inset.All.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleX(s: Token.Layout.Inset.X, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracX(_inner, th);
+        Half(_inner) -> insetHalfX(_inner, th);
+        Neg(_inner) -> insetNegX(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracX(f: Token.Layout.Inset.X.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfX(h: Token.Layout.Inset.X.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegX(s: Token.Layout.Inset.X.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfX(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfX(h: Token.Layout.Inset.X.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleY(s: Token.Layout.Inset.Y, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracY(_inner, th);
+        Half(_inner) -> insetHalfY(_inner, th);
+        Neg(_inner) -> insetNegY(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracY(f: Token.Layout.Inset.Y.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfY(h: Token.Layout.Inset.Y.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegY(s: Token.Layout.Inset.Y.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfY(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfY(h: Token.Layout.Inset.Y.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleT(s: Token.Layout.Inset.T, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracT(_inner, th);
+        Half(_inner) -> insetHalfT(_inner, th);
+        Neg(_inner) -> insetNegT(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracT(f: Token.Layout.Inset.T.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfT(h: Token.Layout.Inset.T.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegT(s: Token.Layout.Inset.T.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfT(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfT(h: Token.Layout.Inset.T.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleR(s: Token.Layout.Inset.R, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracR(_inner, th);
+        Half(_inner) -> insetHalfR(_inner, th);
+        Neg(_inner) -> insetNegR(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracR(f: Token.Layout.Inset.R.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfR(h: Token.Layout.Inset.R.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegR(s: Token.Layout.Inset.R.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfR(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfR(h: Token.Layout.Inset.R.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleB(s: Token.Layout.Inset.B, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracB(_inner, th);
+        Half(_inner) -> insetHalfB(_inner, th);
+        Neg(_inner) -> insetNegB(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracB(f: Token.Layout.Inset.B.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfB(h: Token.Layout.Inset.B.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegB(s: Token.Layout.Inset.B.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfB(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfB(h: Token.Layout.Inset.B.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleL(s: Token.Layout.Inset.L, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracL(_inner, th);
+        Half(_inner) -> insetHalfL(_inner, th);
+        Neg(_inner) -> insetNegL(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracL(f: Token.Layout.Inset.L.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfL(h: Token.Layout.Inset.L.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegL(s: Token.Layout.Inset.L.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfL(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfL(h: Token.Layout.Inset.L.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleS(s: Token.Layout.Inset.S, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracS(_inner, th);
+        Half(_inner) -> insetHalfS(_inner, th);
+        Neg(_inner) -> insetNegS(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracS(f: Token.Layout.Inset.S.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfS(h: Token.Layout.Inset.S.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegS(s: Token.Layout.Inset.S.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfS(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfS(h: Token.Layout.Inset.S.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn insetScaleE(s: Token.Layout.Inset.E, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28);
+        __32 -> spacing(32); __36 -> spacing(36); __40 -> spacing(40);
+        __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Auto -> "auto";
+        Full -> "100%";
+        Frac(_inner) -> insetFracE(_inner, th);
+        Half(_inner) -> insetHalfE(_inner, th);
+        Neg(_inner) -> insetNegE(_inner, th);
+    };
+    return out;
+}
+
+fn insetFracE(f: Token.Layout.Inset.E.Frac, th: Theme) -> string {
+    val out = case f {
+        Half -> "50%"; Third -> "33.333333%"; TwoThirds -> "66.666667%";
+    };
+    return out;
+}
+
+fn insetHalfE(h: Token.Layout.Inset.E.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn insetNegE(s: Token.Layout.Inset.E.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> insetNegHalfE(_inner, th);
+    };
+    return out;
+}
+
+fn insetNegHalfE(h: Token.Layout.Inset.E.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
     };
     return out;
 }
@@ -2263,6 +2840,89 @@ test "display — the eleven `§ 5.8` values, the six that predate front 36 firs
 test "display — `hidden` is `display:none`, the one row whose name is not its value" {
     assert tokenDeclarations(.Layout.Hidden) == "display:none";
     assert tokenDeclarations(.Layout.Hidden).indexOf("hidden") == -1;
+}
+
+test "position — the five values of `§ 5.16`" {
+    assert tokenDeclarations(.Layout.Position.Static) == "position:static";
+    assert tokenDeclarations(.Layout.Position.Fixed) == "position:fixed";
+    assert tokenDeclarations(.Layout.Position.Absolute) == "position:absolute";
+    assert tokenDeclarations(.Layout.Position.Relative) == "position:relative";
+    assert tokenDeclarations(.Layout.Position.Sticky) == "position:sticky";
+}
+
+test "inset — the nine directions, each with its own property and its own expansion" {
+    assert tokenDeclarations(.Layout.Inset.All.4) == "inset:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.X.4) == "left:calc(var(--spacing) * 4);right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.Y.4) == "top:calc(var(--spacing) * 4);bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.T.4) == "top:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.R.4) == "right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.B.4) == "bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.L.4) == "left:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.S.4) == "inset-inline-start:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Layout.Inset.E.4) == "inset-inline-end:calc(var(--spacing) * 4)";
+}
+
+// `inset` IS a CSS shorthand, so `All` is one declaration; `left`/`right` and
+// `top`/`bottom` are not, which is why `§ 5.17` prints `inset-x-0` as two.
+test "inset — `All` is the shorthand, `X` and `Y` are the two declarations CSS has no shorthand for" {
+    assert tokenDeclarations(.Layout.Inset.All.0) == "inset:0";
+    assert tokenDeclarations(.Layout.Inset.X.0) == "left:0;right:0";
+    assert tokenDeclarations(.Layout.Inset.Y.0) == "top:0;bottom:0";
+}
+
+test "inset — the logical pair follows the writing direction where L/R do not" {
+    assert tokenDeclarations(.Layout.Inset.S.0) == "inset-inline-start:0";
+    assert tokenDeclarations(.Layout.Inset.E.0) == "inset-inline-end:0";
+}
+
+test "inset — the keyword and fraction leaves of `§ 5.17`" {
+    assert tokenDeclarations(.Layout.Inset.T.Auto) == "top:auto";
+    assert tokenDeclarations(.Layout.Inset.T.Full) == "top:100%";
+    assert tokenDeclarations(.Layout.Inset.T.Frac.Half) == "top:50%";
+    assert tokenDeclarations(.Layout.Inset.T.Frac.Third) == "top:33.333333%";
+    assert tokenDeclarations(.Layout.Inset.T.Frac.TwoThirds) == "top:66.666667%";
+    assert tokenDeclarations(.Layout.Inset.T.Px) == "top:1px";
+}
+
+// `-top-4` is a real utility with no alternative spelling, so `Neg` carries it
+// the same way `Margin.T.Neg` does — and through the same `spacing(-4)`.
+test "inset — negatives go through `spacing(-n)`, never through a second calc" {
+    assert tokenDeclarations(.Layout.Inset.T.Neg.4) == "top:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Layout.Inset.All.Neg.2) == "inset:calc(var(--spacing) * -2)";
+    assert tokenDeclarations(.Layout.Inset.X.Neg.6) == "left:calc(var(--spacing) * -6);right:calc(var(--spacing) * -6)";
+    assert tokenDeclarations(.Layout.Inset.T.Neg.Px) == "top:-1px";
+    assert tokenDeclarations(.Layout.Inset.T.Neg.Half.1) == "top:calc(var(--spacing) * -1.5)";
+}
+
+test "inset — the half rungs answer `spacingHalf`, so `top-0.5` is reachable" {
+    assert tokenDeclarations(.Layout.Inset.T.Half.0) == "top:calc(var(--spacing) * 0.5)";
+    assert tokenDeclarations(.Layout.Inset.T.Half.3) == "top:calc(var(--spacing) * 3.5)";
+}
+
+// THE ARGUMENT OF THIS FRONT'S NUMERIC FAMILY, asserted rather than asserted
+// about. The inset ladder and the padding ladder are the same ladder because
+// both answer `spacing(n)`; nothing here is a second transcription that could
+// drift. Strip the property name and the two are the same string.
+test "inset and padding agree by construction — one scale, two properties" {
+    val inset = tokenDeclarations(.Layout.Inset.T.4);
+    val pad = tokenDeclarations(.Pad.T.4);
+    assert inset == "top:" + spacing(4);
+    assert pad == "padding-top:" + spacing(4);
+    val insetValue = inset.split(":").at(1) ?? "";
+    val padValue = pad.split(":").at(1) ?? "";
+    assert insetValue == padValue;
+    assert inset.indexOf("calc(var(--spacing) * 4)") != -1;
+    assert pad.indexOf("calc(var(--spacing) * 4)") != -1;
+}
+
+test "end to end — a badge pinned to the corner of a relative card" {
+    val card: Token[] = [.Layout.Position.Relative, .Pad.All.4];
+    val badge: Token[] = [.Layout.Position.Absolute, .Layout.Inset.T.Neg.2, .Layout.Inset.R.Neg.2];
+    val cardCls = emilia(card);
+    val badgeCls = emilia(badge);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("." + cardCls + "{position:relative;padding:calc(var(--spacing) * 4)}") != -1;
+    assert styles.indexOf("." + badgeCls + "{position:absolute;top:calc(var(--spacing) * -2);right:calc(var(--spacing) * -2)}") != -1;
 }
 
 // ── end front 36 ─────────────────────────────────────────────────────────────

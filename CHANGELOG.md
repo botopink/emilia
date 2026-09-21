@@ -15,6 +15,23 @@
   front 35 records — two fronts appending to the same last line cannot be
   merged.
 
+- **`position` and the whole inset family** (1.0.10-beta front
+  `36-emilia-layout`, step 2). Nothing in emilia could be positioned, and no
+  positioned box could be placed: `§ 5.16` and `§ 5.17` had no token at all.
+  `Layout.Position` answers the five values and `Layout.Inset` the **nine
+  directions front 35's `Pad` and `Margin` already carry** — `All`, `X`, `Y`,
+  `T`, `R`, `B`, `L` and the logical pair `S`/`E` — over the **same scale**,
+  answering the **same** `spacing(n)` / `spacingHalf(n)`, plus `Auto`, `Full`,
+  `Frac { Half, Third, TwoThirds }` and a `Neg` sub-section per direction for
+  `-top-4`. `.Layout.Inset.T.4` and `.Pad.T.4` therefore carry identical length
+  text BY CONSTRUCTION rather than by two transcriptions that agree today; a
+  test asserts the two values are equal rather than asserting each separately.
+  `inset` is a real CSS shorthand so `All` is one declaration, while `X` and `Y`
+  expand to `left:…;right:…` and `top:…;bottom:…` — `§ 5.17`'s own printing —
+  through front 35's `axisDecl`, reused rather than re-spelled.
+  `layoutTokenToCss` takes `th: Theme` from this step on, which is this front's
+  one line of the shared `case` and nothing else of it.
+
 - **`examples/emilia-card` stops pinning a compiler defect.** The commonJS
   `case`-over-a-uniquely-named-variant defect recorded further down this file
   is **fixed upstream**: such an arm now compares the `tag` string instead of
