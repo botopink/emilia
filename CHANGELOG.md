@@ -2,6 +2,22 @@
 
 ## Unreleased — v0.beta.22
 
+- **`examples/emilia-card` stops pinning a compiler defect.** The commonJS
+  `case`-over-a-uniquely-named-variant defect recorded further down this file
+  is **fixed upstream**: such an arm now compares the `tag` string instead of
+  testing `instanceof`, so a value built in a consumer package is matched by
+  the library again. `.Text.Size.X3xl` and `.Text.Size.Base` reach the CSS, and
+  the example's two class-body assertions — written to pin the pre-fix shape so
+  the fix would show up as a change there — are rewritten to the real output:
+  `.e_…{font-size:1.875rem;font-weight:bold;color:var(--color-red-600)}` and
+  `.e_…{font-size:1rem;color:var(--color-gray-600)}`. The comment declaring
+  them pinned is gone. Nothing in the library changed; `botopink test` in
+  `examples/emilia-card` is 4/4 on its one declared target, commonJS. The
+  example's 600 shades stay 600: front 33 moved them off 500 to dodge the
+  leading-dot section resolver, and **that defect is still live** —
+  `.Color.Red.500` and `.Color.Gray.500` still red with `type mismatch:
+  expected Token, got __Token__Border`. See the BLOCKED note in `emilia.bp`.
+
 - **The colour palette resolves through the theme** (1.0.10-beta front
   `33-emilia-color-palette`, step 1). `Token.Color` is the 26-family x
   11-shade grid of `§ 3.6` / `§ 21.1` — the seventeen chromatic families

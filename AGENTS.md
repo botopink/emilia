@@ -360,18 +360,19 @@ to the commonJS row and runs once.
   template does, so every non-empty class body did. Never call `String.slice` in
   this library: split on the separator instead. erlang is unaffected, so the
   suite is green on one target and dead on the other. Reported to botopink-lang.
-- **A `case` arm over a uniquely-named variant lowers to `instanceof`, and
-  `instanceof` does not cross a package boundary.** The commonJS backend lowers
-  an arm whose variant name is unique in the program to `_s instanceof
-  __Token__Text__Size$X3xl` and an arm whose name repeats to `_s.tag === "Lg"`.
+- **FIXED — a `case` arm over a uniquely-named variant used to lower to
+  `instanceof`, which does not cross a package boundary.** The commonJS backend
+  lowered an arm whose variant name was unique in the program to `_s instanceof
+  __Token__Text__Size$X3xl` and an arm whose name repeated to `_s.tag === "Lg"`.
   A consumer package **re-emits its own copy** of the enum classes, so a value
-  built in `examples/emilia-card/` is never `instanceof` the class `emilia`
-  matches against: the `case` falls through every arm and answers `undefined`.
-  `.Text.Size.X3xl` and `.Text.Size.Base` are missing from that example's class
-  bodies for this reason and were before front 56 too; `.Text.Size.Lg` survives
-  only because `Lg` repeats elsewhere in `Token`. It is invisible inside
-  emilia's own suite, where there is one copy of the classes. Reported to
-  botopink-lang.
+  built in `examples/emilia-card/` was never `instanceof` the class `emilia`
+  matched against: the `case` fell through every arm and answered `undefined`,
+  which is why `.Text.Size.X3xl` and `.Text.Size.Base` were missing from that
+  example's class bodies. It was invisible inside emilia's own suite, where
+  there is one copy of the classes. botopink-lang now compares the `tag` string
+  for a uniquely-named variant too; the example asserts the full class bodies
+  and is green. Kept here as the reason a cross-package `case` is worth a
+  runnable example.
 - **`Array.reverse()` mutates its receiver on commonJS and does not on erlang.**
   `val rev = xs.reverse();` leaves `xs` reversed on commonJS (native
   `Array.prototype.reverse` is in-place and the codegen calls it directly) and
