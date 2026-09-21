@@ -1324,6 +1324,188 @@ property and the shadow utility reads it back. The **value** still is, so there
 is nothing byte-equal to emit, and it reopens the moment the reference carries
 a row.
 
+### Transition and Animate — `§ 15`
+
+Before front 44 there was no `transition` token anywhere in emilia, which meant
+every state front 34 made expressible arrived in **one frame**: a button that
+darkens on hover darkened between two frames with nothing in between. There was
+also no `animate-spin`, so "something is happening" — the most common piece of
+feedback an application gives — had no token at all and needed a hand-written
+stylesheet beside emilia.
+
+`Transition` is `§ 15.1`–`§ 15.5` and `Animate` is `§ 15.6`. **36 leaves.**
+
+#### The presets — one token, three declarations
+
+`§ 15.1` is unusual: six of its seven rows are **three declarations from one
+utility**. `transition-colors` sets the property list, the timing function and
+the duration together. emilia needs no new machinery for that — `tokensToCss`
+joins with `;` already — so one leaf answers a `;`-joined string and the
+token-to-class mapping stays one-to-one.
+
+| Token | CSS |
+| --- | --- |
+| `.Transition.None` | `transition-property:none` — the one single-declaration row |
+| `.Transition.Base` | the eleven-property list, `var(--ease-out)`, `150ms` |
+| `.Transition.All` | `transition-property:all` + the same tail |
+| `.Transition.Colors` | `color, background-color, border-color, text-decoration-color, fill, stroke` + the tail |
+| `.Transition.Opacity` | `transition-property:opacity` + the tail |
+| `.Transition.Shadow` | `transition-property:box-shadow` + the tail |
+| `.Transition.Transform` | `transition-property:transform` + the tail |
+
+The bare `transition` utility is `.Transition.Base`, **not** `.Transition.Default`,
+for two reasons at once: `default` is in the language's keyword table, and
+`Default(inner)` is already a top-level modifier variant of front 34's — the
+exact collision the section-head audit exists to catch.
+
+**Note the space after each comma.** `color, background-color, …` is the
+reference's own spelling and byte-equality is the gate, so a test counts the
+separators as well as spelling the list: eleven properties, ten `, `.
+
+#### `transition-behavior` — the class and the value disagree
+
+| Token | CSS |
+| --- | --- |
+| `.Transition.Behavior.Normal` | `transition-behavior:normal` |
+| `.Transition.Behavior.Discrete` | `transition-behavior:allow-discrete` |
+
+`transition-discrete` emits `allow-discrete`, not `discrete`. It has a test of
+its own, asserted in both directions, because it is exactly the row that gets
+written from memory and gets written wrong.
+
+#### Duration, delay and easing
+
+`.Transition.Duration.__N` and `.Transition.Delay.__N` over
+`{0, 75, 100, 150, 200, 300, 500, 700, 1000}`, emitting
+`transition-duration:<N>ms` and `transition-delay:<N>ms`. **Every step carries
+its unit, `0ms` included** — a bare `0` is legal CSS for a length and is not
+what `§ 15.3` prints. These two are **not** theme lookups, and that is the
+reference's call: `§ 15.3` and `§ 15.5` print the milliseconds literally and
+upstream has no `--duration-*` namespace.
+
+| Token | CSS |
+| --- | --- |
+| `.Transition.Ease.Linear` | `transition-timing-function:linear` — a CSS keyword |
+| `.Transition.Ease.In` | `transition-timing-function:var(--ease-in)` |
+| `.Transition.Ease.Out` | `transition-timing-function:var(--ease-out)` |
+| `.Transition.Ease.InOut` | `transition-timing-function:var(--ease-in-out)` |
+
+`ease-linear` is CSS's own keyword; upstream has no `--ease-linear` and emilia
+does not invent one.
+
+#### A preset then an override
+
+```bp
+val tokens: Token[] = [.Transition.Colors, .Transition.Duration.__200];
+```
+
+Two tokens, two rules, four declarations — and the preset's `150ms` is still in
+the output with the `200ms` after it. **List order is declaration order**, so
+the later one wins; reversing the two is a different class whose preset now
+overrides the override.
+
+#### `transitionEntries()` — three PROVISIONAL `--ease-*` values
+
+`defaultTheme()` carries the four `--animate-*` entries and **no `--ease-*`**,
+so a project composes them:
+
+```bp
+val th = extendTheme(defaultTheme(), transitionEntries());
+```
+
+| Name | Value |
+| --- | --- |
+| `--ease-in` | `cubic-bezier(0.4, 0, 1, 1)` |
+| `--ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
+| `--ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` |
+
+**The three VALUES are provisional.** `§ 15.4` prints the three *names* — it
+writes `transition-timing-function: var(--ease-in)` — and prints no value for
+any of them; `§ 21`'s theme tables carry `--color-*`, `--text-*`, `--radius-*`
+and `--animate-*` and no `--ease-*` row at all. The cubic-beziers come from the
+1.0.8-beta draft this front replaces. What is **not** provisional: the three
+names are the reference's, verbatim; the namespace is front 54's `Ns.Ease`, so
+`extendTheme` accepts them and `clearNamespace(th, Ns.Ease)` drops exactly these
+three; and the shape is a single timing function. If a later front replaces the
+values, **nothing else moves** — not a leaf, not a declaration, not a class
+name — because every rule references the variable and never its value.
+
+#### Animate — a declaration and a block
+
+| Token | CSS | Block |
+| --- | --- | --- |
+| `.Animate.None` | `animation:none` | none |
+| `.Animate.Spin` | `animation:var(--animate-spin)` | `@keyframes spin` |
+| `.Animate.Ping` | `animation:var(--animate-ping)` | `@keyframes ping` |
+| `.Animate.Pulse` | `animation:var(--animate-pulse)` | `@keyframes pulse` |
+| `.Animate.Bounce` | `animation:var(--animate-bounce)` | `@keyframes bounce` |
+
+`animateTokenToSheet` is the **one dispatcher in fronts 41–47 that answers a
+`Sheet`** rather than a declaration string, because `animate-spin` is only half
+a rule: the other half is the `@keyframes spin` block, which is not a style
+rule and cannot be nested inside one. Front 56's `blockSheet(header, body)` and
+`Sheet.blocks` carry it, `renderDocument` hoists it **out of every cascade
+layer to the end of the document**, and `dedupeBlocks` there is what makes two
+spinners on a page one block.
+
+**The keyframes bodies are read out of the theme, not transcribed here.** Front
+54's `keyframeEntries()` already carries all four and `renderDocument` already
+hoists them; `animationSheet(th, name)` looks the body up through
+`keyframeCss(th)`, so there is exactly one copy of that table in the library.
+The consequence, and it is asserted: under a theme that carries no body for a
+name, the token still emits its declaration and hoists **no** block — which is
+also what makes `.Animate.None` and `AnimateRaw` blockless without a special
+case.
+
+#### Arbitrary values — `rawTransitionProperty`, `rawAnimate`
+
+```bp
+val tokens: Token[] = [
+    rawTransitionProperty("width"),
+    rawAnimate("fade 300ms ease-out"),
+];
+```
+
+`Token.TransitionProperty(value)` and `Token.AnimateRaw(value)` are **top-level**
+variants, not `Transition.Property(…)` / `Animate.Raw(…)`, because a payload
+leaf nested inside an enum section cannot be constructed by any spelling (see
+§ `Color.Hex("#abc")` is declared and unconstructible). For `AnimateRaw` that is
+not an inconvenience: it is the *only* way to name an animation this library
+does not ship, so the nested spelling would have shut the door rather than
+narrowed it. The wrappers exist because a leading-dot path followed by a payload
+call does not carry the typed-array context either.
+
+`rawAnimate` goes through `declSheet` and **not** through `animateTokenToSheet`:
+a custom animation names keyframes emilia does not own, so it hoists no block.
+
+Both are **PROVISIONAL as a pair** — `§ 15` prints no arbitrary-value row, here
+or anywhere. What is not provisional is the property each one sets.
+
+#### Nothing in `Transition` or `Animate` resolves a timing function
+
+A test walks all **36 leaves** asserting the declaration carries a `:`; carries
+neither `cubic-bezier(` nor `infinite`; carries no Tailwind class fragment; and
+— for the two ms ladders — ends in `ms`. Each probe has a control that must
+fail **and** a control proving it does not fire on correct output:
+`var(--animate-spin)` legitimately contains the class name `animate-spin` and
+`var(--ease-in-out)` contains `ease-in-out`, so neither is in the fragment list
+and both are asserted *not* to trip it.
+
+The walk reads **declarations and not sheets**, deliberately: the
+`@keyframes bounce` body legitimately carries `cubic-bezier(0.8,0,1,1)`, and it
+is a block, not a declaration. The four bodies are pinned as literals beside it.
+
+`examples/emilia-transitions/` is the worked example: the catalogue, the
+preset-then-override ordering as working code, and a submit button whose colours
+move over 200ms on hover and which dims and grows a spinner while the form is in
+flight.
+
+#### Not declared
+
+`@starting-style`. `§ 15` has six subsections and none of them mentions it, so a
+token for it would be written from memory. Front 56's `Sheet.blocks` would carry
+it the day the reference does.
+
 ### Modifiers — the variant table
 
 A modifier is the only way a token reaches a state, a breakpoint or a

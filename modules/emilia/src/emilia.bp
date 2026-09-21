@@ -1,10 +1,10 @@
 import {Token} from "tokens";
 import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
 import {darkAtRule, darkSelector, withDarkMode} from "theme";
-import {Ns, nsPrefix, themeVar, namespace} from "theme";
+import {Ns, nsPrefix, themeVar, namespace, keyframeCss} from "theme";
 import {spacing, spacingHalf} from "spacing";
 import {Rule, Block, Sheet, Variant, Options} from "output";
-import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant, markImportant} from "output";
+import {emptySheet, declSheet, blockSheet, mergeSheet, declarationsOf, nestVariant, markImportant} from "output";
 import {encodeSheet, decodeSheet, carriesSeparator} from "output";
 import {defaultOptions, withTheme, renderRule, renderDocument} from "output";
 
@@ -168,6 +168,20 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         EffectTextShadowRaw(value) -> declSheet("text-shadow:" + value);
         MaskImageRaw(value) -> declSheet("mask-image:" + value);
         // ── end front 41 ───────────────────────────────────────
+        // ── front 44 — transitions and animation ───────────────
+        Transition(_inner) -> declSheet(transitionTokenToCss(_inner, th));
+        // THE ONE ARM OF THIS FRONT THAT DOES NOT GO THROUGH `declSheet`: a
+        // named animation needs a `@keyframes` block beside its rule, and a
+        // keyframes rule is not a style rule, so the dispatcher answers a
+        // `Sheet` (front 56's second shape) instead of a declaration string.
+        Animate(_inner) -> animateTokenToSheet(_inner, th);
+        // The two arbitrary-value variants are SIBLINGS of `Transition` and
+        // `Animate`, not leaves inside them. `AnimateRaw` goes through
+        // `declSheet` and NOT through `animateTokenToSheet`: a custom animation
+        // names keyframes this front does not own, so it hoists no block.
+        TransitionProperty(value) -> declSheet("transition-property:" + value);
+        AnimateRaw(value) -> declSheet("animation:" + value);
+        // ── end front 44 ───────────────────────────────────────
         // ── front 39 — backgrounds ─────────────────────────
         Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
         // ── end front 39 ─────────────────────────────
@@ -11609,6 +11623,816 @@ test "regression — the walk fails when a foreign class fragment is planted in 
 }
 
 // ── end front 41 ─────────────────────────────────────────────────────────────
+
+// ── front 44 — transitions and animation ─────────────────────────────────────
+//
+// FRONT 44 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the
+// `Transition` and `Animate` dispatchers, their sub-dispatchers, the two
+// arbitrary-value wrappers, `transitionEntries()` and the tests under the same
+// name.
+//
+// THE GAP THIS FRONT CLOSES. emilia had no `transition`, no `duration`, no
+// timing function and no `animation` at all, so the six state modifiers front
+// 34 shipped were all instantaneous: a button that darkens on hover darkened in
+// one frame and a panel that faded in did not fade. The loading half was worse
+// than cosmetic — there was no token for `animate-spin`, so a spinner meant a
+// hand-written stylesheet beside emilia in the same codebase.
+//
+// NO LEAF RESOLVES A TIMING FUNCTION OR AN ANIMATION — fronts 35-41's rule, one
+// family further on. `§ 15.4` prints `transition-timing-function: var(--ease-in)`
+// and `§ 15.6` prints `animation: var(--animate-spin)`, so both are `themeVar`
+// lookups against front 54's `Ns.Ease` and `Ns.Animate` prefixes, and the four
+// animation shorthands (`spin 1s linear infinite`, …) and the three easing
+// cubic-beziers are THEME ENTRIES rather than dispatcher constants. The walk at
+// the bottom asserts that from both sides: no declaration this front emits
+// carries `cubic-bezier(` or `infinite`, and the theme does carry both.
+//
+// `duration-*` AND `delay-*` ARE NOT THEME LOOKUPS, and that is the reference's
+// call, not a shortcut: `§ 15.3` and `§ 15.5` print `transition-duration: 150ms`
+// literally and upstream has no `--duration-*` namespace. The `150ms` inside
+// the six presets is the same literal from the same rows of `§ 15.1`.
+//
+// THE ONE `…TokenToSheet` ARM IN FRONTS 41-47. `animateTokenToSheet` answers a
+// `Sheet`, not a declaration string, because `animation:var(--animate-spin)`
+// is only half of what `animate-spin` means — the other half is the
+// `@keyframes spin` block, which is not a style rule and cannot be nested in
+// one. Front 56's `blockSheet(header, body)` and `Sheet.blocks` carry it and
+// `renderDocument` hoists it; `dedupeBlocks` there is what makes two spinners
+// on a page one block.
+//
+// THE KEYFRAMES GATE THE SPEC OPENS WAS ALREADY CLOSED BY FRONT 54, and this
+// front reads the tree rather than re-transcribing the upstream page. The four
+// `--animate-*` entries are in `theme.bp`'s `animateEntries()` and the four
+// `@keyframes` BODIES in its `keyframeEntries()`, both inside `defaultTheme()`,
+// and `renderDocument` already hoists them through `themeBlocks`. So
+// `animateTokenToSheet` READS THE BODY OUT OF THE THEME IT IS HANDED instead of
+// pasting a second copy beside it — a second transcription of one table is how
+// two tables drift (front 38 declined the same invitation over `--text-*`). The
+// consequence worth knowing, and asserted below: under a theme that carries no
+// keyframes body for a name, the token still emits its declaration and hoists
+// NO block, which is also what makes `.Animate.None` and `AnimateRaw` blockless
+// without a special case.
+//
+// WHAT THIS FRONT DOES OWE THE THEME: the three `--ease-*` entries, in
+// `transitionEntries()` below. `defaultTheme()` carries the four `--animate-*`
+// and neither `--ease-*` nor a cubic-bezier, so `.Transition.All` under the
+// stock theme references a variable the stock document does not define. The
+// three values are PROVISIONAL — see the note at the declaration.
+
+// The two reference builders, and the only places this front spells a
+// namespace prefix.
+fn easeVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.Ease) + name);
+}
+
+fn animateVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.Animate) + name);
+}
+
+// `§ 15.1`'s six preset rows are THREE DECLARATIONS FROM ONE UTILITY, and this
+// is the only place the shared tail is written. `tokensToCss` joins tokens with
+// `;` already, so a leaf whose body is itself several `;`-joined declarations
+// drops into a rule body with no special handling and the token-to-class
+// mapping stays one-to-one.
+//
+// NOTE THE SPACE AFTER EACH COMMA in the property lists below — `color,
+// background-color, …`. That is the reference's own spelling and byte-equality
+// is the gate, so a well-meaning whitespace normaliser fails a test rather than
+// changing the output quietly.
+fn transitionPreset(properties: string) -> string {
+    return "transition-property:" + properties
+        + ";transition-timing-function:" + easeVar("out")
+        + ";transition-duration:150ms";
+}
+
+// `§ 15.1`-`§ 15.5`. `th` is the contract `§ 4a` parameter; nothing here reads
+// it, because `themeVar` builds a REFERENCE and never resolves one.
+fn transitionTokenToCss(t: Token.Transition, th: Theme) -> string {
+    val out = case t {
+        // The one row of `§ 15.1` that is a single declaration.
+        None -> "transition-property:none";
+        // `transition` bare — spelled `Base` because `default` is a keyword AND
+        // `Default(inner)` is already a top-level modifier.
+        Base -> transitionPreset("color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter");
+        All -> transitionPreset("all");
+        Colors -> transitionPreset("color, background-color, border-color, text-decoration-color, fill, stroke");
+        Opacity -> transitionPreset("opacity");
+        Shadow -> transitionPreset("box-shadow");
+        Transform -> transitionPreset("transform");
+        Behavior(_inner) -> "transition-behavior:" + transitionBehaviorValue(_inner);
+        Duration(_inner) -> "transition-duration:" + transitionDurationValue(_inner);
+        Ease(_inner) -> "transition-timing-function:" + transitionEaseValue(_inner);
+        Delay(_inner) -> "transition-delay:" + transitionDelayValue(_inner);
+    };
+    return out;
+}
+
+// `§ 15.2`. THE CLASS NAME AND THE CSS VALUE DO NOT MATCH: `transition-discrete`
+// emits `allow-discrete`. That is exactly the kind of row that gets written
+// from memory and gets written wrong, so it has a test of its own below.
+fn transitionBehaviorValue(b: Token.Transition.Behavior) -> string {
+    val out = case b {
+        Normal -> "normal";
+        Discrete -> "allow-discrete";
+    };
+    return out;
+}
+
+// `§ 15.3`. Nine steps, every one carrying the `ms` unit — `0ms` included,
+// which is what the reference prints and what a bare `0` would not be.
+fn transitionDurationValue(d: Token.Transition.Duration) -> string {
+    val out = case d {
+        __0 -> "0ms";
+        __75 -> "75ms";
+        __100 -> "100ms";
+        __150 -> "150ms";
+        __200 -> "200ms";
+        __300 -> "300ms";
+        __500 -> "500ms";
+        __700 -> "700ms";
+        __1000 -> "1000ms";
+    };
+    return out;
+}
+
+// `§ 15.4`. `ease-linear` is a CSS KEYWORD and not a lookup — upstream has no
+// `--ease-linear` — and the other three are `--ease-*` references whose
+// cubic-beziers live in `transitionEntries()` below.
+fn transitionEaseValue(e: Token.Transition.Ease) -> string {
+    val out = case e {
+        Linear -> "linear";
+        In -> easeVar("in");
+        Out -> easeVar("out");
+        InOut -> easeVar("in-out");
+    };
+    return out;
+}
+
+// `§ 15.5`. The same nine steps as `§ 15.3` on a different property. The two
+// tables are written twice because `Token.Transition.Duration` and
+// `Token.Transition.Delay` are two distinct types and a `case` cannot be
+// generic over them — front 41 carries `blendMixValue` beside `blendBgValue`
+// for the same reason. A test below asserts the two agree value for value, so
+// a typo in one and not the other is a red and not a drift.
+fn transitionDelayValue(d: Token.Transition.Delay) -> string {
+    val out = case d {
+        __0 -> "0ms";
+        __75 -> "75ms";
+        __100 -> "100ms";
+        __150 -> "150ms";
+        __200 -> "200ms";
+        __300 -> "300ms";
+        __500 -> "500ms";
+        __700 -> "700ms";
+        __1000 -> "1000ms";
+    };
+    return out;
+}
+
+// The `@keyframes` body a theme carries for one animation name, or `""` when it
+// carries none. `keyframeCss(th)` is front 54's accessor and `Ns.Keyframes` its
+// prefix; this front spells neither the bodies nor the at-rule.
+fn keyframeBody(th: Theme, name: string) -> string {
+    val bodies = keyframeCss(th).filter({ e -> e.name == name }).map({ e -> e.value });
+    return bodies.at(0) ?? "";
+}
+
+// One built-in animation: the declaration, plus the theme's `@keyframes` block
+// for it when the theme has one. A theme with the namespace emptied still gets
+// a correct declaration and hoists nothing, which is the honest answer — there
+// is no block to hoist.
+fn animationSheet(th: Theme, name: string) -> Sheet {
+    val decl = declSheet("animation:" + animateVar(name));
+    val body = keyframeBody(th, name);
+    val block = if (body == "") emptySheet() else blockSheet(nsPrefix(Ns.Keyframes) + name, body);
+    return mergeSheet(decl, block);
+}
+
+// `§ 15.6`. FIVE leaves — the front README says six and counts `AnimateRaw`,
+// which is a top-level variant with its own `tokenToSheet` arm and never
+// reaches this `case`.
+fn animateTokenToSheet(t: Token.Animate, th: Theme) -> Sheet {
+    val out = case t {
+        // A keyword, and the one leaf here that names no keyframes.
+        None -> declSheet("animation:none");
+        Spin -> animationSheet(th, "spin");
+        Ping -> animationSheet(th, "ping");
+        Pulse -> animationSheet(th, "pulse");
+        Bounce -> animationSheet(th, "bounce");
+    };
+    return out;
+}
+
+// ── the theme entries this front contributes ─────────────────────────────────
+//
+// THE THREE VALUES ARE PROVISIONAL and this is where a reader hits that, not a
+// table at the bottom of a README. `§ 15.4` prints the three NAMES — it writes
+// `transition-timing-function: var(--ease-in)` and friends — and prints no
+// value for any of them; `§ 21`'s theme tables cover `--color-*`, `--text-*`,
+// `--radius-*` and `--animate-*` and carry no `--ease-*` row at all. The three
+// cubic-beziers below come from the 1.0.8-beta draft this front replaces.
+//
+// WHAT IS NOT PROVISIONAL ABOUT THEM, which is the half front 40's bare list
+// left out: the three NAMES are the reference's own, verbatim from `§ 15.4`;
+// the NAMESPACE is front 54's `Ns.Ease`, so `extendTheme` accepts them and
+// `clearNamespace(th, Ns.Ease)` drops exactly these three; and the SHAPE is the
+// shape every confirmed `--ease-*` consumer expects, a single timing function.
+// If a later front replaces the values with upstream's, nothing else moves —
+// not a leaf, not a declaration, not a class name, because every rule this
+// front emits names the variable and never its value.
+//
+// `defaultTheme()` does NOT carry these — front 54 ships the four `--animate-*`
+// and stops there — so a project composes them the way front 33's palette is
+// composed: `extendTheme(defaultTheme(), transitionEntries())`.
+pub fn transitionEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--ease-in", value: "cubic-bezier(0.4, 0, 1, 1)"),        // PROVISIONAL — `§ 15.4` prints no value
+        ThemeEntry(name: "--ease-out", value: "cubic-bezier(0, 0, 0.2, 1)"),       // PROVISIONAL — `§ 15.4` prints no value
+        ThemeEntry(name: "--ease-in-out", value: "cubic-bezier(0.4, 0, 0.2, 1)"),  // PROVISIONAL — `§ 15.4` prints no value
+    ];
+    return out;
+}
+
+// ── the two arbitrary-value wrappers ─────────────────────────────────────────
+//
+// PROVISIONAL AS A PAIR: `§ 15` prints no arbitrary-value row, here or anywhere.
+// What is NOT provisional is the PROPERTY each one sets — `transition-property`
+// and `animation` are the properties the confirmed rows of `§ 15.1` and
+// `§ 15.6` set — so only the value is the author's.
+//
+// WHY THESE ARE TOP-LEVEL VARIANTS and not `Transition.Property(…)` /
+// `Animate.Raw(…)`: a payload leaf nested inside an enum section cannot be
+// constructed by any spelling (front 41's banner records the two error texts).
+// For `AnimateRaw` that is not an inconvenience — it is the ONLY way to name an
+// animation this library does not ship, so the nested spelling would have shut
+// the door rather than narrowed it.
+//
+// WHY THE WRAPPERS EXIST: a leading-dot path followed by a payload call does
+// not carry the typed-array context either, so `[.AnimateRaw("fade 300ms")]`
+// does not parse. `Token.AnimateRaw(value: "…")` in full works inside a typed
+// array literal and so does a call to one of these two; they are the readable
+// form and the one the example uses.
+pub fn rawTransitionProperty(value: string) -> Token {
+    return Token.TransitionProperty(value: value);
+}
+
+pub fn rawAnimate(value: string) -> Token {
+    return Token.AnimateRaw(value: value);
+}
+
+// ── front 44 · tests ─────────────────────────────────────────────────────────
+//
+// Every row of `§ 15.1`-`§ 15.6` is asserted individually: a reference row and
+// a test line are the same fact written twice, and a mismatch fails the build.
+// The six multi-declaration presets are asserted WHOLE and never with a
+// `contains` — the whole point of those rows is the exact property list and its
+// exact punctuation. The walks at the bottom are the part a per-row table
+// cannot do.
+
+// What one token hoists. `firstDeclaration` (front 40's) reads the rule half;
+// this reads the other half, which only `Animate` has.
+fn f44Blocks(t: Token) -> Block[] {
+    return tokenToSheet(t, defaultTheme()).blocks;
+}
+
+fn f44BlockHeaders(t: Token) -> string {
+    return f44Blocks(t).map({ b -> b.header }).join("|");
+}
+
+fn f44BlockBodies(t: Token) -> string {
+    return f44Blocks(t).map({ b -> b.body }).join("|");
+}
+
+// ── `§ 15.1` · transition-property ───────────────────────────────────────────
+
+// ONE DECLARATION, NOT THREE. `transition-none` is the one row of `§ 15.1` that
+// does not carry the timing function and the duration with it.
+test "Transition.None — one declaration, and none of the preset tail" {
+    assert firstDeclaration(.Transition.None) == "transition-property:none";
+    assert firstDeclaration(.Transition.None).indexOf("transition-duration") == -1;
+    assert firstDeclaration(.Transition.None).indexOf("transition-timing-function") == -1;
+}
+
+// THE WHOLE STRING, ELEVEN PROPERTIES, THE REFERENCE'S ORDER. A `contains`
+// here would pass on a list that had lost `backdrop-filter` or reordered
+// `fill` and `stroke`, which is exactly the failure this row has.
+test "Transition.Base — the eleven properties of the bare `transition` utility" {
+    assert firstDeclaration(.Transition.Base)
+        == "transition-property:color, background-color, border-color, "
+        + "text-decoration-color, fill, stroke, opacity, box-shadow, transform, "
+        + "filter, backdrop-filter;transition-timing-function:var(--ease-out);"
+        + "transition-duration:150ms";
+}
+
+// THE SPACE AFTER EACH COMMA IS THE REFERENCE'S and byte-equality is the gate,
+// so it is counted as well as spelled: eleven properties means ten separators,
+// and a serialiser that stripped the spaces would leave the count intact and
+// this assertion would still catch it.
+test "Transition.Base — eleven properties, ten `, ` separators, none bare" {
+    val decl = firstDeclaration(.Transition.Base);
+    val list = decl.split(";").at(0) ?? "";
+    assert list.split(", ").length == 11;
+    assert list.split(",").length == 11;
+    assert decl.indexOf("color,background-color") == -1;
+}
+
+test "Transition — the five narrow presets, whole, with their shared tail" {
+    assert firstDeclaration(.Transition.All)
+        == "transition-property:all;transition-timing-function:var(--ease-out);"
+        + "transition-duration:150ms";
+    assert firstDeclaration(.Transition.Colors)
+        == "transition-property:color, background-color, border-color, "
+        + "text-decoration-color, fill, stroke;"
+        + "transition-timing-function:var(--ease-out);transition-duration:150ms";
+    assert firstDeclaration(.Transition.Opacity)
+        == "transition-property:opacity;transition-timing-function:var(--ease-out);"
+        + "transition-duration:150ms";
+    assert firstDeclaration(.Transition.Shadow)
+        == "transition-property:box-shadow;transition-timing-function:var(--ease-out);"
+        + "transition-duration:150ms";
+    assert firstDeclaration(.Transition.Transform)
+        == "transition-property:transform;transition-timing-function:var(--ease-out);"
+        + "transition-duration:150ms";
+}
+
+// THE SIX PRESETS ARE THREE DECLARATIONS EACH and `None` is one — the count is
+// what a reader checks first and what a refactor of `transitionPreset` breaks
+// first.
+test "Transition — six presets of three declarations, one preset of one" {
+    val presets: Token[] = [
+        .Transition.Base, .Transition.All, .Transition.Colors,
+        .Transition.Opacity, .Transition.Shadow, .Transition.Transform,
+    ];
+    assert presets.all({ t -> firstDeclaration(t).split(";").length == 3 });
+    assert presets.all({ t -> firstDeclaration(t).endsWith(";transition-duration:150ms") });
+    assert firstDeclaration(.Transition.None).split(";").length == 1;
+}
+
+// FOUR LEAVES OF THIS SECTION REPEAT A SECTION HEAD DECLARED ELSEWHERE — the
+// head audit's empirical half, run rather than reasoned about. `Transition.All`
+// sits beside `Pad.All` and `Gap.All`; `Transition.Opacity` and
+// `Transition.Shadow` beside `Effect.Opacity` and `Effect.Shadow`. A shadowed
+// pattern does not red — it falls out of its `case` and the token declares the
+// empty string, on one target only — so each of the four is asserted to declare
+// its own property and not the other section's.
+test "the head audit — four leaves repeat a head elsewhere and none of them is shadowed" {
+    assert firstDeclaration(.Transition.All).startsWith("transition-property:all");
+    assert firstDeclaration(.Transition.Opacity).startsWith("transition-property:opacity");
+    assert firstDeclaration(.Transition.Shadow).startsWith("transition-property:box-shadow");
+    assert firstDeclaration(.Transition.Transform).startsWith("transition-property:transform");
+    // and the sections whose HEADS carry those names are untouched
+    assert firstDeclaration(.Effect.Opacity.__50) == "opacity:0.5";
+    assert firstDeclaration(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
+    assert firstDeclaration(.Pad.All.__4) == "padding:calc(var(--spacing) * 4)";
+}
+
+// ── `§ 15.2` · transition-behavior ───────────────────────────────────────────
+
+// THE CLASS SAYS `discrete` AND THE VALUE SAYS `allow-discrete`. Asserted by
+// itself, and against the value it is not, because this is the row that gets
+// written from memory and gets written wrong.
+test "Transition.Behavior — `transition-discrete` emits allow-discrete, not discrete" {
+    assert firstDeclaration(.Transition.Behavior.Discrete)
+        == "transition-behavior:allow-discrete";
+    assert firstDeclaration(.Transition.Behavior.Discrete) != "transition-behavior:discrete";
+    assert firstDeclaration(.Transition.Behavior.Normal) == "transition-behavior:normal";
+}
+
+// ── `§ 15.3` · transition-duration ───────────────────────────────────────────
+
+// EVERY STEP CARRIES `ms`, `0ms` INCLUDED. A bare `0` is legal CSS for a length
+// and is not what `§ 15.3` prints, so the zero step is asserted twice.
+test "Transition.Duration — the nine steps of `§ 15.3`, every one with its unit" {
+    assert firstDeclaration(.Transition.Duration.__0) == "transition-duration:0ms";
+    assert firstDeclaration(.Transition.Duration.__75) == "transition-duration:75ms";
+    assert firstDeclaration(.Transition.Duration.__100) == "transition-duration:100ms";
+    assert firstDeclaration(.Transition.Duration.__150) == "transition-duration:150ms";
+    assert firstDeclaration(.Transition.Duration.__200) == "transition-duration:200ms";
+    assert firstDeclaration(.Transition.Duration.__300) == "transition-duration:300ms";
+    assert firstDeclaration(.Transition.Duration.__500) == "transition-duration:500ms";
+    assert firstDeclaration(.Transition.Duration.__700) == "transition-duration:700ms";
+    assert firstDeclaration(.Transition.Duration.__1000) == "transition-duration:1000ms";
+    assert firstDeclaration(.Transition.Duration.__0) != "transition-duration:0";
+}
+
+// ── `§ 15.5` · transition-delay ──────────────────────────────────────────────
+
+test "Transition.Delay — the nine steps of `§ 15.5`, every one with its unit" {
+    assert firstDeclaration(.Transition.Delay.__0) == "transition-delay:0ms";
+    assert firstDeclaration(.Transition.Delay.__75) == "transition-delay:75ms";
+    assert firstDeclaration(.Transition.Delay.__100) == "transition-delay:100ms";
+    assert firstDeclaration(.Transition.Delay.__150) == "transition-delay:150ms";
+    assert firstDeclaration(.Transition.Delay.__200) == "transition-delay:200ms";
+    assert firstDeclaration(.Transition.Delay.__300) == "transition-delay:300ms";
+    assert firstDeclaration(.Transition.Delay.__500) == "transition-delay:500ms";
+    assert firstDeclaration(.Transition.Delay.__700) == "transition-delay:700ms";
+    assert firstDeclaration(.Transition.Delay.__1000) == "transition-delay:1000ms";
+    assert firstDeclaration(.Transition.Delay.__0) != "transition-delay:0";
+}
+
+// THE TWO NINE-STEP TABLES ARE WRITTEN TWICE because the two sections are two
+// types. They are compared to EACH OTHER rather than to a third list of
+// literals, so a typo in one and not the other is a red rather than a drift.
+test "Duration and Delay — two properties over one value table, compared value for value" {
+    val durations: Token[] = [
+        .Transition.Duration.__0, .Transition.Duration.__75, .Transition.Duration.__100,
+        .Transition.Duration.__150, .Transition.Duration.__200, .Transition.Duration.__300,
+        .Transition.Duration.__500, .Transition.Duration.__700, .Transition.Duration.__1000,
+    ];
+    val delays: Token[] = [
+        .Transition.Delay.__0, .Transition.Delay.__75, .Transition.Delay.__100,
+        .Transition.Delay.__150, .Transition.Delay.__200, .Transition.Delay.__300,
+        .Transition.Delay.__500, .Transition.Delay.__700, .Transition.Delay.__1000,
+    ];
+    val dv = durations.map({ t -> firstDeclaration(t).split(":").at(1) ?? "" });
+    val yv = delays.map({ t -> firstDeclaration(t).split(":").at(1) ?? "" });
+    assert dv.join("|") == yv.join("|");
+    assert dv.length == 9;
+    assert dv.all({ v -> v.endsWith("ms") });
+}
+
+// ── `§ 15.4` · transition-timing-function ────────────────────────────────────
+
+// `ease-linear` IS A KEYWORD AND THE OTHER THREE ARE REFERENCES. Upstream has
+// no `--ease-linear`, so a "consistency" patch that invented one would be
+// emitting a variable no row of the reference carries.
+test "Transition.Ease — one CSS keyword and three theme references" {
+    assert firstDeclaration(.Transition.Ease.Linear) == "transition-timing-function:linear";
+    assert firstDeclaration(.Transition.Ease.In)
+        == "transition-timing-function:" + themeVar("--ease-in");
+    assert firstDeclaration(.Transition.Ease.Out)
+        == "transition-timing-function:" + themeVar("--ease-out");
+    assert firstDeclaration(.Transition.Ease.InOut)
+        == "transition-timing-function:" + themeVar("--ease-in-out");
+    assert firstDeclaration(.Transition.Ease.Linear).indexOf("var(") == -1;
+}
+
+// NO `cubic-bezier(` IN ANY `Ease` ARM, nor in the preset tail that references
+// the same variable. The literals live in `transitionEntries()` and the
+// assertion below is the other half of that fact.
+test "Transition.Ease — no arm resolves a cubic-bezier, and the preset tail does not either" {
+    val eases: Token[] = [
+        .Transition.Ease.Linear, .Transition.Ease.In,
+        .Transition.Ease.Out, .Transition.Ease.InOut,
+    ];
+    assert eases.all({ t -> firstDeclaration(t).indexOf("cubic-bezier(") == -1 });
+    assert firstDeclaration(.Transition.All).indexOf("cubic-bezier(") == -1;
+    assert firstDeclaration(.Transition.All).indexOf("var(--ease-out)") != -1;
+}
+
+// ── the theme entries this front contributes ─────────────────────────────────
+
+// THE THREE VALUES, ASSERTED WHERE THEY LIVE. `cubic-bezier(0.4, 0, 1, 1)`
+// keeps all three spaces after its commas — the same punctuation rule the
+// property lists above follow — and these are the ONLY three places this front
+// writes a timing function at all.
+test "transitionEntries — three PROVISIONAL `--ease-*` values, and their punctuation" {
+    val es = transitionEntries();
+    assert es.length == 3;
+    assert es.map({ e -> e.name }).join("|") == "--ease-in|--ease-out|--ease-in-out";
+    assert (es.at(0) ?? ThemeEntry(name: "", value: "")).value == "cubic-bezier(0.4, 0, 1, 1)";
+    assert (es.at(1) ?? ThemeEntry(name: "", value: "")).value == "cubic-bezier(0, 0, 0.2, 1)";
+    assert (es.at(2) ?? ThemeEntry(name: "", value: "")).value == "cubic-bezier(0.4, 0, 0.2, 1)";
+}
+
+// WHAT IS NOT PROVISIONAL: the namespace. The three land in front 54's `Ease`
+// namespace, `clearNamespace` drops exactly these three, and the stock theme
+// carries none of them — which is why a project has to compose them.
+test "transitionEntries — the stock theme has no `--ease-*`, and a project composes them" {
+    assert themeValue(defaultTheme(), "--ease-out") == "";
+    assert namespace(defaultTheme(), Ns.Ease).length == 0;
+    val th = extendTheme(defaultTheme(), transitionEntries());
+    assert namespace(th, Ns.Ease).length == 3;
+    assert themeValue(th, "--ease-out") == "cubic-bezier(0, 0, 0.2, 1)";
+    assert nsPrefix(Ns.Ease) == "--ease-";
+}
+
+// THE REFERENCE FORM IS WHY THE CLASS DOES NOT MOVE. Every rule this front
+// emits names `--ease-out` and never its value, so the stock theme and a
+// project's give the SAME class and the SAME declarations — only the theme
+// layer moves. A dispatcher that resolved the easing would give two classes
+// here and every themed project would ship two copies of every rule.
+test "transitionEntries — a project's easing moves the theme layer and not one rule" {
+    val tokens: Token[] = [.Transition.Colors, .Transition.Ease.InOut];
+    val stock = defaultTheme();
+    val mine: ThemeEntry[] = [ThemeEntry(name: "--ease-in-out", value: "cubic-bezier(0.65, 0, 0.35, 1)")];
+    val th = extendTheme(extendTheme(stock, transitionEntries()), mine);
+    assert emiliaWith(tokens, stock) == emiliaWith(tokens, th);
+    assert declarationsOf(tokensToSheet(tokens, stock)).join("|")
+        == declarationsOf(tokensToSheet(tokens, th)).join("|");
+    assert themeValue(th, "--ease-in-out") == "cubic-bezier(0.65, 0, 0.35, 1)";
+}
+
+// ── `§ 15.6` · animation ─────────────────────────────────────────────────────
+
+// A DECLARATION AND A BLOCK, from one token. The declaration references the
+// theme's `--animate-*`; the block is the theme's own `@keyframes` body, read
+// out of the theme rather than transcribed a second time beside it.
+test "Animate — the four built-ins are a reference plus the theme's keyframes block" {
+    assert firstDeclaration(.Animate.Spin) == "animation:" + themeVar("--animate-spin");
+    assert firstDeclaration(.Animate.Ping) == "animation:" + themeVar("--animate-ping");
+    assert firstDeclaration(.Animate.Pulse) == "animation:" + themeVar("--animate-pulse");
+    assert firstDeclaration(.Animate.Bounce) == "animation:" + themeVar("--animate-bounce");
+    assert f44BlockHeaders(.Animate.Spin) == "@keyframes spin";
+    assert f44BlockHeaders(.Animate.Ping) == "@keyframes ping";
+    assert f44BlockHeaders(.Animate.Pulse) == "@keyframes pulse";
+    assert f44BlockHeaders(.Animate.Bounce) == "@keyframes bounce";
+}
+
+// THE FOUR BODIES AS LITERALS, so a later tidy-up of the keyframes fails a test
+// rather than changing what a spinner does. They are front 54's data and they
+// are asserted through THIS front's dispatcher, which is the only thing that
+// proves the lookup finds the right one of the four.
+test "Animate — the four keyframes bodies, as literals, through the dispatcher" {
+    assert f44BlockBodies(.Animate.Spin) == "{to{transform:rotate(360deg)}}";
+    assert f44BlockBodies(.Animate.Ping) == "{75%,100%{transform:scale(2);opacity:0}}";
+    assert f44BlockBodies(.Animate.Pulse) == "{50%{opacity:0.5}}";
+    assert f44BlockBodies(.Animate.Bounce)
+        == "{0%,100%{transform:translateY(-25%);"
+        + "animation-timing-function:cubic-bezier(0.8,0,1,1)}"
+        + "50%{transform:none;animation-timing-function:cubic-bezier(0,0,0.2,1)}}";
+}
+
+// `animate-none` NAMES NO KEYFRAMES, so it hoists none — and neither does the
+// arbitrary-value variant, which names an animation this library does not own.
+test "Animate.None and AnimateRaw — a declaration, and an empty blocks list" {
+    assert firstDeclaration(.Animate.None) == "animation:none";
+    assert f44Blocks(.Animate.None).length == 0;
+    assert firstDeclaration(rawAnimate("fade 300ms ease-out")) == "animation:fade 300ms ease-out";
+    assert f44Blocks(rawAnimate("fade 300ms ease-out")).length == 0;
+}
+
+// A THEME WITH NO KEYFRAMES STILL GETS A CORRECT DECLARATION. This is the
+// consequence of reading the body out of the theme instead of pasting it here,
+// and it is the honest answer: there is no block to hoist.
+test "Animate — under a theme carrying no keyframes body, the declaration stands alone" {
+    val s = tokenToSheet(.Animate.Spin, emptyTheme());
+    assert declarationsOf(s).join("") == "animation:var(--animate-spin)";
+    assert s.blocks.length == 0;
+    // and the stock theme is the control: it DOES carry the four
+    assert keyframeCss(defaultTheme()).length == 4;
+}
+
+// TWO SPINNERS ARE ONE BLOCK. `dedupeBlocks` is front 56's and keys on the
+// header; this front is what makes it observable from a token list.
+test "Animate — two tokens naming one animation hoist one block, not two" {
+    val twice: Token[] = [.Animate.Spin, .Animate.Spin];
+    val s = tokensToSheet(twice, defaultTheme());
+    assert s.rules.length == 2;
+    assert s.blocks.length == 2;
+    val doc = renderDocument("x\t" + encodeSheet(s), bareOptions());
+    assert doc.split("@keyframes spin").length - 1 == 1;
+    val two: Token[] = [.Animate.Spin, .Animate.Pulse];
+    val doc2 = renderDocument("y\t" + encodeSheet(tokensToSheet(two, defaultTheme())), bareOptions());
+    assert doc2.split("@keyframes spin").length - 1 == 1;
+    assert doc2.split("@keyframes pulse").length - 1 == 1;
+}
+
+// ── the two arbitrary-value variants ─────────────────────────────────────────
+
+// THEY CONSTRUCT — the check that would have failed against the nested
+// spelling, and the reason both sit at the top level of `Token`.
+test "TransitionProperty and AnimateRaw — both construct, qualified and through the wrapper" {
+    val a: Token = Token.TransitionProperty(value: "width");
+    val b: Token = Token.AnimateRaw(value: "fade 300ms ease-out");
+    assert firstDeclaration(a) == "transition-property:width";
+    assert firstDeclaration(b) == "animation:fade 300ms ease-out";
+    assert firstDeclaration(rawTransitionProperty("width")) == "transition-property:width";
+    assert emilia([a]) == emilia([rawTransitionProperty("width")]);
+}
+
+// ── composition, nesting and determinism ─────────────────────────────────────
+
+// THE OVERRIDE IS LAST AND THEREFORE WINS. A preset sets the duration to 150ms
+// and a `Duration` token after it sets it again; both declarations are in the
+// rule, in list order, which is the ordering contract the class hash rests on.
+test "composition — a preset then its overrides, in list order, the later winning" {
+    val tokens: Token[] = [
+        .Transition.All, .Transition.Duration.__700, .Transition.Ease.Linear,
+    ];
+    val s = tokensToSheet(tokens, defaultTheme());
+    assert s.rules.length == 3;
+    assert declarationsOf(s).join("|")
+        == "transition-property:all;transition-timing-function:var(--ease-out);"
+        + "transition-duration:150ms"
+        + "|transition-duration:700ms"
+        + "|transition-timing-function:linear";
+}
+
+test "composition — the README's row: Colors then Duration.300" {
+    val tokens: Token[] = [.Transition.Colors, .Transition.Duration.__300];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
+    assert decls.length == 2;
+    assert (decls.at(0) ?? "").endsWith("transition-duration:150ms");
+    assert (decls.at(1) ?? "") == "transition-duration:300ms";
+}
+
+// A MULTI-DECLARATION BODY SURVIVES THE RECURSIVE PATH. This front asserts the
+// declarations and not the wrap — the at-rule and the selector are front 34's
+// contract and are asserted in front 34's tests.
+test "nesting — a three-declaration preset under Hover keeps all three" {
+    val inner: Token[] = [.Transition.Colors];
+    val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
+    assert r.declarations.split(";").length == 3;
+    assert r.declarations.startsWith("transition-property:color, background-color");
+    assert r.selector != "&";
+}
+
+// A KEYFRAMES BLOCK IS NOT WRAPPED BY A VARIANT — an at-rule does not wrap a
+// keyframes rule, which is front 56's `nestVariant` passing blocks through.
+test "nesting — a spinner under Md keeps its block unwrapped" {
+    val inner: Token[] = [.Animate.Spin];
+    val s = tokenToSheet(Token.Md(inner), defaultTheme());
+    assert s.blocks.length == 1;
+    assert (s.blocks.map({ b -> b.header }).at(0) ?? "") == "@keyframes spin";
+    assert firstRuleOf(s).atRules.length == 1;
+}
+
+// CONTRACT `§ 4` — the class name is a pure function of the token list AND the
+// theme, so a fixed pair pins a literal hex that `commonJS` and `erlang` must
+// both produce. Every value this front emits is ASCII, which is the condition
+// the two `djb2` implementations need to agree.
+test "determinism — a fixed transitions list hashes to the same class on both targets" {
+    val tokens: Token[] = [
+        .Transition.Colors, .Transition.Duration.__300, .Animate.Pulse,
+    ];
+    assert emiliaWith(tokens, defaultTheme()) == "e_665ff47d";
+}
+
+// ── the regression walks ─────────────────────────────────────────────────────
+
+fn transitionLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Transition.None, .Transition.Base, .Transition.All, .Transition.Colors,
+        .Transition.Opacity, .Transition.Shadow, .Transition.Transform,
+        .Transition.Behavior.Normal, .Transition.Behavior.Discrete,
+        .Transition.Duration.__0, .Transition.Duration.__75, .Transition.Duration.__100,
+        .Transition.Duration.__150, .Transition.Duration.__200, .Transition.Duration.__300,
+        .Transition.Duration.__500, .Transition.Duration.__700, .Transition.Duration.__1000,
+        .Transition.Ease.Linear, .Transition.Ease.In, .Transition.Ease.Out,
+        .Transition.Ease.InOut,
+        .Transition.Delay.__0, .Transition.Delay.__75, .Transition.Delay.__100,
+        .Transition.Delay.__150, .Transition.Delay.__200, .Transition.Delay.__300,
+        .Transition.Delay.__500, .Transition.Delay.__700, .Transition.Delay.__1000,
+    ];
+    return leaves;
+}
+
+fn animateLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Animate.None, .Animate.Spin, .Animate.Ping, .Animate.Pulse, .Animate.Bounce,
+    ];
+    return leaves;
+}
+
+fn front44Leaves() -> Token[] {
+    return transitionLeaves().append(animateLeaves());
+}
+
+fn f44IsWellFormed(decl: string) -> bool {
+    return decl.length > 0 && decl.indexOf(":") != -1;
+}
+
+// A RESOLVED TIMING FUNCTION OR ANIMATION. These are the two strings a "make it
+// work without composing the theme" patch would put back into a dispatcher, and
+// they are the two the reference puts in `§ 21.6` and in no dispatcher row.
+//
+// IT WALKS DECLARATIONS AND NOT SHEETS, deliberately: the `@keyframes bounce`
+// BODY legitimately carries `cubic-bezier(0.8,0,1,1)`, and it is a BLOCK, not a
+// declaration. The body is front 54's data and is pinned as a literal above.
+fn f44CarriesNoResolvedTiming(decl: string) -> bool {
+    return decl.indexOf("cubic-bezier(") == -1 && decl.indexOf("infinite") == -1;
+}
+
+// The class-fragment probe. Each fragment below is a CLASS name, hyphenated,
+// and none of them can occur in a correct declaration of this front — the
+// properties are `transition-property:`, `transition-duration:` and so on, with
+// a COLON where the class has a hyphen.
+//
+// `animate-*` AND `ease-in-out` ARE DELIBERATELY ABSENT FROM THIS LIST, and
+// that is the point of the control beside it: `var(--animate-spin)` CONTAINS
+// the class name `animate-spin` and `var(--ease-in-out)` contains `ease-in-out`,
+// so a probe that named them would fire on correct output and be deleted by the
+// next front. `animate-none` is safe to name — there is no `--animate-none`.
+fn f44CarriesNoClassFragment(decl: string) -> bool {
+    return decl.indexOf("transition-none") == -1 && decl.indexOf("transition-all") == -1
+        && decl.indexOf("transition-colors") == -1 && decl.indexOf("transition-opacity") == -1
+        && decl.indexOf("transition-shadow") == -1 && decl.indexOf("transition-transform") == -1
+        && decl.indexOf("transition-discrete") == -1 && decl.indexOf("transition-normal") == -1
+        && decl.indexOf("duration-") == -1 && decl.indexOf("delay-") == -1
+        && decl.indexOf("ease-linear") == -1 && decl.indexOf("animate-none") == -1;
+}
+
+// A BARE SCALE STEP AS A VALUE — front 41's defect, in this front's vocabulary.
+// `transition-duration:300` without the unit is the shape of it here, so the
+// probe anchors on a colon followed by digits with nothing after them.
+fn f44CarriesItsUnit(decl: string) -> bool {
+    val isTimed = decl.startsWith("transition-duration:") || decl.startsWith("transition-delay:");
+    val out = if (isTimed) decl.endsWith("ms") else true;
+    return out;
+}
+
+test "regression — every one of the 36 leaves of this front declares something" {
+    assert transitionLeaves().length == 31;
+    assert animateLeaves().length == 5;
+    val leaves = front44Leaves();
+    assert leaves.length == 36;
+    assert leaves.all({ t -> f44IsWellFormed(firstDeclaration(t)) });
+}
+
+test "regression — no leaf of this front resolves a timing function or an animation" {
+    assert front44Leaves().all({ t -> f44CarriesNoResolvedTiming(firstDeclaration(t)) });
+}
+
+test "regression — no transitions leaf emits a Tailwind class fragment" {
+    assert front44Leaves().all({ t -> f44CarriesNoClassFragment(firstDeclaration(t)) });
+}
+
+test "regression — every timed declaration carries its `ms` unit" {
+    assert front44Leaves().all({ t -> f44CarriesItsUnit(firstDeclaration(t)) });
+    val timed = front44Leaves().filter({ t -> f44CarriesItsUnit(firstDeclaration(t)) });
+    assert timed.length == 36;
+}
+
+// EVERY `Animate` LEAF BUT `None` IS A DISTINCT THEME REFERENCE — the assertion
+// a name-discarding arm cannot survive, and the reason `animationSheet` takes
+// the name rather than hard-coding four bodies.
+test "regression — the four animations are four distinct references and four distinct blocks" {
+    val named = animateLeaves().filter({ t -> firstDeclaration(t).indexOf("var(--") != -1 });
+    assert named.length == 4;
+    val decls = named.map({ t -> firstDeclaration(t) });
+    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
+    // rather than searched — front 40's rule, followed here.
+    assert decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 }).length == 0;
+    val heads = named.map({ t -> f44BlockHeaders(t) });
+    assert heads.filter({ h -> heads.filter({ x -> x == h }).length > 1 }).length == 0;
+    assert named.all({ t -> f44Blocks(t).length == 1 });
+}
+
+// THE CONTROLS THAT MUST FAIL, and — for the string probes — the controls that
+// must NOT. A probe that fires on valid output is one the next front deletes,
+// so each is shown on a real emission as well as on the defect.
+test "regression — the four transitions probes discriminate, in both directions" {
+    assert f44IsWellFormed("") == false;
+    assert f44IsWellFormed("transition-property") == false;
+    assert f44IsWellFormed("transition-property:none");
+
+    // the resolved values this front refuses, and the fact that they DO exist
+    // in the library — in the theme, which is where they belong
+    assert f44CarriesNoResolvedTiming("transition-timing-function:cubic-bezier(0, 0, 0.2, 1)") == false;
+    assert f44CarriesNoResolvedTiming("animation:spin 1s linear infinite") == false;
+    assert f44CarriesNoResolvedTiming("transition-timing-function:var(--ease-out)");
+    assert (transitionEntries().at(0) ?? ThemeEntry(name: "", value: "")).value.indexOf("cubic-bezier(") != -1;
+    assert themeValue(defaultTheme(), "--animate-spin").indexOf("infinite") != -1;
+
+    // the class fragments, on strings shaped like the defect
+    assert f44CarriesNoClassFragment("transition-property:transition-all") == false;
+    assert f44CarriesNoClassFragment("transition-duration:duration-300") == false;
+    assert f44CarriesNoClassFragment("transition-delay:delay-150") == false;
+    assert f44CarriesNoClassFragment("transition-timing-function:ease-linear") == false;
+    assert f44CarriesNoClassFragment("animation:animate-none") == false;
+    // AND NOT on correct output that merely contains a class name inside a
+    // variable reference — the half that usually goes wrong
+    assert f44CarriesNoClassFragment("animation:var(--animate-spin)");
+    assert f44CarriesNoClassFragment("transition-timing-function:var(--ease-in-out)");
+    assert f44CarriesNoClassFragment(firstDeclaration(.Transition.Base));
+
+    // the unit probe, both ways
+    assert f44CarriesItsUnit("transition-duration:300") == false;
+    assert f44CarriesItsUnit("transition-delay:0") == false;
+    assert f44CarriesItsUnit("transition-duration:300ms");
+    assert f44CarriesItsUnit("transition-property:none");
+}
+
+// ── end to end ───────────────────────────────────────────────────────────────
+
+// THE WHOLE POINT OF THE FRONT, in one document: a button whose colours move
+// over 200ms on hover instead of snapping, and a spinner whose keyframes block
+// is hoisted out of every layer to the end of the stylesheet.
+test "end to end — a transitioned button and a hoisted spinner in one document" {
+    val hovered: Token[] = [.Bg.Color.Indigo.700];
+    val button: Token[] = [
+        .Bg.Color.Indigo.600, .Transition.Colors, .Transition.Duration.__200,
+        Token.Hover(hovered),
+    ];
+    val spinner: Token[] = [.Animate.Spin];
+    val b = emiliaWith(button, defaultTheme());
+    val s = emiliaWith(spinner, defaultTheme());
+    val doc = await flushWith(bareOptions());
+    assert doc.indexOf("." + b + "{background-color:var(--color-indigo-600);"
+        + "transition-property:color, background-color, border-color, "
+        + "text-decoration-color, fill, stroke;"
+        + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
+        + "transition-duration:200ms}") != -1;
+    assert doc.indexOf("@media (hover: hover){." + b
+        + ":hover{background-color:var(--color-indigo-700)}}") != -1;
+    assert doc.indexOf("." + s + "{animation:var(--animate-spin)}") != -1;
+    // the block is OUTSIDE every layer, at the end of the document
+    assert doc.endsWith("@keyframes spin{to{transform:rotate(360deg)}}</style>");
+    assert doc.indexOf("@layer utilities{@keyframes") == -1;
+}
+
+// ── end front 44 ─────────────────────────────────────────────────────────────
 
 // ── front 56 · test helpers ───────────────────────────────────────────
 

@@ -2,6 +2,118 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Transition` and `Animate` added — the whole of `§ 15`** (1.0.10-beta front
+  `44-emilia-transitions`). 36 leaves, and the first front whose output is not
+  only a declaration list.
+
+  **Every state emilia could express arrived in one frame.** Front 34 shipped
+  83 modifiers — `Hover`, `Focus`, `Active`, `Open`, `Disabled` and the rest —
+  and there was no `transition`, no `duration`, no timing function and no
+  `delay` anywhere in the library, so a button that darkens on hover darkened
+  between two frames with nothing in between. There was also no `animate-spin`,
+  so a loading state had no token at all and needed a hand-written stylesheet
+  beside emilia in the same codebase.
+
+  `Transition` carries the seven rows of `§ 15.1` — six of them **three
+  declarations from one token**, which `tokensToCss`'s `;`-join already
+  supports — plus `Behavior` (`§ 15.2`), the nine-step `Duration` and `Delay`
+  ladders (`§ 15.3`, `§ 15.5`) and the four `Ease` leaves (`§ 15.4`). `Animate`
+  is `§ 15.6`'s five.
+
+  **`.Transition.Base`, not `.Transition.Default`.** Two reasons at once:
+  `default` is in the lexer's keyword table, and `Default(inner)` is already a
+  top-level modifier variant — the exact collision the section-head audit
+  exists to catch.
+
+  **`transition-discrete` emits `allow-discrete`.** The class name and the CSS
+  value do not match; it has a test of its own, asserted in both directions.
+
+  **Every duration and delay step carries `ms`, `0ms` included.** A bare `0` is
+  legal CSS for a length and is not what the reference prints. Neither ladder is
+  a theme lookup, and that is the reference's call: `§ 15.3` and `§ 15.5` print
+  the milliseconds literally and upstream has no `--duration-*` namespace.
+
+  **The space after each comma in the property lists is the reference's and is
+  counted as well as spelled.** `color, background-color, …`; a test asserts
+  eleven properties and ten `, ` separators, so a whitespace normaliser fails a
+  test rather than changing the output quietly.
+
+  **`animateTokenToSheet` is the one dispatcher in fronts 41–47 that answers a
+  `Sheet`.** `animate-spin` is half a rule — the other half is `@keyframes spin`,
+  which is not a style rule and cannot be nested inside one. Front 56's
+  `blockSheet` carries it, `renderDocument` hoists it out of every cascade layer
+  to the end of the document, and `dedupeBlocks` makes two spinners on a page
+  one block.
+
+  **The four keyframes bodies are read out of the theme, not transcribed.**
+  The front README opens a gate — read the upstream page, paste the four bodies
+  into the dispatcher, tick a `TODO.md` checkbox — that **front 54 had already
+  closed**: `theme.bp`'s `animateEntries()` and `keyframeEntries()` carry the
+  four `--animate-*` entries and the four bodies, inside `defaultTheme()`, and
+  `renderDocument` already hoists them. So `animationSheet(th, name)` looks the
+  body up through `keyframeCss(th)` instead of pasting a second copy beside it —
+  a second transcription of one table is how two tables drift. The consequence
+  is asserted: under a theme carrying no body for a name, the token still emits
+  its declaration and hoists **no** block, which is also what makes
+  `.Animate.None` and `AnimateRaw` blockless without a special case.
+
+  **`transitionEntries()` — three `--ease-*` theme entries, PROVISIONAL, marked
+  at the declaration.** `defaultTheme()` carries the four `--animate-*` and no
+  `--ease-*`, so a project composes `extendTheme(defaultTheme(),
+  transitionEntries())`. `§ 15.4` prints the three *names* and no value for any
+  of them, and `§ 21` has no `--ease-*` table; the cubic-beziers come from the
+  1.0.8-beta draft this front replaces. What is **not** provisional: the three
+  names are the reference's verbatim, the namespace is front 54's `Ns.Ease`, and
+  the shape is a single timing function — so replacing the values later moves
+  nothing else, because every rule names the variable and never its value.
+
+  **Two top-level arbitrary-value variants** — `TransitionProperty(value)` and
+  `AnimateRaw(value)`, with the wrappers `rawTransitionProperty` / `rawAnimate`.
+  Top-level for front 41's reason (a payload leaf inside a section cannot be
+  constructed by any spelling), and for `AnimateRaw` that is not an
+  inconvenience but a door: it is the only way to name an animation emilia does
+  not ship. `rawAnimate` goes through `declSheet` and not through
+  `animateTokenToSheet` — a custom animation names keyframes this front does not
+  own, so it hoists no block. **PROVISIONAL as a pair**: `§ 15` prints no
+  arbitrary-value row anywhere. The property each one sets is not.
+
+  **The head audit found no collision and was run, not reasoned about.** Six
+  heads — `Transition`, `Animate`, `Behavior`, `Duration`, `Ease`, `Delay` —
+  against the 87 top-level payload variants and the keyword table. Four LEAVES
+  repeat a head declared elsewhere (`Transition.All` beside `Pad.All` and
+  `Gap.All`, `Transition.Opacity` and `Transition.Shadow` beside
+  `Effect.Opacity` and `Effect.Shadow`) and each of the four is asserted to
+  declare its own property with the other section's leaf asserted beside it, on
+  both targets.
+
+  **The walk over all 36 leaves** asserts the declaration carries a `:`; carries
+  neither `cubic-bezier(` nor `infinite`; carries no Tailwind class fragment;
+  and, for the two ms ladders, ends in `ms`. Each probe has a control that must
+  fail and a control proving it does **not** fire on correct output —
+  `var(--animate-spin)` contains the class name `animate-spin` and
+  `var(--ease-in-out)` contains `ease-in-out`, so neither is in the fragment
+  list and both are asserted not to trip it. The walk reads declarations and not
+  sheets, deliberately: the `@keyframes bounce` body legitimately carries
+  `cubic-bezier(0.8,0,1,1)`, and it is a block.
+
+  `examples/emilia-transitions/` is the worked example (14 in-file tests): the
+  catalogue, the preset-then-override ordering as working code, and a submit
+  button whose colours move over 200ms on hover and which dims and grows a
+  spinner while the form is in flight.
+
+  **Where the spec and the tree disagree**, recorded rather than worked around:
+  the `Owns:` line says `repository/emilia/src/…` and
+  `repository/emilia/test/transitions_test.bp`, and the tree is a workspace with
+  no `test/` directory — `modules.md`'s amendment says so and this front follows
+  eleven landed fronts instead. The spec's Step 4 says `animateTokenToSheet` is
+  "exhaustive over six leaves" and the section has five; the sixth it counts is
+  `AnimateRaw`, which the same step routes through `declSheet` and which never
+  reaches that `case`. Numeric leaves are written `__N` in expression position
+  (`.Transition.Duration.__300`), not the spec's bare `.300`.
+
+  33 tests in `emilia.bp` and 14 in the example; **528/528 on commonJS and on
+  erlang** (6 + 37 + 45 + 440).
+
 - **`Effect` corrected and widened; `Blend` and `Mask` added — the whole of
   `§ 12`** (1.0.10-beta front `41-emilia-effects`). 102 leaves, and the only
   front so far whose main job was to fix output emilia had already shipped.

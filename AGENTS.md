@@ -30,7 +30,7 @@ Three named imports from `from "emilia"`:
 3. **`Token` enum** — the typed authored surface (see `tokens.bp`).
    Sections: Text, Font, List, Color, Bg, Pad, Margin, Size, Space, Layout, Flex,
    Grid, Gap, Border, Outline, Ring, Divide,
-   Effect, Blend, Mask, Gradient + the 83 modifier variants of front 34, each carrying a nested
+   Effect, Blend, Mask, Transition, Animate, Gradient + the 83 modifier variants of front 34, each carrying a nested
    `Token[]` (see below and `docs.md` § Modifiers). Front 41 rebuilt **`Effect`**
    (Shadow, InsetShadow, TextShadow, Opacity) and added **`Blend`** and
    **`Mask`**, plus three top-level arbitrary-value variants
@@ -245,6 +245,69 @@ FORM and no value for it, so they carry emilia's own pre-38 stacks and nothing
 upstream confirmed. `text-indent`'s `calc(var(--spacing) * N)` shape is the
 second provisional row — `§ 9.25` shows `indent-8` as HTML with no CSS.
 
+Front 44 owns **transitions and animation** — the `Transition` and `Animate`
+sections of `tokens.bp` and the two top-level variants `TransitionProperty` /
+`AnimateRaw`, and `transitionTokenToCss`, `animateTokenToSheet`,
+`transitionEntries()` and the wrappers `rawTransitionProperty` / `rawAnimate` in
+`emilia.bp`, fenced by the `// ── front 44 — transitions and animation ──`
+banner in both files. **36 leaves** over the whole of `§ 15`. Its rule is fronts
+35-41's, one family further on: **no leaf resolves a TIMING FUNCTION or an
+ANIMATION.** `Ease` answers front 54's `Ns.Ease` and `Animate` its `Ns.Animate`,
+so the three cubic-beziers and the four animation shorthands are theme entries.
+The two ms ladders are the exception and it is the REFERENCE's: `§ 15.3` and
+`§ 15.5` print `transition-duration: 150ms` literally and upstream has no
+`--duration-*` namespace, so `150ms` inside the six presets is the same literal
+from the same rows.
+
+**`animateTokenToSheet` is the one `…TokenToSheet` dispatcher in fronts 41-47**,
+front 56's second shape, and it is the only one this front adds. `animate-spin`
+is half a rule: the other half is the `@keyframes spin` BLOCK, which is not a
+style rule and cannot be nested in one. `blockSheet` carries it, `renderDocument`
+hoists it outside every cascade layer, and `dedupeBlocks` is what makes two
+spinners on a page one block. The `Animate` arm of `tokenToSheet` is therefore
+the one arm of this front that does not go through `declSheet`, and
+`AnimateRaw`'s arm DOES — a custom animation names keyframes this front does not
+own, so it hoists none.
+
+**THE KEYFRAMES GATE THE SPEC OPENS WAS ALREADY CLOSED BY FRONT 54.** The front
+README asks this front to read the upstream page, paste the four `@keyframes`
+bodies into the dispatcher, record the date and tick a `TODO.md` checkbox —
+because `§ 15.6` and `§ 21.6` print the shorthand and never a keyframes body.
+`theme.bp` already carries them: `animateEntries()` has the four `--animate-*`
+entries and `keyframeEntries()` the four bodies, both inside `defaultTheme()`,
+and `output.bp`'s `themeBlocks` already hoists them. So `animationSheet(th,
+name)` READS THE BODY OUT OF THE THEME through `keyframeCss(th)` rather than
+pasting a second copy beside it — front 38 declined the same invitation over
+`--text-*`, for the same reason. The consequence is asserted rather than left as
+prose: under a theme carrying no body for a name, the token emits its
+declaration and hoists NO block, which is also what makes `.Animate.None` and
+`AnimateRaw` blockless without a special case. **A front that finds a spec gate
+already closed by a landed front closes it by citation, not by a second
+transcription** — and says so where a reader will hit it.
+
+`transitionEntries() -> ThemeEntry[]` is this front's half of the theme, composed
+the way front 33's `paletteEntries()` and front 38's `typographyEntries()` are:
+three `--ease-*` entries, which `defaultTheme()` does NOT carry although it does
+carry the four `--animate-*`. **All three VALUES are PROVISIONAL**: `§ 15.4`
+prints the three NAMES (`transition-timing-function: var(--ease-in)`) and no
+value for any of them, and `§ 21` has no `--ease-*` table at all, so the
+cubic-beziers come from the 1.0.8-beta draft this front replaces. What is NOT
+provisional — and this half is the point: the three NAMES are the reference's
+verbatim, the NAMESPACE is front 54's `Ns.Ease`, and the SHAPE is one timing
+function. Replacing the values later moves nothing else, because every rule
+names the variable and never its value. The two arbitrary-value variants are
+provisional as a pair for front 41's reason (`§ 15` prints no arbitrary-value
+row anywhere); the property each sets is not.
+
+**`.Transition.Base`, never `.Transition.Default`** — `default` is in the
+keyword table AND `Default(inner)` is already a top-level modifier variant, so
+the name fails the head audit twice over. Four LEAVES of this front repeat a
+head declared elsewhere (`Transition.All` beside `Pad.All`/`Gap.All`,
+`Transition.Opacity` and `Transition.Shadow` beside `Effect.Opacity` and
+`Effect.Shadow`); all four were RUN on both targets, with the other section's
+leaf asserted beside them, rather than renamed to dodge a collision that does
+not exist.
+
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
 DSL); both forms need the two generic jhonstart hooks (`F0` second
@@ -323,9 +386,9 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
 command inside one of its members: emilia, emilia-backgrounds, emilia-borders,
-emilia-card, emilia-cascade, emilia-grid, emilia-layout, emilia-modifiers,
-emilia-outline-ring, emilia-spacing, emilia-text-decoration, emilia-theme,
-emilia-typography`. Every `modules/*/`
+emilia-card, emilia-cascade, emilia-effects, emilia-grid, emilia-layout,
+emilia-modifiers, emilia-outline-ring, emilia-spacing, emilia-text-decoration,
+emilia-theme, emilia-transitions, emilia-typography`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -505,6 +568,30 @@ emilia/
 │   │                    `content:""` on a `::before`, and a footnoted
 │   │                    paragraph whose links are wavy-underlined.
 │   │                    11 in-file `test {}`, green on both targets)
+│   ├── emilia-effects/ ← member `emilia-effects` (an application: entry main.bp,
+│   │                    targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } — the front 41 showcase: the
+│   │                    box-shadow scale as a theme reference where it used to
+│   │                    emit the Tailwind class suffix, inset and text shadows,
+│   │                    the twenty-one opacity steps, both blend-mode families
+│   │                    and the nine mask properties, ending in a photo card
+│   │                    that layers a shadow, a blend mode and an opacity under
+│   │                    a hover. 12 in-file `test {}`, green on both targets.
+│   │                    ADDED TO THIS TREE BY FRONT 44 — front 41 landed the
+│   │                    member and not the line
+│   ├── emilia-transitions/ ← member `emilia-transitions` (an application: entry
+│   │                    main.bp, targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } — the front 44 showcase: the six
+│   │                    preset bundles as three declarations from one token,
+│   │                    `allow-discrete`, the two nine-step ms ladders with
+│   │                    `0ms` keeping its unit, the easings as theme references
+│   │                    a project overrides without moving a class, the four
+│   │                    built-in animations with their hoisted `@keyframes`
+│   │                    blocks (and two spinners hoisting ONE), a custom
+│   │                    animation that hoists none, and a submit button whose
+│   │                    colours move over 200ms on hover and which dims and
+│   │                    grows a spinner while the form is in flight.
+│   │                    14 in-file `test {}`, green on both targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
 │                        target commonJS, `emilia` via { "workspace": true },
 │                        `jhonstart` still by { git, branch } until jhonstart
@@ -791,9 +878,11 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **463/463** on
+  refuses) runs every module's in-file `test {}` blocks, **528/528** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 375 (`emilia.bp`). **Quote the SUM, never the last line** —
+  (`output.bp`) + 440 (`emilia.bp`). The figure below breaks down the 375
+  `emilia.bp` carried before fronts 41 and 44; front 41 added 32 and front 44
+  adds 33. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
   is `emilia.bp`'s alone. `emilia.bp`'s 375 are front 56's 33
   (below) plus front 33's 81 plus front 35's 31 plus front 37's 27 plus front
@@ -855,7 +944,28 @@ to the commonJS row and runs once.
   distinctness walk over the decoration colour cells. **The class-fragment probe
   is asserted NOT to fire on correct output too**, which is the half that
   usually goes wrong: `var(--tracking-tight)` legitimately contains the string
-  `tracking-tight`, and a probe that fires on it is a probe someone deletes. Front 35's 31 cover the scale
+  `tracking-tight`, and a probe that fires on it is a probe someone deletes.
+  Front 44's 33 cover `transition-none` as one declaration against the six
+  presets as three, `.Transition.Base`'s eleven-property list asserted WHOLE and
+  again as ten `, ` separators, `allow-discrete` in both directions, the two
+  nine-step ms ladders compared TO EACH OTHER rather than to a third list of
+  literals, the four easings with the keyword and the three references, the
+  three PROVISIONAL `--ease-*` entries with the namespace they land in and the
+  class that does NOT move when a project overrides one, the four animations as
+  a declaration plus a block with the four keyframes bodies pinned as literals
+  THROUGH this front's dispatcher, the blockless cases (`None`, `AnimateRaw`, an
+  empty-keyframes theme), the dedup of two spinners, the preset-then-override
+  ordering both ways round, a three-declaration preset surviving `Hover` and a
+  block surviving `Md` unwrapped, and a determinism literal. Four of the 33 are
+  the front's REGRESSION over all **36** leaves — well-formedness, no
+  `cubic-bezier(`/`infinite`, no class fragment, and the `ms` unit — with a
+  fifth holding the controls. **The class-fragment probe is asserted NOT to fire
+  on correct output too**, and here that is not a nicety: `var(--animate-spin)`
+  contains the class name `animate-spin` and `var(--ease-in-out)` contains
+  `ease-in-out`, so both are deliberately absent from the fragment list and both
+  are asserted not to trip it. The walk reads DECLARATIONS and not sheets,
+  because the `@keyframes bounce` BODY legitimately carries a `cubic-bezier(`.
+  Front 35's 31 cover the scale
   and the nine directions of `Pad` and of `Margin`, `Auto` and `Neg` on each,
   the thirteen `Size` sub-sections (fractions, the per-axis viewport unit, the
   named container and breakpoint widths read back through `themeValue`), the
@@ -941,6 +1051,24 @@ to the commonJS row and runs once.
   wavy sky underline, and with the front's cross-front argument: a decoration
   colour and a text colour are ONE custom property, so a project override moves
   both. 11 in-file tests, green on commonJS and on erlang.
+
+- `examples/emilia-transitions/` is the member `emilia-transitions` and is front
+  44's worked example: the six presets with the eleven-property list asserted
+  whole and `color,background-color` asserted absent, `allow-discrete` with the
+  class's own word asserted absent, a preset then its overrides and the same
+  three tokens reversed (two classes, two meanings), the delay ladder with
+  `0ms` keeping its unit, the four easings, a project's `--ease-in-out` giving
+  the SAME class as the library's with no `cubic-bezier(` anywhere in the
+  document, a spinner whose `@keyframes` block is the LAST thing before
+  `</style>`, two spinners hoisting one block, the other three built-ins with
+  their bodies, `animate-none` and a custom `fade` hoisting none, and a submit
+  button whose colours move over 200ms on hover and which dims and grows a
+  spinner while the form is in flight. Its last test is the front's argument,
+  asserted from a CONSUMER package: nothing it renders resolves a timing
+  function or an animation shorthand, and the one `cubic-bezier(` the document
+  does carry is inside the `@keyframes bounce` body — front 54's data, not a
+  declaration this front emits. 14 in-file tests, green on commonJS and on
+  erlang; it builds and runs.
 
 - `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
   tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.600`, …), the

@@ -215,6 +215,25 @@
 ////              Composite, Image, Mode, Origin, Position, Repeat, Size, Type.
 ////              Every value is a CSS keyword; nothing here reads the theme.
 ////              29 leaves
+////   Transition — front 44: `§ 15.1`-`§ 15.5`. Seven flat leaves — None and
+////              the six PRESETS, each of which is THREE declarations from one
+////              token (the property list, `var(--ease-out)` and `150ms`),
+////              which `tokensToCss`'s `;`-join already supports. Beside them
+////              Behavior (`transition-discrete` emits `allow-discrete`, and
+////              the class and the value not matching is the whole reason that
+////              row has a test of its own), Duration and Delay over the same
+////              nine ms steps on two properties, and Ease — Linear is CSS's
+////              own keyword and In/Out/InOut are `--ease-*` references. The
+////              bare `transition` utility is `Base`, NOT `Default`: `default`
+////              is a keyword AND `Default(inner)` is a top-level modifier.
+////              31 leaves
+////   Animate  — front 44: `§ 15.6`, five leaves. The ONE section in fronts
+////              41-47 whose dispatcher answers a `Sheet` rather than a
+////              declaration string, because `animate-spin` is
+////              `animation:var(--animate-spin)` in the rule AND
+////              `@keyframes spin{…}` beside it, and a keyframes rule is not a
+////              style rule. The four bodies are front 54's `keyframeEntries()`
+////              read back through `keyframeCss(th)`, never a second copy
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
 ////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
@@ -254,6 +273,14 @@
 ////                              payload call does not carry the typed-array
 ////                              context either, so a list spells them
 ////                              `Token.EffectShadowRaw(value: v)` in full.
+////   .TransitionProperty(value)  → front 44: upstream's `transition-[…]`
+////   .AnimateRaw(value)          → front 44: upstream's `animate-[…]`. Top
+////                              level for the same reason, and for one more:
+////                              it is the ONLY way to name an animation this
+////                              library does not ship, so the nested spelling
+////                              would have shut the door rather than narrowed
+////                              it. It hoists NO block — a custom animation
+////                              names keyframes front 44 does not own
 ////
 //// MODIFIERS — front 34's table. A modifier is the only way a token reaches
 //// a state, a breakpoint or a pseudo-element. Each is a top-level variant
@@ -1734,6 +1761,98 @@ pub type Token {
     EffectTextShadowRaw(value: string),
     MaskImageRaw(value: string),
     // ── end front 41 ─────────────────────────────────────────────────────────
+
+    // ── front 44 — transitions and animation ─────────────────────────────────
+    //
+    // `§ 15` in two sections. Before this front emilia had no `transition`, no
+    // `duration`, no timing function and no `animation` anywhere, so every
+    // `Hover`, `Focus` and `Open` that front 34 made expressible snapped in one
+    // frame, and a loading state had no token at all — a spinner meant leaving
+    // emilia for a hand-written stylesheet, which is a second styling mechanism
+    // in the same codebase.
+    //
+    // HEAD AUDIT, the rule fronts 36 and 37 paid for and 38 and 41 repeated.
+    // Every head added here — `Transition`, `Animate`, `Behavior`, `Duration`,
+    // `Ease`, `Delay` — was checked against the 87 top-level payload variants
+    // (the 83 modifiers, `Alpha` and front 41's three `*Raw`) and against the
+    // lexer's keyword table before a line of it was written. No collision, and
+    // none of the six repeats an existing section head either. Four LEAVES do
+    // repeat a head declared elsewhere — `Transition.All` beside `Pad.All` and
+    // `Gap.All`, `Transition.Opacity` and `Transition.Shadow` beside
+    // `Effect.Opacity` and `Effect.Shadow`, `Transition.Transform` beside
+    // `Layout.Transform`'s future neighbour in front 45 — and all four were RUN
+    // on both targets rather than reasoned about: the walk in `emilia.bp`
+    // asserts every leaf of this front declares something non-empty, which is
+    // the shape a shadowed arm fails.
+    //
+    // `Base`, NOT `Default`. The bare `transition` utility cannot be spelled
+    // `Default` here twice over: `default` is in the lexer's keyword table, and
+    // `Default(inner: Token[])` is already a top-level modifier variant of
+    // front 34's — the exact collision the head audit exists to catch.
+    //
+    // A NUMERIC LEAF IS BARE DIGITS HERE and `__N` in expression and pattern
+    // position, the spelling fronts 35 and 41 use (`.Transition.Duration.__300`).
+    Transition {
+        None,
+        Base,
+        All,
+        Colors,
+        Opacity,
+        Shadow,
+        Transform,
+        Behavior {
+            Normal,
+            Discrete,
+        }
+        Duration {
+            0,
+            75,
+            100,
+            150,
+            200,
+            300,
+            500,
+            700,
+            1000,
+        }
+        Ease {
+            Linear,
+            In,
+            Out,
+            InOut,
+        }
+        Delay {
+            0,
+            75,
+            100,
+            150,
+            200,
+            300,
+            500,
+            700,
+            1000,
+        }
+    }
+
+    // `§ 15.6`. Five leaves, and the one section in fronts 33-47 whose
+    // dispatcher answers a `Sheet` rather than a declaration string: a named
+    // animation needs a `@keyframes` block beside its rule, and a keyframes
+    // rule is not a style rule. Front 56's `blockSheet` is the channel.
+    Animate {
+        None,
+        Spin,
+        Ping,
+        Pulse,
+        Bounce,
+    }
+
+    // Arbitrary values are TOP-LEVEL variants, never section leaves — front
+    // 41's rule, for front 41's reason. `AnimateRaw` is the ONLY way to name a
+    // custom animation, so the nested spelling would have closed that door
+    // entirely rather than merely made it awkward.
+    TransitionProperty(value: string),
+    AnimateRaw(value: string),
+    // ── end front 44 ─────────────────────────────────────────────────────────
 
     // ── front 39 — backgrounds ──────────────────────────────────
     //
