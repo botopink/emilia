@@ -196,7 +196,25 @@
 ////              dispatcher is `divideTokenToSheet`, and its selector is front
 ////              35's `siblingSelector()` — CALLED, never re-spelled, because
 ////              `space-*` separates the same children the same way. 309 leaves
-////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
+////   Effect   — front 41: the whole of `§ 12.1`-`§ 12.3`. Shadow keeps its
+////              four pre-41 leaf names (Sm/Md/Lg/Xl) and CHANGES WHAT THEY
+////              EMIT — `box-shadow:var(--shadow-md)` where it used to be the
+////              literal `box-shadow:md`, which no browser accepts — beside
+////              X2xs/Xs/X2xl/None/Inner. InsetShadow{X2xs,Xs,Sm} is the
+////              `inset var(--inset-shadow-*)` form; TextShadow is `§ 12.2`;
+////              Opacity widens from five steps to twenty-one. No leaf
+////              resolves a shadow value except `Shadow.Inner`, which upstream
+////              prints as a literal and has no theme entry behind it.
+////              39 leaves
+////   Blend    — front 41: `§ 12.4` and `§ 12.5`. Mix is `mix-blend-mode` and
+////              Bg is `background-blend-mode`, over the SAME seventeen
+////              values — the reference says so in as many words, which is why
+////              they are two sub-sections of one section and not two
+////              top-level ones. 34 leaves
+////   Mask     — front 41: `§ 12.6`, nine one-to-one sub-sections — Clip,
+////              Composite, Image, Mode, Origin, Position, Repeat, Size, Type.
+////              Every value is a CSS keyword; nothing here reads the theme.
+////              29 leaves
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
 ////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
@@ -223,6 +241,19 @@
 ////                              payload leaf nested in a section cannot be
 ////                              constructed, so it is a TOP-LEVEL variant with
 ////                              a builtin-typed field.
+////
+//// ARBITRARY VALUES:
+////   .EffectShadowRaw(value)     → front 41: upstream's `shadow-[…]`
+////   .EffectTextShadowRaw(value) → front 41: upstream's `text-shadow-[…]`
+////   .MaskImageRaw(value)        → front 41: upstream's `mask-image-[…]`
+////                              Each is a TOP-LEVEL variant for the same
+////                              reason `Alpha` is: a payload leaf nested in a
+////                              section cannot be constructed by any spelling.
+////                              The name keeps the path it would have had,
+////                              flattened. A leading-dot path followed by a
+////                              payload call does not carry the typed-array
+////                              context either, so a list spells them
+////                              `Token.EffectShadowRaw(value: v)` in full.
 ////
 //// MODIFIERS — front 34's table. A modifier is the only way a token reaches
 //// a state, a breakpoint or a pseudo-element. Each is a top-level variant
@@ -1516,21 +1547,193 @@ pub type Token {
     }
     // ── end front 40 ─────────────────────────────────────────────────────────
 
+    // ── front 41 — effects ───────────────────────────────────────────────────
+    //
+    // `§ 12` in three sections. `Effect` existed before this front with two
+    // sub-sections and four shadow leaves whose EMITTED VALUE was wrong
+    // (`box-shadow:sm`); the four names below are the same four names, and the
+    // dispatcher under the same banner in `emilia.bp` is what changed.
+    //
+    // HEAD AUDIT, the rule fronts 36 and 37 paid for and front 38 repeated.
+    // Every head added here — `Blend`, `Mask`, `InsetShadow`, `TextShadow`,
+    // `Mix`, `Bg`, `Clip`, `Composite`, `Image`, `Mode`, `Origin`, `Position`,
+    // `Repeat`, `Size`, `Type` — was checked against the 84 top-level payload
+    // variants (the 83 modifiers plus `Alpha`) and against the lexer's keyword
+    // table before a line of it was written. No collision. `Blend.Bg` and
+    // `Mask.Size` deliberately repeat the names of the TOP-LEVEL SECTIONS `Bg`
+    // and `Size`: a section head beside a section head is safe and always has
+    // been (`Border.Color` beside `Color`, five times over) — it is a section
+    // head beside a top-level PAYLOAD variant that silently breaks the
+    // variant's projection. Both were run against the real compiler on both
+    // targets before they were declared, not reasoned about.
+    //
+    // A NUMERIC LEAF IS THREE SPELLINGS FOR ONE THING: bare digits here,
+    // `.Effect.Opacity.60` in expression position, `__60` in a `case` pattern.
+    // `X2xs` and `X2xl` are the other half of that rule — a leaf may not START
+    // with a digit, so upstream's `2xs` and `2xl` take an `X`. The emitted
+    // variable name keeps upstream's spelling (`--shadow-2xs`).
     Effect {
         Shadow {
+            X2xs,
+            Xs,
             Sm,
             Md,
             Lg,
             Xl,
+            X2xl,
+            None,
+            Inner,
         }
+        InsetShadow {
+            X2xs,
+            Xs,
+            Sm,
+        }
+        TextShadow {
+            X2xs,
+            Xs,
+            Sm,
+            Md,
+            Lg,
+            None,
+        }
+        // `§ 12.3` prints fifteen steps. The six PROVISIONAL ones — 15, 35,
+        // 45, 55, 65, 85 — are marked at the arms that emit them in
+        // `emilia.bp`; they are upstream's bare-integer `opacity-<number>`
+        // form and the reference carries no row for them.
         Opacity {
             0,
+            5,
+            10,
+            15,
+            20,
             25,
+            30,
+            35,
+            40,
+            45,
             50,
+            55,
+            60,
+            65,
+            70,
             75,
+            80,
+            85,
+            90,
+            95,
             100,
         }
     }
+
+    // `mix-blend-mode` and `background-blend-mode` take the SAME seventeen
+    // values — `§ 12.5` is one sentence saying exactly that — so they are two
+    // sub-sections of one section rather than two top-level ones.
+    Blend {
+        Mix {
+            Normal,
+            Multiply,
+            Screen,
+            Overlay,
+            Darken,
+            Lighten,
+            ColorDodge,
+            ColorBurn,
+            HardLight,
+            SoftLight,
+            Difference,
+            Exclusion,
+            Hue,
+            Saturation,
+            Color,
+            Luminosity,
+            PlusLighter,
+        }
+        Bg {
+            Normal,
+            Multiply,
+            Screen,
+            Overlay,
+            Darken,
+            Lighten,
+            ColorDodge,
+            ColorBurn,
+            HardLight,
+            SoftLight,
+            Difference,
+            Exclusion,
+            Hue,
+            Saturation,
+            Color,
+            Luminosity,
+            PlusLighter,
+        }
+    }
+
+    // `§ 12.6`, nine properties and one section each. The twenty rows the
+    // reference prints are here; the PROVISIONAL leaves that complete three of
+    // the keyword ladders (`Position` beyond Center, `Repeat` beyond the two,
+    // `Size.Auto`) are marked at their arms in `emilia.bp`.
+    Mask {
+        Clip {
+            Border,
+            Padding,
+            Content,
+        }
+        Composite {
+            Add,
+            Subtract,
+            Intersect,
+            Exclude,
+        }
+        Image {
+            None,
+        }
+        Mode {
+            Alpha,
+            Luminance,
+        }
+        Origin {
+            Border,
+            Padding,
+            Content,
+        }
+        Position {
+            Center,
+            Top,
+            Bottom,
+            Left,
+            Right,
+        }
+        Repeat {
+            NoRepeat,
+            Repeat,
+            RepeatX,
+            RepeatY,
+            Round,
+            Space,
+        }
+        Size {
+            Auto,
+            Cover,
+            Contain,
+        }
+        Type {
+            Alpha,
+            Luminance,
+        }
+    }
+
+    // Arbitrary values are TOP-LEVEL variants, never section leaves. A payload
+    // leaf inside a section cannot be constructed by ANY spelling — verified
+    // against the pinned compiler while this front was written: the qualified
+    // form reports `unknown field 'Shadow' on type 'Token'` and the dot form
+    // reports `unbound variable ''`. The name keeps the path it would have
+    // had, flattened.
+    EffectShadowRaw(value: string),
+    EffectTextShadowRaw(value: string),
+    MaskImageRaw(value: string),
+    // ── end front 41 ─────────────────────────────────────────────────────────
 
     // ── front 39 — backgrounds ──────────────────────────────────
     //

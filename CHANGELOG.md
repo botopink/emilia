@@ -2,6 +2,87 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Effect` corrected and widened; `Blend` and `Mask` added — the whole of
+  `§ 12`** (1.0.10-beta front `41-emilia-effects`). 102 leaves, and the only
+  front so far whose main job was to fix output emilia had already shipped.
+
+  **`.Effect.Shadow.Sm`/`.Md`/`.Lg`/`.Xl` emitted `box-shadow:sm`,
+  `box-shadow:md`, `box-shadow:lg` and `box-shadow:xl`** — the Tailwind class
+  suffix in the position a CSS value belongs. No browser accepts any of them,
+  so a page that asked for a shadow rendered flat, and the one assertion in the
+  suite that touched the family pinned the wrong string. The four leaf NAMES
+  are unchanged, so nothing that compiled before stops compiling; the four
+  values are now `var(--shadow-sm)` and friends, which is what the reference's
+  "Propriedade CSS" column prints. Both facts are asserted — the value each
+  leaf has, and the value it must never have again.
+
+  `Effect.Shadow` gains `X2xs`, `Xs`, `X2xl`, `None` and `Inner`;
+  `Effect.InsetShadow` and `Effect.TextShadow` are new sub-sections;
+  `Effect.Opacity` widens from five steps to twenty-one. `Blend` is
+  `mix-blend-mode` and `background-blend-mode` over the same seventeen values
+  (`§ 12.5` says so in one sentence, which is why they are two sub-sections of
+  one section). `Mask` is `§ 12.6`'s nine properties, one sub-section each.
+
+  **An inset shadow is not a longhand.** CSS has no `inset-box-shadow`; the
+  property is `box-shadow` and `inset` leads the value, so
+  `.Effect.InsetShadow.Sm` and `.Effect.Shadow.Sm` set the same property and
+  the later token in a list wins.
+
+  **No leaf resolves a shadow value, with exactly one exception that is
+  asserted from both sides.** The three scales are `themeVar(…)` lookups over
+  front 54's `--shadow-*`, `--inset-shadow-*` and `--text-shadow-*`, so a
+  project that redefines a step moves every rule and not one byte of any rule
+  body. `Shadow.Inner` is the exception: upstream has no `--shadow-inner` and
+  `§ 12.1` prints its value inline, so it is a literal, and the walk asserts
+  both that every other leaf is free of one AND that this one carries it. The
+  front README's "no `rgb(` anywhere in this front's block" bullet contradicts
+  its own table row and is wrong about it.
+
+  **There is no `Ns.TextShadow`.** Front 54's nineteen namespaces do not
+  include `--text-shadow-`, so `textShadowVar` spells the prefix literally and
+  a project's `--text-shadow-*` entries are accepted under the `--text-`
+  prefix — they read back through `namespace(th, Ns.Text)` and would be
+  dropped by `clearNamespace(th, Ns.Text)`. Pinned by a test, with
+  `--inset-shadow-*` as the control that shows the difference. A real
+  `Ns.TextShadow` is front 54's to add.
+
+  **Three top-level arbitrary-value variants** — `EffectShadowRaw(value)`,
+  `EffectTextShadowRaw(value)` and `MaskImageRaw(value)`, with the wrappers
+  `rawShadow` / `rawTextShadow` / `rawMaskImage`. They are top-level and not
+  `Effect.Shadow.Raw(…)` because a payload leaf nested inside an enum section
+  cannot be constructed by any spelling, and they are reached through wrappers
+  because a leading-dot path followed by a payload call does not carry the
+  typed-array context either. Both gaps were re-measured against compiler
+  `2e6bb4ac` rather than taken from the spec, and one of the two diagnostics
+  has changed — see `docs.md` § `Color.Hex("#abc")` is declared and
+  unconstructible.
+
+  **Marked PROVISIONAL at the arm that emits them**, not only in a table:
+  six opacity steps (`15`, `35`, `45`, `55`, `65`, `85`), four `mask-position`
+  keywords, four `mask-repeat` keywords, `mask-size:auto`, and the three
+  arbitrary-value wrappers. `§ 12.3` prints fifteen opacity rows and `§ 12.6`
+  twenty mask rows; the reference prints no arbitrary-value form anywhere.
+  What is NOT provisional about each is stated beside it.
+
+  102 leaves walked for well-formedness, for a bare Tailwind scale step as a
+  value, and for a class fragment. Each probe carries a control that must fail
+  AND a control proving it does not fire on correct output — `var(--shadow-sm)`
+  legitimately contains `shadow-sm`, so the scale probe anchors on the colon.
+  Three defects were planted, watched redden and removed; the first reddened
+  eleven cells across three fronts.
+
+  `Blend`'s two seventeen-value tables are written twice, because two enum
+  types cannot share a `case`; a test strips the property name off each side
+  and asserts the values are equal, in order.
+
+  **Not declared:** `shadow-<color>/<opacity>`. `§ 12.1` gives the class and
+  the prose and no property/value pair. Front 56's `Rule.declarations` makes
+  the two-step protocol expressible, so the mechanism is no longer missing —
+  the value is, and it reopens the moment the reference carries a row.
+
+  `examples/emilia-effects/` is the worked example (12 tests).
+  463 → **495** tests in `modules/emilia`, green on commonJS and on erlang.
+
 - **`Text` and `Font` widened, `List` added — the whole of `§ 9`** (1.0.10-beta
   front `38-emilia-typography`). 437 leaves over thirty-two property groups, of
   which emilia covered four, partially, and three of those four emitted CSS that

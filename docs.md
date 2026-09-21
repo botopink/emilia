@@ -439,8 +439,21 @@ val h: Token = .Color.Hex("#abc");
 A payload leaf nested inside a section has no constructible spelling; the
 variant type-checks in a `case` pattern, so the surface looks complete and is
 not. The shape that builds is a **top-level** variant with builtin-typed
-fields — which is what `Alpha(percent: i32, inner: Token[])` is, and what an
-arbitrary-value escape hatch will have to be.
+fields — which is what `Alpha(percent: i32, inner: Token[])` is, and what
+front 41's `EffectShadowRaw(value: string)`, `EffectTextShadowRaw(value:
+string)` and `MaskImageRaw(value: string)` are.
+
+> **The second message has changed since it was recorded**, re-measured by
+> front 41 against compiler `2e6bb4ac` and against this enum. The qualified
+> form still reports `'Hex' is not declared in any behavior implemented for
+> 'Token'`; the dot form now reports **`'Hex' is not declared in any behavior
+> implemented for 'Ns'`** — the leading-dot resolver walked `.Color` into
+> front 54's `Ns` enum, which also has a `Color` member, instead of into the
+> annotated type `Token`. The gap is unchanged and the diagnostic is worse: it
+> names a type the author never mentioned. (In an enum with no such sibling in
+> scope the same two forms report `unknown field '<Section>' on type '<Enum>'`
+> and `unbound variable ''` — an empty name — which is the spelling the
+> milestone's `language-gaps.md` rows 51 and 52 still carry.)
 
 Nothing in the palette depends on the enum, which is why that gap costs this
 front nothing: `paletteVar(family, shade)` and `alphaWrap(percent, css)` take
@@ -1130,6 +1143,186 @@ walk has a control that must fail, and one further walk asserts that all 1440
 colour cells carry a `var(--color-` reference and that a section's 288 are 288
 **distinct** strings — because a literal probe alone does not catch a dispatcher
 that discards its shade, which is exactly the defect this section used to have.
+
+### Effect, Blend and Mask — `§ 12`
+
+Three sections, one hundred and two leaves, and the only place emilia ever
+shipped CSS a browser throws away.
+
+#### The defect, stated plainly
+
+`.Effect.Shadow.Md` used to emit **`box-shadow:md`**. That is the Tailwind
+class suffix in the position a CSS value belongs; a browser discards the whole
+declaration, so a card that asked for a shadow rendered flat. All four of
+`Sm`/`Md`/`Lg`/`Xl` did it, and the only assertion that touched the family
+pinned the wrong string. The four leaf **names** did not move, so nothing
+that compiled before stops compiling; what they emit is the fix.
+
+```bp
+.Effect.Shadow.Sm          // box-shadow:var(--shadow-sm)   (was box-shadow:sm)
+.Effect.Shadow.Md          // box-shadow:var(--shadow-md)   (was box-shadow:md)
+.Effect.Shadow.Lg          // box-shadow:var(--shadow-lg)   (was box-shadow:lg)
+.Effect.Shadow.Xl          // box-shadow:var(--shadow-xl)   (was box-shadow:xl)
+```
+
+#### Shadows
+
+```bp
+.Effect.Shadow.X2xs        // box-shadow:var(--shadow-2xs)
+.Effect.Shadow.Xs          // box-shadow:var(--shadow-xs)
+.Effect.Shadow.X2xl        // box-shadow:var(--shadow-2xl)
+.Effect.Shadow.None        // box-shadow:none
+.Effect.Shadow.Inner       // box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)
+
+.Effect.InsetShadow.X2xs   // box-shadow:inset var(--inset-shadow-2xs)
+.Effect.InsetShadow.Xs     // box-shadow:inset var(--inset-shadow-xs)
+.Effect.InsetShadow.Sm     // box-shadow:inset var(--inset-shadow-sm)
+
+.Effect.TextShadow.Sm      // text-shadow:var(--text-shadow-sm)
+.Effect.TextShadow.None    // text-shadow:none
+```
+
+A leaf may not start with a digit, so upstream's `2xs` and `2xl` are spelled
+`X2xs` and `X2xl`. The **emitted variable keeps upstream's name** —
+`--shadow-2xs`, not `--shadow-x2xs`.
+
+An **inset shadow is not a longhand**. CSS has no `inset-box-shadow`; the
+property is `box-shadow` and `inset` leads the value. `.Effect.InsetShadow.Sm`
+and `.Effect.Shadow.Sm` therefore set the same property, and the later token in
+a list wins.
+
+`Shadow.Inner` is the **one literal in the whole section**. Upstream has no
+`--shadow-inner` variable and `§ 12.1` prints the value inline, so writing it
+as a theme lookup would invent a variable the reference does not have. Every
+other step of every scale is a `var(…)` reference — a test walks all 102 leaves
+asserting exactly one of them resolves a shadow value, and asserts from the
+other side that the one is `Shadow.Inner`.
+
+> **The stock theme carries `--shadow-*` and neither of the other two.**
+> `--inset-shadow-*` is a real `Ns` namespace and a project adds its three
+> entries through `extendTheme`. `--text-shadow-*` is **not** an `Ns`
+> namespace — front 54's nineteen do not include it — so those entries are
+> accepted under the `--text-` prefix instead, which is where `namespace(th,
+> Ns.Text)` finds them and where `clearNamespace(th, Ns.Text)` would drop
+> them. A real `Ns.TextShadow` is front 54's to add.
+
+#### Opacity
+
+Twenty-one steps, each with a **leading zero** — `opacity:0.6` and never
+`opacity:.6`, which is legal CSS and is not what the reference prints.
+
+```bp
+.Effect.Opacity.__0        // opacity:0
+.Effect.Opacity.__60       // opacity:0.6
+.Effect.Opacity.__100      // opacity:1
+```
+
+A numeric leaf is three spellings for one thing: bare digits in the
+declaration, `.Effect.Opacity.60` in expression position, `__60` in a `case`
+pattern.
+
+`§ 12.3` prints fifteen steps. Six more — `15`, `35`, `45`, `55`, `65`, `85` —
+are declared and **marked provisional at the arm that emits them**: they are
+upstream's bare-integer `opacity-<number>` form, which the reference carries no
+row for.
+
+#### Blend modes
+
+`mix-blend-mode` blends an element with what is **behind** it;
+`background-blend-mode` blends an element's own background layers with **each
+other**. `§ 12.5` says in one sentence that the two take the same seventeen
+values, which is why they are two sub-sections of one section.
+
+```bp
+.Blend.Mix.Multiply        // mix-blend-mode:multiply
+.Blend.Mix.PlusLighter     // mix-blend-mode:plus-lighter
+.Blend.Bg.Overlay          // background-blend-mode:overlay
+```
+
+The two value tables are written twice, because two enum types cannot share a
+`case`. A test strips the property name off each side and asserts the seventeen
+values are **equal, in order**, so a typo in one and not the other reddens here
+rather than in a browser.
+
+#### Masks
+
+Nine properties, nine sub-sections, every value a CSS keyword. Nothing in
+`Mask` reads the theme.
+
+```bp
+.Mask.Clip.Padding         // mask-clip:padding-box
+.Mask.Composite.Intersect  // mask-composite:intersect
+.Mask.Image.None           // mask-image:none
+.Mask.Mode.Alpha           // mask-mode:alpha
+.Mask.Origin.Border        // mask-origin:border-box
+.Mask.Position.Center      // mask-position:center
+.Mask.Repeat.NoRepeat      // mask-repeat:no-repeat
+.Mask.Size.Cover           // mask-size:cover
+.Mask.Type.Luminance       // mask-type:luminance
+```
+
+**The class suffix is not the CSS value.** `mask-clip-border` sets
+`border-box`; a transcription that copied the suffix across would give
+`mask-clip:border`, which is the same shape of defect as `box-shadow:md`.
+
+`mask-type` is the only member of the family that declares on the **mask**
+element rather than on the masked one, which is why it and `mask-mode` are two
+properties over the same two words.
+
+`§ 12.6` prints twenty rows. Nine more leaves — `Position.{Top,Bottom,Left,
+Right}`, `Repeat.{RepeatX,RepeatY,Round,Space}` and `Size.Auto` — complete the
+three keyword ladders and are **marked provisional at the arm that emits them**.
+
+#### Arbitrary values — `rawShadow`, `rawTextShadow`, `rawMaskImage`
+
+Upstream's `shadow-[…]`, `text-shadow-[…]` and `mask-image-[…]` are
+**top-level variants with a payload**, not leaves inside their section: a
+payload leaf nested inside an enum section cannot be constructed by any
+spelling (see *`Color.Hex("#abc")` is declared and unconstructible*). The name
+keeps the path it would have had, flattened.
+
+```bp
+val tokens: Token[] = [
+    rawMaskImage("linear-gradient(to bottom, black 60%, transparent)"),
+    .Mask.Repeat.NoRepeat,
+];
+// mask-image:linear-gradient(to bottom, black 60%, transparent);mask-repeat:no-repeat
+```
+
+The three wrappers exist because a **leading-dot path followed by a payload
+call does not carry the typed-array context** — `[.EffectShadowRaw("…")]` does
+not parse. `Token.EffectShadowRaw(value: "…")` in full does, and so does a call
+to one of the wrappers; they produce the same token and the same class.
+
+These three are provisional as a group: the reference prints no
+arbitrary-value form anywhere. What is not provisional is the **property** each
+sets — `box-shadow`, `text-shadow` and `mask-image` are the properties the
+confirmed rows of the same families set.
+
+#### Nothing in `Effect`, `Blend` or `Mask` resolves a shadow
+
+The three sections declare **102 leaves** (39 + 34 + 29), and a test walks every
+one of them asserting the declaration carries a `:`; carries no bare Tailwind
+scale step as its value; and carries no Tailwind class fragment. Each probe has
+a control that must fail **and** a control proving it does not fire on correct
+output — `var(--shadow-sm)` legitimately contains `shadow-sm`, so the scale
+probe anchors on the colon and a naive `indexOf("shadow-sm")` would have fired
+on the fix. One further walk asserts the fifteen scale references are fifteen
+**distinct** strings.
+
+`examples/emilia-effects/` is the worked example: the catalogue, then a photo
+card that sits on the small shadow with its image multiplied into the page and
+lifts to the extra-large shadow at full opacity on hover.
+
+#### Not declared
+
+`shadow-<color>/<opacity>` — upstream's `shadow-red-500/50`. `§ 12.1` gives the
+class and the prose "Cor da sombra com opacidade" and **no property/value
+pair**. The mechanism is no longer missing: front 56's `Rule.declarations` can
+express the two-step protocol, where the colour utility writes a custom
+property and the shadow utility reads it back. The **value** still is, so there
+is nothing byte-equal to emit, and it reopens the moment the reference carries
+a row.
 
 ### Modifiers — the variant table
 

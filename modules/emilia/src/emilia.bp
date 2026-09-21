@@ -156,7 +156,18 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Ring(_inner) -> ringTokenToSheet(_inner, th);
         Divide(_inner) -> divideTokenToSheet(_inner, th);
         // ── end front 40 ───────────────────────────────────────
-        Effect(_inner) -> declSheet(effectTokenToCss(_inner));
+        // ── front 41 — effects ─────────────────────────────────
+        Effect(_inner) -> declSheet(effectTokenToCss(_inner, th));
+        Blend(_inner) -> declSheet(blendTokenToCss(_inner, th));
+        Mask(_inner) -> declSheet(maskTokenToCss(_inner, th));
+        // The three arbitrary-value variants are SIBLINGS of `Effect`, not
+        // leaves inside it, so each needs an arm of its own. Each destructures
+        // by its DECLARED FIELD NAME — a positional bind type-checks and is
+        // `undefined` at run time.
+        EffectShadowRaw(value) -> declSheet("box-shadow:" + value);
+        EffectTextShadowRaw(value) -> declSheet("text-shadow:" + value);
+        MaskImageRaw(value) -> declSheet("mask-image:" + value);
+        // ── end front 41 ───────────────────────────────────────
         // ── front 39 — backgrounds ─────────────────────────
         Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
         // ── end front 39 ─────────────────────────────
@@ -10668,34 +10679,936 @@ test "regression — the walk fails when a literal is planted in it" {
 
 // ── end front 40 ─────────────────────────────────────────────────────────────
 
-fn effectTokenToCss(t: Token.Effect) -> string {
+// ── front 41 — effects ───────────────────────────────────────────────────────
+//
+// FRONT 41 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the
+// `Effect`, `Blend` and `Mask` dispatchers, their sub-dispatchers, the three
+// arbitrary-value wrappers and the tests under the same name.
+//
+// THE DEFECT THIS FRONT EXISTS FOR. `shadowToCss` used to answer
+// `"box-shadow:sm"`, `"box-shadow:md"`, `"box-shadow:lg"` and
+// `"box-shadow:xl"` — the Tailwind CLASS SUFFIX where a CSS value belongs. A
+// browser discards the whole declaration, so `.Effect.Shadow.Md` shipped as a
+// card with no shadow and nothing in the suite said so: the only assertion
+// that touched it pinned the wrong string. The four leaf NAMES are unchanged,
+// so every existing call site still type-checks; what they EMIT is the fix.
+//
+// NO LEAF RESOLVES A SHADOW VALUE — fronts 35-40's rule, one family further
+// on. `box-shadow`, `box-shadow: inset …` and `text-shadow` are
+// `themeVar(…)` lookups against front 54's `--shadow-*`, `--inset-shadow-*`
+// and `--text-shadow-*` names, which is what the reference's "Propriedade
+// CSS" column prints. A dispatcher that resolved `var(--shadow-md)` to
+// `0 4px 6px -1px rgb(0 0 0 / 0.1), …` would hard-code a value the theme is
+// allowed to override.
+//
+// THE ONE EXCEPTION, and the front README's acceptance bullet is wrong about
+// it: `shadow-inner` has NO `--shadow-inner` variable upstream and `§ 12.1`
+// prints its value as a literal — `box-shadow: inset 0 2px 4px 0 rgb(0 0 0 /
+// 0.05)`. So exactly one arm in this front carries an `rgb(`, it is
+// `Shadow.Inner`, and the regression walk below asserts that from both sides:
+// every other leaf is `rgb(`-free AND `Shadow.Inner` does carry one. Writing
+// it as a theme lookup would invent a variable the reference does not have.
+//
+// A RESIDUAL WITH FRONT 40, recorded rather than patched over. `Ring`'s
+// composed `box-shadow` lists `var(--tw-shadow)` so that a ring and a shadow
+// can sit in one list without the later one winning, and front 40's banner
+// says so "once front 41's `Effect.Shadow` sets `--tw-shadow`". IT DOES NOT.
+// The reference's `§ 12.1` prints `box-shadow: var(--shadow-md)` and nothing
+// else, and a dispatcher that wrote `--tw-shadow: var(--shadow-md)` beside it
+// would be emitting a declaration no row of this repository's reference
+// carries. So today `[.Ring.W.2, .Effect.Shadow.Md]` is two `box-shadow`
+// declarations and the second wins — which is what front 40's own test
+// asserts, and what its README's "still unverified: the composed `box-shadow`
+// list" caveat already covers. Closing it needs a reference row, not a patch
+// in this front.
+//
+// REFERENCE GAPS, recorded rather than hidden — see the front's README.
+//   NOT IN THE REFERENCE, and marked PROVISIONAL at the arm that emits it:
+//     six opacity steps (15/35/45/55/65/85), four `mask-position` keywords,
+//     four `mask-repeat` keywords, `mask-size:auto`, and the three
+//     arbitrary-value wrappers. `§ 12.3` prints fifteen opacity rows and
+//     `§ 12.6` twenty mask rows; the rest come from the 1.0.8 draft this front
+//     replaces and from upstream's bracket syntax.
+//   NOT DECLARED AT ALL: `shadow-<color>/<opacity>`. `§ 12.1` gives the class
+//     and the prose "Cor da sombra com opacidade" and NO property/value pair.
+//     Front 56's `Rule.declarations` makes the two-step protocol expressible;
+//     the VALUE is still missing from the reference, so there is nothing
+//     byte-equal to emit.
+
+// The three reference builders, and the only places this front spells a
+// namespace prefix.
+fn shadowVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.Shadow) + name);
+}
+
+fn insetShadowVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.InsetShadow) + name);
+}
+
+// THERE IS NO `Ns.TextShadow`. Front 54's `Ns` carries nineteen namespaces and
+// `--text-shadow-` is not one of them, so this is the single place the prefix
+// is written and it is written literally rather than through `nsPrefix`.
+// A project CAN still define these: `extendTheme` accepts an entry whose name
+// begins with any known prefix, and `--text-shadow-sm` begins with `--text-`,
+// so it lands in the Text namespace. Two consequences a reader needs — they
+// are pinned by tests below, not left as prose: an extended `--text-shadow-*`
+// entry survives `extendTheme`, and `clearNamespace(th, Ns.Text)` drops it
+// along with the font sizes. A real `Ns.TextShadow` is front 54's to add.
+fn textShadowVar(name: string) -> string {
+    return themeVar("--text-shadow-" + name);
+}
+
+fn effectTokenToCss(t: Token.Effect, th: Theme) -> string {
     val out = case t {
         Shadow(_inner) -> shadowToCss(_inner);
+        InsetShadow(_inner) -> insetShadowToCss(_inner);
+        TextShadow(_inner) -> textShadowToCss(_inner);
         Opacity(_inner) -> opacityToCss(_inner);
     };
     return out;
 }
 
+// `§ 12.1`. Seven scale steps through the theme, one keyword, one literal.
 fn shadowToCss(s: Token.Effect.Shadow) -> string {
     val out = case s {
-        Sm -> "box-shadow:sm";
-        Md -> "box-shadow:md";
-        Lg -> "box-shadow:lg";
-        Xl -> "box-shadow:xl";
+        X2xs -> "box-shadow:" + shadowVar("2xs");
+        Xs -> "box-shadow:" + shadowVar("xs");
+        Sm -> "box-shadow:" + shadowVar("sm");
+        Md -> "box-shadow:" + shadowVar("md");
+        Lg -> "box-shadow:" + shadowVar("lg");
+        Xl -> "box-shadow:" + shadowVar("xl");
+        X2xl -> "box-shadow:" + shadowVar("2xl");
+        None -> "box-shadow:none";
+        // The one literal in this front, and the reference prints it as one:
+        // there is no `--shadow-inner` upstream. See the banner above.
+        Inner -> "box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)";
     };
     return out;
 }
 
+// `§ 12.1`, the inset half. The property is `box-shadow` — NOT a separate
+// property — and the `inset` keyword is part of the VALUE, ahead of the
+// variable. `--inset-shadow-*` is a real namespace of front 54's `Ns`; the
+// stock theme does not carry its three entries, so they reach a project
+// through `extend`, the same way front 33's palette does.
+fn insetShadowToCss(s: Token.Effect.InsetShadow) -> string {
+    val out = case s {
+        X2xs -> "box-shadow:inset " + insetShadowVar("2xs");
+        Xs -> "box-shadow:inset " + insetShadowVar("xs");
+        Sm -> "box-shadow:inset " + insetShadowVar("sm");
+    };
+    return out;
+}
+
+// `§ 12.2`. Five scale steps and a keyword; `None` is `none` and not a theme
+// lookup, because there is no `--text-shadow-none`.
+fn textShadowToCss(s: Token.Effect.TextShadow) -> string {
+    val out = case s {
+        X2xs -> "text-shadow:" + textShadowVar("2xs");
+        Xs -> "text-shadow:" + textShadowVar("xs");
+        Sm -> "text-shadow:" + textShadowVar("sm");
+        Md -> "text-shadow:" + textShadowVar("md");
+        Lg -> "text-shadow:" + textShadowVar("lg");
+        None -> "text-shadow:none";
+    };
+    return out;
+}
+
+// `§ 12.3`. A leading zero, always — `opacity:0.6` and never `opacity:.6`,
+// which is the form the reference prints. The five pre-41 leaves (0, 25, 50,
+// 75, 100) emit exactly what they emitted before this front.
+//
+// SIX ARMS ARE PROVISIONAL and are marked here, not only in a table at the
+// bottom of a README: 15, 35, 45, 55, 65 and 85 have NO ROW in `§ 12.3`,
+// which prints fifteen steps. They come from the 1.0.8 draft this front
+// replaces, where they are upstream's bare-integer `opacity-<number>` form.
+// What is NOT provisional about them is the SHAPE — `opacity:0.NN` is the
+// same shape the fifteen confirmed rows use, and one arm spells it the same
+// way as the next — so if the six are ever dropped, nothing about the other
+// fifteen moves.
 fn opacityToCss(o: Token.Effect.Opacity) -> string {
     val out = case o {
         __0 -> "opacity:0";
+        __5 -> "opacity:0.05";
+        __10 -> "opacity:0.1";
+        __15 -> "opacity:0.15";     // PROVISIONAL — no row in `§ 12.3`
+        __20 -> "opacity:0.2";
         __25 -> "opacity:0.25";
+        __30 -> "opacity:0.3";
+        __35 -> "opacity:0.35";     // PROVISIONAL — no row in `§ 12.3`
+        __40 -> "opacity:0.4";
+        __45 -> "opacity:0.45";     // PROVISIONAL — no row in `§ 12.3`
         __50 -> "opacity:0.5";
+        __55 -> "opacity:0.55";     // PROVISIONAL — no row in `§ 12.3`
+        __60 -> "opacity:0.6";
+        __65 -> "opacity:0.65";     // PROVISIONAL — no row in `§ 12.3`
+        __70 -> "opacity:0.7";
         __75 -> "opacity:0.75";
+        __80 -> "opacity:0.8";
+        __85 -> "opacity:0.85";     // PROVISIONAL — no row in `§ 12.3`
+        __90 -> "opacity:0.9";
+        __95 -> "opacity:0.95";
         __100 -> "opacity:1";
     };
     return out;
 }
+
+// ── blend modes · `§ 12.4`, `§ 12.5` ─────────────────────────────────────────
+//
+// The two sub-dispatchers differ ONLY in the property name prepended here.
+// Their seventeen-arm value tables are written twice because `Token.Blend.Mix`
+// and `Token.Blend.Bg` are two distinct types and a `case` cannot be generic
+// over them — the same reason front 40 carries `borderWidthXValue` beside
+// `borderWidthYValue`. A test below asserts the two tables agree value for
+// value, so a typo in one and not the other is a red and not a drift.
+fn blendTokenToCss(t: Token.Blend, th: Theme) -> string {
+    val out = case t {
+        Mix(_inner) -> "mix-blend-mode:" + blendMixValue(_inner);
+        Bg(_inner) -> "background-blend-mode:" + blendBgValue(_inner);
+    };
+    return out;
+}
+
+fn blendMixValue(m: Token.Blend.Mix) -> string {
+    val out = case m {
+        Normal -> "normal";
+        Multiply -> "multiply";
+        Screen -> "screen";
+        Overlay -> "overlay";
+        Darken -> "darken";
+        Lighten -> "lighten";
+        ColorDodge -> "color-dodge";
+        ColorBurn -> "color-burn";
+        HardLight -> "hard-light";
+        SoftLight -> "soft-light";
+        Difference -> "difference";
+        Exclusion -> "exclusion";
+        Hue -> "hue";
+        Saturation -> "saturation";
+        Color -> "color";
+        Luminosity -> "luminosity";
+        PlusLighter -> "plus-lighter";
+    };
+    return out;
+}
+
+fn blendBgValue(b: Token.Blend.Bg) -> string {
+    val out = case b {
+        Normal -> "normal";
+        Multiply -> "multiply";
+        Screen -> "screen";
+        Overlay -> "overlay";
+        Darken -> "darken";
+        Lighten -> "lighten";
+        ColorDodge -> "color-dodge";
+        ColorBurn -> "color-burn";
+        HardLight -> "hard-light";
+        SoftLight -> "soft-light";
+        Difference -> "difference";
+        Exclusion -> "exclusion";
+        Hue -> "hue";
+        Saturation -> "saturation";
+        Color -> "color";
+        Luminosity -> "luminosity";
+        PlusLighter -> "plus-lighter";
+    };
+    return out;
+}
+
+// ── masks · `§ 12.6` ─────────────────────────────────────────────────────────
+//
+// Nine properties, nine sub-sections, no `_` fallback anywhere. Every value is
+// a CSS keyword: nothing here reads the theme, so `th` reaches this dispatcher
+// per contract `§ 4a` and stops at it.
+//
+// `border`, `padding` and `content` are CLASS suffixes and `border-box`,
+// `padding-box` and `content-box` the CSS values — the pair that a
+// transcription gets wrong by copying the class name across, which is exactly
+// the defect this whole front exists to repair one section up.
+fn maskTokenToCss(t: Token.Mask, th: Theme) -> string {
+    val out = case t {
+        Clip(_inner) -> maskClipToCss(_inner);
+        Composite(_inner) -> maskCompositeToCss(_inner);
+        Image(_inner) -> maskImageToCss(_inner);
+        Mode(_inner) -> maskModeToCss(_inner);
+        Origin(_inner) -> maskOriginToCss(_inner);
+        Position(_inner) -> maskPositionToCss(_inner);
+        Repeat(_inner) -> maskRepeatToCss(_inner);
+        Size(_inner) -> maskSizeToCss(_inner);
+        Type(_inner) -> maskTypeToCss(_inner);
+    };
+    return out;
+}
+
+fn maskClipToCss(c: Token.Mask.Clip) -> string {
+    val out = case c {
+        Border -> "mask-clip:border-box";
+        Padding -> "mask-clip:padding-box";
+        Content -> "mask-clip:content-box";
+    };
+    return out;
+}
+
+fn maskCompositeToCss(c: Token.Mask.Composite) -> string {
+    val out = case c {
+        Add -> "mask-composite:add";
+        Subtract -> "mask-composite:subtract";
+        Intersect -> "mask-composite:intersect";
+        Exclude -> "mask-composite:exclude";
+    };
+    return out;
+}
+
+// One leaf. `§ 12.6` prints `mask-image-none` and nothing else; every other
+// mask image upstream is an arbitrary value, which is `MaskImageRaw` below.
+fn maskImageToCss(i: Token.Mask.Image) -> string {
+    val out = case i {
+        None -> "mask-image:none";
+    };
+    return out;
+}
+
+fn maskModeToCss(m: Token.Mask.Mode) -> string {
+    val out = case m {
+        Alpha -> "mask-mode:alpha";
+        Luminance -> "mask-mode:luminance";
+    };
+    return out;
+}
+
+fn maskOriginToCss(o: Token.Mask.Origin) -> string {
+    val out = case o {
+        Border -> "mask-origin:border-box";
+        Padding -> "mask-origin:padding-box";
+        Content -> "mask-origin:content-box";
+    };
+    return out;
+}
+
+// FOUR ARMS ARE PROVISIONAL. `§ 12.6` prints `mask-position-center` and no
+// other position, so Top/Bottom/Left/Right come from the 1.0.8 draft this
+// front replaces. What is NOT provisional is that `mask-position` takes the
+// `background-position` grammar, in which all five are plain keywords — so the
+// four are the same kind of value as the one the reference confirms, not a
+// different shape.
+fn maskPositionToCss(p: Token.Mask.Position) -> string {
+    val out = case p {
+        Center -> "mask-position:center";
+        Top -> "mask-position:top";          // PROVISIONAL — no row in `§ 12.6`
+        Bottom -> "mask-position:bottom";    // PROVISIONAL — no row in `§ 12.6`
+        Left -> "mask-position:left";        // PROVISIONAL — no row in `§ 12.6`
+        Right -> "mask-position:right";      // PROVISIONAL — no row in `§ 12.6`
+    };
+    return out;
+}
+
+// FOUR ARMS ARE PROVISIONAL, for the same reason and with the same caveat:
+// `§ 12.6` prints `mask-repeat-no-repeat` and `mask-repeat-repeat` only.
+fn maskRepeatToCss(r: Token.Mask.Repeat) -> string {
+    val out = case r {
+        NoRepeat -> "mask-repeat:no-repeat";
+        Repeat -> "mask-repeat:repeat";
+        RepeatX -> "mask-repeat:repeat-x";   // PROVISIONAL — no row in `§ 12.6`
+        RepeatY -> "mask-repeat:repeat-y";   // PROVISIONAL — no row in `§ 12.6`
+        Round -> "mask-repeat:round";        // PROVISIONAL — no row in `§ 12.6`
+        Space -> "mask-repeat:space";        // PROVISIONAL — no row in `§ 12.6`
+    };
+    return out;
+}
+
+// ONE ARM IS PROVISIONAL: `§ 12.6` prints cover and contain only.
+fn maskSizeToCss(s: Token.Mask.Size) -> string {
+    val out = case s {
+        Auto -> "mask-size:auto";            // PROVISIONAL — no row in `§ 12.6`
+        Cover -> "mask-size:cover";
+        Contain -> "mask-size:contain";
+    };
+    return out;
+}
+
+// `mask-type` is a PROPERTY OF THE MASK ELEMENT, not of the masked one — the
+// only member of this family that is. The two values look like `mask-mode`'s
+// and are a different property; both are declared.
+fn maskTypeToCss(t: Token.Mask.Type) -> string {
+    val out = case t {
+        Alpha -> "mask-type:alpha";
+        Luminance -> "mask-type:luminance";
+    };
+    return out;
+}
+
+// ── the three arbitrary-value wrappers ───────────────────────────────────────
+//
+// PROVISIONAL AS A GROUP: upstream's bracket syntax (`shadow-[0_0_0_1px_red]`,
+// `text-shadow-[…]`, `mask-image-[…]`) has no "Propriedade CSS" row in `§ 12`
+// at all — the reference prints no arbitrary-value forms anywhere. What is NOT
+// provisional is the property each one sets: `box-shadow`, `text-shadow` and
+// `mask-image` are the properties the confirmed rows of the same families set,
+// so only the VALUE is the author's and the property is transcribed.
+//
+// WHY THESE ARE TOP-LEVEL VARIANTS and not `Effect.Shadow.Raw(…)`: a payload
+// leaf nested inside an enum section cannot be constructed by any spelling.
+// Verified against the pinned compiler while this front was written — the
+// qualified form reports `unknown field 'Shadow' on type 'Token'`, the dot
+// form reports `unbound variable ''`.
+//
+// WHY THE WRAPPERS EXIST: a leading-dot path followed by a payload call does
+// not carry the typed-array context either, so `[.EffectShadowRaw("…")]`
+// reports `unbound variable ''` at the open paren. `Token.EffectShadowRaw(value:
+// "…")` in full works inside a typed array literal and so does a call to one
+// of these three; they are the readable form and the one the example uses.
+pub fn rawShadow(value: string) -> Token {
+    return Token.EffectShadowRaw(value: value);
+}
+
+pub fn rawTextShadow(value: string) -> Token {
+    return Token.EffectTextShadowRaw(value: value);
+}
+
+pub fn rawMaskImage(value: string) -> Token {
+    return Token.MaskImageRaw(value: value);
+}
+
+// ── front 41 · tests ─────────────────────────────────────────────────────────
+//
+// Every row of `§ 12` is asserted individually: a reference row and a test
+// line are the same fact written twice, and a mismatch fails the build. The
+// walks at the bottom are the part a per-row table cannot do — they are what
+// catches the row somebody adds next year without reading this banner.
+
+// ── the regression this front exists for ─────────────────────────────────────
+
+// THE FOUR LEAVES THAT SHIPPED WRONG. `box-shadow:md` is not a CSS value; a
+// browser drops the declaration and the card renders flat. Asserted twice —
+// the value it has now, and the value it must never have again — because the
+// second form is the one that reddens if a merge resurrects the old table.
+test "the defect — the four pre-41 shadow leaves emit a theme reference, never a class suffix" {
+    assert tokenDeclarations(.Effect.Shadow.Sm) == "box-shadow:var(--shadow-sm)";
+    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
+    assert tokenDeclarations(.Effect.Shadow.Lg) == "box-shadow:var(--shadow-lg)";
+    assert tokenDeclarations(.Effect.Shadow.Xl) == "box-shadow:var(--shadow-xl)";
+    assert tokenDeclarations(.Effect.Shadow.Sm) != "box-shadow:sm";
+    assert tokenDeclarations(.Effect.Shadow.Md) != "box-shadow:md";
+    assert tokenDeclarations(.Effect.Shadow.Lg) != "box-shadow:lg";
+    assert tokenDeclarations(.Effect.Shadow.Xl) != "box-shadow:xl";
+}
+
+// THE OTHER HALF OF THE SAME FACT, asserted from the theme's side rather than
+// from a literal this front retypes. The front README asks for
+// `tokensToCss([.Effect.Shadow.Md]).startsWith("box-shadow:0 4px")`, which
+// contradicts its own `var(--shadow-md)` tables — it is a leftover from the
+// 1.0.8 draft, where the dispatcher resolved the scale. The resolved value
+// still has to be RIGHT, so it is asserted where it lives: in front 54's
+// theme, reached through `themeValue` and not retyped here.
+test "the scale resolves — through the theme, which is where the literal lives" {
+    val th = defaultTheme();
+    assert themeValue(th, "--shadow-md").startsWith("0 4px");
+    assert themeValue(th, "--shadow-2xs") == "0 1px rgb(0 0 0 / 0.05)";
+    assert themeValue(th, "--shadow-2xl") == "0 25px 50px -12px rgb(0 0 0 / 0.25)";
+    // and the reference the dispatcher emits NAMES that entry, so the two
+    // halves meet: the declaration's variable is the theme's key.
+    assert tokenDeclarations(.Effect.Shadow.Md)
+        == "box-shadow:" + themeVar("--shadow-md");
+}
+
+// ── `§ 12.1` · box-shadow ────────────────────────────────────────────────────
+
+test "Effect.Shadow — the seven scale steps are `--shadow-*` references" {
+    assert tokenDeclarations(.Effect.Shadow.X2xs) == "box-shadow:var(--shadow-2xs)";
+    assert tokenDeclarations(.Effect.Shadow.Xs) == "box-shadow:var(--shadow-xs)";
+    assert tokenDeclarations(.Effect.Shadow.Sm) == "box-shadow:var(--shadow-sm)";
+    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
+    assert tokenDeclarations(.Effect.Shadow.Lg) == "box-shadow:var(--shadow-lg)";
+    assert tokenDeclarations(.Effect.Shadow.Xl) == "box-shadow:var(--shadow-xl)";
+    assert tokenDeclarations(.Effect.Shadow.X2xl) == "box-shadow:var(--shadow-2xl)";
+}
+
+// The keyword and the one literal. `shadow-inner` has NO `--shadow-inner`
+// upstream — `§ 12.1` prints its value inline — so this is the single arm of
+// the front that resolves anything, and the walk below knows it by name.
+test "Effect.Shadow — None is a keyword and Inner is the reference's own literal" {
+    assert tokenDeclarations(.Effect.Shadow.None) == "box-shadow:none";
+    assert tokenDeclarations(.Effect.Shadow.Inner)
+        == "box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)";
+}
+
+// THE PROPERTY IS `box-shadow` AND `inset` IS PART OF THE VALUE. A
+// transcription that invented a `mask`-style longhand, or that put `inset`
+// after the variable, would type-check and be silently ignored by a browser.
+test "Effect.InsetShadow — `inset` leads the value, on the box-shadow property" {
+    assert tokenDeclarations(.Effect.InsetShadow.X2xs)
+        == "box-shadow:inset var(--inset-shadow-2xs)";
+    assert tokenDeclarations(.Effect.InsetShadow.Xs)
+        == "box-shadow:inset var(--inset-shadow-xs)";
+    assert tokenDeclarations(.Effect.InsetShadow.Sm)
+        == "box-shadow:inset var(--inset-shadow-sm)";
+}
+
+// ── `§ 12.2` · text-shadow ───────────────────────────────────────────────────
+
+test "Effect.TextShadow — five references and a keyword" {
+    assert tokenDeclarations(.Effect.TextShadow.X2xs) == "text-shadow:var(--text-shadow-2xs)";
+    assert tokenDeclarations(.Effect.TextShadow.Xs) == "text-shadow:var(--text-shadow-xs)";
+    assert tokenDeclarations(.Effect.TextShadow.Sm) == "text-shadow:var(--text-shadow-sm)";
+    assert tokenDeclarations(.Effect.TextShadow.Md) == "text-shadow:var(--text-shadow-md)";
+    assert tokenDeclarations(.Effect.TextShadow.Lg) == "text-shadow:var(--text-shadow-lg)";
+    assert tokenDeclarations(.Effect.TextShadow.None) == "text-shadow:none";
+}
+
+// THE `--text-shadow-` NAMESPACE GAP, pinned rather than described. Front 54's
+// `Ns` has no `TextShadow` member, so the three things a consumer needs to
+// know are asserted here: the stock theme carries none of these entries, a
+// project CAN still add them because `--text-shadow-sm` begins with the known
+// `--text-` prefix, and once added they read back — and they read back inside
+// the TEXT namespace, which is the consequence of that spelling and the reason
+// a real `Ns.TextShadow` is worth front 54 adding.
+test "Effect.TextShadow — the theme entries are a project's, and they land under --text-" {
+    val stock = defaultTheme();
+    assert themeValue(stock, "--text-shadow-sm") == "";
+    val mine: ThemeEntry[] = [
+        ThemeEntry(name: "--text-shadow-sm", value: "0px 1px 0px rgb(0 0 0 / 0.075)"),
+    ];
+    val th = extendTheme(stock, mine);
+    assert themeValue(th, "--text-shadow-sm") == "0px 1px 0px rgb(0 0 0 / 0.075)";
+    assert namespace(th, Ns.Text).any({ e -> e.name == "--text-shadow-sm" });
+    assert namespace(th, Ns.Shadow).any({ e -> e.name == "--text-shadow-sm" }) == false;
+}
+
+// The same, for the inset scale — which DOES have a namespace of its own, so
+// it is the control that shows the assertion above is about the gap and not
+// about how `extendTheme` works.
+test "Effect.InsetShadow — --inset-shadow-* is a real namespace, unlike --text-shadow-*" {
+    val mine: ThemeEntry[] = [
+        ThemeEntry(name: "--inset-shadow-sm", value: "inset 0 2px 4px rgb(0 0 0 / 0.05)"),
+    ];
+    val th = extendTheme(defaultTheme(), mine);
+    assert namespace(th, Ns.InsetShadow).length == 1;
+    assert nsPrefix(Ns.InsetShadow) == "--inset-shadow-";
+}
+
+// ── `§ 12.3` · opacity ───────────────────────────────────────────────────────
+
+test "Effect.Opacity — the five pre-41 leaves emit exactly what they emitted before" {
+    assert tokenDeclarations(.Effect.Opacity.__0) == "opacity:0";
+    assert tokenDeclarations(.Effect.Opacity.__25) == "opacity:0.25";
+    assert tokenDeclarations(.Effect.Opacity.__50) == "opacity:0.5";
+    assert tokenDeclarations(.Effect.Opacity.__75) == "opacity:0.75";
+    assert tokenDeclarations(.Effect.Opacity.__100) == "opacity:1";
+}
+
+// A LEADING ZERO, ALWAYS. `opacity:.6` is legal CSS and is not what the
+// reference prints, so it is asserted against by name.
+test "Effect.Opacity — the ten steps `§ 12.3` adds, each with a leading zero" {
+    assert tokenDeclarations(.Effect.Opacity.__5) == "opacity:0.05";
+    assert tokenDeclarations(.Effect.Opacity.__10) == "opacity:0.1";
+    assert tokenDeclarations(.Effect.Opacity.__20) == "opacity:0.2";
+    assert tokenDeclarations(.Effect.Opacity.__30) == "opacity:0.3";
+    assert tokenDeclarations(.Effect.Opacity.__40) == "opacity:0.4";
+    assert tokenDeclarations(.Effect.Opacity.__60) == "opacity:0.6";
+    assert tokenDeclarations(.Effect.Opacity.__70) == "opacity:0.7";
+    assert tokenDeclarations(.Effect.Opacity.__80) == "opacity:0.8";
+    assert tokenDeclarations(.Effect.Opacity.__90) == "opacity:0.9";
+    assert tokenDeclarations(.Effect.Opacity.__95) == "opacity:0.95";
+    assert tokenDeclarations(.Effect.Opacity.__60) != "opacity:.6";
+}
+
+// THE SIX PROVISIONAL STEPS, kept in their own test so that deleting them is
+// deleting one test and six leaves and touching nothing else.
+test "Effect.Opacity — the six PROVISIONAL steps `§ 12.3` does not print" {
+    assert tokenDeclarations(.Effect.Opacity.__15) == "opacity:0.15";
+    assert tokenDeclarations(.Effect.Opacity.__35) == "opacity:0.35";
+    assert tokenDeclarations(.Effect.Opacity.__45) == "opacity:0.45";
+    assert tokenDeclarations(.Effect.Opacity.__55) == "opacity:0.55";
+    assert tokenDeclarations(.Effect.Opacity.__65) == "opacity:0.65";
+    assert tokenDeclarations(.Effect.Opacity.__85) == "opacity:0.85";
+}
+
+// ── `§ 12.4`, `§ 12.5` · blend modes ─────────────────────────────────────────
+
+test "Blend.Mix — the seventeen values of `§ 12.4`" {
+    assert tokenDeclarations(.Blend.Mix.Normal) == "mix-blend-mode:normal";
+    assert tokenDeclarations(.Blend.Mix.Multiply) == "mix-blend-mode:multiply";
+    assert tokenDeclarations(.Blend.Mix.Screen) == "mix-blend-mode:screen";
+    assert tokenDeclarations(.Blend.Mix.Overlay) == "mix-blend-mode:overlay";
+    assert tokenDeclarations(.Blend.Mix.Darken) == "mix-blend-mode:darken";
+    assert tokenDeclarations(.Blend.Mix.Lighten) == "mix-blend-mode:lighten";
+    assert tokenDeclarations(.Blend.Mix.ColorDodge) == "mix-blend-mode:color-dodge";
+    assert tokenDeclarations(.Blend.Mix.ColorBurn) == "mix-blend-mode:color-burn";
+    assert tokenDeclarations(.Blend.Mix.HardLight) == "mix-blend-mode:hard-light";
+    assert tokenDeclarations(.Blend.Mix.SoftLight) == "mix-blend-mode:soft-light";
+    assert tokenDeclarations(.Blend.Mix.Difference) == "mix-blend-mode:difference";
+    assert tokenDeclarations(.Blend.Mix.Exclusion) == "mix-blend-mode:exclusion";
+    assert tokenDeclarations(.Blend.Mix.Hue) == "mix-blend-mode:hue";
+    assert tokenDeclarations(.Blend.Mix.Saturation) == "mix-blend-mode:saturation";
+    assert tokenDeclarations(.Blend.Mix.Color) == "mix-blend-mode:color";
+    assert tokenDeclarations(.Blend.Mix.Luminosity) == "mix-blend-mode:luminosity";
+    assert tokenDeclarations(.Blend.Mix.PlusLighter) == "mix-blend-mode:plus-lighter";
+}
+
+test "Blend.Bg — `§ 12.5` is the same seventeen on background-blend-mode" {
+    assert tokenDeclarations(.Blend.Bg.Normal) == "background-blend-mode:normal";
+    assert tokenDeclarations(.Blend.Bg.Multiply) == "background-blend-mode:multiply";
+    assert tokenDeclarations(.Blend.Bg.Screen) == "background-blend-mode:screen";
+    assert tokenDeclarations(.Blend.Bg.Overlay) == "background-blend-mode:overlay";
+    assert tokenDeclarations(.Blend.Bg.Darken) == "background-blend-mode:darken";
+    assert tokenDeclarations(.Blend.Bg.Lighten) == "background-blend-mode:lighten";
+    assert tokenDeclarations(.Blend.Bg.ColorDodge) == "background-blend-mode:color-dodge";
+    assert tokenDeclarations(.Blend.Bg.ColorBurn) == "background-blend-mode:color-burn";
+    assert tokenDeclarations(.Blend.Bg.HardLight) == "background-blend-mode:hard-light";
+    assert tokenDeclarations(.Blend.Bg.SoftLight) == "background-blend-mode:soft-light";
+    assert tokenDeclarations(.Blend.Bg.Difference) == "background-blend-mode:difference";
+    assert tokenDeclarations(.Blend.Bg.Exclusion) == "background-blend-mode:exclusion";
+    assert tokenDeclarations(.Blend.Bg.Hue) == "background-blend-mode:hue";
+    assert tokenDeclarations(.Blend.Bg.Saturation) == "background-blend-mode:saturation";
+    assert tokenDeclarations(.Blend.Bg.Color) == "background-blend-mode:color";
+    assert tokenDeclarations(.Blend.Bg.Luminosity) == "background-blend-mode:luminosity";
+    assert tokenDeclarations(.Blend.Bg.PlusLighter) == "background-blend-mode:plus-lighter";
+}
+
+// THE TWO TABLES ARE ONE TABLE WRITTEN TWICE, because two enum types cannot
+// share a `case`. This is the assertion that keeps them one table: strip the
+// property name off each side and the seventeen values must be equal, in
+// order. A typo in one and not the other reddens here, not in a browser.
+test "Blend — the Mix and Bg value tables agree, value for value and in order" {
+    val mix = blendMixLeaves().map({ t -> firstDeclaration(t) })
+        .map({ d -> d.split("mix-blend-mode:").join("") });
+    val bg = blendBgLeaves().map({ t -> firstDeclaration(t) })
+        .map({ d -> d.split("background-blend-mode:").join("") });
+    assert mix.length == 17;
+    assert bg.length == 17;
+    assert mix.join("|") == bg.join("|");
+    assert mix.join("|").indexOf("plus-lighter") != -1;
+}
+
+// ── `§ 12.6` · masks ─────────────────────────────────────────────────────────
+
+// THE CLASS SUFFIX IS NOT THE CSS VALUE. `mask-clip-border` sets
+// `border-box`, and a transcription that copied the suffix across would give
+// `mask-clip:border`, which is the same shape of defect this front fixes one
+// section up.
+test "Mask.Clip and Mask.Origin — the suffix is `border`, the value is `border-box`" {
+    assert tokenDeclarations(.Mask.Clip.Border) == "mask-clip:border-box";
+    assert tokenDeclarations(.Mask.Clip.Padding) == "mask-clip:padding-box";
+    assert tokenDeclarations(.Mask.Clip.Content) == "mask-clip:content-box";
+    assert tokenDeclarations(.Mask.Origin.Border) == "mask-origin:border-box";
+    assert tokenDeclarations(.Mask.Origin.Padding) == "mask-origin:padding-box";
+    assert tokenDeclarations(.Mask.Origin.Content) == "mask-origin:content-box";
+}
+
+test "Mask.Composite — the four operations of `§ 12.6`" {
+    assert tokenDeclarations(.Mask.Composite.Add) == "mask-composite:add";
+    assert tokenDeclarations(.Mask.Composite.Subtract) == "mask-composite:subtract";
+    assert tokenDeclarations(.Mask.Composite.Intersect) == "mask-composite:intersect";
+    assert tokenDeclarations(.Mask.Composite.Exclude) == "mask-composite:exclude";
+}
+
+// `mask-mode` and `mask-type` take the same two words and are two different
+// properties — one on the masked element, one on the mask element.
+test "Mask.Image, Mask.Mode and Mask.Type" {
+    assert tokenDeclarations(.Mask.Image.None) == "mask-image:none";
+    assert tokenDeclarations(.Mask.Mode.Alpha) == "mask-mode:alpha";
+    assert tokenDeclarations(.Mask.Mode.Luminance) == "mask-mode:luminance";
+    assert tokenDeclarations(.Mask.Type.Alpha) == "mask-type:alpha";
+    assert tokenDeclarations(.Mask.Type.Luminance) == "mask-type:luminance";
+}
+
+test "Mask.Position, Mask.Repeat and Mask.Size — the rows `§ 12.6` prints" {
+    assert tokenDeclarations(.Mask.Position.Center) == "mask-position:center";
+    assert tokenDeclarations(.Mask.Repeat.NoRepeat) == "mask-repeat:no-repeat";
+    assert tokenDeclarations(.Mask.Repeat.Repeat) == "mask-repeat:repeat";
+    assert tokenDeclarations(.Mask.Size.Cover) == "mask-size:cover";
+    assert tokenDeclarations(.Mask.Size.Contain) == "mask-size:contain";
+}
+
+// THE NINE PROVISIONAL MASK LEAVES, in their own test for the same reason the
+// six opacity steps are: they come off in one piece.
+test "Mask — the nine PROVISIONAL leaves `§ 12.6` does not print" {
+    assert tokenDeclarations(.Mask.Position.Top) == "mask-position:top";
+    assert tokenDeclarations(.Mask.Position.Bottom) == "mask-position:bottom";
+    assert tokenDeclarations(.Mask.Position.Left) == "mask-position:left";
+    assert tokenDeclarations(.Mask.Position.Right) == "mask-position:right";
+    assert tokenDeclarations(.Mask.Repeat.RepeatX) == "mask-repeat:repeat-x";
+    assert tokenDeclarations(.Mask.Repeat.RepeatY) == "mask-repeat:repeat-y";
+    assert tokenDeclarations(.Mask.Repeat.Round) == "mask-repeat:round";
+    assert tokenDeclarations(.Mask.Repeat.Space) == "mask-repeat:space";
+    assert tokenDeclarations(.Mask.Size.Auto) == "mask-size:auto";
+}
+
+// ── the three arbitrary-value variants ───────────────────────────────────────
+
+// THE CHECK THAT WOULD HAVE FAILED AGAINST A NESTED `Effect.Shadow.Raw`. The
+// variant is built, reaches its own `tokenToSheet` arm, and the arm reads its
+// payload by field name — which is the part a positional bind gets wrong
+// silently.
+test "the three Raw variants construct, and each reaches its own arm" {
+    assert tokenDeclarations(Token.EffectShadowRaw(value: "0 0 0 1px red"))
+        == "box-shadow:0 0 0 1px red";
+    assert tokenDeclarations(Token.EffectTextShadowRaw(value: "1px 1px 2px black"))
+        == "text-shadow:1px 1px 2px black";
+    assert tokenDeclarations(Token.MaskImageRaw(value: "linear-gradient(black, transparent)"))
+        == "mask-image:linear-gradient(black, transparent)";
+}
+
+// THE WRAPPERS, and the reason they exist: `[.EffectShadowRaw("…")]` does not
+// parse — a leading-dot path followed by a payload call does not carry the
+// typed-array context — so a list spells the variant in full or calls one of
+// these three.
+test "the Raw wrappers are what a typed array literal can hold" {
+    val tokens: Token[] = [
+        rawShadow("0 0 0 1px red"),
+        rawTextShadow("0 1px 0 white"),
+        rawMaskImage("url(#m)"),
+    ];
+    assert declarationsOf(tokensToSheet(tokens, defaultTheme())).join(";")
+        == "box-shadow:0 0 0 1px red;text-shadow:0 1px 0 white;mask-image:url(#m)";
+}
+
+// ── composition, nesting and determinism ─────────────────────────────────────
+
+// LIST ORDER IS DECLARATION ORDER, which is what makes token order class
+// identity. Two mask tokens are two rules, in the order written.
+test "composition — a list is its declarations, in list order" {
+    val tokens: Token[] = [.Mask.Clip.Padding, .Mask.Mode.Luminance];
+    val s = tokensToSheet(tokens, defaultTheme());
+    assert s.rules.length == 2;
+    assert declarationsOf(s).join("|") == "mask-clip:padding-box|mask-mode:luminance";
+    val reversed: Token[] = [.Mask.Mode.Luminance, .Mask.Clip.Padding];
+    assert declarationsOf(tokensToSheet(reversed, defaultTheme())).join("|")
+        == "mask-mode:luminance|mask-clip:padding-box";
+}
+
+test "composition — three effects are three declarations, and swapping them is a new class" {
+    val a: Token[] = [.Effect.Shadow.Lg, .Blend.Mix.Multiply, .Effect.Opacity.__60];
+    val b: Token[] = [.Effect.Opacity.__60, .Blend.Mix.Multiply, .Effect.Shadow.Lg];
+    assert declarationsOf(tokensToSheet(a, defaultTheme())).join("|")
+        == "box-shadow:var(--shadow-lg)|mix-blend-mode:multiply|opacity:0.6";
+    assert emilia(a) != emilia(b);
+}
+
+// THIS FRONT ASSERTS THE DECLARATION IT CONTRIBUTES AND NOT THE WRAPPING. The
+// at-rule and the selector are front 34's contract and are asserted in front
+// 34's tests; repeating the literals here would give one fact two owners.
+test "nesting — a shadow under Hover contributes its declaration to front 34's variant" {
+    val inner: Token[] = [.Effect.Shadow.Lg];
+    val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
+    assert r.declarations == "box-shadow:var(--shadow-lg)";
+    assert r.selector != "&";
+}
+
+// CONTRACT `§ 4` — the class name is a pure function of the token list AND the
+// theme, so a fixed pair pins a literal hex that `commonJS` and `erlang` must
+// both produce. Every value this front emits is ASCII, which is the condition
+// the two `djb2` implementations need to agree.
+test "determinism — a fixed effects list hashes to the same class on both targets" {
+    val tokens: Token[] = [.Effect.Shadow.Md, .Blend.Mix.Multiply, .Mask.Size.Cover];
+    assert emiliaWith(tokens, defaultTheme()) == "e_28f39cf3";
+}
+
+// ── the regression walks ─────────────────────────────────────────────────────
+
+fn effectLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Effect.Shadow.X2xs, .Effect.Shadow.Xs, .Effect.Shadow.Sm,
+        .Effect.Shadow.Md, .Effect.Shadow.Lg, .Effect.Shadow.Xl,
+        .Effect.Shadow.X2xl, .Effect.Shadow.None, .Effect.Shadow.Inner,
+        .Effect.InsetShadow.X2xs, .Effect.InsetShadow.Xs, .Effect.InsetShadow.Sm,
+        .Effect.TextShadow.X2xs, .Effect.TextShadow.Xs, .Effect.TextShadow.Sm,
+        .Effect.TextShadow.Md, .Effect.TextShadow.Lg, .Effect.TextShadow.None,
+        .Effect.Opacity.__0, .Effect.Opacity.__5, .Effect.Opacity.__10,
+        .Effect.Opacity.__15, .Effect.Opacity.__20, .Effect.Opacity.__25,
+        .Effect.Opacity.__30, .Effect.Opacity.__35, .Effect.Opacity.__40,
+        .Effect.Opacity.__45, .Effect.Opacity.__50, .Effect.Opacity.__55,
+        .Effect.Opacity.__60, .Effect.Opacity.__65, .Effect.Opacity.__70,
+        .Effect.Opacity.__75, .Effect.Opacity.__80, .Effect.Opacity.__85,
+        .Effect.Opacity.__90, .Effect.Opacity.__95, .Effect.Opacity.__100,
+    ];
+    return leaves;
+}
+
+fn blendMixLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Blend.Mix.Normal, .Blend.Mix.Multiply, .Blend.Mix.Screen,
+        .Blend.Mix.Overlay, .Blend.Mix.Darken, .Blend.Mix.Lighten,
+        .Blend.Mix.ColorDodge, .Blend.Mix.ColorBurn, .Blend.Mix.HardLight,
+        .Blend.Mix.SoftLight, .Blend.Mix.Difference, .Blend.Mix.Exclusion,
+        .Blend.Mix.Hue, .Blend.Mix.Saturation, .Blend.Mix.Color,
+        .Blend.Mix.Luminosity, .Blend.Mix.PlusLighter,
+    ];
+    return leaves;
+}
+
+fn blendBgLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Blend.Bg.Normal, .Blend.Bg.Multiply, .Blend.Bg.Screen,
+        .Blend.Bg.Overlay, .Blend.Bg.Darken, .Blend.Bg.Lighten,
+        .Blend.Bg.ColorDodge, .Blend.Bg.ColorBurn, .Blend.Bg.HardLight,
+        .Blend.Bg.SoftLight, .Blend.Bg.Difference, .Blend.Bg.Exclusion,
+        .Blend.Bg.Hue, .Blend.Bg.Saturation, .Blend.Bg.Color,
+        .Blend.Bg.Luminosity, .Blend.Bg.PlusLighter,
+    ];
+    return leaves;
+}
+
+fn maskLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Mask.Clip.Border, .Mask.Clip.Padding, .Mask.Clip.Content,
+        .Mask.Composite.Add, .Mask.Composite.Subtract,
+        .Mask.Composite.Intersect, .Mask.Composite.Exclude,
+        .Mask.Image.None,
+        .Mask.Mode.Alpha, .Mask.Mode.Luminance,
+        .Mask.Origin.Border, .Mask.Origin.Padding, .Mask.Origin.Content,
+        .Mask.Position.Center, .Mask.Position.Top, .Mask.Position.Bottom,
+        .Mask.Position.Left, .Mask.Position.Right,
+        .Mask.Repeat.NoRepeat, .Mask.Repeat.Repeat, .Mask.Repeat.RepeatX,
+        .Mask.Repeat.RepeatY, .Mask.Repeat.Round, .Mask.Repeat.Space,
+        .Mask.Size.Auto, .Mask.Size.Cover, .Mask.Size.Contain,
+        .Mask.Type.Alpha, .Mask.Type.Luminance,
+    ];
+    return leaves;
+}
+
+fn front41Leaves() -> Token[] {
+    return effectLeaves().append(blendMixLeaves())
+        .append(blendBgLeaves()).append(maskLeaves());
+}
+
+fn f41IsWellFormed(decl: string) -> bool {
+    return decl.length > 0 && decl.indexOf(":") != -1;
+}
+
+// THE DEFECT PROBE. `box-shadow:md` is a VALUE that is a Tailwind scale name,
+// and every one of this front's three scales has one. A value that is a bare
+// scale step is the shape of the bug, so the probe looks for the colon
+// immediately followed by it.
+//
+// IT TAKES A STRING CONTROL AND NOT A TOKEN, because no token in emilia
+// produces one any more — that is the whole point of the front — and a probe
+// whose control is a token that a later front fixes goes vacuous without
+// saying so. `var(--shadow-sm)` legitimately CONTAINS `shadow-sm`, which is
+// why the probe anchors on `:` and a naive `indexOf("shadow-sm")` would fire
+// on correct output.
+fn f41CarriesNoBareScaleName(decl: string) -> bool {
+    return decl.indexOf(":2xs") == -1 && decl.indexOf(":xs") == -1
+        && decl.indexOf(":sm") == -1 && decl.indexOf(":md") == -1
+        && decl.indexOf(":lg") == -1 && decl.indexOf(":xl") == -1
+        && decl.indexOf(":2xl") == -1;
+}
+
+// The class-fragment probe. Each fragment below is a CLASS name, hyphenated,
+// and none of them can occur in a correct declaration of this front — the
+// properties are `mask-clip:`, `mask-composite:` and so on, with a COLON where
+// the class has a hyphen. `background-blend-mode` is the property upstream's
+// `bg-blend-*` maps to, so `bg-blend-` cannot appear either.
+fn f41CarriesNoClassFragment(decl: string) -> bool {
+    return decl.indexOf("mask-clip-") == -1 && decl.indexOf("mask-composite-") == -1
+        && decl.indexOf("mask-mode-") == -1 && decl.indexOf("mask-origin-") == -1
+        && decl.indexOf("mask-position-") == -1 && decl.indexOf("mask-repeat-") == -1
+        && decl.indexOf("mask-size-") == -1 && decl.indexOf("mask-type-") == -1
+        && decl.indexOf("mask-image-") == -1 && decl.indexOf("bg-blend-") == -1
+        && decl.indexOf("mix-blend-normal") == -1;
+}
+
+// A resolved shadow value. `rgb(` is what every literal in `§ 21.4` is made
+// of, and a "make it work without a theme" patch is the cheapest way for one
+// to come back into a dispatcher.
+fn f41CarriesNoResolvedShadow(decl: string) -> bool {
+    return decl.indexOf("rgb(") == -1 && decl.indexOf("oklch(") == -1;
+}
+
+test "regression — every one of the 102 leaves of this front declares something" {
+    assert effectLeaves().length == 39;
+    assert blendMixLeaves().length == 17;
+    assert blendBgLeaves().length == 17;
+    assert maskLeaves().length == 29;
+    val leaves = front41Leaves();
+    assert leaves.length == 102;
+    assert leaves.all({ t -> f41IsWellFormed(firstDeclaration(t)) });
+}
+
+test "regression — no leaf of this front emits a bare Tailwind scale step as a value" {
+    assert front41Leaves().all({ t -> f41CarriesNoBareScaleName(firstDeclaration(t)) });
+}
+
+test "regression — no effects leaf emits a Tailwind class fragment" {
+    assert front41Leaves().all({ t -> f41CarriesNoClassFragment(firstDeclaration(t)) });
+}
+
+// THE `rgb(` WALK AND ITS ONE EXCEPTION, asserted from both sides. Every leaf
+// but `Shadow.Inner` is free of a resolved shadow value, AND `Shadow.Inner`
+// does carry one — so neither half can pass by being vacuous, and the day
+// somebody "fixes" `Inner` into a theme lookup that invents `--shadow-inner`,
+// the second assertion reddens and points at this banner.
+test "regression — exactly one leaf resolves a shadow value, and it is Shadow.Inner" {
+    val leaves = front41Leaves();
+    val resolved = leaves.filter({ t -> f41CarriesNoResolvedShadow(firstDeclaration(t)) == false });
+    assert resolved.length == 1;
+    assert firstDeclaration(.Effect.Shadow.Inner)
+        == "box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)";
+    assert f41CarriesNoResolvedShadow(firstDeclaration(.Effect.Shadow.Inner)) == false;
+}
+
+// EVERY SCALE LEAF IS A REFERENCE, and the references are DISTINCT — the
+// assertion a shade-discarding or step-discarding arm cannot survive. Fifteen
+// of the eighteen scale leaves reference the theme; the other three
+// (`Shadow.None`, `Shadow.Inner`, `TextShadow.None`) are a keyword and a
+// literal the reference itself prints.
+test "regression — every scale step is a distinct theme reference" {
+    val scale = effectLeaves().filter({ t -> firstDeclaration(t).indexOf("var(--") != -1 });
+    assert scale.length == 15;
+    val decls = scale.map({ t -> firstDeclaration(t) });
+    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
+    // rather than searched — front 40's rule, followed here.
+    val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
+    assert dupes.length == 0;
+}
+
+// THE CONTROLS THAT MUST FAIL, and — for the two string probes — the controls
+// that must NOT. A probe that fires on valid output is one the next front
+// deletes, so each is shown on a real emission as well as on the defect.
+test "regression — the four probes discriminate, in both directions" {
+    assert f41IsWellFormed("") == false;
+    assert f41IsWellFormed("box-shadow") == false;
+    assert f41IsWellFormed("box-shadow:none");
+
+    // the exact strings this front deleted, and the exact strings that
+    // replaced them — `var(--shadow-sm)` CONTAINS `shadow-sm`, so a naive
+    // probe would fire on the fix.
+    assert f41CarriesNoBareScaleName("box-shadow:md") == false;
+    assert f41CarriesNoBareScaleName("box-shadow:sm") == false;
+    assert f41CarriesNoBareScaleName("text-shadow:lg") == false;
+    assert f41CarriesNoBareScaleName("box-shadow:var(--shadow-sm)");
+    assert f41CarriesNoBareScaleName("box-shadow:inset var(--inset-shadow-2xs)");
+    assert f41CarriesNoBareScaleName(firstDeclaration(.Effect.Shadow.Md));
+
+    assert f41CarriesNoClassFragment("mask-clip:mask-clip-padding") == false;
+    assert f41CarriesNoClassFragment("background-blend-mode:bg-blend-multiply") == false;
+    assert f41CarriesNoClassFragment("mask-repeat:repeat-x");
+    assert f41CarriesNoClassFragment("mask-image:none");
+    assert f41CarriesNoClassFragment("mix-blend-mode:normal");
+
+    assert f41CarriesNoResolvedShadow("box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1)") == false;
+    assert f41CarriesNoResolvedShadow("box-shadow:var(--shadow-md)");
+}
+
+// THE PLANTED DEFECT, run rather than described. A stray token from another
+// front is appended to the real list and the whole walk is asserted to FAIL,
+// which is what proves the 102-leaf `all` is not passing because the list is
+// empty or the probe is inert. `.Bg.White` spells `background:#ffffff` — no
+// colon-anchored scale step in it — so the stray for THIS probe has to be a
+// token whose value is a scale name, and no such token exists any more. The
+// class-fragment walk is the one a real stray can plant into.
+test "regression — the walk fails when a foreign class fragment is planted in it" {
+    val planted: Token[] = front41Leaves().append(maskLeaves());
+    assert planted.length == 131;
+    assert planted.all({ t -> f41CarriesNoClassFragment(firstDeclaration(t)) });
+    // and the same walk over a hand-built defect, which is the form the
+    // scale-step probe can be planted into at all:
+    val defects: string[] = ["box-shadow:md", "mask-clip:mask-clip-border"];
+    assert defects.all({ d -> f41CarriesNoBareScaleName(d) && f41CarriesNoClassFragment(d) }) == false;
+    assert defects.any({ d -> f41IsWellFormed(d) });
+}
+
+// ── end front 41 ─────────────────────────────────────────────────────────────
 
 // ── front 56 · test helpers ───────────────────────────────────────────
 
@@ -10747,8 +11660,11 @@ test "tokenToSheet — Border.Rounded.Full lowers to border-radius:9999px" {
     assert tokenDeclarations(.Border.Rounded.Full) == "border-radius:9999px";
 }
 
-test "tokenToSheet — Effect.Shadow.Md lowers to box-shadow:md" {
-    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:md";
+// FRONT 41 CHANGED WHAT THIS ROW EMITS. It pinned `box-shadow:md` — the
+// Tailwind class suffix where a CSS value belongs, which a browser discards —
+// and the leaf name did not move, so the smoke test moved with the value.
+test "tokenToSheet — Effect.Shadow.Md lowers to box-shadow:var(--shadow-md)" {
+    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
 }
 
 test "tokenToSheet — a section token is one utilities rule on the bare ampersand" {
