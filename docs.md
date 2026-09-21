@@ -215,24 +215,64 @@ a browser discards is visible in devtools the moment it is looked for.
 
 ### Pad and Margin
 
-Three axes each (`X`, `Y`, `All`), over the multiplier scale. **A spacing value
-is never resolved here** — every leaf answers `spacing(n)`, so `--spacing` stays
-the one place the length is decided (§ Spacing — `spacing(n)`).
+**Nine directions each** — `All`, `X`, `Y`, `T`, `R`, `B`, `L`, and the logical
+pair `S`/`E` that follows the writing direction where left and right do not.
 
 ```bp
-.Pad.All.4                  // padding:calc(var(--spacing) * 4)
-.Pad.X.4                    // padding-left:calc(var(--spacing) * 4);padding-right:calc(var(--spacing) * 4)
-.Pad.Y.2                    // padding-top:calc(var(--spacing) * 2);padding-bottom:calc(var(--spacing) * 2)
-.Margin.All.4               // margin:calc(var(--spacing) * 4)
-.Margin.X.Auto              // margin-left:auto;margin-right:auto
+.Pad.All.4     // padding:calc(var(--spacing) * 4)
+.Pad.X.4       // padding-left:calc(var(--spacing) * 4);padding-right:calc(var(--spacing) * 4)
+.Pad.T.4       // padding-top:calc(var(--spacing) * 4)
+.Pad.S.4       // padding-inline-start:calc(var(--spacing) * 4)
+.Pad.E.4       // padding-inline-end:calc(var(--spacing) * 4)
 ```
 
 CSS has **no `padding-x` property**, so an axis token is two declarations, not
-one: `px-4` sets `padding-left` and `padding-right`. Until this front emilia
-emitted `padding-x:`, `padding-y:` and `margin-y:` — property names no browser
-knows, silently discarded — and the `Margin.X` ladder emitted `m-0.25`, `m-1`
-and `margin-auto`, which are Tailwind class fragments rather than declarations.
-Those eight spellings are gone, and a test asserts each of them is.
+one. Until this front emilia emitted `padding-x:`, `padding-y:` and `margin-y:`
+— property names no browser knows, silently discarded — and the `Margin.X`
+ladder emitted `m-0.25`, `m-1` and `margin-auto`, which are Tailwind class
+fragments rather than declarations. Those eight spellings are gone, and a test
+asserts each of them is.
+
+#### The scale
+
+Every direction answers the same 35 leaves: the thirty multipliers
+`0 1 2 3 4 5 6 7 8 9 10 11 12 14 16 20 24 28 32 36 40 44 48 52 56 60 64 72 80 96`,
+the pixel step `Px`, and `Half { 0, 1, 2, 3 }`.
+
+```bp
+.Pad.All.0        // padding:0            — `p-0` is a bare 0, not a calc of zero
+.Pad.All.1        // padding:calc(var(--spacing) * 1)
+.Pad.All.96       // padding:calc(var(--spacing) * 96)
+.Pad.All.Half.1   // padding:calc(var(--spacing) * 1.5)   — upstream's `p-1.5`
+.Pad.All.Px       // padding:1px
+```
+
+`0.5` cannot be an enum leaf — a numeric leaf is a run of digits — so `Half.1`
+reads "one and a half" and `Half { 0, 1, 2, 3 }` covers `0.5`, `1.5`, `2.5` and
+`3.5`. **A spacing value is never resolved here**: every leaf answers
+`spacing(n)` or `spacingHalf(n)`, so `--spacing` stays the one place the length
+is decided (§ Spacing — `spacing(n)`).
+
+#### `Auto` and `Neg`, on margin
+
+`Auto` is a value on the ladder, so it is on **every** margin direction and gets
+the same expansion every multiplier gets. `Neg` is upstream's `-mt-4`, the one
+family of utilities with no alternative spelling:
+
+```bp
+.Margin.All.Auto    // margin:auto
+.Margin.X.Auto      // margin-left:auto;margin-right:auto
+.Margin.T.Neg.4     // margin-top:calc(var(--spacing) * -4)
+.Margin.X.Neg.2     // margin-left:calc(var(--spacing) * -2);margin-right:calc(var(--spacing) * -2)
+.Margin.T.Neg.Px    // margin-top:-1px
+```
+
+`Neg` carries no `0` and no `Auto` — a negative zero and a negative auto are not
+utilities — and its `Half` is `{ 1, 2, 3 }`, not `{ 0, 1, 2, 3 }`. The missing
+rung is `-0.5`: `spacingHalf` takes an `i32`, an `i32` has no negative zero, and
+emilia will not write a second `calc(var(--spacing) * …)` of its own to reach
+one value. Closing it is front 54's (a signed half step); until then `-mt-0.5`
+has no token, and no wrong token either.
 
 ### Modifiers — state + breakpoint variants
 

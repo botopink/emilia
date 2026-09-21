@@ -308,86 +308,712 @@ fn axisDecl(first: string, second: string, value: string) -> string {
     return first + ":" + value + ";" + second + ":" + value;
 }
 
+// THE NINE DIRECTIONS OF PADDING. Upstream's `p-`, `px-`, `py-`, `pt-`, `pr-`,
+// `pb-`, `pl-`, `ps-` and `pe-`, over the 35-leaf scale: the thirty multipliers
+// of the default theme, the `Px` step, and `Half { 0, 1, 2, 3 }` for the `0.5`,
+// `1.5`, `2.5` and `3.5` rungs. `0.5` cannot be an enum leaf — a numeric leaf is
+// a run of digits — so `Half.1` reads "one and a half".
+//
+// An axis is TWO properties. The logical pair `S`/`E` is
+// `padding-inline-start` / `padding-inline-end`, which follow the writing
+// direction where `L`/`R` do not.
 fn padTokenToCss(t: Token.Pad, th: Theme) -> string {
     val out = case t {
+        All(_inner) -> oneDecl("padding", padScaleAll(_inner, th));
         X(_inner) -> axisDecl("padding-left", "padding-right", padScaleX(_inner, th));
         Y(_inner) -> axisDecl("padding-top", "padding-bottom", padScaleY(_inner, th));
-        All(_inner) -> oneDecl("padding", padScaleAll(_inner, th));
-    };
-    return out;
-}
-
-fn padScaleX(s: Token.Pad.X, th: Theme) -> string {
-    val out = case s {
-        __1 -> spacing(1);
-        __2 -> spacing(2);
-        __4 -> spacing(4);
-        __8 -> spacing(8);
-        __16 -> spacing(16);
-    };
-    return out;
-}
-
-fn padScaleY(s: Token.Pad.Y, th: Theme) -> string {
-    val out = case s {
-        __1 -> spacing(1);
-        __2 -> spacing(2);
-        __4 -> spacing(4);
-        __8 -> spacing(8);
+        T(_inner) -> oneDecl("padding-top", padScaleT(_inner, th));
+        R(_inner) -> oneDecl("padding-right", padScaleR(_inner, th));
+        B(_inner) -> oneDecl("padding-bottom", padScaleB(_inner, th));
+        L(_inner) -> oneDecl("padding-left", padScaleL(_inner, th));
+        S(_inner) -> oneDecl("padding-inline-start", padScaleS(_inner, th));
+        E(_inner) -> oneDecl("padding-inline-end", padScaleE(_inner, th));
     };
     return out;
 }
 
 fn padScaleAll(s: Token.Pad.All, th: Theme) -> string {
     val out = case s {
-        __1 -> spacing(1);
-        __2 -> spacing(2);
-        __4 -> spacing(4);
-        __8 -> spacing(8);
-        __16 -> spacing(16);
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfAll(_inner, th);
     };
     return out;
 }
 
+fn padHalfAll(h: Token.Pad.All.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleX(s: Token.Pad.X, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfX(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfX(h: Token.Pad.X.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleY(s: Token.Pad.Y, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfY(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfY(h: Token.Pad.Y.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleT(s: Token.Pad.T, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfT(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfT(h: Token.Pad.T.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleR(s: Token.Pad.R, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfR(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfR(h: Token.Pad.R.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleB(s: Token.Pad.B, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfB(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfB(h: Token.Pad.B.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleL(s: Token.Pad.L, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfL(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfL(h: Token.Pad.L.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleS(s: Token.Pad.S, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfS(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfS(h: Token.Pad.S.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn padScaleE(s: Token.Pad.E, th: Theme) -> string {
+    val out = case s {
+        __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2); __3 -> spacing(3);
+        __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6); __7 -> spacing(7);
+        __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10); __11 -> spacing(11);
+        __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16); __20 -> spacing(20);
+        __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32); __36 -> spacing(36);
+        __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48); __52 -> spacing(52);
+        __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64); __72 -> spacing(72);
+        __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> padHalfE(_inner, th);
+    };
+    return out;
+}
+
+fn padHalfE(h: Token.Pad.E.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+// THE NINE DIRECTIONS OF MARGIN, each carrying two things padding has no use
+// for. `Auto` is a VALUE on the ladder, so `.Margin.X.Auto` gets the
+// two-property form from the same axis expansion every multiplier gets, and
+// `.Margin.All.Auto` gets the shorthand. `Neg` is `-mt-4`, the form upstream
+// spells with a leading minus and for which there is no alternative: it takes
+// no `0` and no `Auto`, a negative zero and a negative auto being no utility at
+// all, and it answers `spacing(-n)` — front 54 needs no second function for it.
+//
+// `Neg.Half` carries `1, 2, 3` where the positive `Half` carries `0, 1, 2, 3`.
+// `spacingHalf(-0)` is `spacingHalf(0)` — an i32 has no negative zero — so
+// `-0.5` is the one rung of the ladder front 54 cannot spell, and this front
+// will not spell a second `calc(var(--spacing) * …)` of its own to reach it.
+// The gap is front 54's to close (a signed half step); until it does,
+// `-mt-0.5` has no token and no wrong token either.
 fn marginTokenToCss(t: Token.Margin, th: Theme) -> string {
     val out = case t {
+        All(_inner) -> oneDecl("margin", marginScaleAll(_inner, th));
         X(_inner) -> axisDecl("margin-left", "margin-right", marginScaleX(_inner, th));
         Y(_inner) -> axisDecl("margin-top", "margin-bottom", marginScaleY(_inner, th));
-        All(_inner) -> oneDecl("margin", marginScaleAll(_inner, th));
-    };
-    return out;
-}
-
-// `Auto` is a VALUE, not a property, so it rides the same ladder as every
-// multiplier and the axis expansion above gives `mx-auto` its two properties
-// for free. That is also why it stopped being `margin-auto`.
-fn marginScaleX(s: Token.Margin.X, th: Theme) -> string {
-    val out = case s {
-        Auto -> "auto";
-        __1 -> spacing(1);
-        __2 -> spacing(2);
-        __4 -> spacing(4);
-        __8 -> spacing(8);
-    };
-    return out;
-}
-
-fn marginScaleY(s: Token.Margin.Y, th: Theme) -> string {
-    val out = case s {
-        __1 -> spacing(1);
-        __2 -> spacing(2);
-        __4 -> spacing(4);
-        __8 -> spacing(8);
+        T(_inner) -> oneDecl("margin-top", marginScaleT(_inner, th));
+        R(_inner) -> oneDecl("margin-right", marginScaleR(_inner, th));
+        B(_inner) -> oneDecl("margin-bottom", marginScaleB(_inner, th));
+        L(_inner) -> oneDecl("margin-left", marginScaleL(_inner, th));
+        S(_inner) -> oneDecl("margin-inline-start", marginScaleS(_inner, th));
+        E(_inner) -> oneDecl("margin-inline-end", marginScaleE(_inner, th));
     };
     return out;
 }
 
 fn marginScaleAll(s: Token.Margin.All, th: Theme) -> string {
     val out = case s {
-        __1 -> spacing(1);
-        __2 -> spacing(2);
-        __4 -> spacing(4);
-        __8 -> spacing(8);
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfAll(_inner, th);
+        Neg(_inner) -> marginNegAll(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfAll(h: Token.Margin.All.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegAll(s: Token.Margin.All.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfAll(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfAll(h: Token.Margin.All.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleX(s: Token.Margin.X, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfX(_inner, th);
+        Neg(_inner) -> marginNegX(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfX(h: Token.Margin.X.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegX(s: Token.Margin.X.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfX(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfX(h: Token.Margin.X.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleY(s: Token.Margin.Y, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfY(_inner, th);
+        Neg(_inner) -> marginNegY(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfY(h: Token.Margin.Y.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegY(s: Token.Margin.Y.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfY(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfY(h: Token.Margin.Y.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleT(s: Token.Margin.T, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfT(_inner, th);
+        Neg(_inner) -> marginNegT(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfT(h: Token.Margin.T.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegT(s: Token.Margin.T.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfT(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfT(h: Token.Margin.T.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleR(s: Token.Margin.R, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfR(_inner, th);
+        Neg(_inner) -> marginNegR(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfR(h: Token.Margin.R.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegR(s: Token.Margin.R.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfR(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfR(h: Token.Margin.R.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleB(s: Token.Margin.B, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfB(_inner, th);
+        Neg(_inner) -> marginNegB(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfB(h: Token.Margin.B.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegB(s: Token.Margin.B.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfB(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfB(h: Token.Margin.B.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleL(s: Token.Margin.L, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfL(_inner, th);
+        Neg(_inner) -> marginNegL(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfL(h: Token.Margin.L.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegL(s: Token.Margin.L.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfL(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfL(h: Token.Margin.L.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleS(s: Token.Margin.S, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfS(_inner, th);
+        Neg(_inner) -> marginNegS(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfS(h: Token.Margin.S.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegS(s: Token.Margin.S.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfS(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfS(h: Token.Margin.S.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
+    };
+    return out;
+}
+
+fn marginScaleE(s: Token.Margin.E, th: Theme) -> string {
+    val out = case s {
+        Auto -> "auto"; __0 -> spacing(0); __1 -> spacing(1); __2 -> spacing(2);
+        __3 -> spacing(3); __4 -> spacing(4); __5 -> spacing(5); __6 -> spacing(6);
+        __7 -> spacing(7); __8 -> spacing(8); __9 -> spacing(9); __10 -> spacing(10);
+        __11 -> spacing(11); __12 -> spacing(12); __14 -> spacing(14); __16 -> spacing(16);
+        __20 -> spacing(20); __24 -> spacing(24); __28 -> spacing(28); __32 -> spacing(32);
+        __36 -> spacing(36); __40 -> spacing(40); __44 -> spacing(44); __48 -> spacing(48);
+        __52 -> spacing(52); __56 -> spacing(56); __60 -> spacing(60); __64 -> spacing(64);
+        __72 -> spacing(72); __80 -> spacing(80); __96 -> spacing(96);
+        Px -> "1px";
+        Half(_inner) -> marginHalfE(_inner, th);
+        Neg(_inner) -> marginNegE(_inner, th);
+    };
+    return out;
+}
+
+fn marginHalfE(h: Token.Margin.E.Half, th: Theme) -> string {
+    val out = case h {
+        __0 -> spacingHalf(0); __1 -> spacingHalf(1); __2 -> spacingHalf(2);
+        __3 -> spacingHalf(3);
+    };
+    return out;
+}
+
+fn marginNegE(s: Token.Margin.E.Neg, th: Theme) -> string {
+    val out = case s {
+        __1 -> spacing(-1); __2 -> spacing(-2); __3 -> spacing(-3); __4 -> spacing(-4);
+        __5 -> spacing(-5); __6 -> spacing(-6); __7 -> spacing(-7); __8 -> spacing(-8);
+        __9 -> spacing(-9); __10 -> spacing(-10); __11 -> spacing(-11);
+        __12 -> spacing(-12); __14 -> spacing(-14); __16 -> spacing(-16);
+        __20 -> spacing(-20); __24 -> spacing(-24); __28 -> spacing(-28);
+        __32 -> spacing(-32); __36 -> spacing(-36); __40 -> spacing(-40);
+        __44 -> spacing(-44); __48 -> spacing(-48); __52 -> spacing(-52);
+        __56 -> spacing(-56); __60 -> spacing(-60); __64 -> spacing(-64);
+        __72 -> spacing(-72); __80 -> spacing(-80); __96 -> spacing(-96);
+        Px -> "-1px";
+        Half(_inner) -> marginNegHalfE(_inner, th);
+    };
+    return out;
+}
+
+fn marginNegHalfE(h: Token.Margin.E.Neg.Half, th: Theme) -> string {
+    val out = case h {
+        __1 -> spacingHalf(-1); __2 -> spacingHalf(-2); __3 -> spacingHalf(-3);
     };
     return out;
 }
@@ -399,46 +1025,264 @@ fn marginScaleAll(s: Token.Margin.All, th: Theme) -> string {
 // there and a front that appends to the same line of the same file cannot be
 // merged without a conflict that says nothing.
 
-test "Pad.All — the property is `padding` and the value is a reference, not a rem" {
+test "the scale — every shape of leaf, read through the public `Pad.All` path" {
+    assert tokenDeclarations(.Pad.All.0) == "padding:0";
+    assert tokenDeclarations(.Pad.All.1) == "padding:calc(var(--spacing) * 1)";
     assert tokenDeclarations(.Pad.All.4) == "padding:calc(var(--spacing) * 4)";
-    assert tokenDeclarations(.Pad.All.16) == "padding:calc(var(--spacing) * 16)";
+    assert tokenDeclarations(.Pad.All.96) == "padding:calc(var(--spacing) * 96)";
+    assert tokenDeclarations(.Pad.All.Half.0) == "padding:calc(var(--spacing) * 0.5)";
+    assert tokenDeclarations(.Pad.All.Half.1) == "padding:calc(var(--spacing) * 1.5)";
+    assert tokenDeclarations(.Pad.All.Half.3) == "padding:calc(var(--spacing) * 3.5)";
+    assert tokenDeclarations(.Pad.All.Px) == "padding:1px";
 }
 
-test "Pad.X and Pad.Y — the axis expands to the two real properties" {
+test "the nine padding directions, each with its own property and its own expansion" {
+    assert tokenDeclarations(.Pad.All.4) == "padding:calc(var(--spacing) * 4)";
     assert tokenDeclarations(.Pad.X.4) == "padding-left:calc(var(--spacing) * 4);padding-right:calc(var(--spacing) * 4)";
-    assert tokenDeclarations(.Pad.Y.2) == "padding-top:calc(var(--spacing) * 2);padding-bottom:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Pad.Y.4) == "padding-top:calc(var(--spacing) * 4);padding-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.T.4) == "padding-top:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.R.4) == "padding-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.B.4) == "padding-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.L.4) == "padding-left:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.S.4) == "padding-inline-start:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Pad.E.4) == "padding-inline-end:calc(var(--spacing) * 4)";
 }
 
-test "Margin.X.Auto — `mx-auto` is two properties, and `margin-auto` is not one of them" {
-    assert tokenDeclarations(.Margin.X.Auto) == "margin-left:auto;margin-right:auto";
-}
-
-test "Margin — the axis and the shorthand, both through the ladder" {
-    assert tokenDeclarations(.Margin.Y.8) == "margin-top:calc(var(--spacing) * 8);margin-bottom:calc(var(--spacing) * 8)";
+test "the nine margin directions, each with its own property and its own expansion" {
     assert tokenDeclarations(.Margin.All.4) == "margin:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.X.4) == "margin-left:calc(var(--spacing) * 4);margin-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.Y.4) == "margin-top:calc(var(--spacing) * 4);margin-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.T.4) == "margin-top:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.R.4) == "margin-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.B.4) == "margin-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.L.4) == "margin-left:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.S.4) == "margin-inline-start:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Margin.E.4) == "margin-inline-end:calc(var(--spacing) * 4)";
 }
 
-// THE REGRESSION THIS FRONT IS HERE FOR. Six ladders emitted text that was not
-// CSS; this walks every `Pad` and `Margin` leaf that compiled before the front
-// and asserts none of the six spellings survives anywhere in the output.
-fn everySpacingTokenV0() -> Token[] {
+test "`Auto` is on every margin direction, not only on the X axis" {
+    assert tokenDeclarations(.Margin.All.Auto) == "margin:auto";
+    assert tokenDeclarations(.Margin.X.Auto) == "margin-left:auto;margin-right:auto";
+    assert tokenDeclarations(.Margin.Y.Auto) == "margin-top:auto;margin-bottom:auto";
+    assert tokenDeclarations(.Margin.T.Auto) == "margin-top:auto";
+    assert tokenDeclarations(.Margin.R.Auto) == "margin-right:auto";
+    assert tokenDeclarations(.Margin.B.Auto) == "margin-bottom:auto";
+    assert tokenDeclarations(.Margin.L.Auto) == "margin-left:auto";
+    assert tokenDeclarations(.Margin.S.Auto) == "margin-inline-start:auto";
+    assert tokenDeclarations(.Margin.E.Auto) == "margin-inline-end:auto";
+}
+
+test "`Neg` is on every margin direction — the `-mt-4` form, spelled as a path" {
+    assert tokenDeclarations(.Margin.All.Neg.4) == "margin:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.X.Neg.4) == "margin-left:calc(var(--spacing) * -4);margin-right:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.Y.Neg.4) == "margin-top:calc(var(--spacing) * -4);margin-bottom:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.T.Neg.4) == "margin-top:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.R.Neg.4) == "margin-right:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.B.Neg.4) == "margin-bottom:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.L.Neg.4) == "margin-left:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.S.Neg.4) == "margin-inline-start:calc(var(--spacing) * -4)";
+    assert tokenDeclarations(.Margin.E.Neg.4) == "margin-inline-end:calc(var(--spacing) * -4)";
+}
+
+test "a negative margin carries the pixel step and the half steps too" {
+    assert tokenDeclarations(.Margin.T.Neg.Px) == "margin-top:-1px";
+    assert tokenDeclarations(.Margin.T.Neg.Half.1) == "margin-top:calc(var(--spacing) * -1.5)";
+    assert tokenDeclarations(.Margin.X.Neg.2) == "margin-left:calc(var(--spacing) * -2);margin-right:calc(var(--spacing) * -2)";
+}
+
+// EVERY LEAF OF EVERY SPACING SECTION, walked through the public dispatcher.
+// The `case` exhaustiveness check already proves each leaf is HANDLED; this
+// proves no handler resolves a length, names a property CSS does not have, or
+// answers a Tailwind class fragment. 936 leaves at this step.
+fn everySpacingToken() -> Token[] {
     val out: Token[] = [
-        .Pad.X.1, .Pad.X.2, .Pad.X.4, .Pad.X.8, .Pad.X.16,
-        .Pad.Y.1, .Pad.Y.2, .Pad.Y.4, .Pad.Y.8,
-        .Pad.All.1, .Pad.All.2, .Pad.All.4, .Pad.All.8, .Pad.All.16,
-        .Margin.X.Auto, .Margin.X.1, .Margin.X.2, .Margin.X.4, .Margin.X.8,
-        .Margin.Y.1, .Margin.Y.2, .Margin.Y.4, .Margin.Y.8,
-        .Margin.All.1, .Margin.All.2, .Margin.All.4, .Margin.All.8,
+        .Pad.All.0, .Pad.All.1, .Pad.All.2, .Pad.All.3, .Pad.All.4, .Pad.All.5, .Pad.All.6,
+        .Pad.All.7, .Pad.All.8, .Pad.All.9, .Pad.All.10, .Pad.All.11, .Pad.All.12, .Pad.All.14,
+        .Pad.All.16, .Pad.All.20, .Pad.All.24, .Pad.All.28, .Pad.All.32, .Pad.All.36,
+        .Pad.All.40, .Pad.All.44, .Pad.All.48, .Pad.All.52, .Pad.All.56, .Pad.All.60,
+        .Pad.All.64, .Pad.All.72, .Pad.All.80, .Pad.All.96, .Pad.All.Px, .Pad.All.Half.0,
+        .Pad.All.Half.1, .Pad.All.Half.2, .Pad.All.Half.3, .Pad.X.0, .Pad.X.1, .Pad.X.2,
+        .Pad.X.3, .Pad.X.4, .Pad.X.5, .Pad.X.6, .Pad.X.7, .Pad.X.8, .Pad.X.9, .Pad.X.10,
+        .Pad.X.11, .Pad.X.12, .Pad.X.14, .Pad.X.16, .Pad.X.20, .Pad.X.24, .Pad.X.28, .Pad.X.32,
+        .Pad.X.36, .Pad.X.40, .Pad.X.44, .Pad.X.48, .Pad.X.52, .Pad.X.56, .Pad.X.60, .Pad.X.64,
+        .Pad.X.72, .Pad.X.80, .Pad.X.96, .Pad.X.Px, .Pad.X.Half.0, .Pad.X.Half.1, .Pad.X.Half.2,
+        .Pad.X.Half.3, .Pad.Y.0, .Pad.Y.1, .Pad.Y.2, .Pad.Y.3, .Pad.Y.4, .Pad.Y.5, .Pad.Y.6,
+        .Pad.Y.7, .Pad.Y.8, .Pad.Y.9, .Pad.Y.10, .Pad.Y.11, .Pad.Y.12, .Pad.Y.14, .Pad.Y.16,
+        .Pad.Y.20, .Pad.Y.24, .Pad.Y.28, .Pad.Y.32, .Pad.Y.36, .Pad.Y.40, .Pad.Y.44, .Pad.Y.48,
+        .Pad.Y.52, .Pad.Y.56, .Pad.Y.60, .Pad.Y.64, .Pad.Y.72, .Pad.Y.80, .Pad.Y.96, .Pad.Y.Px,
+        .Pad.Y.Half.0, .Pad.Y.Half.1, .Pad.Y.Half.2, .Pad.Y.Half.3, .Pad.T.0, .Pad.T.1,
+        .Pad.T.2, .Pad.T.3, .Pad.T.4, .Pad.T.5, .Pad.T.6, .Pad.T.7, .Pad.T.8, .Pad.T.9,
+        .Pad.T.10, .Pad.T.11, .Pad.T.12, .Pad.T.14, .Pad.T.16, .Pad.T.20, .Pad.T.24, .Pad.T.28,
+        .Pad.T.32, .Pad.T.36, .Pad.T.40, .Pad.T.44, .Pad.T.48, .Pad.T.52, .Pad.T.56, .Pad.T.60,
+        .Pad.T.64, .Pad.T.72, .Pad.T.80, .Pad.T.96, .Pad.T.Px, .Pad.T.Half.0, .Pad.T.Half.1,
+        .Pad.T.Half.2, .Pad.T.Half.3, .Pad.R.0, .Pad.R.1, .Pad.R.2, .Pad.R.3, .Pad.R.4,
+        .Pad.R.5, .Pad.R.6, .Pad.R.7, .Pad.R.8, .Pad.R.9, .Pad.R.10, .Pad.R.11, .Pad.R.12,
+        .Pad.R.14, .Pad.R.16, .Pad.R.20, .Pad.R.24, .Pad.R.28, .Pad.R.32, .Pad.R.36, .Pad.R.40,
+        .Pad.R.44, .Pad.R.48, .Pad.R.52, .Pad.R.56, .Pad.R.60, .Pad.R.64, .Pad.R.72, .Pad.R.80,
+        .Pad.R.96, .Pad.R.Px, .Pad.R.Half.0, .Pad.R.Half.1, .Pad.R.Half.2, .Pad.R.Half.3,
+        .Pad.B.0, .Pad.B.1, .Pad.B.2, .Pad.B.3, .Pad.B.4, .Pad.B.5, .Pad.B.6, .Pad.B.7,
+        .Pad.B.8, .Pad.B.9, .Pad.B.10, .Pad.B.11, .Pad.B.12, .Pad.B.14, .Pad.B.16, .Pad.B.20,
+        .Pad.B.24, .Pad.B.28, .Pad.B.32, .Pad.B.36, .Pad.B.40, .Pad.B.44, .Pad.B.48, .Pad.B.52,
+        .Pad.B.56, .Pad.B.60, .Pad.B.64, .Pad.B.72, .Pad.B.80, .Pad.B.96, .Pad.B.Px,
+        .Pad.B.Half.0, .Pad.B.Half.1, .Pad.B.Half.2, .Pad.B.Half.3, .Pad.L.0, .Pad.L.1,
+        .Pad.L.2, .Pad.L.3, .Pad.L.4, .Pad.L.5, .Pad.L.6, .Pad.L.7, .Pad.L.8, .Pad.L.9,
+        .Pad.L.10, .Pad.L.11, .Pad.L.12, .Pad.L.14, .Pad.L.16, .Pad.L.20, .Pad.L.24, .Pad.L.28,
+        .Pad.L.32, .Pad.L.36, .Pad.L.40, .Pad.L.44, .Pad.L.48, .Pad.L.52, .Pad.L.56, .Pad.L.60,
+        .Pad.L.64, .Pad.L.72, .Pad.L.80, .Pad.L.96, .Pad.L.Px, .Pad.L.Half.0, .Pad.L.Half.1,
+        .Pad.L.Half.2, .Pad.L.Half.3, .Pad.S.0, .Pad.S.1, .Pad.S.2, .Pad.S.3, .Pad.S.4,
+        .Pad.S.5, .Pad.S.6, .Pad.S.7, .Pad.S.8, .Pad.S.9, .Pad.S.10, .Pad.S.11, .Pad.S.12,
+        .Pad.S.14, .Pad.S.16, .Pad.S.20, .Pad.S.24, .Pad.S.28, .Pad.S.32, .Pad.S.36, .Pad.S.40,
+        .Pad.S.44, .Pad.S.48, .Pad.S.52, .Pad.S.56, .Pad.S.60, .Pad.S.64, .Pad.S.72, .Pad.S.80,
+        .Pad.S.96, .Pad.S.Px, .Pad.S.Half.0, .Pad.S.Half.1, .Pad.S.Half.2, .Pad.S.Half.3,
+        .Pad.E.0, .Pad.E.1, .Pad.E.2, .Pad.E.3, .Pad.E.4, .Pad.E.5, .Pad.E.6, .Pad.E.7,
+        .Pad.E.8, .Pad.E.9, .Pad.E.10, .Pad.E.11, .Pad.E.12, .Pad.E.14, .Pad.E.16, .Pad.E.20,
+        .Pad.E.24, .Pad.E.28, .Pad.E.32, .Pad.E.36, .Pad.E.40, .Pad.E.44, .Pad.E.48, .Pad.E.52,
+        .Pad.E.56, .Pad.E.60, .Pad.E.64, .Pad.E.72, .Pad.E.80, .Pad.E.96, .Pad.E.Px,
+        .Pad.E.Half.0, .Pad.E.Half.1, .Pad.E.Half.2, .Pad.E.Half.3, .Margin.All.Auto,
+        .Margin.All.0, .Margin.All.1, .Margin.All.2, .Margin.All.3, .Margin.All.4,
+        .Margin.All.5, .Margin.All.6, .Margin.All.7, .Margin.All.8, .Margin.All.9,
+        .Margin.All.10, .Margin.All.11, .Margin.All.12, .Margin.All.14, .Margin.All.16,
+        .Margin.All.20, .Margin.All.24, .Margin.All.28, .Margin.All.32, .Margin.All.36,
+        .Margin.All.40, .Margin.All.44, .Margin.All.48, .Margin.All.52, .Margin.All.56,
+        .Margin.All.60, .Margin.All.64, .Margin.All.72, .Margin.All.80, .Margin.All.96,
+        .Margin.All.Px, .Margin.All.Half.0, .Margin.All.Half.1, .Margin.All.Half.2,
+        .Margin.All.Half.3, .Margin.All.Neg.1, .Margin.All.Neg.2, .Margin.All.Neg.3,
+        .Margin.All.Neg.4, .Margin.All.Neg.5, .Margin.All.Neg.6, .Margin.All.Neg.7,
+        .Margin.All.Neg.8, .Margin.All.Neg.9, .Margin.All.Neg.10, .Margin.All.Neg.11,
+        .Margin.All.Neg.12, .Margin.All.Neg.14, .Margin.All.Neg.16, .Margin.All.Neg.20,
+        .Margin.All.Neg.24, .Margin.All.Neg.28, .Margin.All.Neg.32, .Margin.All.Neg.36,
+        .Margin.All.Neg.40, .Margin.All.Neg.44, .Margin.All.Neg.48, .Margin.All.Neg.52,
+        .Margin.All.Neg.56, .Margin.All.Neg.60, .Margin.All.Neg.64, .Margin.All.Neg.72,
+        .Margin.All.Neg.80, .Margin.All.Neg.96, .Margin.All.Neg.Px, .Margin.All.Neg.Half.1,
+        .Margin.All.Neg.Half.2, .Margin.All.Neg.Half.3, .Margin.X.Auto, .Margin.X.0,
+        .Margin.X.1, .Margin.X.2, .Margin.X.3, .Margin.X.4, .Margin.X.5, .Margin.X.6,
+        .Margin.X.7, .Margin.X.8, .Margin.X.9, .Margin.X.10, .Margin.X.11, .Margin.X.12,
+        .Margin.X.14, .Margin.X.16, .Margin.X.20, .Margin.X.24, .Margin.X.28, .Margin.X.32,
+        .Margin.X.36, .Margin.X.40, .Margin.X.44, .Margin.X.48, .Margin.X.52, .Margin.X.56,
+        .Margin.X.60, .Margin.X.64, .Margin.X.72, .Margin.X.80, .Margin.X.96, .Margin.X.Px,
+        .Margin.X.Half.0, .Margin.X.Half.1, .Margin.X.Half.2, .Margin.X.Half.3, .Margin.X.Neg.1,
+        .Margin.X.Neg.2, .Margin.X.Neg.3, .Margin.X.Neg.4, .Margin.X.Neg.5, .Margin.X.Neg.6,
+        .Margin.X.Neg.7, .Margin.X.Neg.8, .Margin.X.Neg.9, .Margin.X.Neg.10, .Margin.X.Neg.11,
+        .Margin.X.Neg.12, .Margin.X.Neg.14, .Margin.X.Neg.16, .Margin.X.Neg.20,
+        .Margin.X.Neg.24, .Margin.X.Neg.28, .Margin.X.Neg.32, .Margin.X.Neg.36,
+        .Margin.X.Neg.40, .Margin.X.Neg.44, .Margin.X.Neg.48, .Margin.X.Neg.52,
+        .Margin.X.Neg.56, .Margin.X.Neg.60, .Margin.X.Neg.64, .Margin.X.Neg.72,
+        .Margin.X.Neg.80, .Margin.X.Neg.96, .Margin.X.Neg.Px, .Margin.X.Neg.Half.1,
+        .Margin.X.Neg.Half.2, .Margin.X.Neg.Half.3, .Margin.Y.Auto, .Margin.Y.0, .Margin.Y.1,
+        .Margin.Y.2, .Margin.Y.3, .Margin.Y.4, .Margin.Y.5, .Margin.Y.6, .Margin.Y.7,
+        .Margin.Y.8, .Margin.Y.9, .Margin.Y.10, .Margin.Y.11, .Margin.Y.12, .Margin.Y.14,
+        .Margin.Y.16, .Margin.Y.20, .Margin.Y.24, .Margin.Y.28, .Margin.Y.32, .Margin.Y.36,
+        .Margin.Y.40, .Margin.Y.44, .Margin.Y.48, .Margin.Y.52, .Margin.Y.56, .Margin.Y.60,
+        .Margin.Y.64, .Margin.Y.72, .Margin.Y.80, .Margin.Y.96, .Margin.Y.Px, .Margin.Y.Half.0,
+        .Margin.Y.Half.1, .Margin.Y.Half.2, .Margin.Y.Half.3, .Margin.Y.Neg.1, .Margin.Y.Neg.2,
+        .Margin.Y.Neg.3, .Margin.Y.Neg.4, .Margin.Y.Neg.5, .Margin.Y.Neg.6, .Margin.Y.Neg.7,
+        .Margin.Y.Neg.8, .Margin.Y.Neg.9, .Margin.Y.Neg.10, .Margin.Y.Neg.11, .Margin.Y.Neg.12,
+        .Margin.Y.Neg.14, .Margin.Y.Neg.16, .Margin.Y.Neg.20, .Margin.Y.Neg.24,
+        .Margin.Y.Neg.28, .Margin.Y.Neg.32, .Margin.Y.Neg.36, .Margin.Y.Neg.40,
+        .Margin.Y.Neg.44, .Margin.Y.Neg.48, .Margin.Y.Neg.52, .Margin.Y.Neg.56,
+        .Margin.Y.Neg.60, .Margin.Y.Neg.64, .Margin.Y.Neg.72, .Margin.Y.Neg.80,
+        .Margin.Y.Neg.96, .Margin.Y.Neg.Px, .Margin.Y.Neg.Half.1, .Margin.Y.Neg.Half.2,
+        .Margin.Y.Neg.Half.3, .Margin.T.Auto, .Margin.T.0, .Margin.T.1, .Margin.T.2,
+        .Margin.T.3, .Margin.T.4, .Margin.T.5, .Margin.T.6, .Margin.T.7, .Margin.T.8,
+        .Margin.T.9, .Margin.T.10, .Margin.T.11, .Margin.T.12, .Margin.T.14, .Margin.T.16,
+        .Margin.T.20, .Margin.T.24, .Margin.T.28, .Margin.T.32, .Margin.T.36, .Margin.T.40,
+        .Margin.T.44, .Margin.T.48, .Margin.T.52, .Margin.T.56, .Margin.T.60, .Margin.T.64,
+        .Margin.T.72, .Margin.T.80, .Margin.T.96, .Margin.T.Px, .Margin.T.Half.0,
+        .Margin.T.Half.1, .Margin.T.Half.2, .Margin.T.Half.3, .Margin.T.Neg.1, .Margin.T.Neg.2,
+        .Margin.T.Neg.3, .Margin.T.Neg.4, .Margin.T.Neg.5, .Margin.T.Neg.6, .Margin.T.Neg.7,
+        .Margin.T.Neg.8, .Margin.T.Neg.9, .Margin.T.Neg.10, .Margin.T.Neg.11, .Margin.T.Neg.12,
+        .Margin.T.Neg.14, .Margin.T.Neg.16, .Margin.T.Neg.20, .Margin.T.Neg.24,
+        .Margin.T.Neg.28, .Margin.T.Neg.32, .Margin.T.Neg.36, .Margin.T.Neg.40,
+        .Margin.T.Neg.44, .Margin.T.Neg.48, .Margin.T.Neg.52, .Margin.T.Neg.56,
+        .Margin.T.Neg.60, .Margin.T.Neg.64, .Margin.T.Neg.72, .Margin.T.Neg.80,
+        .Margin.T.Neg.96, .Margin.T.Neg.Px, .Margin.T.Neg.Half.1, .Margin.T.Neg.Half.2,
+        .Margin.T.Neg.Half.3, .Margin.R.Auto, .Margin.R.0, .Margin.R.1, .Margin.R.2,
+        .Margin.R.3, .Margin.R.4, .Margin.R.5, .Margin.R.6, .Margin.R.7, .Margin.R.8,
+        .Margin.R.9, .Margin.R.10, .Margin.R.11, .Margin.R.12, .Margin.R.14, .Margin.R.16,
+        .Margin.R.20, .Margin.R.24, .Margin.R.28, .Margin.R.32, .Margin.R.36, .Margin.R.40,
+        .Margin.R.44, .Margin.R.48, .Margin.R.52, .Margin.R.56, .Margin.R.60, .Margin.R.64,
+        .Margin.R.72, .Margin.R.80, .Margin.R.96, .Margin.R.Px, .Margin.R.Half.0,
+        .Margin.R.Half.1, .Margin.R.Half.2, .Margin.R.Half.3, .Margin.R.Neg.1, .Margin.R.Neg.2,
+        .Margin.R.Neg.3, .Margin.R.Neg.4, .Margin.R.Neg.5, .Margin.R.Neg.6, .Margin.R.Neg.7,
+        .Margin.R.Neg.8, .Margin.R.Neg.9, .Margin.R.Neg.10, .Margin.R.Neg.11, .Margin.R.Neg.12,
+        .Margin.R.Neg.14, .Margin.R.Neg.16, .Margin.R.Neg.20, .Margin.R.Neg.24,
+        .Margin.R.Neg.28, .Margin.R.Neg.32, .Margin.R.Neg.36, .Margin.R.Neg.40,
+        .Margin.R.Neg.44, .Margin.R.Neg.48, .Margin.R.Neg.52, .Margin.R.Neg.56,
+        .Margin.R.Neg.60, .Margin.R.Neg.64, .Margin.R.Neg.72, .Margin.R.Neg.80,
+        .Margin.R.Neg.96, .Margin.R.Neg.Px, .Margin.R.Neg.Half.1, .Margin.R.Neg.Half.2,
+        .Margin.R.Neg.Half.3, .Margin.B.Auto, .Margin.B.0, .Margin.B.1, .Margin.B.2,
+        .Margin.B.3, .Margin.B.4, .Margin.B.5, .Margin.B.6, .Margin.B.7, .Margin.B.8,
+        .Margin.B.9, .Margin.B.10, .Margin.B.11, .Margin.B.12, .Margin.B.14, .Margin.B.16,
+        .Margin.B.20, .Margin.B.24, .Margin.B.28, .Margin.B.32, .Margin.B.36, .Margin.B.40,
+        .Margin.B.44, .Margin.B.48, .Margin.B.52, .Margin.B.56, .Margin.B.60, .Margin.B.64,
+        .Margin.B.72, .Margin.B.80, .Margin.B.96, .Margin.B.Px, .Margin.B.Half.0,
+        .Margin.B.Half.1, .Margin.B.Half.2, .Margin.B.Half.3, .Margin.B.Neg.1, .Margin.B.Neg.2,
+        .Margin.B.Neg.3, .Margin.B.Neg.4, .Margin.B.Neg.5, .Margin.B.Neg.6, .Margin.B.Neg.7,
+        .Margin.B.Neg.8, .Margin.B.Neg.9, .Margin.B.Neg.10, .Margin.B.Neg.11, .Margin.B.Neg.12,
+        .Margin.B.Neg.14, .Margin.B.Neg.16, .Margin.B.Neg.20, .Margin.B.Neg.24,
+        .Margin.B.Neg.28, .Margin.B.Neg.32, .Margin.B.Neg.36, .Margin.B.Neg.40,
+        .Margin.B.Neg.44, .Margin.B.Neg.48, .Margin.B.Neg.52, .Margin.B.Neg.56,
+        .Margin.B.Neg.60, .Margin.B.Neg.64, .Margin.B.Neg.72, .Margin.B.Neg.80,
+        .Margin.B.Neg.96, .Margin.B.Neg.Px, .Margin.B.Neg.Half.1, .Margin.B.Neg.Half.2,
+        .Margin.B.Neg.Half.3, .Margin.L.Auto, .Margin.L.0, .Margin.L.1, .Margin.L.2,
+        .Margin.L.3, .Margin.L.4, .Margin.L.5, .Margin.L.6, .Margin.L.7, .Margin.L.8,
+        .Margin.L.9, .Margin.L.10, .Margin.L.11, .Margin.L.12, .Margin.L.14, .Margin.L.16,
+        .Margin.L.20, .Margin.L.24, .Margin.L.28, .Margin.L.32, .Margin.L.36, .Margin.L.40,
+        .Margin.L.44, .Margin.L.48, .Margin.L.52, .Margin.L.56, .Margin.L.60, .Margin.L.64,
+        .Margin.L.72, .Margin.L.80, .Margin.L.96, .Margin.L.Px, .Margin.L.Half.0,
+        .Margin.L.Half.1, .Margin.L.Half.2, .Margin.L.Half.3, .Margin.L.Neg.1, .Margin.L.Neg.2,
+        .Margin.L.Neg.3, .Margin.L.Neg.4, .Margin.L.Neg.5, .Margin.L.Neg.6, .Margin.L.Neg.7,
+        .Margin.L.Neg.8, .Margin.L.Neg.9, .Margin.L.Neg.10, .Margin.L.Neg.11, .Margin.L.Neg.12,
+        .Margin.L.Neg.14, .Margin.L.Neg.16, .Margin.L.Neg.20, .Margin.L.Neg.24,
+        .Margin.L.Neg.28, .Margin.L.Neg.32, .Margin.L.Neg.36, .Margin.L.Neg.40,
+        .Margin.L.Neg.44, .Margin.L.Neg.48, .Margin.L.Neg.52, .Margin.L.Neg.56,
+        .Margin.L.Neg.60, .Margin.L.Neg.64, .Margin.L.Neg.72, .Margin.L.Neg.80,
+        .Margin.L.Neg.96, .Margin.L.Neg.Px, .Margin.L.Neg.Half.1, .Margin.L.Neg.Half.2,
+        .Margin.L.Neg.Half.3, .Margin.S.Auto, .Margin.S.0, .Margin.S.1, .Margin.S.2,
+        .Margin.S.3, .Margin.S.4, .Margin.S.5, .Margin.S.6, .Margin.S.7, .Margin.S.8,
+        .Margin.S.9, .Margin.S.10, .Margin.S.11, .Margin.S.12, .Margin.S.14, .Margin.S.16,
+        .Margin.S.20, .Margin.S.24, .Margin.S.28, .Margin.S.32, .Margin.S.36, .Margin.S.40,
+        .Margin.S.44, .Margin.S.48, .Margin.S.52, .Margin.S.56, .Margin.S.60, .Margin.S.64,
+        .Margin.S.72, .Margin.S.80, .Margin.S.96, .Margin.S.Px, .Margin.S.Half.0,
+        .Margin.S.Half.1, .Margin.S.Half.2, .Margin.S.Half.3, .Margin.S.Neg.1, .Margin.S.Neg.2,
+        .Margin.S.Neg.3, .Margin.S.Neg.4, .Margin.S.Neg.5, .Margin.S.Neg.6, .Margin.S.Neg.7,
+        .Margin.S.Neg.8, .Margin.S.Neg.9, .Margin.S.Neg.10, .Margin.S.Neg.11, .Margin.S.Neg.12,
+        .Margin.S.Neg.14, .Margin.S.Neg.16, .Margin.S.Neg.20, .Margin.S.Neg.24,
+        .Margin.S.Neg.28, .Margin.S.Neg.32, .Margin.S.Neg.36, .Margin.S.Neg.40,
+        .Margin.S.Neg.44, .Margin.S.Neg.48, .Margin.S.Neg.52, .Margin.S.Neg.56,
+        .Margin.S.Neg.60, .Margin.S.Neg.64, .Margin.S.Neg.72, .Margin.S.Neg.80,
+        .Margin.S.Neg.96, .Margin.S.Neg.Px, .Margin.S.Neg.Half.1, .Margin.S.Neg.Half.2,
+        .Margin.S.Neg.Half.3, .Margin.E.Auto, .Margin.E.0, .Margin.E.1, .Margin.E.2,
+        .Margin.E.3, .Margin.E.4, .Margin.E.5, .Margin.E.6, .Margin.E.7, .Margin.E.8,
+        .Margin.E.9, .Margin.E.10, .Margin.E.11, .Margin.E.12, .Margin.E.14, .Margin.E.16,
+        .Margin.E.20, .Margin.E.24, .Margin.E.28, .Margin.E.32, .Margin.E.36, .Margin.E.40,
+        .Margin.E.44, .Margin.E.48, .Margin.E.52, .Margin.E.56, .Margin.E.60, .Margin.E.64,
+        .Margin.E.72, .Margin.E.80, .Margin.E.96, .Margin.E.Px, .Margin.E.Half.0,
+        .Margin.E.Half.1, .Margin.E.Half.2, .Margin.E.Half.3, .Margin.E.Neg.1, .Margin.E.Neg.2,
+        .Margin.E.Neg.3, .Margin.E.Neg.4, .Margin.E.Neg.5, .Margin.E.Neg.6, .Margin.E.Neg.7,
+        .Margin.E.Neg.8, .Margin.E.Neg.9, .Margin.E.Neg.10, .Margin.E.Neg.11, .Margin.E.Neg.12,
+        .Margin.E.Neg.14, .Margin.E.Neg.16, .Margin.E.Neg.20, .Margin.E.Neg.24,
+        .Margin.E.Neg.28, .Margin.E.Neg.32, .Margin.E.Neg.36, .Margin.E.Neg.40,
+        .Margin.E.Neg.44, .Margin.E.Neg.48, .Margin.E.Neg.52, .Margin.E.Neg.56,
+        .Margin.E.Neg.60, .Margin.E.Neg.64, .Margin.E.Neg.72, .Margin.E.Neg.80,
+        .Margin.E.Neg.96, .Margin.E.Neg.Px, .Margin.E.Neg.Half.1, .Margin.E.Neg.Half.2,
+        .Margin.E.Neg.Half.3,
     ];
     return out;
 }
 
-fn spacingOutputV0() -> string {
-    return declarationsOf(tokensToSheet(everySpacingTokenV0(), defaultTheme())).join(";");
+fn everySpacingCss() -> string {
+    return declarationsOf(tokensToSheet(everySpacingToken(), defaultTheme())).join(";");
+}
+
+test "the walk is complete — one rule per leaf, and none of them is empty" {
+    val s = tokensToSheet(everySpacingToken(), defaultTheme());
+    assert s.rules.length == 936;
+    assert declarationsOf(s).any({ d -> d == "" }) == false;
 }
 
 test "no spacing token emits a property name that is not a CSS property" {
-    val css = spacingOutputV0();
+    val css = everySpacingCss();
     assert css.indexOf("padding-x") == -1;
     assert css.indexOf("padding-y") == -1;
     assert css.indexOf("margin-x") == -1;
@@ -446,7 +1290,7 @@ test "no spacing token emits a property name that is not a CSS property" {
 }
 
 test "no spacing token emits a Tailwind class fragment" {
-    val css = spacingOutputV0();
+    val css = everySpacingCss();
     assert css.indexOf("m-0.25") == -1;
     assert css.indexOf("m-0.5") == -1;
     assert css.indexOf("m-1") == -1;
@@ -454,8 +1298,8 @@ test "no spacing token emits a Tailwind class fragment" {
     assert css.indexOf("margin-auto") == -1;
 }
 
-test "no spacing token resolves a length — every value is a reference or `auto`" {
-    val css = spacingOutputV0();
+test "no spacing token resolves a length — every value is a reference, `auto` or the pixel step" {
+    val css = everySpacingCss();
     assert css.indexOf("rem") == -1;
     assert css.indexOf("calc(var(--spacing) * ") != -1;
 }

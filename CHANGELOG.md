@@ -2,6 +2,26 @@
 
 ## Unreleased — v0.beta.22
 
+- **Nine directions for padding and margin, over a 35-leaf scale** (1.0.10-beta
+  front `35-emilia-spacing-sizing`, step 2). `Pad` and `Margin` had three
+  directions (`X`, `Y`, `All`) over five values and no `p-0` at all; they now
+  carry `All`, `X`, `Y`, `T`, `R`, `B`, `L` and the logical pair `S`/`E`
+  (`padding-inline-start` / `padding-inline-end`) over the thirty multipliers of
+  upstream's default theme plus `Px` and `Half { 0, 1, 2, 3 }` — `0.5` cannot be
+  an enum leaf, a numeric leaf being a run of digits, so `Half.1` reads "one and
+  a half". `Auto` moved from `Margin.X` alone to every margin direction, and
+  each of the nine gained a **`Neg` sub-section** — `-mt-4` is
+  `.Margin.T.Neg.4`, a five-segment path, answering `spacing(-4)`, and it is the
+  one Tailwind family with no alternative spelling. 936 leaves, every one of
+  them a multiplier of `--spacing` and none of them a length: a test walks all
+  936 through the public dispatcher and asserts the output carries no `rem`, no
+  non-property and no class fragment.
+  **`Neg.Half` is `{ 1, 2, 3 }`, not `{ 0, 1, 2, 3 }`** — `spacingHalf(-0)` is
+  `spacingHalf(0)`, an `i32` having no negative zero, so `-0.5` is the one rung
+  of front 54's ladder that cannot be spelled and this front declines to write a
+  second `calc(var(--spacing) * …)` to reach it. Front 54 owes a signed half
+  step; until then `-mt-0.5` has no token rather than a wrong one.
+
 - **Spacing stopped emitting text that is not CSS** (1.0.10-beta front
   `35-emilia-spacing-sizing`, step 1). Three of emilia's ten sections emitted
   strings no browser can read, and all three were here. `padTokenToCss`
