@@ -204,6 +204,15 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Empty(inner) -> nestVariant(tokensToSheet(inner, th), emptyVariant());
         Nth(index, inner) -> nestVariant(tokensToSheet(inner, th), nthVariant(index));
         NthLast(index, inner) -> nestVariant(tokensToSheet(inner, th), nthLastVariant(index));
+        Before(inner) -> nestVariant(tokensToSheet(inner, th), beforeVariant());
+        After(inner) -> nestVariant(tokensToSheet(inner, th), afterVariant());
+        FirstLetter(inner) -> nestVariant(tokensToSheet(inner, th), firstLetterVariant());
+        FirstLine(inner) -> nestVariant(tokensToSheet(inner, th), firstLineVariant());
+        Placeholder(inner) -> nestVariant(tokensToSheet(inner, th), placeholderVariant());
+        File(inner) -> nestVariant(tokensToSheet(inner, th), fileVariant());
+        Marker(inner) -> nestVariant(tokensToSheet(inner, th), markerVariant());
+        Selection(inner) -> nestVariant(tokensToSheet(inner, th), selectionVariant());
+        Backdrop(inner) -> nestVariant(tokensToSheet(inner, th), backdropVariant());
         // ── end front 34 ─────────────────────────────────────────────────
     };
     return out;
@@ -512,6 +521,44 @@ pub fn nthLastVariant(index: i32) -> Variant {
     return selectorVariant("&:nth-last-child(" + index.toString() + ")");
 }
 
+// ── pseudo-elements ──────────────────────────────────────────────────────
+
+pub fn beforeVariant() -> Variant {
+    return selectorVariant("&::before");
+}
+
+pub fn afterVariant() -> Variant {
+    return selectorVariant("&::after");
+}
+
+pub fn firstLetterVariant() -> Variant {
+    return selectorVariant("&::first-letter");
+}
+
+pub fn firstLineVariant() -> Variant {
+    return selectorVariant("&::first-line");
+}
+
+pub fn placeholderVariant() -> Variant {
+    return selectorVariant("&::placeholder");
+}
+
+pub fn fileVariant() -> Variant {
+    return selectorVariant("&::file-selector-button");
+}
+
+pub fn markerVariant() -> Variant {
+    return selectorVariant("& ::marker");
+}
+
+pub fn selectionVariant() -> Variant {
+    return selectorVariant("& ::selection");
+}
+
+pub fn backdropVariant() -> Variant {
+    return selectorVariant("&::backdrop");
+}
+
 // ── front 34 · tests ─────────────────────────────────────────────────────
 //
 // Each family gets two: the `Variant` halves against the reference's two
@@ -744,6 +791,40 @@ test "structural position — the CSS each row renders around one declaration" {
     assert modifierCss(Token.NthLast(index: 5, inner: inner)) == ".x:nth-last-child(5){font-weight:bold}";
 }
 
+test "pseudo-elements — the two halves of every Variant in the family" {
+    assert beforeVariant().atRule == "";
+    assert beforeVariant().selector == "&::before";
+    assert afterVariant().atRule == "";
+    assert afterVariant().selector == "&::after";
+    assert firstLetterVariant().atRule == "";
+    assert firstLetterVariant().selector == "&::first-letter";
+    assert firstLineVariant().atRule == "";
+    assert firstLineVariant().selector == "&::first-line";
+    assert placeholderVariant().atRule == "";
+    assert placeholderVariant().selector == "&::placeholder";
+    assert fileVariant().atRule == "";
+    assert fileVariant().selector == "&::file-selector-button";
+    assert markerVariant().atRule == "";
+    assert markerVariant().selector == "& ::marker";
+    assert selectionVariant().atRule == "";
+    assert selectionVariant().selector == "& ::selection";
+    assert backdropVariant().atRule == "";
+    assert backdropVariant().selector == "&::backdrop";
+}
+
+test "pseudo-elements — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Before(inner)) == ".x::before{font-weight:bold}";
+    assert modifierCss(Token.After(inner)) == ".x::after{font-weight:bold}";
+    assert modifierCss(Token.FirstLetter(inner)) == ".x::first-letter{font-weight:bold}";
+    assert modifierCss(Token.FirstLine(inner)) == ".x::first-line{font-weight:bold}";
+    assert modifierCss(Token.Placeholder(inner)) == ".x::placeholder{font-weight:bold}";
+    assert modifierCss(Token.File(inner)) == ".x::file-selector-button{font-weight:bold}";
+    assert modifierCss(Token.Marker(inner)) == ".x ::marker{font-weight:bold}";
+    assert modifierCss(Token.Selection(inner)) == ".x ::selection{font-weight:bold}";
+    assert modifierCss(Token.Backdrop(inner)) == ".x::backdrop{font-weight:bold}";
+}
+
 test "dark — the `Media` strategy is an at-rule over the bare ampersand" {
     val th = defaultTheme();
     assert darkVariant(th).atRule == "@media (prefers-color-scheme: dark)";
@@ -804,6 +885,13 @@ test "three deep — `dark:md:hover:` comes out in source order" {
         == "@media (prefers-color-scheme: dark){@media (width >= 48rem){@media (hover: hover){.x:hover{font-weight:bold}}}}";
 }
 
+test "a pseudo-element under a state nests the right way round" {
+    val inner = boldInner();
+    val before: Token[] = [Token.Before(inner)];
+    assert modifierCss(Token.Hover(before))
+        == "@media (hover: hover){.x:hover::before{font-weight:bold}}";
+}
+
 test "a breakpoint override reaches both directions of the ladder" {
     val wide: ThemeEntry[] = [ThemeEntry(name: "--breakpoint-md", value: "50rem")];
     val th = extendTheme(defaultTheme(), wide);
@@ -842,6 +930,13 @@ test "the two states of `open` live inside one selector, not a selector list" {
     val inner = boldInner();
     assert modifierCss(Token.Open(inner)) == ".x:is(:open, :popover-open){font-weight:bold}";
     assert tokenToSheet(Token.Open(inner), defaultTheme()).rules.length == 1;
+}
+
+test "`marker` and `selection` carry the space before `::`, and the others do not" {
+    assert markerVariant().selector == "& ::marker";
+    assert selectionVariant().selector == "& ::selection";
+    assert beforeVariant().selector == "&::before";
+    assert placeholderVariant().selector == "&::placeholder";
 }
 
 test "`inert` is the attribute pair the reference gives, not a pseudo-class" {

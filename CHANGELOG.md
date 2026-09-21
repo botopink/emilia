@@ -2,6 +2,17 @@
 
 ## Unreleased — v0.beta.22
 
+- **The nine pseudo-elements** (1.0.10-beta front `34-emilia-modifiers`,
+  step 5). `Before`, `After`, `FirstLetter`, `FirstLine`, `Placeholder`,
+  `File` (`&::file-selector-button`) and `Backdrop` take `&::`; `Marker` and
+  `Selection` take `& ::` — **the space is the reference's and is copied, not
+  corrected**, and a test asserts the two spellings against each other so a
+  tidy-up shows up as a change. The nesting direction matters here and is
+  pinned: `Hover([Before([…])])` flattens to `&:hover::before`, never to
+  `&::before:hover`, because front 56 substitutes the INNER rule's `&` with the
+  OUTER variant's selector. `Before`/`After` stay useless until front 38
+  delivers `Text.Content.*`. 261/261 on both targets.
+
 - **Thirty-six state variants, and the two that take an index**
   (1.0.10-beta front `34-emilia-modifiers`, step 4). Six more interaction
   states (`FocusWithin`, `FocusVisible`, `Visited`, `Target`, `Open`,

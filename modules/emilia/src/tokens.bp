@@ -12,7 +12,7 @@
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
 //// payload — siblings of section heads at the top level. Front 34 widened
-//// them from six to 55; the full map is under MODIFIERS below.
+//// them from six to 64; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -150,6 +150,17 @@
 ////     .Empty([Token])            empty:           → &:empty{…}
 ////     .Nth(index, [Token])       nth-N:           → &:nth-child(N){…}
 ////     .NthLast(index, [Token])   nth-last-N:      → &:nth-last-child(N){…}
+////
+////   pseudo-elements
+////     .Before([Token])           before:          → &::before{…}
+////     .After([Token])            after:           → &::after{…}
+////     .FirstLetter([Token])      first-letter:    → &::first-letter{…}
+////     .FirstLine([Token])        first-line:      → &::first-line{…}
+////     .Placeholder([Token])      placeholder:     → &::placeholder{…}
+////     .File([Token])             file:            → &::file-selector-button{…}
+////     .Marker([Token])           marker:          → & ::marker{…}
+////     .Selection([Token])        selection:       → & ::selection{…}
+////     .Backdrop([Token])         backdrop:        → &::backdrop{…}
 
 pub type Token {
     Text {
@@ -752,5 +763,16 @@ pub type Token {
     Empty(inner: Token[]),
     Nth(index: i32, inner: Token[]),
     NthLast(index: i32, inner: Token[]),
+    //
+    // pseudo-elements
+    Before(inner: Token[]),
+    After(inner: Token[]),
+    FirstLetter(inner: Token[]),
+    FirstLine(inner: Token[]),
+    Placeholder(inner: Token[]),
+    File(inner: Token[]),
+    Marker(inner: Token[]),
+    Selection(inner: Token[]),
+    Backdrop(inner: Token[]),
     // ── end front 34 ─────────────────────────────────────────────────────────
 }

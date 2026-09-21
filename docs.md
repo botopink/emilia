@@ -475,6 +475,20 @@ moves the queries and the class hashes with it.
 | `nth-N:` | `Token.Nth(index, inner)` | `&:nth-child(3){…}` |
 | `nth-last-N:` | `Token.NthLast(index, inner)` | `&:nth-last-child(5){…}` |
 
+**Pseudo-elements**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `before:` | `Token.Before(inner)` | `&::before{…}` |
+| `after:` | `Token.After(inner)` | `&::after{…}` |
+| `first-letter:` | `Token.FirstLetter(inner)` | `&::first-letter{…}` |
+| `first-line:` | `Token.FirstLine(inner)` | `&::first-line{…}` |
+| `placeholder:` | `Token.Placeholder(inner)` | `&::placeholder{…}` |
+| `file:` | `Token.File(inner)` | `&::file-selector-button{…}` |
+| `marker:` | `Token.Marker(inner)` | `& ::marker{…}` |
+| `selection:` | `Token.Selection(inner)` | `& ::selection{…}` |
+| `backdrop:` | `Token.Backdrop(inner)` | `&::backdrop{…}` |
+
 `.group` and `.peer` are classes the **consumer's markup** carries: emilia
 emits the selector that reads them and never the class itself.
 
