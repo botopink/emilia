@@ -163,6 +163,79 @@ assert a == b;                          // same content-derived hash
 // The <style> block contains exactly ONE `.<a>{background:#ffffff}` rule.
 ```
 
+## The theme
+
+A theme is a **flat list of CSS custom properties**, not nineteen record
+fields. That is what CSS itself has, and it is the only shape in which
+"clear one namespace" and "clear everything" are ordinary values rather than
+nineteen more functions.
+
+```bp
+import { Theme, ThemeEntry, Ns, DarkMode, defaultTheme, emptyTheme,
+         extendTheme, clearNamespace, namespace, themeValue, themeVar,
+         nsPrefix, allNamespaces } from "emilia";
+```
+
+| Type | What it is |
+| --- | --- |
+| `ThemeEntry(name, value)` | one custom property — `name` carries its `--` prefix |
+| `Theme(entries, keyframes, darkMode)` | the flat set, the keyframes bodies, and the dark-mode strategy |
+| `Ns` | the nineteen namespaces: `Color`, `Font`, `Text`, `FontWeight`, `Tracking`, `Leading`, `Breakpoint`, `Container`, `Spacing`, `Radius`, `Shadow`, `InsetShadow`, `DropShadow`, `Blur`, `Perspective`, `Aspect`, `Ease`, `Animate`, `Keyframes` |
+| `DarkMode` | `Media`, `Class(name)`, `Attribute(name, value)` |
+
+| Function | What it answers |
+| --- | --- |
+| `nsPrefix(ns) -> string` | the namespace's prefix — `--color-`, `--font-`, …, `@keyframes ` |
+| `allNamespaces() -> Ns[]` | the nineteen, in declaration order |
+| `defaultTheme() -> Theme` | emilia's stock theme |
+| `emptyTheme() -> Theme` | a theme with nothing in it — the `--*: initial` reset |
+| `extendTheme(th, entries) -> Theme` | add entries; a name already present is **overridden in place** |
+| `clearNamespace(th, ns) -> Theme` | drop one namespace — the `--color-*: initial` reset |
+| `namespace(th, ns) -> ThemeEntry[]` | the entries of one namespace, in the theme's order |
+| `themeValue(th, name) -> string` | the literal value, or `""` when the theme does not carry the name |
+| `themeVar(name) -> string` | the reference form, `var(--name)` — what a utility emits |
+
+`--spacing` is a **single variable**, so `nsPrefix(Ns.Spacing)` is `--spacing`
+with no trailing dash.
+
+```bp
+fn brandTheme() -> Theme {
+    val stripped = clearNamespace(defaultTheme(), Ns.Color);
+    val brand: ThemeEntry[] = [
+        ThemeEntry(name: "--spacing", value: "4px"),
+        ThemeEntry(name: "--color-lagoon", value: "oklch(0.72 0.11 221.19)"),
+    ];
+    return extendTheme(stripped, brand);
+}
+```
+
+### The name is `extendTheme`, not `extend`
+
+`extend` is a **language keyword** (`Name extend Type { … }`, the type-extension
+block), so `fn extend(…)` does not parse. Every front that composes a theme
+writes `extendTheme`.
+
+### `extendTheme` refuses an unknown namespace
+
+An entry whose name starts with none of the nineteen prefixes is **refused**,
+loudly, naming the offending name. There is no permissive mode and no argument
+that relaxes it: an unknown prefix is a typo or a namespace this library does
+not have, and both are errors. A variable that is silently absent is debugged as
+a cascade bug days later, in a browser.
+
+```bp
+extendTheme(defaultTheme(), [ThemeEntry(name: "--gutter", value: "1rem")]);
+// emilia theme: '--gutter' is in no known namespace — a theme entry must start
+// with one of the nineteen prefixes of `Ns` (…)
+```
+
+### The colour palette is not here
+
+`defaultTheme()` carries `--color-black` and `--color-white` and nothing else.
+The full palette is front 33's data, handed over as
+`paletteEntries() -> ThemeEntry[]`; a project that wants it writes
+`extendTheme(defaultTheme(), paletteEntries())`.
+
 ## What's coming (v0.beta.21+)
 
 The spec authors a richer surface that v0 does not yet ship:

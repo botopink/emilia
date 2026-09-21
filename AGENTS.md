@@ -211,6 +211,25 @@ to the commonJS row and runs once.
   the runtime symbol is `undefined`. Until the codegen path closes
   that gap, keep all `#[@External.<targert>(...)]` host-cell expressions in the
   module that USES them (currently `emilia.bp`).
+- **`extend` is a language keyword, so the theme's composer is `extendTheme`.**
+  `Name extend Type { … }` is the type-extension block, which makes `fn
+  extend(…)` a parse error (`unexpected \`extend\``) — the front 54 spec, front
+  33's and front 56's all write `extend`, and none of them parses. Every front
+  that composes a theme writes `extendTheme`.
+- **A lambda whose whole body is an `if` expression returns `undefined` on
+  commonJS.** `xs.map({ x -> if (c) { a } else { b } })` lowers to
+  `(x) => { (() => { … })(); }` — the IIFE is emitted as a statement and its
+  value is never returned. erlang is unaffected, so the suite is green on one
+  target and silently wrong on the other. Bind the branch to a `val` and yield
+  it (`val out = if (c) { a } else { b }; out;`). Reported to botopink-lang as a
+  codegen defect (the commonJS lambda tail-expression path).
+- **`String.contains` does not lower inside a lambda over an inferred
+  element.** `xs.filter({ e -> e.name.contains("x") })` emits `.contains(…)`
+  verbatim on commonJS (`e.name.contains is not a function`) because the
+  `contains` → `includes` rename runs off a receiver type the inferencer has not
+  resolved inside the lambda; a direct receiver (`s.contains(…)`) and a record
+  field outside a lambda both work. Hoist to a typed `val`, or use `endsWith` /
+  `indexOf(…) != -1`.
 - **A sibling-module import always names its module** — `import { Token } from
   "tokens";`, never the bare `import { Token };`. Both type-check, but commonJS
   lowers the bare form to `require("../module")`: a path that resolves while

@@ -16,7 +16,7 @@
 //// Namespaces stay typed through the `Ns` enum, which maps to its prefix, so
 //// no caller writes a prefix string by hand.
 ////
-//// `extend` REFUSES an entry whose name matches no known prefix. There is no
+//// `extendTheme` REFUSES an entry whose name matches no known prefix. There is no
 //// permissive mode and no argument that relaxes it: an unknown prefix is a
 //// typo or a namespace this library does not have, and both are errors.
 ////
@@ -31,7 +31,7 @@
 ////
 //// FRONT 33 INTERFACE: the 26 colour families x 11 shades are front 33's
 //// data, handed over as `paletteEntries() -> ThemeEntry[]`; the composed
-//// theme is `extend(defaultTheme(), paletteEntries())`. This module does not
+//// theme is `extendTheme(defaultTheme(), paletteEntries())`. This module does not
 //// import front 33, and front 33 does not edit this file — that is the whole
 //// interface between them.
 
@@ -244,7 +244,7 @@ fn keyframeEntries() -> ThemeEntry[] {
 //
 // `--color-*` carries only `black` and `white`. The 26 families x 11 shades
 // are front 33's data, handed over as `paletteEntries() -> ThemeEntry[]`; the
-// composed theme is `extend(defaultTheme(), paletteEntries())`.
+// composed theme is `extendTheme(defaultTheme(), paletteEntries())`.
 pub fn defaultTheme() -> Theme {
     val base: ThemeEntry[] = [
         ThemeEntry(name: "--spacing", value: "0.25rem"),
@@ -270,6 +270,91 @@ pub fn defaultTheme() -> Theme {
         .append(containerEntries())
         .append(animateEntries());
     return Theme(entries: more, keyframes: keyframeEntries(), darkMode: DarkMode.Media);
+}
+
+// ── extend · override · clear · empty · read ─────────────────────────────────
+
+// A theme with nothing in it. `--*: initial` — the reset that clears every
+// namespace at once — is this, not a flag on `defaultTheme()`.
+pub fn emptyTheme() -> Theme {
+    val entries: ThemeEntry[] = [];
+    val keyframes: ThemeEntry[] = [];
+    return Theme(entries: entries, keyframes: keyframes, darkMode: DarkMode.Media);
+}
+
+// The reference form every utility emits: `var(--color-brand)`. A front that
+// wants byte-parity with upstream emits this; a front that wants a value at
+// authoring time calls `themeValue`.
+pub fn themeVar(name: string) -> string {
+    return "var(" + name + ")";
+}
+
+// Resolve a name to its literal value, or `""` when the theme does not carry
+// it. This is the `theme()` function: a read, never a reference.
+pub fn themeValue(th: Theme, name: string) -> string {
+    return entryValue(th.entries, name);
+}
+
+// Every entry of one namespace, in the theme's own order.
+pub fn namespace(th: Theme, ns: Ns) -> ThemeEntry[] {
+    val prefix = nsPrefix(ns);
+    return th.entries.filter({ e -> e.name.startsWith(prefix) });
+}
+
+// Drop a whole namespace — `--color-*: initial`. Every other namespace is
+// untouched, entry for entry and in order.
+pub fn clearNamespace(th: Theme, ns: Ns) -> Theme {
+    val prefix = nsPrefix(ns);
+    val kept = th.entries.filter({ e -> !e.name.startsWith(prefix) });
+    return Theme(entries: kept, keyframes: th.keyframes, darkMode: th.darkMode);
+}
+
+// REFUSE an entry whose name matches no known prefix. There is no permissive
+// mode and no argument that relaxes this: an unknown prefix is a typo or a
+// namespace this library does not have, and both are errors. Accepting the
+// entry and quietly dropping it is the one outcome that is not allowed —
+// a variable that is silently absent is debugged as a cascade bug, days later,
+// in a browser.
+fn checkEntry(e: ThemeEntry) -> ThemeEntry {
+    val known = knownPrefixes().any({ p -> e.name.startsWith(p) });
+    if (!known) @panic("emilia theme: '" + e.name + "' is in no known namespace — a theme entry must start with one of the nineteen prefixes of `Ns` (--color-, --font-, --text-, --font-weight-, --tracking-, --leading-, --breakpoint-, --container-, --spacing, --radius-, --shadow-, --inset-shadow-, --drop-shadow-, --blur-, --perspective-, --aspect-, --ease-, --animate-, '@keyframes ')");
+    return e;
+}
+
+// Replace the entry of the same name IN PLACE, or append when the name is new.
+// In place, because re-declaring a variable inside `@theme` overrides it rather
+// than adding a second declaration — and because the entry order is a contract.
+// The tail `val out = …; out;` is not a flourish: a lambda whose whole body is
+// an `if` expression lowers on commonJS to `(x) => { (() => { … })(); }` — the
+// IIFE is emitted as a statement and its value never returned, so every element
+// becomes `undefined`. Binding the branch to a `val` and yielding that is the
+// shape that lowers on both targets.
+fn replaceNamed(entries: ThemeEntry[], e: ThemeEntry) -> ThemeEntry[] {
+    return entries.map({ x ->
+        val hit = x.name == e.name;
+        val out = if (hit) e else x;
+        out;
+    });
+}
+
+fn upsert(entries: ThemeEntry[], e: ThemeEntry) -> ThemeEntry[] {
+    val present = entries.any({ x -> x.name == e.name });
+    val one: ThemeEntry[] = [e];
+    val out = if (present) replaceNamed(entries, e) else entries.append(one);
+    return out;
+}
+
+// Add entries to a theme; a name already present is OVERRIDDEN in place. This
+// is both of the doc's first two headings — extending and overriding are the
+// same operation on a flat set, exactly as they are inside `@theme`.
+//
+// Records are immutable, so this returns a new `Theme` rather than mutating
+// one; there is no module-level mutable state in botopink, which is why a
+// theme is threaded as an argument instead of read from a global.
+pub fn extendTheme(th: Theme, entries: ThemeEntry[]) -> Theme {
+    val checked = entries.map({ e -> checkEntry(e) });
+    val merged = checked.fold(th.entries, { acc, e -> upsert(acc, e) });
+    return Theme(entries: merged, keyframes: th.keyframes, darkMode: th.darkMode);
 }
 
 // ── tests ────────────────────────────────────────────────────────────────────
@@ -425,4 +510,94 @@ test "defaultTheme — every entry sits in a known namespace, and the order is s
     assert a.map({ e -> e.name }).join(";") == b.map({ e -> e.name }).join(";");
     assert a.all({ e -> knownPrefixes().any({ p -> e.name.startsWith(p) }) });
     assert defaultTheme().darkMode == DarkMode.Media;
+}
+
+// ── tests · extend · override · clear · empty · read ─────────────────────────
+//
+// THE REFUSAL PATH IS NOT ASSERTED HERE. `extendTheme(th, [ThemeEntry(name:
+// "--gutter", value: "1rem")])` refuses the entry by aborting with a message
+// naming `--gutter`; an abort is not a value a test can read, so this file
+// records the case the way rakun records its decorator-placement cases — a
+// note here, and the case itself in the compiler's own suite. Asserting the
+// ABSENCE of the entry, as the front's acceptance list suggests, would assert
+// exactly the accept-and-ignore behaviour the refusal exists to forbid.
+
+test "emptyTheme — zero entries, zero keyframes, and themeValue reads nothing" {
+    val th = emptyTheme();
+    assert th.entries.length == 0;
+    assert th.keyframes.length == 0;
+    assert themeValue(th, "--spacing") == "";
+    assert themeValue(th, "--color-white") == "";
+    assert themeValue(th, "--animate-spin") == "";
+}
+
+test "themeValue — a name the theme does not carry reads as the empty string" {
+    assert themeValue(defaultTheme(), "--spacing") == "0.25rem";
+    assert themeValue(defaultTheme(), "--color-lagoon") == "";
+}
+
+test "themeVar — the reference form a utility emits" {
+    assert themeVar("--color-lagoon") == "var(--color-lagoon)";
+    assert themeVar("--spacing") == "var(--spacing)";
+}
+
+test "extendTheme — a new name is added and reads back" {
+    val brand: ThemeEntry[] = [ThemeEntry(name: "--color-brand", value: "oklch(0.72 0.11 178)")];
+    val th = extendTheme(defaultTheme(), brand);
+    assert themeValue(th, "--color-brand") == "oklch(0.72 0.11 178)";
+}
+
+test "extendTheme — a name already present is overridden in place, not appended" {
+    val before = namespace(defaultTheme(), Ns.Color);
+    val override: ThemeEntry[] = [ThemeEntry(name: "--color-white", value: "#fefefe")];
+    val th = extendTheme(defaultTheme(), override);
+    assert themeValue(th, "--color-white") == "#fefefe";
+    assert namespace(th, Ns.Color).length == before.length;
+    assert th.entries.length == defaultTheme().entries.length;
+}
+
+test "extendTheme — the override keeps the entry where it was" {
+    val override: ThemeEntry[] = [ThemeEntry(name: "--spacing", value: "4px")];
+    val th = extendTheme(defaultTheme(), override);
+    assert th.entries.map({ e -> e.name }).join(";") == defaultTheme().entries
+        .map({ e -> e.name })
+        .join(";");
+    assert themeValue(th, "--spacing") == "4px";
+}
+
+test "extendTheme — keyframes and the dark strategy ride through untouched" {
+    val brand: ThemeEntry[] = [ThemeEntry(name: "--color-brand", value: "#abc")];
+    val th = extendTheme(defaultTheme(), brand);
+    assert th.keyframes.length == 4;
+    assert th.darkMode == DarkMode.Media;
+}
+
+test "clearNamespace — the colour namespace goes, every other one stays" {
+    val base = defaultTheme();
+    val th = clearNamespace(base, Ns.Color);
+    assert namespace(th, Ns.Color).length == 0;
+    assert namespace(th, Ns.Radius).length == namespace(base, Ns.Radius).length;
+    assert namespace(th, Ns.Text).length == namespace(base, Ns.Text).length;
+    assert namespace(th, Ns.Shadow).length == namespace(base, Ns.Shadow).length;
+    assert namespace(th, Ns.Container).length == namespace(base, Ns.Container).length;
+    assert namespace(th, Ns.Animate).length == namespace(base, Ns.Animate).length;
+    assert namespace(th, Ns.Breakpoint).length == namespace(base, Ns.Breakpoint).length;
+    assert th.keyframes.length == 4;
+}
+
+test "clearNamespace — clearing then re-declaring is how a project replaces a namespace" {
+    val stripped = clearNamespace(defaultTheme(), Ns.Color);
+    val brand: ThemeEntry[] = [
+        ThemeEntry(name: "--color-lagoon", value: "oklch(0.72 0.11 221.19)"),
+        ThemeEntry(name: "--color-coral", value: "oklch(0.74 0.17 40.24)"),
+    ];
+    val th = extendTheme(stripped, brand);
+    assert namespace(th, Ns.Color).length == 2;
+    assert themeValue(th, "--color-lagoon") == "oklch(0.72 0.11 221.19)";
+    assert themeValue(th, "--color-white") == "";
+}
+
+test "namespace — --spacing is read back through its own namespace" {
+    assert namespace(defaultTheme(), Ns.Spacing).length == 1;
+    assert namespace(emptyTheme(), Ns.Spacing).length == 0;
 }

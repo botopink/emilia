@@ -25,6 +25,19 @@
   black and white ship here, and front 33 hands over `paletteEntries() -> ThemeEntry[]` for
   `extend(defaultTheme(), paletteEntries())`. Measured: 14/14 + 17/17 on both targets.
 
+- **extend · override · clear · empty · read** (front `54-emilia-theme`, step 3).
+  `extendTheme(th, entries)` adds entries and **overrides in place** — a name already
+  present keeps its position, because the entry order is a content-hash contract;
+  `clearNamespace(th, ns)` is the `--color-*: initial` reset, `emptyTheme()` the
+  `--*: initial` one, `namespace(th, ns)` reads one namespace back, `themeValue(th,
+  name)` resolves a name to its literal value (`""` when absent) and `themeVar(name)`
+  gives the `var(--name)` reference form every utility emits. `extendTheme` **refuses**
+  an entry whose name matches no known prefix, naming it; there is no permissive mode
+  and no argument that relaxes it. Two spellings the language forced: the composer is
+  `extendTheme`, because `extend` is a keyword (`Name extend Type { … }`), and a lambda
+  body that is a bare `if` expression is bound to a `val` first, because the bare form
+  lowers to `undefined` on commonJS. Measured: 24/24 + 17/17 on both targets.
+
 - **The repository is a workspace** (`02-packaging` step 2; decisions 75 and 76 of
   1.0.10-beta). `botopink.json` at the root is `{ name, version, description, targets
   [commonJS, erlang], workspaces ["modules/*", "examples/*"] }` — no `src`, `files`,
