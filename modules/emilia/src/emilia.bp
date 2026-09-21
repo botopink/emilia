@@ -1,5 +1,6 @@
 import {Token} from "tokens";
 import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
+import {Ns, nsPrefix, themeVar} from "theme";
 import {Rule, Block, Sheet, Variant, Options} from "output";
 import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant} from "output";
 import {encodeSheet, decodeSheet, carriesSeparator} from "output";
@@ -134,7 +135,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
     val out = case t {
         Text(_inner) -> declSheet(textTokenToCss(_inner));
         Font(_inner) -> declSheet(fontTokenToCss(_inner));
-        Color(_inner) -> declSheet(colorTokenToCss(_inner));
+        Color(_inner) -> declSheet(colorTokenToCss(_inner, th));
         Bg(_inner) -> declSheet(bgTokenToCss(_inner));
         Pad(_inner) -> declSheet(padTokenToCss(_inner));
         Margin(_inner) -> declSheet(marginTokenToCss(_inner));
@@ -248,19 +249,6 @@ fn fontWeightToCss(w: Token.Font.Weight) -> string {
         Medium -> "font-weight:500";
         Bold -> "font-weight:700";
         Black -> "font-weight:900";
-    };
-    return out;
-}
-
-fn colorTokenToCss(t: Token.Color) -> string {
-    val out = case t {
-        Red(_inner) -> "color:red";
-        Blue(_inner) -> "color:blue";
-        Green(_inner) -> "color:green";
-        Gray(_inner) -> "color:gray";
-        White -> "color:#ffffff";
-        Black -> "color:#000000";
-        Hex(value) -> "color:" + value;
     };
     return out;
 }
@@ -481,21 +469,6 @@ fn opacityToCss(o: Token.Effect.Opacity) -> string {
     return out;
 }
 
-fn redPaletteHex(s: Token.Color.Red) -> string {
-    val out = case s {
-        __100 -> "#fee2e2";
-        __200 -> "#fecaca";
-        __300 -> "#fca5a5";
-        __400 -> "#f87171";
-        __500 -> "#ef4444";
-        __600 -> "#dc2626";
-        __700 -> "#b91c1c";
-        __800 -> "#991b1b";
-        __900 -> "#7f1d1d";
-    };
-    return out;
-}
-
 // ── front 56 · test helpers ───────────────────────────────────────────
 
 // A document with no theme in it, so a cascade assertion reads as the rules
@@ -530,8 +503,8 @@ test "tokenToSheet — Text.Size.Lg lowers to font-size:1.125rem" {
     assert tokenDeclarations(.Text.Size.Lg) == "font-size:1.125rem";
 }
 
-test "tokenToSheet — Color.Black lowers to color:#000000" {
-    assert tokenDeclarations(.Color.Black) == "color:#000000";
+test "tokenToSheet — Color.Black lowers to the theme reference, not a hex" {
+    assert tokenDeclarations(.Color.Black) == "color:var(--color-black)";
 }
 
 test "tokenToSheet — Bg.White lowers to background:#ffffff" {
@@ -570,7 +543,7 @@ test "Hover — the `hover` row is `@media (hover: hover) { &:hover }`, not a ba
     val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
     assert r.selector == "&:hover";
     assert r.atRules.join("|") == "@media (hover: hover)";
-    assert r.declarations == "color:#000000";
+    assert r.declarations == "color:var(--color-black)";
 }
 
 test "Focus and Active — the `focus` and `active` rows are selector-only" {
@@ -595,7 +568,7 @@ test "tokensToSheet — a multi-token list is one rule per token, in order" {
     val list: Token[] = [.Text.Bold, .Color.Black];
     val s = tokensToSheet(list, defaultTheme());
     assert s.rules.length == 2;
-    assert declarationsOf(s).join(";") == "font-weight:bold;color:#000000";
+    assert declarationsOf(s).join(";") == "font-weight:bold;color:var(--color-black)";
 }
 
 test "nested modifiers — the outer modifier is outermost, in both halves" {
@@ -809,8 +782,8 @@ test "conflict — reordering an unrelated token moves no other rule" {
     val clsA = emilia(one);
     val clsB = emilia(two);
     val styles = await flushWith(bareOptions());
-    assert styles.indexOf("." + clsA + "{font-weight:bold;display:flex;color:#000000}") != -1;
-    assert styles.indexOf("." + clsB + "{display:flex;font-weight:bold;color:#000000}") != -1;
+    assert styles.indexOf("." + clsA + "{font-weight:bold;display:flex;color:var(--color-black)}") != -1;
+    assert styles.indexOf("." + clsB + "{display:flex;font-weight:bold;color:var(--color-black)}") != -1;
     assert styles.indexOf("." + clsA) < styles.indexOf("." + clsB);
 }
 
@@ -823,3 +796,758 @@ test "conflict — a variant of a rule follows the rule it varies" {
         + cls + "{display:flex}@media (width >= 48rem){." + cls + "{display:grid}}}</style>";
 }
 
+//// ═══ FRONT 33 · the colour palette ═══════════════════════════════════════
+////
+//// The 26 families x 11 shades of `§ 3.6` / `§ 21.1` on `color` here, the
+//// same grid on `background-color` under `Bg.Color`, the five named colours,
+//// and the `Alpha` opacity wrapper.
+////
+//// THE TOKEN EMITS A REFERENCE, NEVER A VALUE. Upstream does not inline a
+//// colour into a utility rule: it declares the shade once in the theme layer
+//// and every utility names it — `--color-red-500: oklch(…)` inside `@theme`,
+//// `color: var(--color-red-500)` inside `.text-red-500`. emilia mirrors that
+//// exactly. It is what makes the utility half byte-equal with upstream
+//// without holding 286 numbers at the call site, and what makes a project's
+//// own `--color-red-500` override reach every rule that names it.
+////
+//// So THE PALETTE RESOLVES THROUGH THE THEME, never through a literal
+//// ladder. `paletteVar(family, shade)` is one line over front 54's
+//// `themeVar`, and the `--color-` prefix it builds on is front 54's
+//// `nsPrefix(Ns.Color)` — the prefix has one author in this library and this
+//// front is not a second one. The file used to carry `redPaletteHex`, a
+//// correct nine-shade ladder of Tailwind v3 hex values that NOTHING CALLED,
+//// beside a dispatcher that answered `"color:red"` for every shade; both are
+//// gone.
+////
+//// The 286 numeric values are the other half, and they are data rather than
+//// code: `paletteEntries()` hands them over as `ThemeEntry[]` for a consumer
+//// to compose — `extendTheme(defaultTheme(), paletteEntries())`. Keeping them
+//// a list rather than a rendered block is what lets a project that already
+//// imports upstream's own theme leave them out and still use every colour
+//// token. `emilia(...)` emits no `@theme` block of its own.
+
+// `paletteVar("red", "500")` is `var(--color-red-500)` — the reference a
+// utility emits, built from front 54's namespace prefix and front 54's
+// `themeVar`. It takes two plain STRINGS and no token, and the property name
+// lives in the dispatcher rather than in the value: the palette is a
+// string-to-string mapping with the enum only at its edge, so front 57's
+// escape hatch can hand it a family and a shade it did not get from a leaf and
+// get the same well-formed reference back, without a second palette table and
+// without this front changing shape.
+pub fn paletteVar(family: string, shade: string) -> string {
+    return themeVar(nsPrefix(Ns.Color) + family + "-" + shade);
+}
+
+// ── the `Color` section · the `text-*` colours ───────────────────────────────
+//
+// One arm per family, and NO ARM DISCARDS ITS PAYLOAD — which is the whole
+// defect this front closes. `Red(_inner) -> "color:red"` rendered
+// `.Color.Red.100` and `.Color.Red.900` byte-identically, so the shade level
+// existed in the type and did nothing in the output.
+//
+// `White` and `Black` reference the theme too: `defaultTheme()` already
+// carries `--color-white` / `--color-black`, and a project that overrides them
+// expects `.Color.Black` to follow. That is a deliberate break with the two
+// front-56 assertions that read `color:#000000` — the hex was the stub's, not
+// a contract. `Transparent`, `Current` and `Inherit` are CSS-wide keywords
+// with no theme entry, so those three stay literal. `Hex(value)` is retained
+// unchanged, as the proof that a string payload splices (see the note under
+// the tests).
+//
+// BLOCKED — SIX OF THE 286 CELLS ARE DECLARED AND UNREACHABLE.
+// `.Color.Red.100`, `.Color.Red.500`, `.Color.Red.700`, `.Color.Gray.100`,
+// `.Color.Gray.500` and `.Color.Gray.700` do not compile in any spelling.
+// `tryResolveEnumSectionPath` (compiler-core `comptime/infer.zig`) resolves a
+// leading-dot path by iterating `env.typeDefs` — a hash map that holds the
+// SYNTHESISED SECTION ENUMS beside the real ones — and returning the first
+// enum whose section tree carries the path. `Token` carries `Color.Red.500`
+// and so does `__Token__Border` (front 40's `Border.Color` stub, whose Red and
+// Gray also run 100/500/700), so the winner is decided by hash order and the
+// expected type is never consulted: `val t: Token = .Color.Red.500;` reds with
+// `type mismatch: expected Token, got __Token__Border`, and so does the array
+// literal, the call argument and the fully-qualified `Token.Color.Red.500`
+// (which the resolver does not accept at all). It fails LOUDLY at the call
+// site rather than emitting the wrong CSS. The fix is the compiler's: prefer
+// the enum the expected type names, and refuse rather than guess when two
+// enums match. Until it lands, `.Bg.Color.Red.500` reaches the same shade —
+// `Bg` is a head segment no other enum carries.
+
+fn colorTokenToCss(t: Token.Color, th: Theme) -> string {
+    val out = case t {
+        Red(_inner) -> "color:" + paletteVar("red", colorRedShade(_inner));
+        Orange(_inner) -> "color:" + paletteVar("orange", colorOrangeShade(_inner));
+        Amber(_inner) -> "color:" + paletteVar("amber", colorAmberShade(_inner));
+        Yellow(_inner) -> "color:" + paletteVar("yellow", colorYellowShade(_inner));
+        Lime(_inner) -> "color:" + paletteVar("lime", colorLimeShade(_inner));
+        Green(_inner) -> "color:" + paletteVar("green", colorGreenShade(_inner));
+        Emerald(_inner) -> "color:" + paletteVar("emerald", colorEmeraldShade(_inner));
+        Teal(_inner) -> "color:" + paletteVar("teal", colorTealShade(_inner));
+        Cyan(_inner) -> "color:" + paletteVar("cyan", colorCyanShade(_inner));
+        Sky(_inner) -> "color:" + paletteVar("sky", colorSkyShade(_inner));
+        Blue(_inner) -> "color:" + paletteVar("blue", colorBlueShade(_inner));
+        Indigo(_inner) -> "color:" + paletteVar("indigo", colorIndigoShade(_inner));
+        Violet(_inner) -> "color:" + paletteVar("violet", colorVioletShade(_inner));
+        Purple(_inner) -> "color:" + paletteVar("purple", colorPurpleShade(_inner));
+        Fuchsia(_inner) -> "color:" + paletteVar("fuchsia", colorFuchsiaShade(_inner));
+        Pink(_inner) -> "color:" + paletteVar("pink", colorPinkShade(_inner));
+        Rose(_inner) -> "color:" + paletteVar("rose", colorRoseShade(_inner));
+        Slate(_inner) -> "color:" + paletteVar("slate", colorSlateShade(_inner));
+        Gray(_inner) -> "color:" + paletteVar("gray", colorGrayShade(_inner));
+        Zinc(_inner) -> "color:" + paletteVar("zinc", colorZincShade(_inner));
+        Neutral(_inner) -> "color:" + paletteVar("neutral", colorNeutralShade(_inner));
+        Stone(_inner) -> "color:" + paletteVar("stone", colorStoneShade(_inner));
+        Mauve(_inner) -> "color:" + paletteVar("mauve", colorMauveShade(_inner));
+        Olive(_inner) -> "color:" + paletteVar("olive", colorOliveShade(_inner));
+        Mist(_inner) -> "color:" + paletteVar("mist", colorMistShade(_inner));
+        Taupe(_inner) -> "color:" + paletteVar("taupe", colorTaupeShade(_inner));
+        White -> "color:" + themeVar(nsPrefix(Ns.Color) + "white");
+        Black -> "color:" + themeVar(nsPrefix(Ns.Color) + "black");
+        Transparent -> "color:transparent";
+        Current -> "color:currentColor";
+        Inherit -> "color:inherit";
+        Hex(value) -> "color:" + value;
+    };
+    return out;
+}
+
+
+fn colorRedShade(s: Token.Color.Red) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorOrangeShade(s: Token.Color.Orange) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorAmberShade(s: Token.Color.Amber) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorYellowShade(s: Token.Color.Yellow) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorLimeShade(s: Token.Color.Lime) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorGreenShade(s: Token.Color.Green) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorEmeraldShade(s: Token.Color.Emerald) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorTealShade(s: Token.Color.Teal) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorCyanShade(s: Token.Color.Cyan) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorSkyShade(s: Token.Color.Sky) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorBlueShade(s: Token.Color.Blue) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorIndigoShade(s: Token.Color.Indigo) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorVioletShade(s: Token.Color.Violet) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorPurpleShade(s: Token.Color.Purple) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorFuchsiaShade(s: Token.Color.Fuchsia) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorPinkShade(s: Token.Color.Pink) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorRoseShade(s: Token.Color.Rose) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorSlateShade(s: Token.Color.Slate) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorGrayShade(s: Token.Color.Gray) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorZincShade(s: Token.Color.Zinc) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorNeutralShade(s: Token.Color.Neutral) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorStoneShade(s: Token.Color.Stone) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorMauveShade(s: Token.Color.Mauve) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorOliveShade(s: Token.Color.Olive) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorMistShade(s: Token.Color.Mist) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+fn colorTaupeShade(s: Token.Color.Taupe) -> string {
+    val out = case s {
+        __50 -> "50"; __100 -> "100"; __200 -> "200"; __300 -> "300";
+        __400 -> "400"; __500 -> "500"; __600 -> "600"; __700 -> "700";
+        __800 -> "800"; __900 -> "900"; __950 -> "950";
+    };
+    return out;
+}
+
+// ── tests · the family and shade grid ────────────────────────────────────────
+//
+// One test per family: 26 tests and 280 assertions, which is every cell of the
+// grid but the six the note above records. Target-independent — emilia has no
+// target split, so every assert below runs under `botopink test` and under
+// `botopink test --target erlang`, and a colour that differs between the two
+// is a defect rather than a backend detail.
+
+test "paletteVar — two plain strings, and the `--color-` prefix spelled once" {
+    assert paletteVar("red", "500") == "var(--color-red-500)";
+    assert paletteVar("taupe", "950") == "var(--color-taupe-950)";
+    assert paletteVar("red", "500") == themeVar(nsPrefix(Ns.Color) + "red-500");
+}
+
+test "the shade survives — two shades of one family are no longer the same CSS" {
+    assert tokenDeclarations(.Color.Red.50) != tokenDeclarations(.Color.Red.950);
+    assert tokenDeclarations(.Color.Red.50) == "color:var(--color-red-50)";
+    assert tokenDeclarations(.Color.Red.950) == "color:var(--color-red-950)";
+    assert tokenDeclarations(.Color.Blue.200) != tokenDeclarations(.Color.Blue.800);
+}
+
+test "the five named colours on `color`" {
+    assert tokenDeclarations(.Color.White) == "color:var(--color-white)";
+    assert tokenDeclarations(.Color.Black) == "color:var(--color-black)";
+    assert tokenDeclarations(.Color.Transparent) == "color:transparent";
+    assert tokenDeclarations(.Color.Current) == "color:currentColor";
+    assert tokenDeclarations(.Color.Inherit) == "color:inherit";
+}
+
+test "the paths that compiled before this front still compile, with a shade in them" {
+    assert tokenDeclarations(.Color.Blue.700) == "color:var(--color-blue-700)";
+    assert tokenDeclarations(.Color.Gray.400) == "color:var(--color-gray-400)";
+    assert tokenDeclarations(.Color.Green.400) == "color:var(--color-green-400)";
+    assert tokenDeclarations(.Color.Green.900) == "color:var(--color-green-900)";
+}
+
+test "a colour token still renders as one utilities rule on the bare ampersand" {
+    val r = firstRuleOf(tokenToSheet(.Color.Sky.500, defaultTheme()));
+    assert r.layer == "utilities";
+    assert r.selector == "&";
+    assert r.declarations == "color:var(--color-sky-500)";
+}
+
+// red: 100, 500, 700 are DECLARED and unreachable — no spelling resolves them
+// while `Token.Border.Color.Red` carries the same leaves. See the
+// BLOCKED note above.
+test "palette — red, eight shades on `color`" {
+    assert tokenDeclarations(.Color.Red.50) == "color:var(--color-red-50)";
+    assert tokenDeclarations(.Color.Red.200) == "color:var(--color-red-200)";
+    assert tokenDeclarations(.Color.Red.300) == "color:var(--color-red-300)";
+    assert tokenDeclarations(.Color.Red.400) == "color:var(--color-red-400)";
+    assert tokenDeclarations(.Color.Red.600) == "color:var(--color-red-600)";
+    assert tokenDeclarations(.Color.Red.800) == "color:var(--color-red-800)";
+    assert tokenDeclarations(.Color.Red.900) == "color:var(--color-red-900)";
+    assert tokenDeclarations(.Color.Red.950) == "color:var(--color-red-950)";
+}
+
+test "palette — orange, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Orange.50) == "color:var(--color-orange-50)";
+    assert tokenDeclarations(.Color.Orange.100) == "color:var(--color-orange-100)";
+    assert tokenDeclarations(.Color.Orange.200) == "color:var(--color-orange-200)";
+    assert tokenDeclarations(.Color.Orange.300) == "color:var(--color-orange-300)";
+    assert tokenDeclarations(.Color.Orange.400) == "color:var(--color-orange-400)";
+    assert tokenDeclarations(.Color.Orange.500) == "color:var(--color-orange-500)";
+    assert tokenDeclarations(.Color.Orange.600) == "color:var(--color-orange-600)";
+    assert tokenDeclarations(.Color.Orange.700) == "color:var(--color-orange-700)";
+    assert tokenDeclarations(.Color.Orange.800) == "color:var(--color-orange-800)";
+    assert tokenDeclarations(.Color.Orange.900) == "color:var(--color-orange-900)";
+    assert tokenDeclarations(.Color.Orange.950) == "color:var(--color-orange-950)";
+}
+
+test "palette — amber, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Amber.50) == "color:var(--color-amber-50)";
+    assert tokenDeclarations(.Color.Amber.100) == "color:var(--color-amber-100)";
+    assert tokenDeclarations(.Color.Amber.200) == "color:var(--color-amber-200)";
+    assert tokenDeclarations(.Color.Amber.300) == "color:var(--color-amber-300)";
+    assert tokenDeclarations(.Color.Amber.400) == "color:var(--color-amber-400)";
+    assert tokenDeclarations(.Color.Amber.500) == "color:var(--color-amber-500)";
+    assert tokenDeclarations(.Color.Amber.600) == "color:var(--color-amber-600)";
+    assert tokenDeclarations(.Color.Amber.700) == "color:var(--color-amber-700)";
+    assert tokenDeclarations(.Color.Amber.800) == "color:var(--color-amber-800)";
+    assert tokenDeclarations(.Color.Amber.900) == "color:var(--color-amber-900)";
+    assert tokenDeclarations(.Color.Amber.950) == "color:var(--color-amber-950)";
+}
+
+test "palette — yellow, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Yellow.50) == "color:var(--color-yellow-50)";
+    assert tokenDeclarations(.Color.Yellow.100) == "color:var(--color-yellow-100)";
+    assert tokenDeclarations(.Color.Yellow.200) == "color:var(--color-yellow-200)";
+    assert tokenDeclarations(.Color.Yellow.300) == "color:var(--color-yellow-300)";
+    assert tokenDeclarations(.Color.Yellow.400) == "color:var(--color-yellow-400)";
+    assert tokenDeclarations(.Color.Yellow.500) == "color:var(--color-yellow-500)";
+    assert tokenDeclarations(.Color.Yellow.600) == "color:var(--color-yellow-600)";
+    assert tokenDeclarations(.Color.Yellow.700) == "color:var(--color-yellow-700)";
+    assert tokenDeclarations(.Color.Yellow.800) == "color:var(--color-yellow-800)";
+    assert tokenDeclarations(.Color.Yellow.900) == "color:var(--color-yellow-900)";
+    assert tokenDeclarations(.Color.Yellow.950) == "color:var(--color-yellow-950)";
+}
+
+test "palette — lime, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Lime.50) == "color:var(--color-lime-50)";
+    assert tokenDeclarations(.Color.Lime.100) == "color:var(--color-lime-100)";
+    assert tokenDeclarations(.Color.Lime.200) == "color:var(--color-lime-200)";
+    assert tokenDeclarations(.Color.Lime.300) == "color:var(--color-lime-300)";
+    assert tokenDeclarations(.Color.Lime.400) == "color:var(--color-lime-400)";
+    assert tokenDeclarations(.Color.Lime.500) == "color:var(--color-lime-500)";
+    assert tokenDeclarations(.Color.Lime.600) == "color:var(--color-lime-600)";
+    assert tokenDeclarations(.Color.Lime.700) == "color:var(--color-lime-700)";
+    assert tokenDeclarations(.Color.Lime.800) == "color:var(--color-lime-800)";
+    assert tokenDeclarations(.Color.Lime.900) == "color:var(--color-lime-900)";
+    assert tokenDeclarations(.Color.Lime.950) == "color:var(--color-lime-950)";
+}
+
+test "palette — green, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Green.50) == "color:var(--color-green-50)";
+    assert tokenDeclarations(.Color.Green.100) == "color:var(--color-green-100)";
+    assert tokenDeclarations(.Color.Green.200) == "color:var(--color-green-200)";
+    assert tokenDeclarations(.Color.Green.300) == "color:var(--color-green-300)";
+    assert tokenDeclarations(.Color.Green.400) == "color:var(--color-green-400)";
+    assert tokenDeclarations(.Color.Green.500) == "color:var(--color-green-500)";
+    assert tokenDeclarations(.Color.Green.600) == "color:var(--color-green-600)";
+    assert tokenDeclarations(.Color.Green.700) == "color:var(--color-green-700)";
+    assert tokenDeclarations(.Color.Green.800) == "color:var(--color-green-800)";
+    assert tokenDeclarations(.Color.Green.900) == "color:var(--color-green-900)";
+    assert tokenDeclarations(.Color.Green.950) == "color:var(--color-green-950)";
+}
+
+test "palette — emerald, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Emerald.50) == "color:var(--color-emerald-50)";
+    assert tokenDeclarations(.Color.Emerald.100) == "color:var(--color-emerald-100)";
+    assert tokenDeclarations(.Color.Emerald.200) == "color:var(--color-emerald-200)";
+    assert tokenDeclarations(.Color.Emerald.300) == "color:var(--color-emerald-300)";
+    assert tokenDeclarations(.Color.Emerald.400) == "color:var(--color-emerald-400)";
+    assert tokenDeclarations(.Color.Emerald.500) == "color:var(--color-emerald-500)";
+    assert tokenDeclarations(.Color.Emerald.600) == "color:var(--color-emerald-600)";
+    assert tokenDeclarations(.Color.Emerald.700) == "color:var(--color-emerald-700)";
+    assert tokenDeclarations(.Color.Emerald.800) == "color:var(--color-emerald-800)";
+    assert tokenDeclarations(.Color.Emerald.900) == "color:var(--color-emerald-900)";
+    assert tokenDeclarations(.Color.Emerald.950) == "color:var(--color-emerald-950)";
+}
+
+test "palette — teal, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Teal.50) == "color:var(--color-teal-50)";
+    assert tokenDeclarations(.Color.Teal.100) == "color:var(--color-teal-100)";
+    assert tokenDeclarations(.Color.Teal.200) == "color:var(--color-teal-200)";
+    assert tokenDeclarations(.Color.Teal.300) == "color:var(--color-teal-300)";
+    assert tokenDeclarations(.Color.Teal.400) == "color:var(--color-teal-400)";
+    assert tokenDeclarations(.Color.Teal.500) == "color:var(--color-teal-500)";
+    assert tokenDeclarations(.Color.Teal.600) == "color:var(--color-teal-600)";
+    assert tokenDeclarations(.Color.Teal.700) == "color:var(--color-teal-700)";
+    assert tokenDeclarations(.Color.Teal.800) == "color:var(--color-teal-800)";
+    assert tokenDeclarations(.Color.Teal.900) == "color:var(--color-teal-900)";
+    assert tokenDeclarations(.Color.Teal.950) == "color:var(--color-teal-950)";
+}
+
+test "palette — cyan, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Cyan.50) == "color:var(--color-cyan-50)";
+    assert tokenDeclarations(.Color.Cyan.100) == "color:var(--color-cyan-100)";
+    assert tokenDeclarations(.Color.Cyan.200) == "color:var(--color-cyan-200)";
+    assert tokenDeclarations(.Color.Cyan.300) == "color:var(--color-cyan-300)";
+    assert tokenDeclarations(.Color.Cyan.400) == "color:var(--color-cyan-400)";
+    assert tokenDeclarations(.Color.Cyan.500) == "color:var(--color-cyan-500)";
+    assert tokenDeclarations(.Color.Cyan.600) == "color:var(--color-cyan-600)";
+    assert tokenDeclarations(.Color.Cyan.700) == "color:var(--color-cyan-700)";
+    assert tokenDeclarations(.Color.Cyan.800) == "color:var(--color-cyan-800)";
+    assert tokenDeclarations(.Color.Cyan.900) == "color:var(--color-cyan-900)";
+    assert tokenDeclarations(.Color.Cyan.950) == "color:var(--color-cyan-950)";
+}
+
+test "palette — sky, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Sky.50) == "color:var(--color-sky-50)";
+    assert tokenDeclarations(.Color.Sky.100) == "color:var(--color-sky-100)";
+    assert tokenDeclarations(.Color.Sky.200) == "color:var(--color-sky-200)";
+    assert tokenDeclarations(.Color.Sky.300) == "color:var(--color-sky-300)";
+    assert tokenDeclarations(.Color.Sky.400) == "color:var(--color-sky-400)";
+    assert tokenDeclarations(.Color.Sky.500) == "color:var(--color-sky-500)";
+    assert tokenDeclarations(.Color.Sky.600) == "color:var(--color-sky-600)";
+    assert tokenDeclarations(.Color.Sky.700) == "color:var(--color-sky-700)";
+    assert tokenDeclarations(.Color.Sky.800) == "color:var(--color-sky-800)";
+    assert tokenDeclarations(.Color.Sky.900) == "color:var(--color-sky-900)";
+    assert tokenDeclarations(.Color.Sky.950) == "color:var(--color-sky-950)";
+}
+
+test "palette — blue, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Blue.50) == "color:var(--color-blue-50)";
+    assert tokenDeclarations(.Color.Blue.100) == "color:var(--color-blue-100)";
+    assert tokenDeclarations(.Color.Blue.200) == "color:var(--color-blue-200)";
+    assert tokenDeclarations(.Color.Blue.300) == "color:var(--color-blue-300)";
+    assert tokenDeclarations(.Color.Blue.400) == "color:var(--color-blue-400)";
+    assert tokenDeclarations(.Color.Blue.500) == "color:var(--color-blue-500)";
+    assert tokenDeclarations(.Color.Blue.600) == "color:var(--color-blue-600)";
+    assert tokenDeclarations(.Color.Blue.700) == "color:var(--color-blue-700)";
+    assert tokenDeclarations(.Color.Blue.800) == "color:var(--color-blue-800)";
+    assert tokenDeclarations(.Color.Blue.900) == "color:var(--color-blue-900)";
+    assert tokenDeclarations(.Color.Blue.950) == "color:var(--color-blue-950)";
+}
+
+test "palette — indigo, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Indigo.50) == "color:var(--color-indigo-50)";
+    assert tokenDeclarations(.Color.Indigo.100) == "color:var(--color-indigo-100)";
+    assert tokenDeclarations(.Color.Indigo.200) == "color:var(--color-indigo-200)";
+    assert tokenDeclarations(.Color.Indigo.300) == "color:var(--color-indigo-300)";
+    assert tokenDeclarations(.Color.Indigo.400) == "color:var(--color-indigo-400)";
+    assert tokenDeclarations(.Color.Indigo.500) == "color:var(--color-indigo-500)";
+    assert tokenDeclarations(.Color.Indigo.600) == "color:var(--color-indigo-600)";
+    assert tokenDeclarations(.Color.Indigo.700) == "color:var(--color-indigo-700)";
+    assert tokenDeclarations(.Color.Indigo.800) == "color:var(--color-indigo-800)";
+    assert tokenDeclarations(.Color.Indigo.900) == "color:var(--color-indigo-900)";
+    assert tokenDeclarations(.Color.Indigo.950) == "color:var(--color-indigo-950)";
+}
+
+test "palette — violet, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Violet.50) == "color:var(--color-violet-50)";
+    assert tokenDeclarations(.Color.Violet.100) == "color:var(--color-violet-100)";
+    assert tokenDeclarations(.Color.Violet.200) == "color:var(--color-violet-200)";
+    assert tokenDeclarations(.Color.Violet.300) == "color:var(--color-violet-300)";
+    assert tokenDeclarations(.Color.Violet.400) == "color:var(--color-violet-400)";
+    assert tokenDeclarations(.Color.Violet.500) == "color:var(--color-violet-500)";
+    assert tokenDeclarations(.Color.Violet.600) == "color:var(--color-violet-600)";
+    assert tokenDeclarations(.Color.Violet.700) == "color:var(--color-violet-700)";
+    assert tokenDeclarations(.Color.Violet.800) == "color:var(--color-violet-800)";
+    assert tokenDeclarations(.Color.Violet.900) == "color:var(--color-violet-900)";
+    assert tokenDeclarations(.Color.Violet.950) == "color:var(--color-violet-950)";
+}
+
+test "palette — purple, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Purple.50) == "color:var(--color-purple-50)";
+    assert tokenDeclarations(.Color.Purple.100) == "color:var(--color-purple-100)";
+    assert tokenDeclarations(.Color.Purple.200) == "color:var(--color-purple-200)";
+    assert tokenDeclarations(.Color.Purple.300) == "color:var(--color-purple-300)";
+    assert tokenDeclarations(.Color.Purple.400) == "color:var(--color-purple-400)";
+    assert tokenDeclarations(.Color.Purple.500) == "color:var(--color-purple-500)";
+    assert tokenDeclarations(.Color.Purple.600) == "color:var(--color-purple-600)";
+    assert tokenDeclarations(.Color.Purple.700) == "color:var(--color-purple-700)";
+    assert tokenDeclarations(.Color.Purple.800) == "color:var(--color-purple-800)";
+    assert tokenDeclarations(.Color.Purple.900) == "color:var(--color-purple-900)";
+    assert tokenDeclarations(.Color.Purple.950) == "color:var(--color-purple-950)";
+}
+
+test "palette — fuchsia, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Fuchsia.50) == "color:var(--color-fuchsia-50)";
+    assert tokenDeclarations(.Color.Fuchsia.100) == "color:var(--color-fuchsia-100)";
+    assert tokenDeclarations(.Color.Fuchsia.200) == "color:var(--color-fuchsia-200)";
+    assert tokenDeclarations(.Color.Fuchsia.300) == "color:var(--color-fuchsia-300)";
+    assert tokenDeclarations(.Color.Fuchsia.400) == "color:var(--color-fuchsia-400)";
+    assert tokenDeclarations(.Color.Fuchsia.500) == "color:var(--color-fuchsia-500)";
+    assert tokenDeclarations(.Color.Fuchsia.600) == "color:var(--color-fuchsia-600)";
+    assert tokenDeclarations(.Color.Fuchsia.700) == "color:var(--color-fuchsia-700)";
+    assert tokenDeclarations(.Color.Fuchsia.800) == "color:var(--color-fuchsia-800)";
+    assert tokenDeclarations(.Color.Fuchsia.900) == "color:var(--color-fuchsia-900)";
+    assert tokenDeclarations(.Color.Fuchsia.950) == "color:var(--color-fuchsia-950)";
+}
+
+test "palette — pink, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Pink.50) == "color:var(--color-pink-50)";
+    assert tokenDeclarations(.Color.Pink.100) == "color:var(--color-pink-100)";
+    assert tokenDeclarations(.Color.Pink.200) == "color:var(--color-pink-200)";
+    assert tokenDeclarations(.Color.Pink.300) == "color:var(--color-pink-300)";
+    assert tokenDeclarations(.Color.Pink.400) == "color:var(--color-pink-400)";
+    assert tokenDeclarations(.Color.Pink.500) == "color:var(--color-pink-500)";
+    assert tokenDeclarations(.Color.Pink.600) == "color:var(--color-pink-600)";
+    assert tokenDeclarations(.Color.Pink.700) == "color:var(--color-pink-700)";
+    assert tokenDeclarations(.Color.Pink.800) == "color:var(--color-pink-800)";
+    assert tokenDeclarations(.Color.Pink.900) == "color:var(--color-pink-900)";
+    assert tokenDeclarations(.Color.Pink.950) == "color:var(--color-pink-950)";
+}
+
+test "palette — rose, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Rose.50) == "color:var(--color-rose-50)";
+    assert tokenDeclarations(.Color.Rose.100) == "color:var(--color-rose-100)";
+    assert tokenDeclarations(.Color.Rose.200) == "color:var(--color-rose-200)";
+    assert tokenDeclarations(.Color.Rose.300) == "color:var(--color-rose-300)";
+    assert tokenDeclarations(.Color.Rose.400) == "color:var(--color-rose-400)";
+    assert tokenDeclarations(.Color.Rose.500) == "color:var(--color-rose-500)";
+    assert tokenDeclarations(.Color.Rose.600) == "color:var(--color-rose-600)";
+    assert tokenDeclarations(.Color.Rose.700) == "color:var(--color-rose-700)";
+    assert tokenDeclarations(.Color.Rose.800) == "color:var(--color-rose-800)";
+    assert tokenDeclarations(.Color.Rose.900) == "color:var(--color-rose-900)";
+    assert tokenDeclarations(.Color.Rose.950) == "color:var(--color-rose-950)";
+}
+
+test "palette — slate, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Slate.50) == "color:var(--color-slate-50)";
+    assert tokenDeclarations(.Color.Slate.100) == "color:var(--color-slate-100)";
+    assert tokenDeclarations(.Color.Slate.200) == "color:var(--color-slate-200)";
+    assert tokenDeclarations(.Color.Slate.300) == "color:var(--color-slate-300)";
+    assert tokenDeclarations(.Color.Slate.400) == "color:var(--color-slate-400)";
+    assert tokenDeclarations(.Color.Slate.500) == "color:var(--color-slate-500)";
+    assert tokenDeclarations(.Color.Slate.600) == "color:var(--color-slate-600)";
+    assert tokenDeclarations(.Color.Slate.700) == "color:var(--color-slate-700)";
+    assert tokenDeclarations(.Color.Slate.800) == "color:var(--color-slate-800)";
+    assert tokenDeclarations(.Color.Slate.900) == "color:var(--color-slate-900)";
+    assert tokenDeclarations(.Color.Slate.950) == "color:var(--color-slate-950)";
+}
+
+// gray: 100, 500, 700 are DECLARED and unreachable — no spelling resolves them
+// while `Token.Border.Color.Gray` carries the same leaves. See the
+// BLOCKED note above.
+test "palette — gray, eight shades on `color`" {
+    assert tokenDeclarations(.Color.Gray.50) == "color:var(--color-gray-50)";
+    assert tokenDeclarations(.Color.Gray.200) == "color:var(--color-gray-200)";
+    assert tokenDeclarations(.Color.Gray.300) == "color:var(--color-gray-300)";
+    assert tokenDeclarations(.Color.Gray.400) == "color:var(--color-gray-400)";
+    assert tokenDeclarations(.Color.Gray.600) == "color:var(--color-gray-600)";
+    assert tokenDeclarations(.Color.Gray.800) == "color:var(--color-gray-800)";
+    assert tokenDeclarations(.Color.Gray.900) == "color:var(--color-gray-900)";
+    assert tokenDeclarations(.Color.Gray.950) == "color:var(--color-gray-950)";
+}
+
+test "palette — zinc, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Zinc.50) == "color:var(--color-zinc-50)";
+    assert tokenDeclarations(.Color.Zinc.100) == "color:var(--color-zinc-100)";
+    assert tokenDeclarations(.Color.Zinc.200) == "color:var(--color-zinc-200)";
+    assert tokenDeclarations(.Color.Zinc.300) == "color:var(--color-zinc-300)";
+    assert tokenDeclarations(.Color.Zinc.400) == "color:var(--color-zinc-400)";
+    assert tokenDeclarations(.Color.Zinc.500) == "color:var(--color-zinc-500)";
+    assert tokenDeclarations(.Color.Zinc.600) == "color:var(--color-zinc-600)";
+    assert tokenDeclarations(.Color.Zinc.700) == "color:var(--color-zinc-700)";
+    assert tokenDeclarations(.Color.Zinc.800) == "color:var(--color-zinc-800)";
+    assert tokenDeclarations(.Color.Zinc.900) == "color:var(--color-zinc-900)";
+    assert tokenDeclarations(.Color.Zinc.950) == "color:var(--color-zinc-950)";
+}
+
+test "palette — neutral, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Neutral.50) == "color:var(--color-neutral-50)";
+    assert tokenDeclarations(.Color.Neutral.100) == "color:var(--color-neutral-100)";
+    assert tokenDeclarations(.Color.Neutral.200) == "color:var(--color-neutral-200)";
+    assert tokenDeclarations(.Color.Neutral.300) == "color:var(--color-neutral-300)";
+    assert tokenDeclarations(.Color.Neutral.400) == "color:var(--color-neutral-400)";
+    assert tokenDeclarations(.Color.Neutral.500) == "color:var(--color-neutral-500)";
+    assert tokenDeclarations(.Color.Neutral.600) == "color:var(--color-neutral-600)";
+    assert tokenDeclarations(.Color.Neutral.700) == "color:var(--color-neutral-700)";
+    assert tokenDeclarations(.Color.Neutral.800) == "color:var(--color-neutral-800)";
+    assert tokenDeclarations(.Color.Neutral.900) == "color:var(--color-neutral-900)";
+    assert tokenDeclarations(.Color.Neutral.950) == "color:var(--color-neutral-950)";
+}
+
+test "palette — stone, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Stone.50) == "color:var(--color-stone-50)";
+    assert tokenDeclarations(.Color.Stone.100) == "color:var(--color-stone-100)";
+    assert tokenDeclarations(.Color.Stone.200) == "color:var(--color-stone-200)";
+    assert tokenDeclarations(.Color.Stone.300) == "color:var(--color-stone-300)";
+    assert tokenDeclarations(.Color.Stone.400) == "color:var(--color-stone-400)";
+    assert tokenDeclarations(.Color.Stone.500) == "color:var(--color-stone-500)";
+    assert tokenDeclarations(.Color.Stone.600) == "color:var(--color-stone-600)";
+    assert tokenDeclarations(.Color.Stone.700) == "color:var(--color-stone-700)";
+    assert tokenDeclarations(.Color.Stone.800) == "color:var(--color-stone-800)";
+    assert tokenDeclarations(.Color.Stone.900) == "color:var(--color-stone-900)";
+    assert tokenDeclarations(.Color.Stone.950) == "color:var(--color-stone-950)";
+}
+
+test "palette — mauve, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Mauve.50) == "color:var(--color-mauve-50)";
+    assert tokenDeclarations(.Color.Mauve.100) == "color:var(--color-mauve-100)";
+    assert tokenDeclarations(.Color.Mauve.200) == "color:var(--color-mauve-200)";
+    assert tokenDeclarations(.Color.Mauve.300) == "color:var(--color-mauve-300)";
+    assert tokenDeclarations(.Color.Mauve.400) == "color:var(--color-mauve-400)";
+    assert tokenDeclarations(.Color.Mauve.500) == "color:var(--color-mauve-500)";
+    assert tokenDeclarations(.Color.Mauve.600) == "color:var(--color-mauve-600)";
+    assert tokenDeclarations(.Color.Mauve.700) == "color:var(--color-mauve-700)";
+    assert tokenDeclarations(.Color.Mauve.800) == "color:var(--color-mauve-800)";
+    assert tokenDeclarations(.Color.Mauve.900) == "color:var(--color-mauve-900)";
+    assert tokenDeclarations(.Color.Mauve.950) == "color:var(--color-mauve-950)";
+}
+
+test "palette — olive, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Olive.50) == "color:var(--color-olive-50)";
+    assert tokenDeclarations(.Color.Olive.100) == "color:var(--color-olive-100)";
+    assert tokenDeclarations(.Color.Olive.200) == "color:var(--color-olive-200)";
+    assert tokenDeclarations(.Color.Olive.300) == "color:var(--color-olive-300)";
+    assert tokenDeclarations(.Color.Olive.400) == "color:var(--color-olive-400)";
+    assert tokenDeclarations(.Color.Olive.500) == "color:var(--color-olive-500)";
+    assert tokenDeclarations(.Color.Olive.600) == "color:var(--color-olive-600)";
+    assert tokenDeclarations(.Color.Olive.700) == "color:var(--color-olive-700)";
+    assert tokenDeclarations(.Color.Olive.800) == "color:var(--color-olive-800)";
+    assert tokenDeclarations(.Color.Olive.900) == "color:var(--color-olive-900)";
+    assert tokenDeclarations(.Color.Olive.950) == "color:var(--color-olive-950)";
+}
+
+test "palette — mist, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Mist.50) == "color:var(--color-mist-50)";
+    assert tokenDeclarations(.Color.Mist.100) == "color:var(--color-mist-100)";
+    assert tokenDeclarations(.Color.Mist.200) == "color:var(--color-mist-200)";
+    assert tokenDeclarations(.Color.Mist.300) == "color:var(--color-mist-300)";
+    assert tokenDeclarations(.Color.Mist.400) == "color:var(--color-mist-400)";
+    assert tokenDeclarations(.Color.Mist.500) == "color:var(--color-mist-500)";
+    assert tokenDeclarations(.Color.Mist.600) == "color:var(--color-mist-600)";
+    assert tokenDeclarations(.Color.Mist.700) == "color:var(--color-mist-700)";
+    assert tokenDeclarations(.Color.Mist.800) == "color:var(--color-mist-800)";
+    assert tokenDeclarations(.Color.Mist.900) == "color:var(--color-mist-900)";
+    assert tokenDeclarations(.Color.Mist.950) == "color:var(--color-mist-950)";
+}
+
+test "palette — taupe, eleven shades on `color`" {
+    assert tokenDeclarations(.Color.Taupe.50) == "color:var(--color-taupe-50)";
+    assert tokenDeclarations(.Color.Taupe.100) == "color:var(--color-taupe-100)";
+    assert tokenDeclarations(.Color.Taupe.200) == "color:var(--color-taupe-200)";
+    assert tokenDeclarations(.Color.Taupe.300) == "color:var(--color-taupe-300)";
+    assert tokenDeclarations(.Color.Taupe.400) == "color:var(--color-taupe-400)";
+    assert tokenDeclarations(.Color.Taupe.500) == "color:var(--color-taupe-500)";
+    assert tokenDeclarations(.Color.Taupe.600) == "color:var(--color-taupe-600)";
+    assert tokenDeclarations(.Color.Taupe.700) == "color:var(--color-taupe-700)";
+    assert tokenDeclarations(.Color.Taupe.800) == "color:var(--color-taupe-800)";
+    assert tokenDeclarations(.Color.Taupe.900) == "color:var(--color-taupe-900)";
+    assert tokenDeclarations(.Color.Taupe.950) == "color:var(--color-taupe-950)";
+}

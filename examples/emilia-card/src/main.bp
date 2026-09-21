@@ -39,11 +39,18 @@ import { div, p, h1, renderToString } from "jhonstart";
 // The class names returned by `emilia(...)` are stable hashes — call sites
 // using identical token lists share one class (`cardBg` below).
 //
-// V1 enum-section path access: `.Pad.All.__4`, `.Color.Red.__500`, etc.
-// Numeric leaves are pure digits in the chain (`.500`) — but in `case`
-// patterns and via type-inferred bind they read as `__500`. The leading-
-// dot form needs context from the typed `Token[]` array literal to
-// resolve.
+// V1 enum-section path access: `.Pad.All.__4`, `.Color.Red.600`, etc.
+// Numeric leaves are pure digits in the chain (`.600`) — the `__600`
+// spelling is the `case`-pattern one and also reads in expression
+// position.
+//
+// The shades here are 600 and NOT 500, which is what this example carried
+// before front 33 widened the palette. `.Color.Red.500` and
+// `.Color.Gray.500` are declared and unreachable: the compiler's
+// leading-dot section resolver picks between `Token` and the synthesised
+// `__Token__Border` by hash order, and `Token.Border.Color` (front 40's
+// stub) carries Red and Gray at 100/500/700 too. See the BLOCKED note in
+// `emilia.bp` under the front 33 banner.
 val cardTokens: Token[] = [
     .Pad.All.__4,
     .Bg.White,
@@ -54,15 +61,15 @@ val cardBg = emilia(cardTokens);
 val titleTokens: Token[] = [
     .Text.Size.X3xl,
     .Text.Bold,
-    .Color.Red.__500,
+    .Color.Red.600,
 ];
 val titleStyle = emilia(titleTokens);
 
-val hoverInner: Token[] = [.Color.Red.__500];
+val hoverInner: Token[] = [.Color.Red.600];
 val mdInner: Token[] = [.Text.Size.Lg];
 val bodyTokens: Token[] = [
     .Text.Size.Base,
-    .Color.Gray.__500,
+    .Color.Gray.600,
     Token.Hover(hoverInner),
     Token.Md(mdInner),
 ];
@@ -125,10 +132,10 @@ test "flush returns a layered `<style>...</style>` document with the registered 
     // body with the selector and the at-rule the variant reference gives it —
     // `@media (hover: hover) { &:hover }` for hover, `@media (width >= 48rem)`
     // for the `md` breakpoint, read from the theme's `--breakpoint-md`.
-    // (Color palette dispatch is still stubbed in V1 — `.Color.Red.__500`
-    // currently lowers to `color:red`, not `color:#ef4444`. Palette
-    // resolution is front 33's.)
-    assert styles.indexOf("@media (hover: hover){." + bodyStyle + ":hover{color:red}}") != -1;
+    // Front 33 landed the palette: `.Color.Red.600` lowers to the theme
+    // reference `var(--color-red-600)`, not to the CSS keyword `red` the V1
+    // stub emitted for every shade of the family.
+    assert styles.indexOf("@media (hover: hover){." + bodyStyle + ":hover{color:var(--color-red-600)}}") != -1;
     assert styles.indexOf("@media (width >= 48rem){." + bodyStyle + "{font-size:1.125rem}}") != -1;
     // `.Text.Size.Base` and `.Text.Size.X3xl` are MISSING from the two class
     // bodies below, and they were missing before front 56 too (the pre-56
@@ -143,6 +150,6 @@ test "flush returns a layered `<style>...</style>` document with the registered 
     // compiler lower those arms to a `tag` comparison instead. Reported to
     // botopink-lang; the assertions below pin what is actually emitted so the
     // fix is visible as a change here.
-    assert styles.indexOf("." + bodyStyle + "{color:gray}") != -1;
-    assert styles.indexOf("." + titleStyle + "{font-weight:bold;color:red}") != -1;
+    assert styles.indexOf("." + bodyStyle + "{color:var(--color-gray-600)}") != -1;
+    assert styles.indexOf("." + titleStyle + "{font-weight:bold;color:var(--color-red-600)}") != -1;
 }

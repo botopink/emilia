@@ -28,9 +28,13 @@ Three named imports from `from "emilia"`:
    Front 56 added **`flushWith(o: Options)`**; `flush()` is
    `flushWith(defaultOptions())`.
 3. **`Token` enum** — the typed authored surface (see `tokens.bp`).
-   Sections (v0 flat): Text, Color, Bg, Pad + modifier variants
-   (`Hover`/`Focus`/`Active`/`Md`/`Lg`/`Xl`) carrying a nested
-   `Token[]`.
+   Sections: Text, Font, Color, Bg, Pad, Margin, Layout, Flex, Border,
+   Effect + modifier variants (`Hover`/`Focus`/`Active`/`Md`/`Lg`/`Xl`)
+   carrying a nested `Token[]`. Front 33 widened **`Color`** to the
+   26-family x 11-shade grid (17 chromatic Red..Rose + 9 neutral
+   Slate..Taupe, each `50 100 … 900 950`) plus
+   `White`/`Black`/`Transparent`/`Current`/`Inherit` and the `Hex(string)`
+   escape.
 
 Front 54 adds the **theme** and the **spacing ladder** (`theme.bp`,
 `spacing.bp`): `ThemeEntry`, `Theme`, `DarkMode`, `Ns`, `nsPrefix`,
@@ -281,6 +285,21 @@ to the commonJS row and runs once.
   `examples/emilia-card/` prints `Formatted src/main.bp` — the formatter moved
   under the compiler since the last `style(src)` sweep. Reformatting is a
   source change and belongs to a `style(src)` commit, not to a packaging one.
+- **`.Color.Red.500` and five siblings are DECLARED AND UNREACHABLE.** The
+  compiler resolves a leading-dot section path (`tryResolveEnumSectionPath`,
+  compiler-core `comptime/infer.zig`) by iterating `env.typeDefs` — which holds
+  the synthesised section enums beside the real ones — and returning the first
+  enum whose section tree carries the path. The expected type is never
+  consulted. `Token` carries `Color.Red.500` and so does `__Token__Border`
+  (`Token.Border.Color`, whose Red and Gray run 100/500/700), so hash order
+  decides, and today it decides against us for `.Color.Red.{100,500,700}` and
+  `.Color.Gray.{100,500,700}`. Every spelling reds — the typed `val`, the typed
+  array literal, the call argument, and `Token.Color.Red.500`, which the
+  resolver does not accept at all. It is loud (`type mismatch: expected Token,
+  got __Token__Border`), never silently-wrong CSS. Reported to botopink-lang;
+  the fix is to prefer the enum the expected type names and to refuse rather
+  than guess when two match. **Do not "fix" it by adding or renaming a type to
+  flip the hash order** — that is invisible and the next front re-breaks it.
 - **A section of `Token` is a type written by its path** — `Token.Text`,
   `Token.Text.Size`, `Token.Border.Color` (botopink-lang decision 8 §5.3b).
   The flat spelling (`TokenText`) names nothing and reds with a hint; a
@@ -359,12 +378,17 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **121/121** on
+  refuses) runs every module's in-file `test {}` blocks, **152/152** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 33 (`emilia.bp`). `emilia.bp`'s 33:
+  (`output.bp`) + 64 (`emilia.bp`). `emilia.bp`'s 64 are front 56's 33 (below)
+  plus front 33's 31: 26 one-per-family grid tests (280 of the 286 cells — the
+  six unreachable ones are named in § Maintainer rules), `paletteVar`, the
+  shade-survives pin, the five named colours, the pre-33 paths, and the rule
+  shape of a colour token. Front 56's 33:
   - 8 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
     Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md,
-    plus the shape of a section rule);
+    plus the shape of a section rule) — `Color.Black` reads
+    `color:var(--color-black)` since front 33;
   - 5 modifier tests, each naming the row of the variant reference its
     expected selector comes from, plus the theme-driven breakpoint;
   - 2 codec tests walking the dispatcher's own output for a separator;
@@ -380,7 +404,7 @@ to the commonJS row and runs once.
   via the implicit `test {…}` future context shipped in bot-lang's
   `test-runner-async` commit.
 - `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
-  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …), the
+  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.600`, …), the
   flush one rewritten by front 56 to the layered document and the hoisted
   modifier. It
   **builds again**: jhonstart's `fix/context` front landed on its `feat`, so the

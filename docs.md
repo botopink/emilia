@@ -84,20 +84,48 @@ Token.TextSizeX2xl          // font-size:1.5rem
 Token.TextSizeX3xl          // font-size:1.875rem
 ```
 
-### Color (text color) / Bg (background)
+### Color — the palette
 
-Fixed palette plus a `Hex(string)` escape per family:
+Twenty-six families of eleven shades, and **the token emits a reference, not a
+value**:
 
 ```bp
-Token.ColorRed500           // color:#ef4444
-Token.ColorRed700           // color:#b91c1c
-Token.ColorBlue500          // color:#3b82f6
-Token.ColorBlue700          // color:#1d4ed8
-Token.ColorGray500          // color:#6b7280
-Token.ColorWhite            // color:#ffffff
-Token.ColorBlack            // color:#000000
-Token.ColorHex("#abc")      // color:#abc
+.Color.Red.500              // color:var(--color-red-500)
+.Color.Sky.100              // color:var(--color-sky-100)
+.Color.Taupe.950            // color:var(--color-taupe-950)
+.Color.White                // color:var(--color-white)
+.Color.Black                // color:var(--color-black)
+.Color.Transparent          // color:transparent
+.Color.Current              // color:currentColor
+.Color.Inherit              // color:inherit
+```
 
+The families are the seventeen chromatic (`Red Orange Amber Yellow Lime Green
+Emerald Teal Cyan Sky Blue Indigo Violet Purple Fuchsia Pink Rose`) and the
+nine neutral (`Slate Gray Zinc Neutral Stone Mauve Olive Mist Taupe`); every
+one of them answers all eleven shades `50 100 200 300 400 500 600 700 800 900
+950`.
+
+`var(--color-red-500)` is byte-equal with what upstream's own `.text-red-500`
+rule emits, and it means a project that overrides `--color-red-500` moves every
+rule that names it. The numbers live in the theme, not in the rule — see
+[The colour palette](#the-colour-palette).
+
+**Six cells are declared and unreachable.** `.Color.Red.100`, `.Color.Red.500`,
+`.Color.Red.700`, `.Color.Gray.100`, `.Color.Gray.500` and `.Color.Gray.700`
+do not compile in any spelling: the compiler resolves a leading-dot section
+path by scanning every registered enum — the synthesised section enums
+included — and returning the first whose tree carries the path, without ever
+consulting the expected type. `Token` carries `Color.Red.500` and so does
+`Token.Border.Color`, whose Red and Gray also run 100/500/700, so the winner is
+decided by hash order. It reds at the call site (`type mismatch: expected
+Token, got __Token__Border`) rather than emitting the wrong CSS. Until the
+resolver is fixed, reach those six shades through `.Bg.Color.<Family>.<shade>`
+(whose head segment `Bg` is unique) or pick a neighbouring shade.
+
+### Bg (background)
+
+```bp
 Token.BgRed500              // background:#ef4444
 Token.BgBlue500             // background:#3b82f6
 Token.BgGray100             // background:#f3f4f6

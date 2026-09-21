@@ -2,6 +2,37 @@
 
 ## Unreleased — v0.beta.22
 
+- **The colour palette resolves through the theme** (1.0.10-beta front
+  `33-emilia-color-palette`, step 1). `Token.Color` is the 26-family x
+  11-shade grid of `§ 3.6` / `§ 21.1` — the seventeen chromatic families
+  `Red..Rose` and the nine neutral `Slate..Taupe`, each `50 100 … 900 950` —
+  plus `White`, `Black`, `Transparent`, `Current`, `Inherit` and the retained
+  `Hex(string)` escape. **The emitted CSS changed and this front owns the
+  break**: `colorTokenToCss` answered `"color:red"` for every shade of Red, so
+  `.Color.Red.100` and `.Color.Red.900` rendered byte-identically and the shade
+  level existed in the type and did nothing. It now answers
+  `color:var(--color-red-500)`, byte-equal with upstream's own `.text-red-500`
+  rule, built by the new `pub fn paletteVar(family, shade)` over front 54's
+  `themeVar` and front 54's `nsPrefix(Ns.Color)` — **no literal ladder, and the
+  `--color-` prefix still has exactly one author in the library**.
+  `redPaletteHex`, a correct nine-shade ladder of v3 hex values that nothing
+  called, is deleted. `.Color.White` / `.Color.Black` follow the theme too
+  (`var(--color-white)` / `var(--color-black)`), which rewrites five front-56
+  assertions and the two examples that pinned the hex.
+
+- **Six colour cells are declared and unreachable** (front
+  `33-emilia-color-palette`). `.Color.Red.{100,500,700}` and
+  `.Color.Gray.{100,500,700}` do not compile in any spelling. The compiler's
+  leading-dot section resolver scans every registered enum — the synthesised
+  section enums included — and returns the first whose tree carries the path,
+  never consulting the expected type; `Token.Border.Color` (front 40's stub)
+  carries the same six leaves, so hash order decides and today it decides
+  against `Token`. It reds at the call site rather than emitting the wrong CSS.
+  `examples/emilia-card/` moved from `.Color.Red.__500` / `.Color.Gray.__500`
+  to the 600 shade for that reason, with the cause written above the tokens.
+  Reported to botopink-lang; `.Bg.Color.<Family>.<shade>` reaches every shade
+  unaffected, because `Bg` is a head segment no other enum carries.
+
 - **`examples/emilia-cascade/`** (1.0.10-beta front
   `56-emilia-cascade-and-output`, Examples). A new workspace member, the
   front's worked example: one card whose styles reach outside its own class.
