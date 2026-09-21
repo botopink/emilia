@@ -2,6 +2,17 @@
 
 ## Unreleased — v0.beta.22
 
+- **Ten breakpoints, both directions, every one of them read from the theme**
+  (1.0.10-beta front `34-emilia-modifiers`, step 2). `Sm` and `X2xl` close the
+  two ends the enum could not address at all, and `MaxSm`/`MaxMd`/`MaxLg`/
+  `MaxXl`/`MaxX2xl` are the `max-*` mirrors. `breakpointVariant` emits
+  `@media (width >= <n>)` and `maxBreakpointVariant` `@media (width < <n>)`,
+  both resolving the SAME `--breakpoint-*` entry (decision 82), so a project
+  that moves `md` moves `md:` and `max-md:` together — and moves the class
+  hash with them, which a test pins. No breakpoint resolves a pixel: the
+  `rem` values are the theme's. A RANGE is nesting and not a name — upstream's
+  `md:max-xl:` is `Token.Md([Token.MaxXl([…])])`. 240/240 on both targets.
+
 - **The six modifiers move under front 34's banner, unchanged**
   (1.0.10-beta front `34-emilia-modifiers`, step 1). Front 56 had already
   corrected what they emit — `hover` is `@media (hover: hover){&:hover}` and a

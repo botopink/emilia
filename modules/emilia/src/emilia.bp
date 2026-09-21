@@ -149,9 +149,16 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         Effect(_inner) -> declSheet(effectTokenToCss(_inner));
         Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
         // ── front 34 — modifiers ─────────────────────────────────────────
+        Sm(inner) -> nestVariant(tokensToSheet(inner, th), smVariant(th));
         Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th));
         Lg(inner) -> nestVariant(tokensToSheet(inner, th), lgVariant(th));
         Xl(inner) -> nestVariant(tokensToSheet(inner, th), xlVariant(th));
+        X2xl(inner) -> nestVariant(tokensToSheet(inner, th), x2xlVariant(th));
+        MaxSm(inner) -> nestVariant(tokensToSheet(inner, th), maxSmVariant(th));
+        MaxMd(inner) -> nestVariant(tokensToSheet(inner, th), maxMdVariant(th));
+        MaxLg(inner) -> nestVariant(tokensToSheet(inner, th), maxLgVariant(th));
+        MaxXl(inner) -> nestVariant(tokensToSheet(inner, th), maxXlVariant(th));
+        MaxX2xl(inner) -> nestVariant(tokensToSheet(inner, th), maxX2xlVariant(th));
         Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
         Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
         Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
@@ -214,7 +221,17 @@ fn breakpointVariant(th: Theme, name: string) -> Variant {
     return Variant(atRule: "@media (width >= " + themeValue(th, name) + ")", selector: "&");
 }
 
+// `max-sm:` … `max-2xl:`, the same entry read as an exclusive upper bound. A
+// RANGE is nesting and not a variant: `md:max-xl:` is `Md([MaxXl([…])])`.
+fn maxBreakpointVariant(th: Theme, name: string) -> Variant {
+    return Variant(atRule: "@media (width < " + themeValue(th, name) + ")", selector: "&");
+}
+
 // ── breakpoints — min-width, read from the theme's `--breakpoint-*` ladder ───
+
+pub fn smVariant(th: Theme) -> Variant {
+    return breakpointVariant(th, "--breakpoint-sm");
+}
 
 pub fn mdVariant(th: Theme) -> Variant {
     return breakpointVariant(th, "--breakpoint-md");
@@ -226,6 +243,32 @@ pub fn lgVariant(th: Theme) -> Variant {
 
 pub fn xlVariant(th: Theme) -> Variant {
     return breakpointVariant(th, "--breakpoint-xl");
+}
+
+pub fn x2xlVariant(th: Theme) -> Variant {
+    return breakpointVariant(th, "--breakpoint-2xl");
+}
+
+// ── breakpoints — max-width, the same ladder read the other way ──────────
+
+pub fn maxSmVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-sm");
+}
+
+pub fn maxMdVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-md");
+}
+
+pub fn maxLgVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-lg");
+}
+
+pub fn maxXlVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-xl");
+}
+
+pub fn maxX2xlVariant(th: Theme) -> Variant {
+    return maxBreakpointVariant(th, "--breakpoint-2xl");
 }
 
 // ── interaction state ────────────────────────────────────────────────────
@@ -263,6 +306,76 @@ fn modifierCssWith(t: Token, th: Theme) -> string {
 fn modifierCss(t: Token) -> string {
     return modifierCssWith(t, defaultTheme());
 }
+
+test "breakpoints, min-width — the two halves of every Variant in the family" {
+    val th = defaultTheme();
+    assert smVariant(th).atRule == "@media (width >= 40rem)";
+    assert smVariant(th).selector == "&";
+    assert mdVariant(th).atRule == "@media (width >= 48rem)";
+    assert mdVariant(th).selector == "&";
+    assert lgVariant(th).atRule == "@media (width >= 64rem)";
+    assert lgVariant(th).selector == "&";
+    assert xlVariant(th).atRule == "@media (width >= 80rem)";
+    assert xlVariant(th).selector == "&";
+    assert x2xlVariant(th).atRule == "@media (width >= 96rem)";
+    assert x2xlVariant(th).selector == "&";
+}
+
+test "breakpoints, min-width — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.Sm(inner)) == "@media (width >= 40rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.Md(inner)) == "@media (width >= 48rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.Lg(inner)) == "@media (width >= 64rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.Xl(inner)) == "@media (width >= 80rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.X2xl(inner)) == "@media (width >= 96rem){.x{font-weight:bold}}";
+}
+
+test "breakpoints, max-width — the two halves of every Variant in the family" {
+    val th = defaultTheme();
+    assert maxSmVariant(th).atRule == "@media (width < 40rem)";
+    assert maxSmVariant(th).selector == "&";
+    assert maxMdVariant(th).atRule == "@media (width < 48rem)";
+    assert maxMdVariant(th).selector == "&";
+    assert maxLgVariant(th).atRule == "@media (width < 64rem)";
+    assert maxLgVariant(th).selector == "&";
+    assert maxXlVariant(th).atRule == "@media (width < 80rem)";
+    assert maxXlVariant(th).selector == "&";
+    assert maxX2xlVariant(th).atRule == "@media (width < 96rem)";
+    assert maxX2xlVariant(th).selector == "&";
+}
+
+test "breakpoints, max-width — the CSS each row renders around one declaration" {
+    val inner = boldInner();
+    assert modifierCss(Token.MaxSm(inner)) == "@media (width < 40rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxMd(inner)) == "@media (width < 48rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxLg(inner)) == "@media (width < 64rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxXl(inner)) == "@media (width < 80rem){.x{font-weight:bold}}";
+    assert modifierCss(Token.MaxX2xl(inner)) == "@media (width < 96rem){.x{font-weight:bold}}";
+}
+
+test "a breakpoint RANGE is nesting, not a variant — `md:max-xl:`" {
+    val inner = boldInner();
+    val mid: Token[] = [Token.MaxXl(inner)];
+    assert modifierCss(Token.Md(mid))
+        == "@media (width >= 48rem){@media (width < 80rem){.x{font-weight:bold}}}";
+}
+
+test "the other range the reference shows — `sm:max-md:`" {
+    val inner = boldInner();
+    val mid: Token[] = [Token.MaxMd(inner)];
+    assert modifierCss(Token.Sm(mid))
+        == "@media (width >= 40rem){@media (width < 48rem){.x{font-weight:bold}}}";
+}
+
+test "a breakpoint override reaches both directions of the ladder" {
+    val wide: ThemeEntry[] = [ThemeEntry(name: "--breakpoint-md", value: "50rem")];
+    val th = extendTheme(defaultTheme(), wide);
+    val inner = boldInner();
+    assert modifierCssWith(Token.Md(inner), th) == "@media (width >= 50rem){.x{font-weight:bold}}";
+    assert modifierCssWith(Token.MaxMd(inner), th) == "@media (width < 50rem){.x{font-weight:bold}}";
+}
+
+// ── the two indexed rows ──────────────────────────────────────────────────
 
 //// ═══ END FRONT 34 ═════════════════════════════════════════════════════════════════
 

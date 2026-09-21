@@ -394,9 +394,21 @@ moves the queries and the class hashes with it.
 
 | upstream | emilia | CSS |
 | --- | --- | --- |
+| `sm:` | `Token.Sm(inner)` | `@media (width >= 40rem){…}` |
 | `md:` | `Token.Md(inner)` | `@media (width >= 48rem){…}` |
 | `lg:` | `Token.Lg(inner)` | `@media (width >= 64rem){…}` |
 | `xl:` | `Token.Xl(inner)` | `@media (width >= 80rem){…}` |
+| `2xl:` | `Token.X2xl(inner)` | `@media (width >= 96rem){…}` |
+
+**Breakpoints — max-width, the same ladder read the other way**
+
+| upstream | emilia | CSS |
+| --- | --- | --- |
+| `max-sm:` | `Token.MaxSm(inner)` | `@media (width < 40rem){…}` |
+| `max-md:` | `Token.MaxMd(inner)` | `@media (width < 48rem){…}` |
+| `max-lg:` | `Token.MaxLg(inner)` | `@media (width < 64rem){…}` |
+| `max-xl:` | `Token.MaxXl(inner)` | `@media (width < 80rem){…}` |
+| `max-2xl:` | `Token.MaxX2xl(inner)` | `@media (width < 96rem){…}` |
 
 **Interaction state**
 

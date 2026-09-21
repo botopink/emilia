@@ -12,7 +12,7 @@
 //// relaxations over today's enum grammar). Modifier variants
 //// (`Hover([Token])`, `Md([Token])`, …) carry a recursive `Token[]`
 //// payload — siblings of section heads at the top level. Front 34 widened
-//// them from six to 6; the full map is under MODIFIERS below.
+//// them from six to 13; the full map is under MODIFIERS below.
 ////
 //// SECTIONS:
 ////   Text     — Bold/Italic/Underline/LineThrough, Left/Center/Right/Justify,
@@ -85,9 +85,18 @@
 //// variant. `.group`/`.peer` are classes the CONSUMER's markup carries.
 ////
 ////   breakpoints — min-width, read from the theme's `--breakpoint-*` ladder
+////     .Sm([Token])               sm:              → @media (width >= <--breakpoint-sm>){…}
 ////     .Md([Token])               md:              → @media (width >= <--breakpoint-md>){…}
 ////     .Lg([Token])               lg:              → @media (width >= <--breakpoint-lg>){…}
 ////     .Xl([Token])               xl:              → @media (width >= <--breakpoint-xl>){…}
+////     .X2xl([Token])             2xl:             → @media (width >= <--breakpoint-2xl>){…}
+////
+////   breakpoints — max-width, the same ladder read the other way
+////     .MaxSm([Token])            max-sm:          → @media (width < <--breakpoint-sm>){…}
+////     .MaxMd([Token])            max-md:          → @media (width < <--breakpoint-md>){…}
+////     .MaxLg([Token])            max-lg:          → @media (width < <--breakpoint-lg>){…}
+////     .MaxXl([Token])            max-xl:          → @media (width < <--breakpoint-xl>){…}
+////     .MaxX2xl([Token])          max-2xl:         → @media (width < <--breakpoint-2xl>){…}
 ////
 ////   interaction state
 ////     .Hover([Token])            hover:           → @media (hover: hover){&:hover{…}}
@@ -630,9 +639,18 @@ pub type Token {
     // docblock above; the functions are in `emilia.bp` under the same banner.
     //
     // breakpoints — min-width, read from the theme's `--breakpoint-*` ladder
+    Sm(inner: Token[]),
     Md(inner: Token[]),
     Lg(inner: Token[]),
     Xl(inner: Token[]),
+    X2xl(inner: Token[]),
+    //
+    // breakpoints — max-width, the same ladder read the other way
+    MaxSm(inner: Token[]),
+    MaxMd(inner: Token[]),
+    MaxLg(inner: Token[]),
+    MaxXl(inner: Token[]),
+    MaxX2xl(inner: Token[]),
     //
     // interaction state
     Hover(inner: Token[]),
