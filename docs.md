@@ -485,6 +485,10 @@ column widths go through `var(--container-*)`; `Z` is a bare integer. Halving
 `--spacing` or changing `--container-md` moves the `:root` block and not one
 byte of any `Layout` rule.
 
+`examples/emilia-layout/` is the worked example: a media card that clips its
+overflow, isolates a stacking context and crops a 16:9 image; and a sticky
+header over a one-axis scroll panel with a badge on a negative inset.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block

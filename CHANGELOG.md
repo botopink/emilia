@@ -15,6 +15,24 @@
   front 35 records — two fronts appending to the same last line cannot be
   merged.
 
+- **`examples/emilia-layout/` — the worked example** (1.0.10-beta front
+  `36-emilia-layout`). The new workspace member composes what the front
+  unblocked: a media card that CLIPS its overflow, isolates a stacking context
+  and crops a 16:9 image to fill rather than squash it; and a sticky header
+  that stacks over a panel scrolling on one axis, with a badge hanging off a
+  relative card on a NEGATIVE inset. None of the five was expressible before —
+  there was no `overflow`, no `isolation`, no `aspect-ratio`, no `object-fit`,
+  no `position` and no inset of any kind.
+  Its two closing tests are the front's argument: `.Layout.Inset.T.4` and
+  `.Pad.T.4` are compared to EACH OTHER rather than each to its own expected
+  string, and halving `--spacing` gives the same class with the same
+  declarations — only the `:root` block moves. 12 in-file tests, green on
+  commonJS and on erlang; it builds and runs.
+  **The spec named two flat files, `examples/layout-example.bp` and
+  `examples/position-example.bp`.** emilia is a workspace since decision 75 and
+  an example is a MEMBER with its own manifest, so the two are one member,
+  `examples/emilia-layout/`, covering both.
+
 - **The dispatcher contract, and 776 leaves walked for a resolved length**
   (1.0.10-beta front `36-emilia-layout`, step 6). `layoutTokenToCss(t, th)` and
   every sub-dispatcher under the front 36 banner now carry `th: Theme`, each is

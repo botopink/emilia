@@ -291,6 +291,20 @@ emilia/
 │   │                    the front's whole argument: halving `--spacing`
 │   │                    moves the `:root` block and not one byte of any
 │   │                    rule. 12 in-file `test {}`, green on both targets)
+│   ├── emilia-layout/ ← member `emilia-layout` (an application: entry main.bp,
+│   │                    targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } — the front 36 showcase: the
+│   │                    eleven display values, the nine inset directions and
+│   │                    the four shapes of an inset leaf, overflow on three
+│   │                    properties, the two name-versus-value traps in one
+│   │                    rule, the column ladder as the container ladder, a
+│   │                    media card that crops its image and clips its
+│   │                    overflow, and a sticky header over a scrolling panel
+│   │                    with a badge on a negative inset. Its last two tests
+│   │                    are the front's argument: no layout token in it
+│   │                    resolves a length, and halving `--spacing` gives the
+│   │                    same class with the same declarations. 12 in-file
+│   │                    test {}, green on both targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
 │                        target commonJS, `emilia` via { "workspace": true },
 │                        `jhonstart` still by { git, branch } until jhonstart
@@ -514,6 +528,20 @@ to the commonJS row and runs once.
   deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
   a listed example that builds fails the gate just as a red one does.
 
+- `examples/emilia-layout/` is the member `emilia-layout` and is front 36's
+  worked example: the eleven display values in one rule, the nine inset
+  directions (with the axis pair expanding to two declarations each), the four
+  shapes of an inset leaf — fraction, keyword, negative, half step — `overflow`
+  as three properties, the two name-versus-value traps (`invisible` →
+  `visibility:hidden`, `float-start` → `float:inline-start`) asserted in one
+  rule and again as absences, the column ladder reading the theme's containers,
+  a media card that clips and isolates with a cropped 16:9 image, and a sticky
+  header stacking over a one-axis scroll panel with a badge on a negative
+  inset. Two tests carry the front's argument: `.Layout.Inset.T.4` and
+  `.Pad.T.4` are compared to each other rather than to two expected strings,
+  and halving `--spacing` gives the SAME class with the SAME declarations. 12
+  in-file tests, green on commonJS and on erlang; it builds and runs.
+
 - `examples/emilia-spacing/` is the member `emilia-spacing` and is front 35's
   worked example: the multiplier scale through `.Pad.All.*`, the nine padding
   and margin directions, `m-auto` and `mx-auto` on one ladder, a centred
@@ -557,6 +585,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **Six cells — `.Color.Red.{100,500,700}`, `.Color.Gray.{100,500,700}` — are declared and unreachable** until the compiler's leading-dot resolver stops guessing between `Token` and `__Token__Border`; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
 | 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
+| 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). 233 → 263 inline tests in `modules/emilia`, green on commonJS and erlang. **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in
