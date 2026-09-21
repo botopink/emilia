@@ -1506,6 +1506,191 @@ flight.
 token for it would be written from memory. Front 56's `Sheet.blocks` would carry
 it the day the reference does.
 
+### Transform — `§ 16`
+
+Ninety-six leaves in one section over sixteen sub-sections: `Rotate` (with a
+`Neg` sub-section), `Scale`, `ScaleX`, `ScaleY`, `TranslateX`, `TranslateY`,
+`SkewX`, `SkewY`, `Origin`, `Style`, `Backface`, `Perspective`,
+`PerspectiveOrigin`, `Zoom` and `Shorthand`. Front 44 shipped
+`Transition.Transform`, which names `transition-property:transform` — a
+transition over a property no other token could set — and this section is what
+makes it mean something.
+
+#### In v4 `rotate`, `scale` and `translate` are properties, not functions
+
+That is the change the whole section rests on. Three tokens in one list are
+three declarations in one rule and none overwrites another:
+
+```bp
+val lifted: Token[] = [
+    .Transform.Rotate.__45,
+    .Transform.Scale.__110,
+    .Transform.TranslateY.Full,
+];
+// rotate:45deg;scale:1.1;translate:var(--tw-translate-x, 0) 100%
+```
+
+No `--tw-*` cascade is needed to compose them, which is why the pre-1.0.10
+`transform:rotate(45deg) scale(1.1)` shape is gone.
+
+#### Rotate, and the negative half
+
+| token | CSS |
+|---|---|
+| `.Transform.Rotate.__0` | `rotate:0deg` |
+| `.Transform.Rotate.__1` | `rotate:1deg` |
+| `.Transform.Rotate.__45` | `rotate:45deg` |
+| `.Transform.Rotate.__90` | `rotate:90deg` |
+| `.Transform.Rotate.__180` | `rotate:180deg` |
+| `.Transform.Rotate.Neg.__12` | `rotate:-12deg` |
+
+`Neg` is a sub-section and not a sign, because there is no spelling for a
+negative numeric leaf — front 35's `Margin.*.Neg` convention, third use. The
+five magnitudes are `1`, `12`, `45`, `90`, `180`.
+
+#### Scale, and the leading zero
+
+`.Transform.Scale.__50` is `scale:.5` — **without** a leading zero, which is
+what `§ 16.5` prints. `.Transform.Zoom.__50` is `zoom:0.5` — **with** one,
+which is what `§ 16.11` prints four subsections later. Both are copied from the
+reference and asserted in adjacent lines, so a well-meaning normaliser fails a
+test rather than shipping a divergence.
+
+`ScaleX` and `ScaleY` carry the same ten steps on the two-value syntax:
+`.Transform.ScaleX.__50` is `scale:.5 1` and `.Transform.ScaleY.__50` is
+`scale:1 .5`. `ScaleX.__100` and `ScaleY.__100` are both `scale:1 1` — the one
+place two leaves of this section share a declaration, and it is `§ 16.5`'s own.
+
+#### Translate — one declaration, and the other axis as a fallback
+
+`§ 16.10` writes `translate: 50% var(--tw-translate-y)`: a single declaration
+carrying the utility's own axis and a reference to the other one. emilia emits
+exactly that, with one addition:
+
+| token | CSS |
+|---|---|
+| `.Transform.TranslateX.__0` | `translate:0 var(--tw-translate-y, 0)` |
+| `.Transform.TranslateX.Px` | `translate:1px var(--tw-translate-y, 0)` |
+| `.Transform.TranslateX.__1` | `translate:calc(var(--spacing) * 1) var(--tw-translate-y, 0)` |
+| `.Transform.TranslateX.Half` | `translate:50% var(--tw-translate-y, 0)` |
+| `.Transform.TranslateX.Full` | `translate:100% var(--tw-translate-y, 0)` |
+| `.Transform.TranslateY.Half` | `translate:var(--tw-translate-x, 0) 50%` |
+
+The `, 0` is the value upstream registers with `@property`. emilia emits no
+`@property` block and `--tw-` is in none of the theme's nineteen namespaces, so
+without it a lone `translate-x-4` would be invalid at computed-value time and
+move nothing. It is the same call front 39 made for the gradient stops.
+
+**The two axes do not compose.** Two `translate:` declarations in one rule are
+two declarations of one property, so `[.TranslateX.Half, .TranslateY.Half]`
+moves an element 50% *down* and not diagonally. Use `rawTranslate("50% 50%")`
+for a diagonal.
+
+#### Skew — upstream's property, not the reference file's
+
+`§ 16.6`'s "Propriedade CSS" column says `skew-x: 3deg`. That is not a
+registered CSS property and no browser applies it. The upstream page prints
+`transform: skewX(3deg)`, and that is what emilia emits:
+
+```bp
+val tokens: Token[] = [.Transform.SkewX.__3];   // transform:skewX(3deg)
+```
+
+Both axes write `transform`, so unlike rotate/scale/translate **two skews in one
+rule do not compose** — the second wins. That is upstream's behaviour too.
+
+#### Origin, style and backface
+
+`.Transform.Origin.*` is the nine values of `§ 16.8`; a corner is two keywords
+(`transform-origin:top right`, never `top-right`). `.Transform.Style.Flat` and
+`.Transform.Style.Preserve3d` are `§ 16.9` — note that the Tailwind class is
+`transform-3d` and the value is `preserve-3d`, which is why the leaf is named
+after the value. `.Transform.Backface.{Visible,Hidden}` is `§ 16.1`.
+
+#### Perspective — a theme namespace
+
+| token | CSS | theme entry |
+|---|---|---|
+| `.Transform.Perspective.None` | `perspective:none` | — (a CSS keyword) |
+| `.Transform.Perspective.Dramatic` | `perspective:var(--perspective-dramatic)` | `100px` |
+| `.Transform.Perspective.Near` | `perspective:var(--perspective-near)` | `300px` |
+| `.Transform.Perspective.Normal` | `perspective:var(--perspective-normal)` | `500px` |
+| `.Transform.Perspective.Midrange` | `perspective:var(--perspective-midrange)` | `800px` |
+| `.Transform.Perspective.Distant` | `perspective:var(--perspective-distant)` | `1200px` |
+
+`defaultTheme()` does not carry the namespace, so compose it:
+
+```bp
+val th = extendTheme(defaultTheme(), transformEntries());
+```
+
+Unlike front 44's `--ease-*`, **none of these five values is provisional**:
+`§ 16.2` prints the variable *and* its length on every row.
+`.Transform.PerspectiveOrigin.{Center,Top,Bottom,Left,Right}` is `§ 16.3`.
+
+#### The `transform` shorthand is verbatim and inert
+
+`.Transform.Shorthand.None` is `transform:none` and works. `.Cpu` and `.Gpu`
+emit `§ 16.7`'s two composed values byte for byte:
+
+```
+transform:translate3d(var(--tw-translate-x), var(--tw-translate-y), 0) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))
+```
+
+**Those six variables are set by no token in emilia.** `rotate-*` writes
+`rotate`, `scale-*` writes `scale`, `translate-*` writes `translate` and
+`skew-*` writes a `transform` of its own — each the property the reference
+gives it. So the two composed rows declare a transform that resolves to nothing.
+They are shipped because byte-equality with the reference is the rule, and they
+are marked here so nobody reaches for `transform-gpu` expecting it to compose.
+Giving them fallbacks would be worse: `.Cpu` would then emit an identity
+transform that silently overwrites the `skewX` beside it.
+
+#### Arbitrary values — `rawRotate`, `rawTranslate`
+
+```bp
+val tokens: Token[] = [rawRotate("17deg"), rawTranslate("-50% -50%")];
+// rotate:17deg
+// translate:-50% -50%
+```
+
+`rotate-[17deg]` is in the reference (`§ 16.4`'s HTML example); the translate
+hatch is **provisional** — `§ 16` prints no arbitrary translate row — and exists
+because a translate the five steps do not name has no other spelling. It writes
+both axes and reads neither variable.
+
+Both are top-level `Token` variants for the reason every escape hatch in emilia
+is: a payload leaf nested inside a section cannot be constructed. The wrappers
+exist because a leading-dot path followed by a payload call does not carry the
+typed-array context, so `[.TransformRotateRaw("17deg")]` does not parse.
+
+#### Nothing in `Transform` resolves a length
+
+A test walks **94 leaves** asserting the declaration carries a `:`; carries no
+`rem` and no `px`; carries no Tailwind class fragment; and — for rotate and skew
+— carries its `deg`. A 96-way distinctness walk adds the two `Px` leaves back
+and pins `§ 16.5`'s one legitimate collision by name. Each probe has a control
+that must fail **and** a control proving it does not fire on correct output:
+`var(--perspective-near)` contains the class name `perspective-near`, and
+`var(--tw-scale-x)` contains `scale-x`, so every fragment in the list carries
+its numeric or keyword suffix.
+
+The two exceptions to the length rule are `TranslateX.Px` and `TranslateY.Px`,
+whose `1px` is the reference's own literal value. They are held out of the walk
+and asserted from the other side.
+
+`examples/emilia-transforms/` is the worked example: the catalogue, a card that
+lifts and grows and deepens its shadow on hover, and a chevron that flips 180°
+when its disclosure opens.
+
+#### Not declared
+
+`rotate-x-*`, `rotate-y-*`, `rotate-z-*`, `translate-z-*`, `scale-z-*` and an
+unaxed `translate-*`. `§ 16` has eleven subsections and none of them enumerates
+a 3-D axis variant or a both-axes translate, so tokens for them would be written
+from memory. The rest of the 3-D surface — `transform-style`, `backface-*` and
+the perspective family — **is** in the reference and is shipped.
+
 ### Modifiers — the variant table
 
 A modifier is the only way a token reaches a state, a breakpoint or a

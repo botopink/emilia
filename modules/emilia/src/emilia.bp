@@ -182,6 +182,15 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         TransitionProperty(value) -> declSheet("transition-property:" + value);
         AnimateRaw(value) -> declSheet("animation:" + value);
         // ── end front 44 ───────────────────────────────────────
+        // ── front 45 — transforms ──────────────────────────────
+        Transform(_inner) -> declSheet(transformTokenToCss(_inner, th));
+        // The two arbitrary-value variants are SIBLINGS of `Transform`, not
+        // leaves inside it, so each needs an arm of its own. Each destructures
+        // by its DECLARED FIELD NAME — a positional bind type-checks and is
+        // `undefined` at run time.
+        TransformRotateRaw(value) -> declSheet("rotate:" + value);
+        TransformTranslateRaw(value) -> declSheet("translate:" + value);
+        // ── end front 45 ───────────────────────────────────────
         // ── front 39 — backgrounds ─────────────────────────
         Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
         // ── end front 39 ─────────────────────────────
@@ -12439,6 +12448,1170 @@ test "end to end — a transitioned button and a hoisted spinner in one document
 }
 
 // ── end front 44 ─────────────────────────────────────────────────────────────
+
+// ── front 45 — transforms ────────────────────────────────────────────────────
+//
+// FRONT 45 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the
+// `Transform` dispatcher and its sixteen sub-dispatchers, the two
+// arbitrary-value wrappers, `transformEntries()` and the tests under the same
+// name.
+//
+// THE GAP THIS FRONT CLOSES. Front 44 shipped `Transition.Transform`, which
+// emits `transition-property:transform` — a transition over a property NO
+// OTHER TOKEN IN THE LIBRARY COULD SET. A card that lifts on hover, a chevron
+// that flips when a disclosure opens, a toast that slides in and a modal that
+// scales in are all one property, and `emilia` had a token for none of them.
+//
+// NO LEAF RESOLVES A LENGTH — fronts 35-41's rule, in this front's vocabulary.
+// `translate-x-1` is front 54's `spacing(1)` and never a `rem`; the five
+// perspective keywords are `--perspective-*` references and never the `100px`
+// / `300px` / `500px` / `800px` / `1200px` the reference prints in parentheses,
+// which are THEME ENTRIES in `transformEntries()` below. The two exceptions are
+// `TranslateX.Px` and `TranslateY.Px`, whose `1px` is the reference's own
+// literal value and not a theme lookup, and the walk at the bottom asserts that
+// from both sides.
+//
+// ── THREE ROWS OF THE REFERENCE DO NOT SURVIVE, AND EACH IS FLAGGED AT ITS ARM
+//
+// (1) `§ 16.6`'s PROPERTY COLUMN IS WRONG AND UPSTREAM SAYS SO. The reference
+// writes `skew-x: 1deg` and `skew-y: 1deg`; neither is a registered CSS
+// property and no browser applies either. The front README asked for an
+// upstream check before this step landed, and for the reference file to lose if
+// the two disagreed. It was made — https://tailwindcss.com/docs/skew, fetched
+// 2026-09-21 — and upstream's class-reference table prints
+// `transform: skewX(<number>deg)` and `transform: skewY(<number>deg)`, with no
+// `--tw-skew-*` row anywhere on the page. So the twelve leaves emit UPSTREAM's
+// property and not the reference file's, and the reference file's spelling is
+// asserted ABSENT rather than merely unwritten.
+//
+// (2) `§ 16.10`'s `translate:` ROWS READ A VARIABLE NO NAMESPACE CAN HOLD. The
+// reference prints `translate: 50% var(--tw-translate-y)` — ONE declaration,
+// the utility's own axis literal beside a reference to the other axis. Upstream
+// prints the same shape and also prints the five `translate-y-*` rows the
+// reference file omits, so the y mirror below is CONFIRMED and not
+// interpolated. What neither of them can give emilia is a value for
+// `--tw-translate-y`: upstream registers it with `@property` (initial `0`),
+// emilia emits no `@property` block, and front 54's `extendTheme` PANICS on a
+// name in no known namespace — there is no `--tw-` prefix among the nineteen of
+// `Ns`, so the identity default cannot be a theme entry either. Left bare, a
+// lone `translate-x-4` is invalid at computed-value time and moves nothing.
+// This is front 39's gradient-stop situation exactly, and it takes front 39's
+// answer: the registered default is written into the reference as a FALLBACK
+// through that front's `cssVarOr`. The divergence from the reference is one
+// `, 0` per row and it is the difference between a token that works and a token
+// that does not.
+//
+// (3) `§ 16.7`'s FOUR `transform` ROWS ARE INERT, and saying so is the whole of
+// what this front can honestly do with them. They read six `--tw-*` variables —
+// `--tw-translate-x`, `--tw-translate-y`, `--tw-rotate`, `--tw-skew-x`,
+// `--tw-skew-y`, `--tw-scale-x`, `--tw-scale-y` — and NO TOKEN IN EMILIA SETS
+// ANY OF THEM: `rotate-*` writes the `rotate` property, `scale-*` the `scale`
+// property, `translate-*` the `translate` property and `skew-*` a `transform`
+// of its own, which is what the reference and upstream both print for each.
+// The rows are transcribed verbatim because byte-equality with the reference is
+// the gate, and they are marked inert because a reader who finds `transform-gpu`
+// in the token list deserves to know it composes with nothing here. Giving them
+// fallbacks the way (2) does would be worse, not better: it would make
+// `.Transform.Shorthand.Cpu` emit an IDENTITY transform that silently
+// overwrites whatever `.Transform.SkewX.3` had just written.
+
+// The one place this front spells a namespace prefix.
+fn perspectiveVar(name: string) -> string {
+    return themeVar(nsPrefix(Ns.Perspective) + name);
+}
+
+// The `--tw-*` axis names of `§ 16.10` and `§ 16.7`, each written once and read
+// from every side that needs it. They are NOT theme names — see note (2) above,
+// and the walk at the foot of this block, which pins the reason.
+fn twTranslateX() -> string {
+    return "--tw-translate-x";
+}
+
+fn twTranslateY() -> string {
+    return "--tw-translate-y";
+}
+
+// ── `§ 16.4` · rotate ────────────────────────────────────────────────────────
+//
+// `rotate` is an INDEPENDENT CSS PROPERTY in v4 and not a `transform` function,
+// which is what lets `.Transform.Rotate.180` and `.Transform.Origin.TopLeft`
+// compose in one rule with no chain behind them.
+
+fn transformRotateDecl(value: string) -> string {
+    return "rotate:" + value + "deg";
+}
+
+fn transformRotateToCss(r: Token.Transform.Rotate) -> string {
+    val out = case r {
+        __0 -> transformRotateDecl("0");
+        __1 -> transformRotateDecl("1");
+        __45 -> transformRotateDecl("45");
+        __90 -> transformRotateDecl("90");
+        __180 -> transformRotateDecl("180");
+        Neg(_inner) -> transformRotateNegToCss(_inner);
+    };
+    return out;
+}
+
+// The negative half. `§ 16.4`'s HTML example names `-rotate-12`; the other four
+// magnitudes mirror the positive table, which is stated here so it can be
+// checked rather than discovered. ONE `-`, NO SPACE — the sign is part of the
+// value, so it goes through the same builder as the positive rows.
+fn transformRotateNegToCss(r: Token.Transform.Rotate.Neg) -> string {
+    val out = case r {
+        __1 -> transformRotateDecl("-1");
+        __12 -> transformRotateDecl("-12");
+        __45 -> transformRotateDecl("-45");
+        __90 -> transformRotateDecl("-90");
+        __180 -> transformRotateDecl("-180");
+    };
+    return out;
+}
+
+// ── `§ 16.5` · scale ─────────────────────────────────────────────────────────
+//
+// `scale-50` IS `.5` AND NOT `0.5`. The reference writes the leading zero off
+// here and writes it ON four subsections later in `§ 16.11`'s `zoom-50`, and
+// byte-equality is the gate, so the two are copied and not remembered — and
+// asserted in adjacent lines below, with the reason.
+//
+// THE TEN STEPS ARE WRITTEN THREE TIMES because `Token.Transform.Scale`,
+// `Token.Transform.ScaleX` and `Token.Transform.ScaleY` are three distinct
+// types and a `case` cannot be generic over them — front 44 carries
+// `transitionDelayValue` beside `transitionDurationValue` for the same reason,
+// and takes the same insurance: a test below asserts the three ladders agree
+// step for step, so a typo in one and not the others is a red and not a drift.
+//
+// `§ 16.5` enumerates the ten unaxed steps and ONE row of each axis
+// (`scale-x-50`, `scale-y-50`), stating the two-value `scale` shape with the
+// other axis pinned at `1`. The nine other steps per axis are declared BY
+// INTERPOLATION over that shape and are recorded as such in `AGENTS.md`.
+fn transformScaleValue(s: Token.Transform.Scale) -> string {
+    val out = case s {
+        __0 -> "0";
+        __50 -> ".5";
+        __75 -> ".75";
+        __90 -> ".9";
+        __95 -> ".95";
+        __100 -> "1";
+        __105 -> "1.05";
+        __110 -> "1.1";
+        __125 -> "1.25";
+        __150 -> "1.5";
+    };
+    return out;
+}
+
+fn transformScaleXValue(s: Token.Transform.ScaleX) -> string {
+    val out = case s {
+        __0 -> "0";
+        __50 -> ".5";
+        __75 -> ".75";
+        __90 -> ".9";
+        __95 -> ".95";
+        __100 -> "1";
+        __105 -> "1.05";
+        __110 -> "1.1";
+        __125 -> "1.25";
+        __150 -> "1.5";
+    };
+    return out;
+}
+
+fn transformScaleYValue(s: Token.Transform.ScaleY) -> string {
+    val out = case s {
+        __0 -> "0";
+        __50 -> ".5";
+        __75 -> ".75";
+        __90 -> ".9";
+        __95 -> ".95";
+        __100 -> "1";
+        __105 -> "1.05";
+        __110 -> "1.1";
+        __125 -> "1.25";
+        __150 -> "1.5";
+    };
+    return out;
+}
+
+// ── `§ 16.10` · translate ────────────────────────────────────────────────────
+//
+// See note (2) in the banner. The axis literal is this utility's own; the other
+// axis is a reference carrying the `0` upstream registers with `@property`.
+
+fn transformTranslateXDecl(value: string) -> string {
+    return "translate:" + value + " " + cssVarOr(twTranslateY(), "0");
+}
+
+fn transformTranslateYDecl(value: string) -> string {
+    return "translate:" + cssVarOr(twTranslateX(), "0") + " " + value;
+}
+
+// The five steps, shared by both axes: `0`, the `1px` of `translate-x-px`
+// — the reference's own literal, not a theme lookup — front 54's `spacing(1)`,
+// and the two percentages. `spacing(0)` answers the bare `0` the reference
+// prints, so this front spells neither a `0` nor a `rem`.
+fn transformTranslateXValue(t: Token.Transform.TranslateX) -> string {
+    val out = case t {
+        __0 -> spacing(0);
+        Px -> "1px";
+        __1 -> spacing(1);
+        Half -> "50%";
+        Full -> "100%";
+    };
+    return out;
+}
+
+fn transformTranslateYValue(t: Token.Transform.TranslateY) -> string {
+    val out = case t {
+        __0 -> spacing(0);
+        Px -> "1px";
+        __1 -> spacing(1);
+        Half -> "50%";
+        Full -> "100%";
+    };
+    return out;
+}
+
+// ── `§ 16.6` · skew ──────────────────────────────────────────────────────────
+//
+// See note (1) in the banner: this is UPSTREAM's property, checked 2026-09-21,
+// and not the reference file's `skew-x:` column. The consequence worth knowing
+// is that `skew-x-*` and `skew-y-*` both write `transform`, so unlike
+// `rotate`/`scale`/`translate` the two axes DO NOT compose — the second token
+// listed wins. That is upstream's behaviour too (upstream composes them through
+// a `--tw-skew-*` chain emilia does not have) and it is asserted below rather
+// than left to be discovered.
+
+fn transformSkewXDecl(value: string) -> string {
+    return "transform:skewX(" + value + "deg)";
+}
+
+fn transformSkewYDecl(value: string) -> string {
+    return "transform:skewY(" + value + "deg)";
+}
+
+fn transformSkewXToCss(s: Token.Transform.SkewX) -> string {
+    val out = case s {
+        __0 -> transformSkewXDecl("0");
+        __1 -> transformSkewXDecl("1");
+        __2 -> transformSkewXDecl("2");
+        __3 -> transformSkewXDecl("3");
+        __6 -> transformSkewXDecl("6");
+        __12 -> transformSkewXDecl("12");
+    };
+    return out;
+}
+
+fn transformSkewYToCss(s: Token.Transform.SkewY) -> string {
+    val out = case s {
+        __0 -> transformSkewYDecl("0");
+        __1 -> transformSkewYDecl("1");
+        __2 -> transformSkewYDecl("2");
+        __3 -> transformSkewYDecl("3");
+        __6 -> transformSkewYDecl("6");
+        __12 -> transformSkewYDecl("12");
+    };
+    return out;
+}
+
+// ── `§ 16.8` · transform-origin ──────────────────────────────────────────────
+//
+// A corner is TWO KEYWORDS SEPARATED BY A SPACE — `top right`, never
+// `top-right` — the same trap front 39's eight gradient directions carry.
+fn transformOriginToCss(o: Token.Transform.Origin) -> string {
+    val out = case o {
+        Center -> "transform-origin:center";
+        Top -> "transform-origin:top";
+        TopRight -> "transform-origin:top right";
+        Right -> "transform-origin:right";
+        BottomRight -> "transform-origin:bottom right";
+        Bottom -> "transform-origin:bottom";
+        BottomLeft -> "transform-origin:bottom left";
+        Left -> "transform-origin:left";
+        TopLeft -> "transform-origin:top left";
+    };
+    return out;
+}
+
+// ── `§ 16.9` · transform-style · `§ 16.1` · backface-visibility ──────────────
+//
+// THE CLASS NAME AND THE CSS VALUE DO NOT MATCH on the second row:
+// `transform-3d` emits `preserve-3d`. Front 44's `transition-discrete` →
+// `allow-discrete` is the same shape and gets the same treatment — a test of
+// its own, because that is the row that gets written from memory and wrong.
+fn transformStyleToCss(s: Token.Transform.Style) -> string {
+    val out = case s {
+        Flat -> "transform-style:flat";
+        Preserve3d -> "transform-style:preserve-3d";
+    };
+    return out;
+}
+
+fn transformBackfaceToCss(b: Token.Transform.Backface) -> string {
+    val out = case b {
+        Visible -> "backface-visibility:visible";
+        Hidden -> "backface-visibility:hidden";
+    };
+    return out;
+}
+
+// ── `§ 16.2` · perspective · `§ 16.3` · perspective-origin ───────────────────
+//
+// `perspective-none` IS A KEYWORD AND NOT A LOOKUP — upstream has no
+// `--perspective-none` — and the other five are `--perspective-*` references
+// whose lengths live in `transformEntries()` below. The reference prints the
+// five values in parentheses beside the variable; printing the value is not
+// printing a declaration, and contract `§ 4a` refuses a dispatcher that
+// resolves a theme variable.
+fn transformPerspectiveToCss(p: Token.Transform.Perspective) -> string {
+    val out = case p {
+        None -> "perspective:none";
+        Dramatic -> "perspective:" + perspectiveVar("dramatic");
+        Near -> "perspective:" + perspectiveVar("near");
+        Normal -> "perspective:" + perspectiveVar("normal");
+        Midrange -> "perspective:" + perspectiveVar("midrange");
+        Distant -> "perspective:" + perspectiveVar("distant");
+    };
+    return out;
+}
+
+fn transformPerspectiveOriginToCss(p: Token.Transform.PerspectiveOrigin) -> string {
+    val out = case p {
+        Center -> "perspective-origin:center";
+        Top -> "perspective-origin:top";
+        Bottom -> "perspective-origin:bottom";
+        Left -> "perspective-origin:left";
+        Right -> "perspective-origin:right";
+    };
+    return out;
+}
+
+// ── `§ 16.11` · zoom ─────────────────────────────────────────────────────────
+//
+// `zoom-50` IS `0.5` WITH THE LEADING ZERO, four subsections away from
+// `scale-50`'s `.5` WITHOUT one. Both are the reference's; neither is a typo;
+// the two are asserted in adjacent lines below so that the next person to
+// "normalise" one of them fails a test instead of shipping a divergence.
+fn transformZoomToCss(z: Token.Transform.Zoom) -> string {
+    val out = case z {
+        __0 -> "zoom:0";
+        __50 -> "zoom:0.5";
+        __75 -> "zoom:0.75";
+        __100 -> "zoom:1";
+        __125 -> "zoom:1.25";
+        __150 -> "zoom:1.5";
+        __200 -> "zoom:2";
+    };
+    return out;
+}
+
+// ── `§ 16.7` · transform ─────────────────────────────────────────────────────
+//
+// See note (3) in the banner: verbatim, and INERT. `transform` and
+// `transform-cpu` are given the IDENTICAL value by `§ 16.7`, so they are one
+// leaf — `Cpu` — rather than two leaves that would hash to one class anyway.
+// `None` is the one row here that reads nothing.
+fn transformChainTail() -> string {
+    return " rotate(" + cssVar("--tw-rotate")
+        + ") skewX(" + cssVar("--tw-skew-x")
+        + ") skewY(" + cssVar("--tw-skew-y")
+        + ") scaleX(" + cssVar("--tw-scale-x")
+        + ") scaleY(" + cssVar("--tw-scale-y") + ")";
+}
+
+fn transformShorthandToCss(s: Token.Transform.Shorthand) -> string {
+    val out = case s {
+        None -> "transform:none";
+        Cpu -> "transform:translate(" + cssVar(twTranslateX()) + ", "
+            + cssVar(twTranslateY()) + ")" + transformChainTail();
+        Gpu -> "transform:translate3d(" + cssVar(twTranslateX()) + ", "
+            + cssVar(twTranslateY()) + ", 0)" + transformChainTail();
+    };
+    return out;
+}
+
+// `§ 16.1`-`§ 16.11`. `th` is the contract `§ 4a` parameter; nothing here reads
+// it, because `themeVar` builds a REFERENCE and never resolves one.
+fn transformTokenToCss(t: Token.Transform, th: Theme) -> string {
+    val out = case t {
+        Rotate(_inner) -> transformRotateToCss(_inner);
+        Scale(_inner) -> "scale:" + transformScaleValue(_inner);
+        ScaleX(_inner) -> "scale:" + transformScaleXValue(_inner) + " 1";
+        ScaleY(_inner) -> "scale:1 " + transformScaleYValue(_inner);
+        TranslateX(_inner) -> transformTranslateXDecl(transformTranslateXValue(_inner));
+        TranslateY(_inner) -> transformTranslateYDecl(transformTranslateYValue(_inner));
+        SkewX(_inner) -> transformSkewXToCss(_inner);
+        SkewY(_inner) -> transformSkewYToCss(_inner);
+        Origin(_inner) -> transformOriginToCss(_inner);
+        Style(_inner) -> transformStyleToCss(_inner);
+        Backface(_inner) -> transformBackfaceToCss(_inner);
+        Perspective(_inner) -> transformPerspectiveToCss(_inner);
+        PerspectiveOrigin(_inner) -> transformPerspectiveOriginToCss(_inner);
+        Zoom(_inner) -> transformZoomToCss(_inner);
+        Shorthand(_inner) -> transformShorthandToCss(_inner);
+    };
+    return out;
+}
+
+// ── the theme entries this front contributes ─────────────────────────────────
+//
+// THE FIVE VALUES ARE NOT PROVISIONAL, and that is worth stating as plainly as
+// front 44 stated the opposite about its three `--ease-*`: `§ 16.2` prints the
+// variable AND its length in parentheses on every one of the five rows, so the
+// names, the namespace, the shape and the VALUES are all the reference's. What
+// `defaultTheme()` does not carry is the namespace at all — front 54 ships
+// nineteen prefixes and populates `--color-*`, `--text-*`, `--container-*`,
+// `--shadow-*` and `--animate-*` — so a project composes these the way front
+// 33's palette and front 44's easings are composed:
+// `extendTheme(defaultTheme(), transformEntries())`.
+//
+// `perspective-none` IS ABSENT ON PURPOSE. It is a CSS keyword, upstream has no
+// `--perspective-none`, and an entry for it would be a sixth name this front
+// invented.
+pub fn transformEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--perspective-dramatic", value: "100px"),
+        ThemeEntry(name: "--perspective-near", value: "300px"),
+        ThemeEntry(name: "--perspective-normal", value: "500px"),
+        ThemeEntry(name: "--perspective-midrange", value: "800px"),
+        ThemeEntry(name: "--perspective-distant", value: "1200px"),
+    ];
+    return out;
+}
+
+// ── the two arbitrary-value wrappers ─────────────────────────────────────────
+//
+// `rotate-[17deg]` IS IN THE REFERENCE — `§ 16.4`'s HTML example prints it —
+// so the ROTATE escape hatch has a class behind it; what it has no column for
+// is the CSS, which is `rotate:<value>` by the same `§ 16.4` table every other
+// rotate row uses. The TRANSLATE escape hatch is PROVISIONAL: `§ 16` prints no
+// arbitrary translate anywhere, and it exists because a translate the five
+// steps do not name has no other spelling. Its property, `translate`, is the
+// one `§ 16.10` sets; only the value is the author's. It writes BOTH AXES at
+// once and reads neither variable — an author spelling a translate by hand is
+// spelling the whole of it.
+//
+// WHY THESE ARE TOP-LEVEL VARIANTS and not `Transform.Rotate.Raw(…)`: a payload
+// leaf nested inside an enum section cannot be constructed by any spelling
+// (fronts 41 and 44 record the two error texts). WHY THE WRAPPERS EXIST: a
+// leading-dot path followed by a payload call does not carry the typed-array
+// context either, so `[.TransformRotateRaw("17deg")]` does not parse.
+pub fn rawRotate(value: string) -> Token {
+    return Token.TransformRotateRaw(value: value);
+}
+
+pub fn rawTranslate(value: string) -> Token {
+    return Token.TransformTranslateRaw(value: value);
+}
+
+// ── front 45 · tests ─────────────────────────────────────────────────────────
+//
+// Every row of `§ 16.1`-`§ 16.11` is asserted individually: a reference row and
+// a test line are the same fact written twice, and a mismatch fails the build.
+// The rows the reference and upstream disagree about are asserted for what they
+// DO emit and again for what they must NEVER emit, which is the half a
+// one-sided test leaves open.
+
+// ── `§ 16.4` · rotate ────────────────────────────────────────────────────────
+
+test "Transform.Rotate — the five positive steps of `§ 16.4`" {
+    assert tokenDeclarations(.Transform.Rotate.__0) == "rotate:0deg";
+    assert tokenDeclarations(.Transform.Rotate.__1) == "rotate:1deg";
+    assert tokenDeclarations(.Transform.Rotate.__45) == "rotate:45deg";
+    assert tokenDeclarations(.Transform.Rotate.__90) == "rotate:90deg";
+    assert tokenDeclarations(.Transform.Rotate.__180) == "rotate:180deg";
+}
+
+// ONE `-`, NO SPACE. A sign built by concatenation is how `rotate: - 12deg`
+// gets shipped, so the whole string is asserted and the space is asserted
+// absent besides.
+test "Transform.Rotate.Neg — the negative half, one `-` and no space" {
+    assert tokenDeclarations(.Transform.Rotate.Neg.__1) == "rotate:-1deg";
+    assert tokenDeclarations(.Transform.Rotate.Neg.__12) == "rotate:-12deg";
+    assert tokenDeclarations(.Transform.Rotate.Neg.__45) == "rotate:-45deg";
+    assert tokenDeclarations(.Transform.Rotate.Neg.__90) == "rotate:-90deg";
+    assert tokenDeclarations(.Transform.Rotate.Neg.__180) == "rotate:-180deg";
+    assert tokenDeclarations(.Transform.Rotate.Neg.__12).indexOf(" ") == -1;
+    assert tokenDeclarations(.Transform.Rotate.Neg.__12).indexOf("--") == -1;
+}
+
+// `rotate` IS AN INDEPENDENT PROPERTY IN v4, not a `transform` function. A
+// front that "fixed" this into `transform:rotate(45deg)` would break the
+// composition the next test proves.
+test "Transform.Rotate — the v4 property, never the v3 `transform:` function" {
+    assert tokenDeclarations(.Transform.Rotate.__45).indexOf("transform:") == -1;
+    assert tokenDeclarations(.Transform.Rotate.__45).indexOf("rotate(") == -1;
+    assert tokenDeclarations(.Transform.Rotate.__45).startsWith("rotate:");
+}
+
+// ── `§ 16.5` · scale ─────────────────────────────────────────────────────────
+
+test "Transform.Scale — the ten unaxed steps of `§ 16.5`" {
+    assert tokenDeclarations(.Transform.Scale.__0) == "scale:0";
+    assert tokenDeclarations(.Transform.Scale.__50) == "scale:.5";
+    assert tokenDeclarations(.Transform.Scale.__75) == "scale:.75";
+    assert tokenDeclarations(.Transform.Scale.__90) == "scale:.9";
+    assert tokenDeclarations(.Transform.Scale.__95) == "scale:.95";
+    assert tokenDeclarations(.Transform.Scale.__100) == "scale:1";
+    assert tokenDeclarations(.Transform.Scale.__105) == "scale:1.05";
+    assert tokenDeclarations(.Transform.Scale.__110) == "scale:1.1";
+    assert tokenDeclarations(.Transform.Scale.__125) == "scale:1.25";
+    assert tokenDeclarations(.Transform.Scale.__150) == "scale:1.5";
+}
+
+// `scale-50` IS `.5` AND `scale-100` IS `1`. Neither carries a leading or a
+// trailing zero, and both are the reference's; this is the row a normaliser
+// eats.
+test "Transform.Scale — no leading zero, no trailing zero" {
+    assert tokenDeclarations(.Transform.Scale.__50).indexOf("0.5") == -1;
+    assert tokenDeclarations(.Transform.Scale.__100).indexOf("1.0") == -1;
+    assert tokenDeclarations(.Transform.Scale.__100) == "scale:1";
+}
+
+// THE TWO AXES, IN ADJACENT LINES. A copy-paste between them is invisible to a
+// one-sided test and this is the likeliest defect in the whole front.
+test "Transform.ScaleX / ScaleY — the two-value `scale`, the other axis at 1" {
+    assert tokenDeclarations(.Transform.ScaleX.__50) == "scale:.5 1";
+    assert tokenDeclarations(.Transform.ScaleY.__50) == "scale:1 .5";
+    assert tokenDeclarations(.Transform.ScaleX.__150) == "scale:1.5 1";
+    assert tokenDeclarations(.Transform.ScaleY.__150) == "scale:1 1.5";
+}
+
+// THE THREE LADDERS ARE COMPARED TO EACH OTHER AND NOT TO A FOURTH LIST OF
+// LITERALS — front 44's insurance over `Duration` and `Delay`, for the same
+// reason: the three `case`s exist only because the three types are distinct.
+test "Transform.Scale — the three ladders agree step for step" {
+    val unaxed: Token[] = [
+        .Transform.Scale.__0, .Transform.Scale.__50, .Transform.Scale.__75,
+        .Transform.Scale.__90, .Transform.Scale.__95, .Transform.Scale.__100,
+        .Transform.Scale.__105, .Transform.Scale.__110, .Transform.Scale.__125,
+        .Transform.Scale.__150,
+    ];
+    val xs: Token[] = [
+        .Transform.ScaleX.__0, .Transform.ScaleX.__50, .Transform.ScaleX.__75,
+        .Transform.ScaleX.__90, .Transform.ScaleX.__95, .Transform.ScaleX.__100,
+        .Transform.ScaleX.__105, .Transform.ScaleX.__110, .Transform.ScaleX.__125,
+        .Transform.ScaleX.__150,
+    ];
+    val ys: Token[] = [
+        .Transform.ScaleY.__0, .Transform.ScaleY.__50, .Transform.ScaleY.__75,
+        .Transform.ScaleY.__90, .Transform.ScaleY.__95, .Transform.ScaleY.__100,
+        .Transform.ScaleY.__105, .Transform.ScaleY.__110, .Transform.ScaleY.__125,
+        .Transform.ScaleY.__150,
+    ];
+    val bare = unaxed.map({ t -> tokenDeclarations(t) });
+    val fromX = xs.map({ t -> tokenDeclarations(t) });
+    val fromY = ys.map({ t -> tokenDeclarations(t) });
+    assert bare.length == 10;
+    assert fromX.join("|") == bare.map({ d -> d + " 1" }).join("|");
+    assert fromY.join("|") == bare.map({ d -> "scale:1 " + d.split(":").at(1) }).join("|");
+}
+
+// ── `§ 16.10` · translate ────────────────────────────────────────────────────
+
+test "Transform.TranslateX — the five rows of `§ 16.10`, whole" {
+    assert tokenDeclarations(.Transform.TranslateX.__0)
+        == "translate:0 var(--tw-translate-y, 0)";
+    assert tokenDeclarations(.Transform.TranslateX.Px)
+        == "translate:1px var(--tw-translate-y, 0)";
+    assert tokenDeclarations(.Transform.TranslateX.__1)
+        == "translate:calc(var(--spacing) * 1) var(--tw-translate-y, 0)";
+    assert tokenDeclarations(.Transform.TranslateX.Half)
+        == "translate:50% var(--tw-translate-y, 0)";
+    assert tokenDeclarations(.Transform.TranslateX.Full)
+        == "translate:100% var(--tw-translate-y, 0)";
+}
+
+// THE Y MIRROR, IN ADJACENT LINES, and CONFIRMED rather than interpolated: the
+// reference file omits the five `translate-y-*` rows and upstream prints them,
+// checked 2026-09-21. Swapped components are the likeliest defect here.
+test "Transform.TranslateY — the same five rows on the other axis" {
+    assert tokenDeclarations(.Transform.TranslateY.__0)
+        == "translate:var(--tw-translate-x, 0) 0";
+    assert tokenDeclarations(.Transform.TranslateY.Px)
+        == "translate:var(--tw-translate-x, 0) 1px";
+    assert tokenDeclarations(.Transform.TranslateY.__1)
+        == "translate:var(--tw-translate-x, 0) calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Transform.TranslateY.Half)
+        == "translate:var(--tw-translate-x, 0) 50%";
+    assert tokenDeclarations(.Transform.TranslateY.Full)
+        == "translate:var(--tw-translate-x, 0) 100%";
+}
+
+// `translate-x-1` IS `spacing(1)` AND NEVER A `rem`. Asserted against front
+// 54's function's OUTPUT and not against a second transcription of it, which is
+// the only version of this assertion that survives a change to the ladder.
+test "Transform.TranslateX.1 — front 54's spacing, not a resolved length" {
+    assert tokenDeclarations(.Transform.TranslateX.__1).indexOf(spacing(1)) != -1;
+    assert tokenDeclarations(.Transform.TranslateX.__1).indexOf("rem") == -1;
+    assert spacing(1) == "calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Transform.TranslateX.__0).indexOf("calc(") == -1;
+}
+
+// THE TWO AXES DO NOT COMPOSE, and this front says so rather than claiming the
+// opposite. `§ 16.10`'s shape is ONE `translate:` declaration per utility, so
+// two of them in one rule are two declarations of one property and the second
+// wins. `[.TranslateX.Half, .TranslateY.Half]` moves an element 50% DOWN and
+// not diagonally. Composing them needs a `--tw-translate-*` WRITER, which
+// neither the reference nor upstream prints and which front 54's namespaces
+// cannot hold — see note (2).
+test "Transform.Translate — two axes are two declarations, and the last wins" {
+    val both: Token[] = [.Transform.TranslateX.Half, .Transform.TranslateY.Half];
+    val decls = declarationsOf(tokensToSheet(both, defaultTheme()));
+    assert decls.length == 2;
+    assert (decls.at(0) ?? "") == "translate:50% var(--tw-translate-y, 0)";
+    assert (decls.at(1) ?? "") == "translate:var(--tw-translate-x, 0) 50%";
+    assert decls.all({ d -> d.startsWith("translate:") });
+}
+
+// ── `§ 16.6` · skew ──────────────────────────────────────────────────────────
+
+test "Transform.SkewX — upstream's property, all six steps" {
+    assert tokenDeclarations(.Transform.SkewX.__0) == "transform:skewX(0deg)";
+    assert tokenDeclarations(.Transform.SkewX.__1) == "transform:skewX(1deg)";
+    assert tokenDeclarations(.Transform.SkewX.__2) == "transform:skewX(2deg)";
+    assert tokenDeclarations(.Transform.SkewX.__3) == "transform:skewX(3deg)";
+    assert tokenDeclarations(.Transform.SkewX.__6) == "transform:skewX(6deg)";
+    assert tokenDeclarations(.Transform.SkewX.__12) == "transform:skewX(12deg)";
+}
+
+test "Transform.SkewY — the same six on the other axis" {
+    assert tokenDeclarations(.Transform.SkewY.__0) == "transform:skewY(0deg)";
+    assert tokenDeclarations(.Transform.SkewY.__1) == "transform:skewY(1deg)";
+    assert tokenDeclarations(.Transform.SkewY.__2) == "transform:skewY(2deg)";
+    assert tokenDeclarations(.Transform.SkewY.__3) == "transform:skewY(3deg)";
+    assert tokenDeclarations(.Transform.SkewY.__6) == "transform:skewY(6deg)";
+    assert tokenDeclarations(.Transform.SkewY.__12) == "transform:skewY(12deg)";
+}
+
+// THE REFERENCE FILE'S OWN COLUMN, ASSERTED ABSENT. `§ 16.6` writes
+// `skew-x: 1deg`; it is not a registered CSS property, upstream prints
+// `transform: skewX(1deg)` instead (checked 2026-09-21), and this is the
+// assertion that makes the divergence deliberate rather than a typo nobody
+// noticed. If a later front restores the reference file's column, this reds.
+test "Transform.Skew — the reference file's `skew-x:` column is never emitted" {
+    assert tokenDeclarations(.Transform.SkewX.__1).indexOf("skew-x") == -1;
+    assert tokenDeclarations(.Transform.SkewY.__1).indexOf("skew-y") == -1;
+    assert tokenDeclarations(.Transform.SkewX.__1).startsWith("transform:");
+    // and the two axes do not compose, because both write one property
+    val both: Token[] = [.Transform.SkewX.__3, .Transform.SkewY.__6];
+    val decls = declarationsOf(tokensToSheet(both, defaultTheme()));
+    assert decls.length == 2;
+    assert decls.all({ d -> d.startsWith("transform:skew") });
+}
+
+// ── `§ 16.8` · transform-origin ──────────────────────────────────────────────
+
+test "Transform.Origin — the nine rows of `§ 16.8`" {
+    assert tokenDeclarations(.Transform.Origin.Center) == "transform-origin:center";
+    assert tokenDeclarations(.Transform.Origin.Top) == "transform-origin:top";
+    assert tokenDeclarations(.Transform.Origin.TopRight) == "transform-origin:top right";
+    assert tokenDeclarations(.Transform.Origin.Right) == "transform-origin:right";
+    assert tokenDeclarations(.Transform.Origin.BottomRight) == "transform-origin:bottom right";
+    assert tokenDeclarations(.Transform.Origin.Bottom) == "transform-origin:bottom";
+    assert tokenDeclarations(.Transform.Origin.BottomLeft) == "transform-origin:bottom left";
+    assert tokenDeclarations(.Transform.Origin.Left) == "transform-origin:left";
+    assert tokenDeclarations(.Transform.Origin.TopLeft) == "transform-origin:top left";
+}
+
+test "Transform.Origin — a corner is two keywords, not a hyphenated one" {
+    assert tokenDeclarations(.Transform.Origin.TopRight).indexOf("top-right") == -1;
+    assert tokenDeclarations(.Transform.Origin.BottomLeft).indexOf("bottom-left") == -1;
+    assert tokenDeclarations(.Transform.Origin.TopLeft).indexOf("top left") != -1;
+}
+
+// ── `§ 16.9`, `§ 16.1` · transform-style and backface-visibility ─────────────
+
+// THE NAME-VERSUS-VALUE TRAP: `transform-3d` emits `preserve-3d`.
+test "Transform.Style / Backface — four rows, and the `3d` → `preserve-3d` trap" {
+    assert tokenDeclarations(.Transform.Style.Flat) == "transform-style:flat";
+    assert tokenDeclarations(.Transform.Style.Preserve3d) == "transform-style:preserve-3d";
+    assert tokenDeclarations(.Transform.Style.Preserve3d).indexOf("transform-style:3d") == -1;
+    assert tokenDeclarations(.Transform.Backface.Visible) == "backface-visibility:visible";
+    assert tokenDeclarations(.Transform.Backface.Hidden) == "backface-visibility:hidden";
+}
+
+// ── `§ 16.2`, `§ 16.3` · perspective and perspective-origin ──────────────────
+
+// FIVE REFERENCES AND ONE KEYWORD, AND NO `px` ANYWHERE. The lengths the
+// reference prints in parentheses are in `transformEntries()`, which is the
+// whole point of the row.
+test "Transform.Perspective — six rows, five of them theme references" {
+    assert tokenDeclarations(.Transform.Perspective.None) == "perspective:none";
+    assert tokenDeclarations(.Transform.Perspective.Dramatic)
+        == "perspective:var(--perspective-dramatic)";
+    assert tokenDeclarations(.Transform.Perspective.Near)
+        == "perspective:var(--perspective-near)";
+    assert tokenDeclarations(.Transform.Perspective.Normal)
+        == "perspective:var(--perspective-normal)";
+    assert tokenDeclarations(.Transform.Perspective.Midrange)
+        == "perspective:var(--perspective-midrange)";
+    assert tokenDeclarations(.Transform.Perspective.Distant)
+        == "perspective:var(--perspective-distant)";
+}
+
+// THE REFERENCE BUILDER'S OUTPUT, NOT A RETYPED LITERAL — and the namespace is
+// front 54's, not a prefix this front spells by hand.
+test "Transform.Perspective — the reference is front 54's, prefix included" {
+    assert tokenDeclarations(.Transform.Perspective.Near)
+        == "perspective:" + themeVar(nsPrefix(Ns.Perspective) + "near");
+    assert nsPrefix(Ns.Perspective) == "--perspective-";
+    assert tokenDeclarations(.Transform.Perspective.Near).indexOf("300px") == -1;
+    assert tokenDeclarations(.Transform.Perspective.Distant).indexOf("px") == -1;
+}
+
+test "Transform.PerspectiveOrigin — the five rows of `§ 16.3`" {
+    assert tokenDeclarations(.Transform.PerspectiveOrigin.Center)
+        == "perspective-origin:center";
+    assert tokenDeclarations(.Transform.PerspectiveOrigin.Top) == "perspective-origin:top";
+    assert tokenDeclarations(.Transform.PerspectiveOrigin.Bottom)
+        == "perspective-origin:bottom";
+    assert tokenDeclarations(.Transform.PerspectiveOrigin.Left) == "perspective-origin:left";
+    assert tokenDeclarations(.Transform.PerspectiveOrigin.Right) == "perspective-origin:right";
+}
+
+// ── `§ 16.11` · zoom, and the two decimal conventions ────────────────────────
+
+test "Transform.Zoom — the seven rows of `§ 16.11`" {
+    assert tokenDeclarations(.Transform.Zoom.__0) == "zoom:0";
+    assert tokenDeclarations(.Transform.Zoom.__50) == "zoom:0.5";
+    assert tokenDeclarations(.Transform.Zoom.__75) == "zoom:0.75";
+    assert tokenDeclarations(.Transform.Zoom.__100) == "zoom:1";
+    assert tokenDeclarations(.Transform.Zoom.__125) == "zoom:1.25";
+    assert tokenDeclarations(.Transform.Zoom.__150) == "zoom:1.5";
+    assert tokenDeclarations(.Transform.Zoom.__200) == "zoom:2";
+}
+
+// THE TWO DECIMAL CONVENTIONS, IN ADJACENT LINES. `§ 16.5` writes the leading
+// zero OFF and `§ 16.11`, four subsections later, writes it ON. THE DIFFERENCE
+// IS THE REFERENCE'S. Whoever "fixes" one of them fails this test instead of
+// shipping a divergence.
+test "Transform — `scale:.5` and `zoom:0.5`, and the difference is the reference's" {
+    assert tokenDeclarations(.Transform.Scale.__50) == "scale:.5";
+    assert tokenDeclarations(.Transform.Zoom.__50) == "zoom:0.5";
+}
+
+// ── `§ 16.7` · the shorthand, verbatim and inert ─────────────────────────────
+
+test "Transform.Shorthand — `§ 16.7`'s four rows, verbatim" {
+    assert tokenDeclarations(.Transform.Shorthand.None) == "transform:none";
+    assert tokenDeclarations(.Transform.Shorthand.Cpu)
+        == "transform:translate(var(--tw-translate-x), var(--tw-translate-y)) "
+        + "rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) "
+        + "scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))";
+    assert tokenDeclarations(.Transform.Shorthand.Gpu)
+        == "transform:translate3d(var(--tw-translate-x), var(--tw-translate-y), 0) "
+        + "rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) "
+        + "scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))";
+}
+
+// INERT, ASSERTED. `transform` and `transform-cpu` are ONE leaf because
+// `§ 16.7` gives them the identical value, and the six variables the two
+// composed rows read are set by NO token in this library — which is the fact a
+// reader needs and the reason this test exists. The day a front adds a
+// `--tw-*` writer, the second half of this reds and is deleted with a note.
+test "Transform.Shorthand — the `--tw-*` chain it reads is written by nothing" {
+    // one leaf, not two: `transform` and `transform-cpu` are the same row
+    assert tokenDeclarations(.Transform.Shorthand.Cpu).indexOf("translate3d") == -1;
+    assert tokenDeclarations(.Transform.Shorthand.Gpu).indexOf("translate3d(") != -1;
+    assert tokenDeclarations(.Transform.Shorthand.Gpu).indexOf(", 0)") != -1;
+    // and no leaf of this front WRITES any of the six
+    val writers = front45Leaves().filter({ t ->
+        tokenDeclarations(t).startsWith("--tw-")
+    });
+    assert writers.length == 0;
+}
+
+// ── the two arbitrary-value variants ─────────────────────────────────────────
+
+// THE CHECK THAT WOULD HAVE FAILED AGAINST A NESTED `Transform.Rotate.Raw`: a
+// payload leaf inside a section type-checks in a `case` arm and is reachable by
+// no spelling, so this test is the one that distinguishes a surface that works
+// from one that only looks complete.
+test "TransformRotateRaw / TransformTranslateRaw — they construct, and they emit" {
+    val r = Token.TransformRotateRaw(value: "17deg");
+    val t = Token.TransformTranslateRaw(value: "10px 20px");
+    val list: Token[] = [r, t];
+    val decls = declarationsOf(tokensToSheet(list, defaultTheme()));
+    assert (decls.at(0) ?? "") == "rotate:17deg";
+    assert (decls.at(1) ?? "") == "translate:10px 20px";
+}
+
+// The wrappers are the readable form and the one the example uses: a
+// leading-dot path followed by a payload call does not carry the typed-array
+// context, so `[.TransformRotateRaw("17deg")]` does not parse.
+test "rawRotate / rawTranslate — the wrappers a typed array literal accepts" {
+    val list: Token[] = [rawRotate("17deg"), rawTranslate("-50% -50%")];
+    val decls = declarationsOf(tokensToSheet(list, defaultTheme()));
+    assert (decls.at(0) ?? "") == "rotate:17deg";
+    assert (decls.at(1) ?? "") == "translate:-50% -50%";
+}
+
+// ── the theme entries ────────────────────────────────────────────────────────
+
+test "transformEntries — the five `--perspective-*` of `§ 16.2`" {
+    val es = transformEntries();
+    assert es.length == 5;
+    assert es.all({ e -> e.name.startsWith(nsPrefix(Ns.Perspective)) });
+    val th = extendTheme(defaultTheme(), transformEntries());
+    assert themeValue(th, "--perspective-dramatic") == "100px";
+    assert themeValue(th, "--perspective-near") == "300px";
+    assert themeValue(th, "--perspective-normal") == "500px";
+    assert themeValue(th, "--perspective-midrange") == "800px";
+    assert themeValue(th, "--perspective-distant") == "1200px";
+}
+
+// `defaultTheme()` DOES NOT CARRY THE NAMESPACE — front 54 populates five of
+// its nineteen and this is a sixth. Asserted so that a later front adding
+// `--perspective-*` to `defaultTheme()` finds this line rather than shipping
+// two transcriptions of one table (front 38 and front 44's rule).
+test "transformEntries — front 54's stock theme carries none of them" {
+    assert themeValue(defaultTheme(), "--perspective-near") == "";
+    assert namespace(defaultTheme(), Ns.Perspective).length == 0;
+    assert namespace(extendTheme(defaultTheme(), transformEntries()), Ns.Perspective).length == 5;
+}
+
+// A PROJECT'S OWN PERSPECTIVE REACHES THE RULE AND THE CLASS DOES NOT MOVE —
+// the argument for a reference over a literal, asserted rather than claimed.
+test "transformEntries — an override moves the theme layer and not one rule" {
+    val mine: ThemeEntry[] = [ThemeEntry(name: "--perspective-near", value: "42px")];
+    val a = extendTheme(defaultTheme(), transformEntries());
+    val b = extendTheme(a, mine);
+    val tokens: Token[] = [.Transform.Perspective.Near];
+    assert emiliaWith(tokens, a) == emiliaWith(tokens, b);
+    assert declarationsOf(tokensToSheet(tokens, b)).join(";")
+        == "perspective:var(--perspective-near)";
+    assert themeValue(b, "--perspective-near") == "42px";
+}
+
+// ── composition, nesting and determinism ─────────────────────────────────────
+
+// THE REALISTIC USE OF THIS FRONT, and the one that needs no chain: `rotate`
+// and `transform-origin` are two independent properties in v4, so one rule
+// carries both and neither overwrites the other.
+test "Transform — a rotation about a corner is two properties in one rule" {
+    val tokens: Token[] = [.Transform.Rotate.__180, .Transform.Origin.TopLeft];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
+    assert decls.length == 2;
+    assert (decls.at(0) ?? "") == "rotate:180deg";
+    assert (decls.at(1) ?? "") == "transform-origin:top left";
+}
+
+// `rotate`, `scale` AND `translate` ARE THREE PROPERTIES, so all three compose
+// — which is the v4 change the whole front rests on and the reason the 1.0.8
+// draft's `transform:rotate(…) scale(…)` shape is superseded.
+test "Transform — rotate, scale and translate coexist in one rule" {
+    val tokens: Token[] = [
+        .Transform.Rotate.__45, .Transform.Scale.__110, .Transform.TranslateY.Full,
+    ];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
+    assert decls.length == 3;
+    assert decls.join(";")
+        == "rotate:45deg;scale:1.1;translate:var(--tw-translate-x, 0) 100%";
+}
+
+// A TRANSFORM UNDER A MODIFIER — front 34's `nestVariant`, asserted for the
+// DECLARATION rather than for the wrap, which is front 34's to assert.
+test "Transform — a scale under Hover reaches front 34's variant" {
+    val inner: Token[] = [.Transform.Scale.__105];
+    val outer: Token[] = [Token.Hover(inner)];
+    val s = tokensToSheet(outer, defaultTheme());
+    assert declarationsOf(s).join(";") == "scale:1.05";
+    assert firstRuleOf(s).selector == "&:hover";
+}
+
+// DETERMINISM ACROSS TARGETS. The class name for a fixed token list under a
+// fixed theme is asserted as a LITERAL, so `commonJS` and `erlang` must fold
+// the same djb2 over the same encoded sheet. Every byte here is ASCII, which is
+// the condition the two hashes agree under.
+test "Transform — the class name is a literal, and both targets must agree" {
+    val tokens: Token[] = [
+        .Transform.Rotate.Neg.__12, .Transform.Origin.BottomRight,
+        .Transform.Perspective.Near,
+    ];
+    assert emiliaWith(tokens, defaultTheme()) == "e_59351468";
+}
+
+// ── the regression walks ─────────────────────────────────────────────────────
+
+fn f45RotateLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Transform.Rotate.__0, .Transform.Rotate.__1, .Transform.Rotate.__45,
+        .Transform.Rotate.__90, .Transform.Rotate.__180,
+        .Transform.Rotate.Neg.__1, .Transform.Rotate.Neg.__12,
+        .Transform.Rotate.Neg.__45, .Transform.Rotate.Neg.__90,
+        .Transform.Rotate.Neg.__180,
+    ];
+    return leaves;
+}
+
+fn f45ScaleLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Transform.Scale.__0, .Transform.Scale.__50, .Transform.Scale.__75,
+        .Transform.Scale.__90, .Transform.Scale.__95, .Transform.Scale.__100,
+        .Transform.Scale.__105, .Transform.Scale.__110, .Transform.Scale.__125,
+        .Transform.Scale.__150,
+        .Transform.ScaleX.__0, .Transform.ScaleX.__50, .Transform.ScaleX.__75,
+        .Transform.ScaleX.__90, .Transform.ScaleX.__95, .Transform.ScaleX.__100,
+        .Transform.ScaleX.__105, .Transform.ScaleX.__110, .Transform.ScaleX.__125,
+        .Transform.ScaleX.__150,
+        .Transform.ScaleY.__0, .Transform.ScaleY.__50, .Transform.ScaleY.__75,
+        .Transform.ScaleY.__90, .Transform.ScaleY.__95, .Transform.ScaleY.__100,
+        .Transform.ScaleY.__105, .Transform.ScaleY.__110, .Transform.ScaleY.__125,
+        .Transform.ScaleY.__150,
+    ];
+    return leaves;
+}
+
+// THE TWO `Px` LEAVES ARE NOT IN THIS LIST. Their `1px` is the reference's own
+// literal value — `translate-x-px` IS a pixel utility — so they would fail the
+// length probe for the one reason that is correct. They are asserted from the
+// other side in the controls test, which is front 41's treatment of
+// `Shadow.Inner`.
+fn f45TranslateLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Transform.TranslateX.__0, .Transform.TranslateX.__1,
+        .Transform.TranslateX.Half, .Transform.TranslateX.Full,
+        .Transform.TranslateY.__0, .Transform.TranslateY.__1,
+        .Transform.TranslateY.Half, .Transform.TranslateY.Full,
+    ];
+    return leaves;
+}
+
+fn f45SkewLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Transform.SkewX.__0, .Transform.SkewX.__1, .Transform.SkewX.__2,
+        .Transform.SkewX.__3, .Transform.SkewX.__6, .Transform.SkewX.__12,
+        .Transform.SkewY.__0, .Transform.SkewY.__1, .Transform.SkewY.__2,
+        .Transform.SkewY.__3, .Transform.SkewY.__6, .Transform.SkewY.__12,
+    ];
+    return leaves;
+}
+
+fn f45KeywordLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Transform.Origin.Center, .Transform.Origin.Top, .Transform.Origin.TopRight,
+        .Transform.Origin.Right, .Transform.Origin.BottomRight,
+        .Transform.Origin.Bottom, .Transform.Origin.BottomLeft,
+        .Transform.Origin.Left, .Transform.Origin.TopLeft,
+        .Transform.Style.Flat, .Transform.Style.Preserve3d,
+        .Transform.Backface.Visible, .Transform.Backface.Hidden,
+        .Transform.Perspective.None, .Transform.Perspective.Dramatic,
+        .Transform.Perspective.Near, .Transform.Perspective.Normal,
+        .Transform.Perspective.Midrange, .Transform.Perspective.Distant,
+        .Transform.PerspectiveOrigin.Center, .Transform.PerspectiveOrigin.Top,
+        .Transform.PerspectiveOrigin.Bottom, .Transform.PerspectiveOrigin.Left,
+        .Transform.PerspectiveOrigin.Right,
+        .Transform.Zoom.__0, .Transform.Zoom.__50, .Transform.Zoom.__75,
+        .Transform.Zoom.__100, .Transform.Zoom.__125, .Transform.Zoom.__150,
+        .Transform.Zoom.__200,
+        .Transform.Shorthand.None, .Transform.Shorthand.Cpu,
+        .Transform.Shorthand.Gpu,
+    ];
+    return leaves;
+}
+
+fn front45Leaves() -> Token[] {
+    return f45RotateLeaves()
+        .append(f45ScaleLeaves())
+        .append(f45TranslateLeaves())
+        .append(f45SkewLeaves())
+        .append(f45KeywordLeaves());
+}
+
+fn f45IsWellFormed(decl: string) -> bool {
+    return decl.length > 0 && decl.indexOf(":") != -1;
+}
+
+// A RESOLVED LENGTH. `rem` can be banned outright — nothing in `§ 16` carries
+// one — and `px` can be banned over the walk list because the two leaves whose
+// value IS `1px` are held out of it deliberately. The five perspective lengths
+// are the ones a "make it work without composing the theme" patch would inline,
+// so they are named as well.
+fn f45CarriesNoResolvedLength(decl: string) -> bool {
+    return decl.indexOf("rem") == -1 && decl.indexOf("px") == -1;
+}
+
+// The class-fragment probe. Each fragment is a CLASS name, hyphenated, and none
+// can occur in a correct declaration of this front — the properties carry a
+// COLON where the class has a hyphen.
+//
+// EVERY FRAGMENT CARRIES ITS SUFFIX, and that is not tidiness — it is the whole
+// difficulty of this probe in this front. `var(--tw-scale-x)` CONTAINS
+// `scale-x`, `var(--tw-skew-y)` contains `skew-y` and `var(--tw-translate-x)`
+// contains `translate-x`, so the bare stems `scale-`, `skew-x` and
+// `translate-x-` fire on `§ 16.7`'s two composed rows, which are correct output.
+// The first draft of this list used the stems and the control below caught it.
+// `perspective-*` is absent for the same reason one step further on:
+// `var(--perspective-near)` contains the class name `perspective-near` exactly —
+// front 44's `var(--animate-spin)` lesson, in this front's vocabulary.
+// `perspective-none` is safe to name, because there is no `--perspective-none`.
+fn f45CarriesNoClassFragment(decl: string) -> bool {
+    return decl.indexOf("rotate-45") == -1 && decl.indexOf("rotate-180") == -1
+        && decl.indexOf("scale-50") == -1 && decl.indexOf("scale-105") == -1
+        && decl.indexOf("scale-x-50") == -1 && decl.indexOf("scale-y-50") == -1
+        && decl.indexOf("skew-x-3") == -1 && decl.indexOf("skew-y-6") == -1
+        && decl.indexOf("translate-x-px") == -1 && decl.indexOf("translate-x-full") == -1
+        && decl.indexOf("translate-y-full") == -1 && decl.indexOf("origin-center") == -1
+        && decl.indexOf("origin-top-left") == -1 && decl.indexOf("transform-flat") == -1
+        && decl.indexOf("transform-3d") == -1 && decl.indexOf("transform-none") == -1
+        && decl.indexOf("transform-cpu") == -1 && decl.indexOf("transform-gpu") == -1
+        && decl.indexOf("backface-visible") == -1 && decl.indexOf("backface-hidden") == -1
+        && decl.indexOf("perspective-none") == -1 && decl.indexOf("perspective-origin-top") == -1
+        && decl.indexOf("zoom-50") == -1 && decl.indexOf("zoom-200") == -1;
+}
+
+// EVERY ANGLE CARRIES ITS UNIT. `rotate:90` and `skewX(3)` are the two shapes
+// of the defect and neither is valid CSS; the probe anchors on the property so
+// that `scale:1.1` and `zoom:2`, which are unitless BY THE REFERENCE, are not
+// swept up with them.
+fn f45CarriesItsUnit(decl: string) -> bool {
+    val isAngle = decl.startsWith("rotate:") || decl.startsWith("transform:skew");
+    val out = if (isAngle) decl.indexOf("deg") != -1 else true;
+    return out;
+}
+
+test "regression — every one of the 94 walked leaves of this front declares something" {
+    assert f45RotateLeaves().length == 10;
+    assert f45ScaleLeaves().length == 30;
+    assert f45TranslateLeaves().length == 8;
+    assert f45SkewLeaves().length == 12;
+    assert f45KeywordLeaves().length == 34;
+    val leaves = front45Leaves();
+    assert leaves.length == 94;
+    assert leaves.all({ t -> f45IsWellFormed(tokenDeclarations(t)) });
+}
+
+test "regression — no walked leaf of this front resolves a length" {
+    assert front45Leaves().all({ t -> f45CarriesNoResolvedLength(tokenDeclarations(t)) });
+}
+
+test "regression — no transform leaf emits a Tailwind class fragment" {
+    assert front45Leaves().all({ t -> f45CarriesNoClassFragment(tokenDeclarations(t)) });
+}
+
+test "regression — every angle this front emits carries its `deg`" {
+    assert front45Leaves().all({ t -> f45CarriesItsUnit(tokenDeclarations(t)) });
+    val angles = front45Leaves().filter({ t -> tokenDeclarations(t).indexOf("deg") != -1 });
+    assert angles.length == 22;
+}
+
+// EVERY LEAF IS DISTINCT BUT ONE PAIR, AND THE PAIR IS NAMED. A sub-dispatcher
+// that discarded its payload — front 40's historical defect, `border-color:red`
+// for all 286 cells — passes every probe above and fails this one. The 96
+// tokens include the two `Px` leaves the length walk holds out.
+//
+// THE ONE COLLISION IS `§ 16.5`'s OWN: `scale-x-100` and `scale-y-100` both
+// mean "identity on my axis", so both are `scale:1 1` under the two-value shape
+// the reference states. It is pinned BY NAME rather than allowed as a count, so
+// a second collision appearing anywhere else still reds.
+test "regression — the 96 leaves emit 95 distinct declarations, and the pair is named" {
+    val px: Token[] = [.Transform.TranslateX.Px, .Transform.TranslateY.Px];
+    val all = front45Leaves().append(px);
+    assert all.length == 96;
+    val decls = all.map({ t -> tokenDeclarations(t) });
+    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
+    // rather than searched — front 40's rule, followed here.
+    val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
+    assert dupes.length == 2;
+    assert dupes.all({ d -> d == "scale:1 1" });
+    assert tokenDeclarations(.Transform.ScaleX.__100) == "scale:1 1";
+    assert tokenDeclarations(.Transform.ScaleY.__100) == "scale:1 1";
+    // and the unaxed identity is NOT the same declaration
+    assert tokenDeclarations(.Transform.Scale.__100) == "scale:1";
+}
+
+// THE CONTROLS THAT MUST FAIL, and — for the string probes — the controls that
+// must NOT. A probe that fires on valid output is one the next front deletes,
+// so each is shown on a real emission as well as on the defect.
+test "regression — the four transform probes discriminate, in both directions" {
+    assert f45IsWellFormed("") == false;
+    assert f45IsWellFormed("transform-origin") == false;
+    assert f45IsWellFormed("transform-origin:center");
+
+    // the resolved lengths this front refuses, and the fact that they DO exist
+    // in the library — in the theme, which is where they belong
+    assert f45CarriesNoResolvedLength("perspective:300px") == false;
+    assert f45CarriesNoResolvedLength("translate:0.25rem 0") == false;
+    assert f45CarriesNoResolvedLength("perspective:var(--perspective-near)");
+    assert (transformEntries().at(1) ?? ThemeEntry(name: "", value: "")).value == "300px";
+    // AND the two leaves held out of the walk, asserted from the other side:
+    // their `1px` is the reference's own literal and they DO carry it
+    assert f45CarriesNoResolvedLength(tokenDeclarations(.Transform.TranslateX.Px)) == false;
+    assert tokenDeclarations(.Transform.TranslateY.Px).indexOf("1px") != -1;
+
+    // the class fragments, on strings shaped like the defect
+    assert f45CarriesNoClassFragment("rotate:rotate-45") == false;
+    assert f45CarriesNoClassFragment("scale:scale-105") == false;
+    assert f45CarriesNoClassFragment("transform:skew-x-3") == false;
+    assert f45CarriesNoClassFragment("translate:translate-x-full") == false;
+    assert f45CarriesNoClassFragment("transform-style:transform-3d") == false;
+    assert f45CarriesNoClassFragment("zoom:zoom-50") == false;
+    assert f45CarriesNoClassFragment("perspective-origin:perspective-origin-top") == false;
+    // AND NOT on correct output that merely contains a class name inside a
+    // variable reference — the half that usually goes wrong
+    assert f45CarriesNoClassFragment("perspective:var(--perspective-near)");
+    assert f45CarriesNoClassFragment("perspective:var(--perspective-midrange)");
+    assert f45CarriesNoClassFragment(tokenDeclarations(.Transform.Shorthand.Gpu));
+    assert f45CarriesNoClassFragment(tokenDeclarations(.Transform.TranslateX.Half));
+
+    // the unit probe, both ways — and NOT on the two unitless families
+    assert f45CarriesItsUnit("rotate:90") == false;
+    assert f45CarriesItsUnit("transform:skewX(3)") == false;
+    assert f45CarriesItsUnit("rotate:90deg");
+    assert f45CarriesItsUnit("scale:1.1");
+    assert f45CarriesItsUnit("zoom:2");
+}
+
+// WHY THE `--tw-translate-*` IDENTITY DEFAULTS ARE A FALLBACK AND NOT A THEME
+// ENTRY, pinned rather than left as prose in the banner: `Ns` has nineteen
+// prefixes and none of them is `--tw-`, so `extendTheme` would refuse the entry
+// the front README asks this front to contribute. The fallback in the
+// declaration is what carries the `0` upstream registers with `@property`.
+test "regression — `--tw-*` is in no namespace, which is why the `0` is inline" {
+    // the namespace this front DOES own is real and reachable
+    assert nsPrefix(Ns.Perspective) == "--perspective-";
+    assert namespace(extendTheme(defaultTheme(), transformEntries()), Ns.Perspective).length == 5;
+    // and no theme in this library carries a `--tw-` name, because no `Ns`
+    // prefix admits one — `extendTheme` panics on an entry in no namespace,
+    // which is why the identity default is a fallback in the declaration
+    assert defaultTheme().entries.all({ e -> e.name.startsWith("--tw-") == false });
+    assert tokenDeclarations(.Transform.TranslateX.Half).indexOf(", 0)") != -1;
+    assert tokenDeclarations(.Transform.TranslateY.Half).indexOf(", 0)") != -1;
+}
+
+// ── end to end ───────────────────────────────────────────────────────────────
+
+// THE WHOLE POINT OF THE FRONT, in one document: a card that lifts and grows
+// under the pointer, with front 44's transition making the motion visible
+// rather than instantaneous, and a disclosure chevron that flips when its
+// parent opens.
+test "end to end — a lifting card and a flipping chevron in one document" {
+    val lifted: Token[] = [.Transform.TranslateY.Px, .Transform.Scale.__105];
+    val card: Token[] = [
+        .Transition.Transform, .Transition.Duration.__200, Token.Hover(lifted),
+    ];
+    val flipped: Token[] = [.Transform.Rotate.__180];
+    val chevron: Token[] = [
+        .Transition.Transform, .Transform.Origin.Center, Token.GroupOpen(flipped),
+    ];
+    val c = emiliaWith(card, defaultTheme());
+    val v = emiliaWith(chevron, defaultTheme());
+    val doc = await flushWith(bareOptions());
+    assert doc.indexOf("." + c + "{transition-property:transform;"
+        + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
+        + "transition-duration:200ms}") != -1;
+    assert doc.indexOf("@media (hover: hover){." + c
+        + ":hover{translate:var(--tw-translate-x, 0) 1px;scale:1.05}}") != -1;
+    assert doc.indexOf("." + v + "{transition-property:transform;"
+        + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
+        + "transform-origin:center}") != -1;
+    assert doc.indexOf(":is(:where(.group):open *)") != -1;
+    assert doc.indexOf("rotate:180deg}") != -1;
+}
+
+// ── end front 45 ─────────────────────────────────────────────────────────────
 
 // ── front 56 · test helpers ───────────────────────────────────────────
 

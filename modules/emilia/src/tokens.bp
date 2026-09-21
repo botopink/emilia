@@ -234,6 +234,28 @@
 ////              `@keyframes spin{…}` beside it, and a keyframes rule is not a
 ////              style rule. The four bodies are front 54's `keyframeEntries()`
 ////              read back through `keyframeCss(th)`, never a second copy
+////   Transform — front 45: the whole of `§ 16`, 96 leaves over sixteen
+////              sub-sections. In v4 `rotate`, `scale` and `translate` are
+////              INDEPENDENT CSS PROPERTIES rather than `transform` functions,
+////              so three of them in one list are three declarations in one
+////              rule and none overwrites another — which is why no `--tw-*`
+////              chain is needed to compose them and why the 1.0.8 draft's
+////              `transform:rotate(45deg)` shape is superseded. Rotate carries
+////              the five positive steps and a `Neg` sub-section for the five
+////              negative ones, because there is no spelling for a negative
+////              numeric leaf. Scale/ScaleX/ScaleY are the same ten steps on
+////              the one-value and the two-value `scale`. TranslateX/Y are the
+////              five rows of `§ 16.10`, each ONE declaration carrying the
+////              other axis as `var(--tw-translate-*, 0)`. SkewX/Y emit
+////              UPSTREAM's `transform:skewX(Ndeg)` and NOT `§ 16.6`'s
+////              `skew-x:` column, which is not a registered CSS property
+////              (checked against the upstream page 2026-09-21). Origin,
+////              Style (`transform-3d` → `preserve-3d`), Backface,
+////              Perspective (five `--perspective-*` references and the `none`
+////              keyword), PerspectiveOrigin and Zoom are one-to-one with
+////              their subsections. Shorthand is `§ 16.7` VERBATIM AND INERT:
+////              its two composed rows read six `--tw-*` variables no token in
+////              emilia sets
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
 ////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
@@ -281,6 +303,15 @@
 ////                              would have shut the door rather than narrowed
 ////                              it. It hoists NO block — a custom animation
 ////                              names keyframes front 44 does not own
+////   .TransformRotateRaw(value)    → front 45: upstream's `rotate-[17deg]`,
+////                              which `§ 16.4`'s HTML example prints. Emits
+////                              `rotate:<value>`
+////   .TransformTranslateRaw(value) → front 45: a translate the five steps do
+////                              not name. Emits `translate:<value>` — BOTH
+////                              axes at once and neither variable read, so an
+////                              author spelling a translate by hand spells
+////                              the whole of it. PROVISIONAL: `§ 16` prints
+////                              no arbitrary translate row anywhere
 ////
 //// MODIFIERS — front 34's table. A modifier is the only way a token reaches
 //// a state, a breakpoint or a pseudo-element. Each is a top-level variant
@@ -1857,6 +1888,194 @@ pub type Token {
     TransitionProperty(value: string),
     AnimateRaw(value: string),
     // ── end front 44 ─────────────────────────────────────────────────────────
+
+    // ── front 45 — transforms ────────────────────────────────────────────────
+    //
+    // `§ 16` in ONE section with sixteen sub-sections. Before this front emilia
+    // could animate nothing: front 44 shipped `Transition.Transform`, which
+    // names `transition-property:transform` — a property no other token in the
+    // library could set. A card that lifts on hover, a chevron that flips when
+    // a disclosure opens and a modal that scales in are all one property, and
+    // none of them had a token.
+    //
+    // HEAD AUDIT, the rule fronts 36 and 37 paid for and 38, 41 and 44
+    // repeated. Every head added here — `Transform` and the sixteen
+    // sub-heads `Rotate`, `Neg`, `Scale`, `ScaleX`, `ScaleY`, `TranslateX`,
+    // `TranslateY`, `SkewX`, `SkewY`, `Origin`, `Style`, `Backface`,
+    // `Perspective`, `PerspectiveOrigin`, `Zoom`, `Shorthand` — was checked
+    // against the 89 top-level payload variants (the 83 modifiers, `Alpha`,
+    // front 41's three `*Raw` and front 44's two) and against the lexer's
+    // keyword table before a line of it was written. No collision.
+    // `Transform` repeats front 38's sub-head `Text.Transform` and the LEAF
+    // `Transition.Transform`; a head beside a head is safe (front 41 ran it)
+    // and a head beside a leaf is what front 44 left this front to run, which
+    // the walk in `emilia.bp` does on both targets. What this front must NOT
+    // declare — and does not — is a top-level `Transform(…)` PAYLOAD variant:
+    // that is the shape that silently breaks a section of the same name.
+    //
+    // A NUMERIC LEAF IS BARE DIGITS HERE and `__N` in expression and pattern
+    // position, the spelling fronts 35, 41 and 44 use (`.Transform.Rotate.__45`).
+    //
+    // `Neg` IS A SUB-SECTION AND NOT A SIGN, because there is no spelling for a
+    // negative numeric leaf: `Rotate { -12 }` does not parse. `-rotate-12` is
+    // `.Transform.Rotate.Neg.__12`, read as "rotate, negative, twelve". Front
+    // 35's `Margin.*.Neg` and front 40's `Ring.Offset.Neg` are the same
+    // convention; this front is the third to need it and the language gap is
+    // recorded rather than worked around.
+    //
+    // `Style.Preserve3d` IS THE LEAF NAME FOR `transform-3d` — a leaf cannot
+    // begin with a digit, and naming it after the value it emits reads better
+    // than `X3d`.
+    //
+    // TWO ROWS OF THE REFERENCE DO NOT SURVIVE THE UPSTREAM CHECK AND ONE
+    // DOES NOT SURVIVE CSS; all three are flagged at the arm that emits them in
+    // `emilia.bp` rather than here, so a reader hits the flag where the value
+    // is. In summary: `§ 16.6`'s `skew-x:`/`skew-y:` property column is not a
+    // registered CSS property and upstream prints `transform: skewX(…)`
+    // instead, so this front emits upstream's; `§ 16.10`'s `translate:` rows
+    // read a `--tw-translate-*` variable that NO namespace of front 54 can
+    // hold, so the reference is carried with a `var(…, 0)` fallback the way
+    // front 39 carries its gradient stops; and `§ 16.7`'s four `transform`
+    // rows read six `--tw-*` variables NO token in emilia sets, so they are
+    // transcribed verbatim and marked inert.
+    Transform {
+        Rotate {
+            0,
+            1,
+            45,
+            90,
+            180,
+            Neg {
+                1,
+                12,
+                45,
+                90,
+                180,
+            }
+        }
+        Scale {
+            0,
+            50,
+            75,
+            90,
+            95,
+            100,
+            105,
+            110,
+            125,
+            150,
+        }
+        ScaleX {
+            0,
+            50,
+            75,
+            90,
+            95,
+            100,
+            105,
+            110,
+            125,
+            150,
+        }
+        ScaleY {
+            0,
+            50,
+            75,
+            90,
+            95,
+            100,
+            105,
+            110,
+            125,
+            150,
+        }
+        TranslateX {
+            0,
+            Px,
+            1,
+            Half,
+            Full,
+        }
+        TranslateY {
+            0,
+            Px,
+            1,
+            Half,
+            Full,
+        }
+        SkewX {
+            0,
+            1,
+            2,
+            3,
+            6,
+            12,
+        }
+        SkewY {
+            0,
+            1,
+            2,
+            3,
+            6,
+            12,
+        }
+        Origin {
+            Center,
+            Top,
+            TopRight,
+            Right,
+            BottomRight,
+            Bottom,
+            BottomLeft,
+            Left,
+            TopLeft,
+        }
+        Style {
+            Flat,
+            Preserve3d,
+        }
+        Backface {
+            Visible,
+            Hidden,
+        }
+        Perspective {
+            None,
+            Dramatic,
+            Near,
+            Normal,
+            Midrange,
+            Distant,
+        }
+        PerspectiveOrigin {
+            Center,
+            Top,
+            Bottom,
+            Left,
+            Right,
+        }
+        Zoom {
+            0,
+            50,
+            75,
+            100,
+            125,
+            150,
+            200,
+        }
+        Shorthand {
+            None,
+            Cpu,
+            Gpu,
+        }
+    }
+
+    // Arbitrary values are TOP-LEVEL variants, never section leaves — front
+    // 41's rule, for front 41's reason: a payload leaf nested inside a section
+    // cannot be constructed by any spelling, so `Transform.Rotate.Raw(…)`
+    // would type-check in a `case` arm and be reachable by nothing else.
+    TransformRotateRaw(value: string),
+    TransformTranslateRaw(value: string),
+    // ── end front 45 ─────────────────────────────────────────────────────────
 
     // ── front 39 — backgrounds ──────────────────────────────────
     //

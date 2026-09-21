@@ -2,6 +2,68 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Transform` added — the whole of `§ 16`** (1.0.10-beta front
+  `45-emilia-transforms`). 96 leaves in one section of sixteen sub-sections,
+  plus the two top-level variants `TransformRotateRaw` and
+  `TransformTranslateRaw`.
+
+  **Front 44 could animate a property nothing could set.** `Transition.Transform`
+  emits `transition-property:transform`, and until this front there was no
+  `rotate`, no `scale`, no `translate`, no `skew`, no `transform-origin`, no
+  `perspective` and no `backface-visibility` anywhere in the library. A card
+  that lifts under the pointer, a chevron that flips when a disclosure opens, a
+  toast that slides in and a modal that scales in are all one property.
+
+  **In v4 `rotate`, `scale` and `translate` are independent CSS properties**,
+  not `transform` functions, so three tokens in one list are three declarations
+  in one rule and none overwrites another. No `--tw-*` cascade is needed to
+  compose them, and the pre-1.0.10 `transform:rotate(45deg) scale(1.1)` shape is
+  superseded wholesale.
+
+  **No leaf resolves a length.** `translate-x-1` is front 54's `spacing(1)` and
+  the five perspective keywords are `--perspective-*` references, so the
+  `100px` … `1200px` the reference prints in parentheses are theme entries in
+  the new `transformEntries()`. Unlike front 44's three `--ease-*`, **none of
+  the five values is provisional** — `§ 16.2` prints each one. The two
+  exceptions to the length rule are `TranslateX.Px` and `TranslateY.Px`, whose
+  `1px` is the reference's own literal value.
+
+  **Three rows of `§ 16` did not survive, and each is flagged where it is
+  emitted:**
+
+  - `§ 16.6`'s property column says `skew-x: 3deg`, which is not a registered
+    CSS property. The upstream page was checked, as the front's own spec
+    demanded, and prints `transform: skewX(3deg)`; the twelve skew leaves emit
+    **upstream's** property and the reference file's spelling is asserted
+    absent.
+  - `§ 16.10`'s rows are ONE `translate:` declaration reading the other axis's
+    `--tw-translate-*` variable — which is what the reference file **and**
+    upstream both print. The variable's `@property` default cannot be a theme
+    entry (`--tw-` is in none of the nineteen namespaces and `extendTheme`
+    refuses it), so it is carried as `var(--tw-translate-y, 0)` through front
+    39's `cssVarOr`. **The two axes therefore do not compose** — two
+    declarations of one property, last one wins; `rawTranslate("50% 50%")` is
+    the diagonal.
+  - `§ 16.7`'s four `transform` rows are transcribed **verbatim and inert**.
+    They read six `--tw-*` variables no token in emilia sets. Fallbacks would be
+    worse than the flag: `.Shorthand.Cpu` would emit an identity transform that
+    silently overwrote the `skewX` beside it.
+
+  `scale-50` emits `.5` and `zoom-50` emits `0.5`, four subsections apart in the
+  same section; both are the reference's and the two are asserted in adjacent
+  lines. `Neg` is a sub-section and not a sign, because there is no spelling for
+  a negative numeric leaf. `Style.Preserve3d` is named after the value it emits,
+  because a leaf cannot begin with a digit and the class is `transform-3d`.
+
+  Four planted defects were watched redden and removed, one of them in the
+  class-fragment probe itself: `var(--tw-scale-x)` contains `scale-x`, so the
+  bare stems fired on `§ 16.7`'s composed rows and every fragment now carries
+  its suffix.
+
+  `examples/emilia-transforms/` is the new worked example (18 tests).
+  `modules/emilia` goes from 528 to **569** inline tests, green on commonJS and
+  on erlang.
+
 - **`Transition` and `Animate` added — the whole of `§ 15`** (1.0.10-beta front
   `44-emilia-transitions`). 36 leaves, and the first front whose output is not
   only a declaration list.
