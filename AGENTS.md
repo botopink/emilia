@@ -26,6 +26,15 @@ Three named imports from `from "emilia"`:
    (`Hover`/`Focus`/`Active`/`Md`/`Lg`/`Xl`) carrying a nested
    `Token[]`.
 
+Front 54 adds the **theme** and the **spacing ladder** (`theme.bp`,
+`spacing.bp`): `ThemeEntry`, `Theme`, `DarkMode`, `Ns`, `nsPrefix`,
+`allNamespaces`, `defaultTheme`, `emptyTheme`, `extendTheme`, `clearNamespace`,
+`namespace`, `themeValue`, `themeVar`, `themeCss`, `keyframeCss`, `darkAtRule`,
+`darkSelector`, `withDarkMode`, `spacing`, `spacingHalf` — see `docs.md`
+§ The theme. `emilia.bp`'s dispatchers do **not** consume them yet; rewiring
+`tokenToCss` to `spacing()` and to the theme is fronts 33–47's work, which is
+why the seven drifted `rem` ladders are still in `emilia.bp`.
+
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
 DSL); both forms need the two generic jhonstart hooks (`F0` second
@@ -295,6 +304,7 @@ to the commonJS row and runs once.
 | F3 — modifier composition | DONE for V1 (re-pinned alongside F2) |
 | F4 — `flush()` per-render | DONE — async (`@Future<string>`); test bodies await via implicit future context (bot-lang `<test-runner-async>` commit) |
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
+| 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in
 [`tasks/v0.beta.20/specs/ecosystem.md`](../../tasks/v0.beta.20/specs/ecosystem.md);
