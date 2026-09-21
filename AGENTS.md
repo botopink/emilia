@@ -154,7 +154,8 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `botopink.json` declares members and is never a package — no `src`, `files`,
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
-command inside one of its members: emilia, emilia-card, emilia-theme`. Every `modules/*/`
+command inside one of its members: emilia, emilia-card, emilia-cascade,
+emilia-theme`. Every `modules/*/`
 and `examples/*/` holding a `botopink.json` is a member, named by its own
 manifest. The **core is the member `modules/emilia/`**; `from "emilia"`
 resolves to it, never to the umbrella.
@@ -211,6 +212,15 @@ emilia/
 │                            `import { Token } from "tokens";` — naming the
 │                            sibling module is **required**, see "Gotchas"
 ├── examples/
+│   ├── emilia-cascade/ ← member `emilia-cascade` (an application: entry main.bp,
+│   │                    targets [commonJS, erlang], `emilia` via
+│   │                    { "workspace": true } and NOTHING else — it is the
+│   │                    front 56 showcase: one card whose hover is a sibling
+│   │                    rule, whose breakpoint is a hoisted `@media` read from
+│   │                    the theme, whose reset arrives through `Options` in its
+│   │                    own `base` layer, and whose document is layered so a
+│   │                    project's own CSS can beat a utility deliberately.
+│   │                    10 in-file `test {}`, green on both targets)
 │   ├── emilia-theme/  ← member `emilia-theme` (an application: entry main.bp,
 │   │                    targets [commonJS, erlang], `emilia` via
 │   │                    { "workspace": true } and NOTHING else — it is the
@@ -379,6 +389,14 @@ to the commonJS row and runs once.
   deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
   a listed example that builds fails the gate just as a red one does.
 
+- `examples/emilia-cascade/` is the member `emilia-cascade` and is front 56's
+  worked example: the reset supplied through `withBase`, the hover hoisted into
+  `@media (hover: hover){.e_x:hover{…}}`, the breakpoint hoisted into
+  `@media (width >= 48rem)` with its width read from `--breakpoint-md`, the four
+  cascade layers in order, `withPrefix`, `withLayers(o, false)`,
+  `withImportant(o, true)` and the two-flush contract. 10 in-file tests, green
+  on commonJS and on erlang; it builds and runs.
+
 - `examples/emilia-theme/` is the member `emilia-theme` and carries 10 in-file tests over
   the front 54 surface, imported across a package boundary (`from "emilia"`, the
   `{ "workspace": true }` form). It is green on commonJS and on erlang, builds, and runs
@@ -399,7 +417,7 @@ to the commonJS row and runs once.
 | F3 — modifier composition | DONE for V1 (re-pinned alongside F2) |
 | F4 — `flush()` per-render | DONE — async (`@Future<string>`); test bodies await via implicit future context (bot-lang `<test-runner-async>` commit) |
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
-| 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
+| 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

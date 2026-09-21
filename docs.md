@@ -423,6 +423,11 @@ class names to escape. That divergence is intentional.
 `withImportant(o, true)` appends `!important` to every declaration of every rule,
 the same thing `markImportant` does to one sheet.
 
+[`examples/emilia-cascade/`](examples/emilia-cascade/) is the worked example:
+one card whose hover is a sibling rule, whose breakpoint is a hoisted `@media`
+read from the theme, whose reset arrives through `Options`, and whose document
+is layered.
+
 ### The codec
 
 A host cell stores one string per class, and a `Sheet` is a record tree, so

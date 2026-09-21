@@ -2,6 +2,20 @@
 
 ## Unreleased — v0.beta.22
 
+- **`examples/emilia-cascade/`** (1.0.10-beta front
+  `56-emilia-cascade-and-output`, Examples). A new workspace member, the
+  front's worked example: one card whose styles reach outside its own class.
+  The hover is a **sibling rule** (`@media (hover: hover){.e_x:hover{…}}`) and
+  not a block nested in the class body; the breakpoint is a hoisted
+  `@media (width >= 48rem)` whose width is read from the theme's
+  `--breakpoint-md`, so overriding the variable moves the breakpoint; the reset
+  arrives through `Options` and lands in its own `base` layer behind a
+  **literal** selector the class name and the prefix never reach; and the
+  document is layered, which is what lets a project's own CSS beat a utility
+  deliberately rather than by accident of order. Ten in-file tests, green on
+  commonJS and on erlang, also covering `withPrefix`, `withLayers(o, false)`,
+  `withImportant(o, true)` and the two-flush contract.
+
 - **The host cell is a dumb string store** (1.0.10-beta front
   `56-emilia-cascade-and-output`, step 5). `flushSheet()` is **gone** and
   `drainRules()` takes its place: it hands back the registered entries as
