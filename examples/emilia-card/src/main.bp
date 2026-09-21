@@ -137,19 +137,17 @@ test "flush returns a layered `<style>...</style>` document with the registered 
     // stub emitted for every shade of the family.
     assert styles.indexOf("@media (hover: hover){." + bodyStyle + ":hover{color:var(--color-red-600)}}") != -1;
     assert styles.indexOf("@media (width >= 48rem){." + bodyStyle + "{font-size:1.125rem}}") != -1;
-    // `.Text.Size.Base` and `.Text.Size.X3xl` are MISSING from the two class
-    // bodies below, and they were missing before front 56 too (the pre-56
-    // document read `.e_x{;font-weight:bold;color:red}` — the empty leading
-    // declaration is the same token going nowhere). The cause is a commonJS
-    // codegen defect, not an emilia one: a `case` arm whose variant name is
-    // unique in the program lowers to `instanceof`, and a consumer package
-    // re-emits its own copy of the enum classes, so a value built in
-    // `emilia-card` is never `instanceof` the class `emilia` matches against
-    // and the whole `case` answers `undefined`. `Sm`/`Lg`/`Xl` survive only
-    // because their names repeat elsewhere in `Token`, which makes the same
-    // compiler lower those arms to a `tag` comparison instead. Reported to
-    // botopink-lang; the assertions below pin what is actually emitted so the
-    // fix is visible as a change here.
-    assert styles.indexOf("." + bodyStyle + "{color:var(--color-gray-600)}") != -1;
-    assert styles.indexOf("." + titleStyle + "{font-weight:bold;color:var(--color-red-600)}") != -1;
+    // `.Text.Size.X3xl` and `.Text.Size.Base` open the two class bodies below.
+    // They used to be missing from them: a commonJS codegen defect lowered a
+    // `case` arm whose variant name was unique in the program to an
+    // `instanceof` test, and a consumer package re-emits its own copy of the
+    // enum classes, so a value built in `emilia-card` was never `instanceof`
+    // the class `emilia` matched against and the whole `case` answered
+    // `undefined`. Only `Sm`/`Lg`/`Xl` came through, because their names repeat
+    // elsewhere in `Token` and that made the same compiler lower those arms to
+    // a `tag` comparison. The fix landed in botopink-lang — a uniquely-named
+    // variant compares the `tag` string too — so both sizes reach the CSS and
+    // the two assertions below are ordinary goldens with nothing pinned.
+    assert styles.indexOf("." + bodyStyle + "{font-size:1rem;color:var(--color-gray-600)}") != -1;
+    assert styles.indexOf("." + titleStyle + "{font-size:1.875rem;font-weight:bold;color:var(--color-red-600)}") != -1;
 }
