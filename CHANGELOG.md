@@ -15,6 +15,19 @@
   front 35 records — two fronts appending to the same last line cannot be
   merged.
 
+- **Float, clear, and an image that can be cropped** (1.0.10-beta front
+  `36-emilia-layout`, step 4). `Layout.Float` and `Layout.Clear` answer
+  `§ 5.9`/`§ 5.10`, `Layout.Object` the `Fit`/`Pos` split of `§ 5.12`/`§ 5.13`,
+  and `Layout.Aspect` the three ratios of `§ 5.1`.
+  Three name-versus-value traps, each with its own assertion rather than a
+  shared one: **`float-start` is `float:inline-start`** (and `clear-start` is
+  `clear:inline-start`) — the utility carries the logical name, CSS carries the
+  logical VALUE, and `float:start` is not a value at all; the four two-word
+  object positions are **one space, not a hyphen** — `object-left-bottom` is
+  `object-position:left bottom`, and a test asserts `left-bottom` does not
+  survive into the declaration; and `aspect-square` is **`1 / 1` with spaces
+  around the slash**, the way `§ 5.1` prints it, with `16/9` asserted absent.
+
 - **A scroll container, a stacking order and a box that keeps its space**
   (1.0.10-beta front `36-emilia-layout`, step 3). `§ 5.14`, `§ 5.15`, `§ 5.18`,
   `§ 5.19` and `§ 5.11` had no token: emilia could not clip, could not scroll,

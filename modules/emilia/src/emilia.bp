@@ -2243,6 +2243,10 @@ fn layoutTokenToCss(t: Token.Layout, th: Theme) -> string {
         Visibility(_inner) -> layoutVisibilityToCss(_inner);
         Z(_inner) -> layoutZToCss(_inner);
         Isolation(_inner) -> layoutIsolationToCss(_inner);
+        Float(_inner) -> layoutFloatToCss(_inner);
+        Clear(_inner) -> layoutClearToCss(_inner);
+        Object(_inner) -> layoutObjectToCss(_inner);
+        Aspect(_inner) -> layoutAspectToCss(_inner);
     };
     return out;
 }
@@ -2925,6 +2929,80 @@ fn layoutIsolationToCss(i: Token.Layout.Isolation) -> string {
     return out;
 }
 
+// ANOTHER NAME-VERSUS-VALUE TRAP. Tailwind v4 spells the logical floats
+// `float-start` / `float-end`; CSS spells the values `inline-start` /
+// `inline-end`. `float:start` is not a value and would be discarded silently.
+fn layoutFloatToCss(f: Token.Layout.Float) -> string {
+    val out = case f {
+        Start -> "float:inline-start";
+        End -> "float:inline-end";
+        Right -> "float:right";
+        Left -> "float:left";
+        None -> "float:none";
+    };
+    return out;
+}
+
+fn layoutClearToCss(c: Token.Layout.Clear) -> string {
+    val out = case c {
+        Start -> "clear:inline-start";
+        End -> "clear:inline-end";
+        Left -> "clear:left";
+        Right -> "clear:right";
+        Both -> "clear:both";
+        None -> "clear:none";
+    };
+    return out;
+}
+
+fn layoutObjectToCss(o: Token.Layout.Object) -> string {
+    val out = case o {
+        Fit(_inner) -> layoutObjectFitToCss(_inner);
+        Pos(_inner) -> layoutObjectPosToCss(_inner);
+    };
+    return out;
+}
+
+fn layoutObjectFitToCss(f: Token.Layout.Object.Fit) -> string {
+    val out = case f {
+        Contain -> "object-fit:contain";
+        Cover -> "object-fit:cover";
+        Fill -> "object-fit:fill";
+        None -> "object-fit:none";
+        ScaleDown -> "object-fit:scale-down";
+    };
+    return out;
+}
+
+// The four two-word values are ONE SPACE, not a hyphen: `object-left-bottom` is
+// `object-position:left bottom`. The hyphen belongs to the utility name and the
+// space to the CSS value, and the two are not the same string.
+fn layoutObjectPosToCss(p: Token.Layout.Object.Pos) -> string {
+    val out = case p {
+        Bottom -> "object-position:bottom";
+        Center -> "object-position:center";
+        Left -> "object-position:left";
+        LeftBottom -> "object-position:left bottom";
+        LeftTop -> "object-position:left top";
+        Right -> "object-position:right";
+        RightBottom -> "object-position:right bottom";
+        RightTop -> "object-position:right top";
+        Top -> "object-position:top";
+    };
+    return out;
+}
+
+// `§ 5.1` prints the ratios with spaces around the slash, so that is what is
+// emitted: `aspect-ratio:1 / 1`, not `1/1`.
+fn layoutAspectToCss(a: Token.Layout.Aspect) -> string {
+    val out = case a {
+        Auto -> "aspect-ratio:auto";
+        Square -> "aspect-ratio:1 / 1";
+        Video -> "aspect-ratio:16 / 9";
+    };
+    return out;
+}
+
 // ── tests · front 36 ─────────────────────────────────────────────────────────
 //
 // The front's assertions live HERE, beside the dispatchers they cover, for the
@@ -3079,6 +3157,69 @@ test "z-index — a bare integer, never a length and never a calc" {
 test "isolation — the two values of `§ 5.11`" {
     assert tokenDeclarations(.Layout.Isolation.Isolate) == "isolation:isolate";
     assert tokenDeclarations(.Layout.Isolation.Auto) == "isolation:auto";
+}
+
+// `float-start` / `clear-start` are the Tailwind v4 logical names and
+// `inline-start` is the CSS value. `float:start` is not a value.
+test "float and clear — the logical pair is `inline-start`, not `start`" {
+    assert tokenDeclarations(.Layout.Float.Start) == "float:inline-start";
+    assert tokenDeclarations(.Layout.Float.End) == "float:inline-end";
+    assert tokenDeclarations(.Layout.Clear.Start) == "clear:inline-start";
+    assert tokenDeclarations(.Layout.Clear.End) == "clear:inline-end";
+    assert tokenDeclarations(.Layout.Float.Start) != "float:start";
+    assert tokenDeclarations(.Layout.Clear.Start) != "clear:start";
+}
+
+test "float and clear — the physical values of `§ 5.9` and `§ 5.10`" {
+    assert tokenDeclarations(.Layout.Float.Right) == "float:right";
+    assert tokenDeclarations(.Layout.Float.Left) == "float:left";
+    assert tokenDeclarations(.Layout.Float.None) == "float:none";
+    assert tokenDeclarations(.Layout.Clear.Left) == "clear:left";
+    assert tokenDeclarations(.Layout.Clear.Right) == "clear:right";
+    assert tokenDeclarations(.Layout.Clear.Both) == "clear:both";
+    assert tokenDeclarations(.Layout.Clear.None) == "clear:none";
+}
+
+test "object-fit — the five values of `§ 5.12`" {
+    assert tokenDeclarations(.Layout.Object.Fit.Contain) == "object-fit:contain";
+    assert tokenDeclarations(.Layout.Object.Fit.Cover) == "object-fit:cover";
+    assert tokenDeclarations(.Layout.Object.Fit.Fill) == "object-fit:fill";
+    assert tokenDeclarations(.Layout.Object.Fit.None) == "object-fit:none";
+    assert tokenDeclarations(.Layout.Object.Fit.ScaleDown) == "object-fit:scale-down";
+}
+
+// The four two-word values are the trap here: the HYPHEN belongs to the utility
+// name and the SPACE to the CSS value.
+test "object-position — all nine, and the four two-word values are one space" {
+    assert tokenDeclarations(.Layout.Object.Pos.Bottom) == "object-position:bottom";
+    assert tokenDeclarations(.Layout.Object.Pos.Center) == "object-position:center";
+    assert tokenDeclarations(.Layout.Object.Pos.Left) == "object-position:left";
+    assert tokenDeclarations(.Layout.Object.Pos.Right) == "object-position:right";
+    assert tokenDeclarations(.Layout.Object.Pos.Top) == "object-position:top";
+    assert tokenDeclarations(.Layout.Object.Pos.LeftBottom) == "object-position:left bottom";
+    assert tokenDeclarations(.Layout.Object.Pos.LeftTop) == "object-position:left top";
+    assert tokenDeclarations(.Layout.Object.Pos.RightBottom) == "object-position:right bottom";
+    assert tokenDeclarations(.Layout.Object.Pos.RightTop) == "object-position:right top";
+    assert tokenDeclarations(.Layout.Object.Pos.LeftBottom).indexOf("left-bottom") == -1;
+    assert tokenDeclarations(.Layout.Object.Pos.RightTop).indexOf("right-top") == -1;
+}
+
+// `§ 5.1` prints the ratios with spaces around the slash.
+test "aspect-ratio — the slash keeps its spaces" {
+    assert tokenDeclarations(.Layout.Aspect.Auto) == "aspect-ratio:auto";
+    assert tokenDeclarations(.Layout.Aspect.Square) == "aspect-ratio:1 / 1";
+    assert tokenDeclarations(.Layout.Aspect.Video) == "aspect-ratio:16 / 9";
+    assert tokenDeclarations(.Layout.Aspect.Video).indexOf("16/9") == -1;
+}
+
+test "end to end — a media card that crops its image and clips its overflow" {
+    val card: Token[] = [.Layout.Overflow.Hidden, .Layout.Isolation.Isolate, .Border.Rounded.Lg];
+    val media: Token[] = [.Layout.Aspect.Video, .Layout.Object.Fit.Cover, .Layout.Object.Pos.Center];
+    val cardCls = emilia(card);
+    val mediaCls = emilia(media);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("." + cardCls + "{overflow:hidden;isolation:isolate;border-radius:0.5rem}") != -1;
+    assert styles.indexOf("." + mediaCls + "{aspect-ratio:16 / 9;object-fit:cover;object-position:center}") != -1;
 }
 
 test "end to end — a sticky header over a scrolling panel" {

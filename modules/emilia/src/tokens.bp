@@ -72,7 +72,9 @@
 ////              and Overscroll (a shorthand plus an X and a Y longhand each),
 ////              Visibility (`invisible` is the utility name, `hidden` the CSS
 ////              value), Z — the one numeric family here that is NOT a length,
-////              a bare integer — and Isolation
+////              a bare integer — and Isolation; then Float and Clear (whose
+////              logical values are `inline-start`/`inline-end`, not
+////              `start`/`end`), Object { Fit, Pos } and Aspect
 ////   Flex     — Row/Col/Wrap/NoWrap + Items{}, Justify{}, Gap{}
 ////   Border   — W{}, Color{} (palette + Hex), Rounded{Sm,Md,Lg,Full}
 ////   Effect   — Shadow{Sm,Md,Lg,Xl}, Opacity{0,25,50,75,100}
@@ -716,6 +718,16 @@ pub type Token {
         Visibility { Visible, Invisible, Collapse, }
         Z { 0, 10, 20, 30, 40, 50, Auto, }
         Isolation { Isolate, Auto, }
+        Float { Start, End, Right, Left, None, }
+        Clear { Start, End, Left, Right, Both, None, }
+        Object {
+            Fit { Contain, Cover, Fill, None, ScaleDown }
+            Pos {
+                Bottom, Center, Left, LeftBottom, LeftTop,
+                Right, RightBottom, RightTop, Top,
+            }
+        }
+        Aspect { Auto, Square, Video, }
     }
     // ── end front 36 ─────────────────────────────────────────────────────────
 

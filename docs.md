@@ -435,6 +435,24 @@ Two of these are places a transcription slips, so each has its own assertion:
 is the one numeric family in `Layout` that is **not a length** — `z-50` is the
 bare integer `50`, never a `calc` and never a `rem`.
 
+#### Float, clear, replaced content
+
+```bp
+.Layout.Float.Start               // float:inline-start   ← not `start`
+.Layout.Float.Left                // float:left
+.Layout.Clear.Start               // clear:inline-start
+.Layout.Clear.Both                // clear:both
+.Layout.Object.Fit.Cover          // object-fit:cover
+.Layout.Object.Pos.LeftBottom     // object-position:left bottom  ← one space
+.Layout.Aspect.Square             // aspect-ratio:1 / 1
+.Layout.Aspect.Video              // aspect-ratio:16 / 9
+```
+
+Three more traps, each pinned: the **utility** name is `float-start`, the CSS
+**value** is `inline-start`; the hyphen in `object-left-bottom` belongs to the
+utility name and the CSS value is two words separated by one space; and the
+aspect ratios keep the spaces around the slash the way `§ 5.1` prints them.
+
 ### Modifiers — state + breakpoint variants
 
 Each modifier carries a `Token[]` payload. A modifier is **not** a block
