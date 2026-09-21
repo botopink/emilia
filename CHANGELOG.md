@@ -2,6 +2,87 @@
 
 ## Unreleased — v0.beta.22
 
+- **The host cell is a dumb string store** (1.0.10-beta front
+  `56-emilia-cascade-and-output`, step 5). `flushSheet()` is **gone** and
+  `drainRules()` takes its place: it hands back the registered entries as
+  `name + "\t" + payload` records joined by `"\n"`, in insertion order, and
+  clears the cell — the same per-render contract. `flushSheet` assembled the
+  `<style>` document **inside** the two `#[@External]` templates, once in
+  JavaScript and once in Erlang, which is where the byte-level divergence risk
+  lived and where nothing written in botopink could reach it. Keeping it as
+  the spec's step 5 asks would have left exactly the duplicate assembly the
+  front's own definition of done forbids, and nothing outside `emilia.bp`
+  could name it. Five tests now pin the two templates against each other on
+  both targets.
+
+- **`emiliaWith` / `flushWith`, and a document with layers in it** (front
+  `56-emilia-cascade-and-output`, step 7). `emiliaWith(tokens, th)` and
+  `flushWith(o)` are the new entry points; `emilia(tokens)` is
+  `emiliaWith(tokens, defaultTheme())` and `flush()` is
+  `flushWith(defaultOptions())`, both with the signatures they had, so no
+  consumer changes. What changed is **the emitted CSS**, and this front owns
+  the break: `[.Bg.Black, Hover([.Bg.White])]` went from
+  `<style>.e_x{background:#000000;:hover{background:#ffffff}}</style>` to a
+  layered document whose modifier is a **sibling rule**, hoisted out with the
+  selector and at-rule the variant reference gives it. The six modifier tests
+  in `emilia.bp` and the flush test in `examples/emilia-card/` are rewritten to
+  the hoisted shape and each names the row it comes from.
+
+- **The six V1 modifiers, against the variant reference** (front
+  `56-emilia-cascade-and-output`, step 7). `hoverVariant()` is
+  `@media (hover: hover) { &:hover }` and not a bare `:hover`;
+  `focusVariant()`/`activeVariant()` are selector-only; `mdVariant(th)`,
+  `lgVariant(th)` and `xlVariant(th)` are `@media (width >= 48rem | 64rem |
+  80rem)` and not `@media(min-width:768px)`. A breakpoint **reads its width
+  from the theme**, so a project that overrides `--breakpoint-md` gets its own
+  media query — and so the theme is genuinely an input to the class hash,
+  which is contract 4's clause 1 amended. Front 34 moves the six into its own
+  variant table and adds the rest.
+
+- **The conflict rule, written down and tested** (front
+  `56-emilia-cascade-and-output`, step 8). The last rule in the stylesheet
+  wins: inside one `emilia()` call that is the token list order, across calls
+  it is registration order, and before this front nothing said either —
+  `flushSheet` iterated a `Map` on commonJS and a `lists:keystore` list on
+  erlang and no test compared them. `[.Layout.Grid, .Layout.Flex]` renders
+  `display:grid;display:flex`, reversing the list reverses the winner and is a
+  different class, two calls render in call order, and reordering an unrelated
+  token moves no other rule.
+
+- **The drain stream layers two separators on one character, and that is
+  resolved rather than avoided** (front `56-emilia-cascade-and-output`, step
+  5). The cell joins its entries with `"\n"` and each payload joins its own
+  records with `"\n"`; the front's spec writes both without noticing. It stays
+  unambiguous because a payload record is **tagged**: a line whose first field
+  is `R` or `B` continues the entry above it, and any other line opens a new
+  one. A registered name is `e_<hex>`, so it is never `R` or `B`.
+
+- **`String.prototype.charCodeAt`'s commonJS prelude patch is self-recursive**
+  (found by front `56-emilia-cascade-and-output`). The backend installs the
+  whole `String` behavior prelude into any module using a member that needs a
+  patch — `slice` is one — and that prelude writes
+  `String.prototype.charCodeAt = function(index) { return ((this.valueOf().charCodeAt(index) ?? -1) | 0); }`,
+  which calls the patch it has just installed. One `s.slice(…)` anywhere in
+  `output.bp` therefore made `hashHex`'s host template blow the stack for every
+  non-empty class body, on commonJS only. `output.bp` splits on the separator
+  instead of slicing. Reported to botopink-lang.
+
+- **A `case` arm over a uniquely-named variant lowers to `instanceof`, and
+  `instanceof` does not cross a package boundary** (found by front
+  `56-emilia-cascade-and-output`, pre-existing). The commonJS backend lowers an
+  arm whose variant name is unique in the program to
+  `if (_s instanceof __Token__Text__Size$X3xl)` and an arm whose name repeats
+  to `if (_s.tag === "Lg")`. A consumer package re-emits its own copy of the
+  enum classes, so a value built in `examples/emilia-card/` is never
+  `instanceof` the class `emilia` matches against: the whole `case` falls
+  through and answers `undefined`. `.Text.Size.X3xl` and `.Text.Size.Base`
+  have gone missing from that example's two class bodies since before this
+  front — the pre-56 document read `.e_x{;font-weight:bold;color:red}`, and the
+  empty leading declaration is the same token going nowhere — while
+  `.Text.Size.Lg` survives only because `Lg` repeats elsewhere in `Token`. The
+  example's assertions now pin what is actually emitted, so the fix shows up
+  as a change there. Reported to botopink-lang.
+
 - **The rule model** (1.0.10-beta front `56-emilia-cascade-and-output`, steps 1–3). New
   module `modules/emilia/src/output.bp`, declared `pub mod output;` in `root.bp` and
   listed in the member manifest's `files`. It declares **no external** and touches no

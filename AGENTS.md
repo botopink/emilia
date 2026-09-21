@@ -14,13 +14,19 @@ Three named imports from `from "emilia"`:
 
 1. **`emilia(tokens: Token[]) -> string`** — the entry point. Walks
    the token list at runtime (v0 — no comptime expansion yet), maps
-   each variant to its CSS declaration, joins on `;`, hashes the body
-   into a stable class name, registers the `(name, body)` pair on the
-   per-render `Stylesheet`, returns the class name.
-2. **`flush() -> string`** — serialises the `Stylesheet` into a
-   `<style>...</style>` block AND clears the cell. Per-render
-   contract — two consecutive calls emit two independent blocks; the
-   second is `<style></style>` if no `register` happened in between.
+   each variant to a `Sheet`, encodes the sheet, hashes the encoding
+   into a stable class name, registers the `(name, payload)` pair on the
+   per-render `Stylesheet`, returns the class name. Front 56 added
+   **`emiliaWith(tokens, th)`**, the same under an explicit theme;
+   `emilia(tokens)` is `emiliaWith(tokens, defaultTheme())`.
+2. **`flush() -> string`** — drains the `Stylesheet` and renders the
+   `<style>...</style>` **document** — the `@layer` statement, the theme
+   layer, the base layer, the components layer, the utilities layer and
+   the `@keyframes` blocks — AND clears the cell. Per-render contract —
+   two consecutive calls emit two independent documents; the second has
+   no `@layer utilities` body if no `register` happened in between.
+   Front 56 added **`flushWith(o: Options)`**; `flush()` is
+   `flushWith(defaultOptions())`.
 3. **`Token` enum** — the typed authored surface (see `tokens.bp`).
    Sections (v0 flat): Text, Color, Bg, Pad + modifier variants
    (`Hover`/`Focus`/`Active`/`Md`/`Lg`/`Xl`) carrying a nested
@@ -130,11 +136,12 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 - **Not a compiler change.** No new `#[@…]` annotation in the core, no
   AST node, no codegen hook. The entire DSL is `pub fn` + `case` +
   `#[@External.<targert>(...)]` — already shipped primitives.
-- **Not a runtime CSS engine.** No selector parsing, no nested
-  selectors beyond the modifier wrappers (`Hover`, `Focus`, `Active`,
-  `Md`, `Lg`, `Xl`), no preprocessor pipeline. The scope is a flat
-  declaration list per class with the modifier wrappers nested ONE
-  level deep (and themselves nestable, e.g. `Md(Hover(...))`).
+- **Not a runtime CSS engine.** No selector parsing and no preprocessor
+  pipeline. Since front 56 a modifier is **not** a nested block: it is a
+  `Variant` — an at-rule and a selector template with one `&` — and a
+  modified token becomes a **sibling rule** hoisted out of the class
+  body. Variants nest (`Md(Hover(...))`), and the outer one is outermost
+  in the selector and in the at-rule list alike.
 - **commonJS and erlang.** The `Stylesheet` host cell is a JS `Map` on
   commonJS and an ordered `[{Name, Body}]` list in the process dictionary on
   erlang (same `register`/`flush` contract); `hashHex` folds the same djb2 on
@@ -300,6 +307,28 @@ to the commonJS row and runs once.
   resolved inside the lambda; a direct receiver (`s.contains(…)`) and a record
   field outside a lambda both work. Hoist to a typed `val`, or use `endsWith` /
   `indexOf(…) != -1`.
+- **The commonJS `String` prelude's `charCodeAt` patch is self-recursive.** The
+  backend installs the whole `String` behavior prelude into any module that uses
+  a member needing a patch — `slice` is one, `split`/`indexOf`/`startsWith` are
+  not — and that prelude writes `String.prototype.charCodeAt = function(index)
+  { return ((this.valueOf().charCodeAt(index) ?? -1) | 0); }`, which calls the
+  patch it has just installed. One `s.slice(…)` anywhere in a module therefore
+  makes every `.charCodeAt(…)` in the PROGRAM blow the stack — `hashHex`'s host
+  template does, so every non-empty class body did. Never call `String.slice` in
+  this library: split on the separator instead. erlang is unaffected, so the
+  suite is green on one target and dead on the other. Reported to botopink-lang.
+- **A `case` arm over a uniquely-named variant lowers to `instanceof`, and
+  `instanceof` does not cross a package boundary.** The commonJS backend lowers
+  an arm whose variant name is unique in the program to `_s instanceof
+  __Token__Text__Size$X3xl` and an arm whose name repeats to `_s.tag === "Lg"`.
+  A consumer package **re-emits its own copy** of the enum classes, so a value
+  built in `examples/emilia-card/` is never `instanceof` the class `emilia`
+  matches against: the `case` falls through every arm and answers `undefined`.
+  `.Text.Size.X3xl` and `.Text.Size.Base` are missing from that example's class
+  bodies for this reason and were before front 56 too; `.Text.Size.Lg` survives
+  only because `Lg` repeats elsewhere in `Token`. It is invisible inside
+  emilia's own suite, where there is one copy of the classes. Reported to
+  botopink-lang.
 - **`Array.reverse()` mutates its receiver on commonJS and does not on erlang.**
   `val rev = xs.reverse();` leaves `xs` reversed on commonJS (native
   `Array.prototype.reverse` is in-place and the codegen calls it directly) and
@@ -320,32 +349,45 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs `src/emilia.bp`'s 17 in-file `test {}` blocks, 17/17 on
-  commonJS and on erlang:
-  - 7 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
-    Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md);
-  - 4 modifier composition tests (Hover / Md / multi-token / nested);
-  - 6 public-surface smoke (empty-list class / single-token rule /
-    mixed-token join / hash collapse / Hover wrap in registered class /
-    two-flush independent blocks). The async `flush()` returns
-    `@Future<string>`; tests `await flush()` via the implicit
-    `test {…}` future context shipped in bot-lang's `test-runner-async`
-    commit.
+  refuses) runs every module's in-file `test {}` blocks, **121/121** on
+  commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
+  (`output.bp`) + 33 (`emilia.bp`). `emilia.bp`'s 33:
+  - 8 leaf dispatchers (Text.Bold / Text.Size.Lg / Color.Black /
+    Bg.White / Layout.Flex / Border.Rounded.Full / Effect.Shadow.Md,
+    plus the shape of a section rule);
+  - 5 modifier tests, each naming the row of the variant reference its
+    expected selector comes from, plus the theme-driven breakpoint;
+  - 2 codec tests walking the dispatcher's own output for a separator;
+  - 5 drain tests pinning the commonJS and Erlang host templates
+    against each other;
+  - 8 public-surface smoke (empty-list class / single-token rule /
+    mixed-token fold / hash collapse / a modifier as a sibling rule /
+    two-flush independence / the stock render's theme layer and
+    keyframes);
+  - 5 cascade tests (the conflict rule, list order, call order, an
+    unrelated reorder, a variant following the rule it varies).
+  The async `flush()` returns `@Future<string>`; tests `await flush()`
+  via the implicit `test {…}` future context shipped in bot-lang's
+  `test-runner-async` commit.
 - `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
-  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …). It
+  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …), the
+  flush one rewritten by front 56 to the layered document and the hoisted
+  modifier. It
   **builds again**: jhonstart's `fix/context` front landed on its `feat`, so the
   `hooks.bp:109 use-without-context-effect` red that used to stop the build
   inside **jhonstart** (never inside emilia) is gone, and the example's line was
   deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
   a listed example that builds fails the gate just as a red one does.
 
-- `examples/emilia-theme/` is the member `emilia-theme` and carries 6 in-file tests over
+- `examples/emilia-theme/` is the member `emilia-theme` and carries 10 in-file tests over
   the front 54 surface, imported across a package boundary (`from "emilia"`, the
   `{ "workspace": true }` form). It is green on commonJS and on erlang, builds, and runs
   (`botopink run` prints the resolved brand value, the `var(…)` reference form,
   `padding:calc(var(--spacing) * 4)`, the class name, the dark at-rule + selector, and
-  the `<style>` block). The flushed document does **not** yet carry the theme: wrapping
-  `themeCss`/`keyframeCss` in cascade layers is front 56's `withTheme`/`flushWith`.
+  the `<style>` document). Since front 56 the flushed document **does** carry the
+  theme: `main` renders it with `flushWith(withTheme(defaultOptions(), th))`, and four
+  of the ten tests cover the theme layer, the layer order, `withLayers(o, false)` and
+  `withPrefix`.
 
 ## Spec / phase status
 
@@ -357,6 +399,7 @@ to the commonJS row and runs once.
 | F3 — modifier composition | DONE for V1 (re-pinned alongside F2) |
 | F4 — `flush()` per-render | DONE — async (`@Future<string>`); test bodies await via implicit future context (bot-lang `<test-runner-async>` commit) |
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
+| 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

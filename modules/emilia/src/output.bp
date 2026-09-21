@@ -377,18 +377,21 @@ fn onePlaced(className: string, r: Rule) -> Placed[] {
     return out;
 }
 
+// NEITHER OF THESE MAY USE `String.slice`, and the reason is a codegen defect
+// rather than a preference. The commonJS backend installs the whole `String`
+// behavior prelude into any module that uses a member needing a patch — and
+// `slice` is one — and that prelude's `charCodeAt` patch is SELF-RECURSIVE
+// (`String.prototype.charCodeAt = function(i){ return this.valueOf().charCodeAt(i) … }`
+// calls the patch it just installed). One `s.slice(…)` anywhere in this module
+// therefore makes `hashHex`'s host template blow the stack in `emilia.bp`, on
+// commonJS only, for every non-empty class body. Splitting on the separator
+// costs nothing and pulls in no String patch.
 fn firstField(line: string) -> string {
-    val cut = line.indexOf("\t");
-    val head = line.slice(0, cut);
-    val out = if (cut == -1) line else head;
-    return out;
+    return field(line.split("\t"), 0);
 }
 
 fn afterFirstField(line: string) -> string {
-    val cut = line.indexOf("\t");
-    val tail = line.slice(cut + 1, line.length);
-    val out = if (cut == -1) "" else tail;
-    return out;
+    return line.split("\t").drop(1).join("\t");
 }
 
 // THE DRAIN STREAM IS TWO LAYERS OF SEPARATOR SHARING ONE CHARACTER. The cell
@@ -445,6 +448,45 @@ fn placedOfLayer(ps: Placed[], layer: string) -> Placed[] {
     return ps.filter({ p -> p.rule.layer == layer });
 }
 
+// Two rules of one class are INTERCHANGEABLE WITH ONE when they sit in the
+// same context — same at-rules, same selector, same `important`. Every token
+// of a list produces its own rule, so without this a five-token class renders
+// as five `.e_1{…}` rules where one would do, which is a document several times
+// larger than the one emilia emitted before this front for exactly the same
+// input. Only CONSECUTIVE rules are folded, so `display:grid` followed by
+// `display:flex` keeps its order and the last one still wins.
+fn sameContext(a: Rule, b: Rule) -> bool {
+    val sameAtRules = a.atRules.join("\r") == b.atRules.join("\r");
+    return a.selector == b.selector && a.important == b.important && sameAtRules;
+}
+
+fn joinedRule(a: Rule, b: Rule) -> Rule {
+    val sep = if (a.declarations == "") "" else ";";
+    return Rule(
+        layer: a.layer,
+        atRules: a.atRules,
+        selector: a.selector,
+        declarations: a.declarations + sep + b.declarations,
+        important: a.important,
+    );
+}
+
+fn mergeLast(acc: Placed[], last: Placed, p: Placed) -> Placed[] {
+    return acc.take(acc.length - 1).append(onePlaced(p.className, joinedRule(last.rule, p.rule)));
+}
+
+fn coalesceStep(acc: Placed[], p: Placed) -> Placed[] {
+    val last = acc.at(acc.length - 1) ?? p;
+    val mergeable = acc.length > 0 && last.className == p.className && sameContext(last.rule, p.rule);
+    val out = if (mergeable) mergeLast(acc, last, p) else acc.append(onePlaced(p.className, p.rule));
+    return out;
+}
+
+fn coalesce(ps: Placed[]) -> Placed[] {
+    val seed: Placed[] = [];
+    return ps.fold(seed, { acc, p -> coalesceStep(acc, p) });
+}
+
 // What a layer carries besides the registered rules: the theme's
 // custom-property block in `theme`, front 55's reset in `base`.
 fn layerExtraRules(layer: string, o: Options) -> Rule[] {
@@ -468,7 +510,7 @@ fn renderPlaced(ps: Placed[], o: Options) -> string {
 fn layerBody(layer: string, d: Drained, o: Options) -> string {
     val extras = layerExtraRules(layer, o).map({ r -> renderRule("", r, o) }).join("");
     val own = placedOfLayer(d.rules, layer);
-    val bodies = classNames(own).map({ c -> renderPlaced(orderedClassRules(own, c), o) }).join("");
+    val bodies = classNames(own).map({ c -> renderPlaced(coalesce(orderedClassRules(own, c)), o) }).join("");
     return extras + bodies;
 }
 
@@ -847,6 +889,26 @@ test "renderDocument — a class whose sheet is empty contributes no rule" {
     val payload = barePayload("e_1", emptySheet()) + "\n" + barePayload("e_2", declSheet("color:red"));
     val doc = renderDocument(payload, bareOptions());
     assert doc == "<style>@layer theme, base, components, utilities;@layer utilities{.e_2{color:red}}</style>";
+}
+
+test "renderDocument — consecutive rules of one class in one context fold into one" {
+    val s = mergeSheet(mergeSheet(declSheet("display:grid"), declSheet("display:flex")), declSheet("color:red"));
+    val doc = renderDocument(barePayload("e_1", s), bareOptions());
+    assert doc == "<style>@layer theme, base, components, utilities;@layer utilities{.e_1{display:grid;display:flex;color:red}}</style>";
+}
+
+test "renderDocument — folding stops at a context change and at a class boundary" {
+    val md = Variant(atRule: "@media (width >= 48rem)", selector: "&");
+    val s = mergeSheet(declSheet("color:red"), nestVariant(declSheet("color:blue"), md));
+    val payload = barePayload("e_1", s) + "\n" + barePayload("e_2", declSheet("color:green"));
+    val doc = renderDocument(payload, bareOptions());
+    assert doc == "<style>@layer theme, base, components, utilities;@layer utilities{.e_1{color:red}@media (width >= 48rem){.e_1{color:blue}}.e_2{color:green}}</style>";
+}
+
+test "renderDocument — an important rule does not fold into the plain rule beside it" {
+    val s = mergeSheet(declSheet("color:red"), markImportant(declSheet("color:blue")));
+    val doc = renderDocument(barePayload("e_1", s), bareOptions());
+    assert doc == "<style>@layer theme, base, components, utilities;@layer utilities{.e_1{color:red}.e_1{color:blue!important}}</style>";
 }
 
 test "renderDocument — the prefix reaches every registered class and no literal selector" {

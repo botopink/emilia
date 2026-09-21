@@ -8,13 +8,15 @@
 // composition and proves the front 54 surface is reachable across a package
 // boundary through `from "emilia"`.
 //
-// What it does NOT show is the flushed document carrying the theme: wrapping
-// `themeCss`/`keyframeCss` into a `<style>` block with its cascade layers is
-// front 56's `defaultOptions`/`withTheme`/`flushWith`, which do not exist yet.
-// Until they do, the theme is composed and read here, and `flush()` still
-// emits only the utility classes.
+// Front 56 closed the half this example used to be missing: the flushed
+// document carries the theme now. `flushWith(withTheme(defaultOptions(), th))`
+// renders the brand theme into a `:root` block inside the `theme` cascade
+// layer, ahead of the `utilities` layer the card's class lands in, so a
+// project's own CSS can beat a utility deliberately instead of by accident of
+// order.
 
-import {emilia, flush, Token} from "emilia";
+import {emilia, flush, flushWith, Token} from "emilia";
+import {Options, Rule, defaultOptions, withTheme, withPrefix, withLayers} from "emilia";
 import {Theme, ThemeEntry, Ns, DarkMode} from "emilia";
 import {defaultTheme, extendTheme, clearNamespace, namespace} from "emilia";
 import {themeValue, themeVar, themeCss, keyframeCss} from "emilia";
@@ -67,7 +69,7 @@ fn main() -> @Future<void> {
     @print(cardPadding());
     @print(card());
     @print(darkAtRule(th) + " " + darkSelector(th));
-    val styles = await flush();
+    val styles = await flushWith(withTheme(defaultOptions(), th));
     @print(styles);
 }
 
@@ -114,4 +116,37 @@ test "the dark strategy is a property of the theme, chosen once per project" {
     assert darkAtRule(brandTheme()) == "@media (prefers-color-scheme: dark)";
     assert darkSelector(byClass) == "&:where(.dark, .dark *)";
     assert themeCss(byClass) == themeCss(brandTheme());
+}
+
+test "the flushed document carries the brand theme, in the theme layer" {
+    val _cls = card();
+    val styles = await flushWith(withTheme(defaultOptions(), brandTheme()));
+    assert styles.startsWith("<style>@layer theme, base, components, utilities;@layer theme{:root{--spacing:4px;");
+    assert styles.indexOf("--color-lagoon:oklch(0.72 0.11 221.19)") != -1;
+    assert styles.indexOf("--color-white") == -1;
+    assert styles.indexOf("@layer utilities{.") != -1;
+}
+
+test "the theme layer precedes the utilities layer, which is what lets a project beat a utility" {
+    val cls = card();
+    val styles = await flushWith(withTheme(defaultOptions(), brandTheme()));
+    assert styles.indexOf("@layer theme{") < styles.indexOf("@layer utilities{");
+    assert styles.indexOf("@layer utilities{." + cls + "{background:#ffffff;font-weight:bold}}") != -1;
+}
+
+test "turning the layers off emits the same rules and no @layer token" {
+    val cls = card();
+    val o = withLayers(withTheme(defaultOptions(), brandTheme()), false);
+    val styles = await flushWith(o);
+    assert styles.indexOf("@layer") == -1;
+    assert styles.startsWith("<style>:root{--spacing:4px;");
+    assert styles.indexOf("." + cls + "{background:#ffffff;font-weight:bold}") != -1;
+}
+
+test "a prefix reaches the class and not the theme's literal selector" {
+    val cls = card();
+    val o = withPrefix(withTheme(defaultOptions(), brandTheme()), "tw_");
+    val styles = await flushWith(o);
+    assert styles.indexOf(":root{--spacing:4px;") != -1;
+    assert styles.indexOf(".tw_" + cls + "{background:#ffffff;font-weight:bold}") != -1;
 }

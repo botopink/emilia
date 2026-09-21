@@ -118,10 +118,14 @@ Token.PadY2                 // padding-top:0.5rem;padding-bottom:0.5rem
 Token.PadAll4               // padding:1rem
 ```
 
-### Modifiers — state + breakpoint wrappers
+### Modifiers — state + breakpoint variants
 
-Each modifier carries a `Token[]` payload that emilia recursively
-resolves and wraps in the matching CSS prefix:
+Each modifier carries a `Token[]` payload. A modifier is **not** a block
+nested inside the class body — it is a `Variant`, and the tokens it carries
+become **sibling rules** with their own selector and their own at-rule, hoisted
+out of the class. The table below is the pre-front-56 shape and is kept only
+because the token spellings are still current; the emitted CSS is in
+§ The cascade and the output.
 
 ```bp
 Token.Hover([Token.BgRed700])           // :hover{background:#ef4444}        (BgRed700 maps if added)
@@ -142,15 +146,25 @@ Token.Md([Token.Hover([Token.BgBlack])])
 ## The runtime — `emilia(tokens)` and `flush()`
 
 - `emilia(tokens: Token[]) -> string`
-  - Maps each token through `tokenToCss`, filters empty declarations,
-    joins on `;`, content-hashes the body, registers
-    `(e_<hash>, body)` on the per-render `Stylesheet`, returns the
-    class name.
+  - Maps each token through `tokenToSheet`, merges the sheets in list order,
+    encodes the result, content-hashes the encoding, registers
+    `(e_<hash>, payload)` on the per-render `Stylesheet`, returns the class
+    name.
+- `emiliaWith(tokens: Token[], th: Theme) -> string`
+  - The same, under an explicit theme. `emilia(tokens)` is
+    `emiliaWith(tokens, defaultTheme())`. The theme is an input: a `Md`
+    modifier carries the theme's `--breakpoint-md`, so two themes give two
+    classes for the same token list.
 - `flush() -> string`
-  - Serialises the `Stylesheet` into `<style>.e_<hash>{...} ...</style>`
-    AND clears the cell. Per-render contract: two consecutive
-    `flush()` calls emit two independent blocks; the second is
-    `<style></style>` if no `register` happened between them.
+  - Drains the `Stylesheet` and renders the **document** — the `@layer`
+    statement, the theme layer, the base layer, the components layer, the
+    utilities layer and the `@keyframes` blocks — AND clears the cell.
+    Per-render contract: two consecutive `flush()` calls emit two
+    independent documents; the second has no `@layer utilities` body if no
+    `register` happened between them.
+- `flushWith(o: Options) -> string`
+  - The same, under explicit options. `flush()` is
+    `flushWith(defaultOptions())`. See § The cascade and the output.
 
 ### Stable hashes — sites collapse
 

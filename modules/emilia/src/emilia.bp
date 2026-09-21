@@ -1,17 +1,44 @@
 import {Token} from "tokens";
+import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
+import {Rule, Block, Sheet, Variant, Options} from "output";
+import {emptySheet, declSheet, mergeSheet, declarationsOf, nestVariant} from "output";
+import {encodeSheet, decodeSheet, carriesSeparator} from "output";
+import {defaultOptions, withTheme, renderDocument} from "output";
 
-// ── host-cell externals ──────────────────────────────────────────────────────
+//// ═══ FRONT 56 · the host cells and the public entry points ═══════════════
+////
+//// Everything between this banner and the section sub-dispatchers below is
+//// front 56's (`specs/1.0.10-beta/05-emilia/56-emilia-cascade-and-output/`).
+//// The per-section sub-dispatchers under it are fronts 33-47's, 57's and
+//// 58's, and this front does not touch them.
+
+// ── host cells ────────────────────────────────────────────────────
 //
 // The `Stylesheet` host cell is a JS `Map` lazily created on `globalThis`
 // (commonJS), or an ordered `[{Name, Body}]` list in the process dictionary
 // under `'__emilia_sheet'` (erlang: `lists:keystore` keeps the Map's
 // insertion order, `erase` clears it).
-// `register(name, body)` writes (name → body) to the cell. `flushSheet()`
-// serialises the cell into a `<style>` block and clears it (per-render
-// contract: two consecutive flushes emit two independent blocks; the second
-// is `<style></style>` if no register happened in between).
 //
-// `flushSheet` returns `@Future<string>` — wrapped in `Promise.resolve(...)`
+// THE CELL IS A DUMB STRING STORE AND NOTHING ELSE. It used to assemble the
+// `<style>` document itself, twice — once in the commonJS template and once in
+// the Erlang one — which is where the byte-level divergence risk lived and
+// which nothing written in botopink could test. `drainRules()` hands the raw
+// payloads back instead and `output.bp` renders them, in one place, on both
+// targets. Every ordering decision, every brace and the `<style>` element
+// itself now live in `renderDocument`.
+//
+// `register(name, body)` writes (name -> body). `drainRules()` returns the
+// entries as `name + "\t" + payload` records joined by `"\n"`, in insertion
+// order, and clears the cell — the per-render contract the old `flushSheet`
+// had: two consecutive drains give two independent documents, and the second
+// registers nothing.
+//
+// A payload is an `encodeSheet` string, whose own records are ALSO joined by
+// `"\n"`, so the drain stream layers two separators on one character. It stays
+// unambiguous because a payload record is tagged `R` or `B` and a registered
+// name never is; `output.bp`'s `drainStep` is where that is written down.
+//
+// `drainRules` returns `@Future<string>` — wrapped in `Promise.resolve(...)`
 // so the public `flush()` surface is awaitable from any callsite (an SSR
 // pipeline may chain it with `await renderToString(page)` symmetric to
 // `await fetch(url)` from `std/http`). Tests support `await` via the
@@ -25,9 +52,9 @@ import {Token} from "tokens";
 declare fn register(name: string, body: string) -> void;
 
 #[@future]
-#[@External.node(when(argc == 0): """Promise.resolve((function(){ var __M = (globalThis.__emilia_sheet ||= new Map()); var __S = "<style>" + Array.from(__M.entries()).map(function(__E){ return "." + __E[0] + "{" + __E[1] + "}"; }).join("") + "</style>"; __M.clear(); return __S; })())""")]
-#[@External.Erlang("""(fun() -> L__ = case erase('__emilia_sheet') of undefined -> []; X__ -> X__ end, iolist_to_binary([<<"<style>">>, [[<<".">>, K__, <<"{">>, V__, <<"}">>] || {K__, V__} <- L__], <<"</style>">>]) end)()""")]
-declare fn flushSheet() -> @Future<string>;
+#[@External.node(when(argc == 0): """Promise.resolve((function(){ var __M = (globalThis.__emilia_sheet ||= new Map()); var __S = Array.from(__M.entries()).map(function(__E){ return __E[0] + "\t" + __E[1]; }).join("\n"); __M.clear(); return __S; })())""")]
+#[@External.Erlang("""(fun() -> L__ = case erase('__emilia_sheet') of undefined -> []; X__ -> X__ end, iolist_to_binary(lists:join(<<"\n">>, [[K__, <<"\t">>, V__] || {K__, V__} <- L__])) end)()""")]
+declare fn drainRules() -> @Future<string>;
 
 // Content-derived class id. djb2-style fold over the body's UTF-16 code
 // units, rendered as a lowercase hex string. Identical inputs → identical
@@ -35,73 +62,145 @@ declare fn flushSheet() -> @Future<string>;
 // folds the same djb2 over the codepoints masked to 32 bits, so both targets
 // produce the same class name for ASCII rule bodies (astral characters are one
 // codepoint in erlang, two UTF-16 units in JS).
+//
+// WHAT IS FOLDED CHANGED WITH FRONT 56, and contract 4 of the milestone takes
+// the amendment. It used to be `tokensToCss(tokens)`; it is
+// `encodeSheet(tokensToSheet(tokens, th))` now, because a `Sheet` is what a
+// token list produces. Every property the contract rests on survives: still a
+// pure function of its input, still ASCII-only, token order is still class
+// identity. The one clause that changes is clause 1 — the hash is a pure
+// function of the token list AND THE THEME, because a `md:` variant carries the
+// theme's `--breakpoint-md` and a themed utility will carry more. The literal
+// hex of any pinned fixture is regenerated once, here.
 #[@External.node(when(argc == 1): """(function(__S){ var __H = 5381; for (var __I = 0; __I < __S.length; __I++) { __H = (Math.imul(__H, 33) + __S.charCodeAt(__I)) >>> 0; } return __H.toString(16); })($0)""")]
 #[@External.Erlang("""(fun(S__) -> H__ = lists:foldl(fun(C__, A__) -> (A__ * 33 + C__) band 16#FFFFFFFF end, 5381, unicode:characters_to_list(S__)), list_to_binary(string:lowercase(integer_to_list(H__, 16))) end)($0)""")]
 declare fn hashHex(s: string) -> string;
 
-// ── public API ───────────────────────────────────────────────────────────────
+// ── public API ───────────────────────────────────────────────────
 
-// Walk a `Token[]` array → register its rule body on the Stylesheet → return
-// the assigned class name. The single public emilia call.
-pub fn emilia(tokens: Token[]) -> string {
-    val rules = tokensToCss(tokens);
-    val name = "e_" + hashHex(rules);
-    register(name, rules);
+// Walk a `Token[]` under a theme → encode the `Sheet` it produces → register
+// it under its content hash → return the assigned class name.
+pub fn emiliaWith(tokens: Token[], th: Theme) -> string {
+    val payload = encodeSheet(tokensToSheet(tokens, th));
+    val name = "e_" + hashHex(payload);
+    register(name, payload);
     return name;
 }
 
-// Serialise the Stylesheet into a `<style>...</style>` block AND clear
-// the cell. Per-render contract — two consecutive calls emit two
-// independent blocks; the second is `<style></style>` if no `register`
-// happened in between.
-//
-// Async (`@Future<string>`) so the SSR caller can chain it with the
-// other async pieces of a render pipeline (`await renderToString(page)
-// + await flush()`). Tests resolve the future inline via the implicit
-// `test {…}` future context.
-#[@future]
-pub fn flush() -> @Future<string> {
-    return await flushSheet();
+// The single public emilia call, on the stock theme. The signature is the one
+// it had before front 56, so no consumer changes.
+pub fn emilia(tokens: Token[]) -> string {
+    return emiliaWith(tokens, defaultTheme());
 }
 
-// Exhaustive dispatch over the V1 nested-section `Token` enum. Each
-// section pattern (`Text(inner)`, `Color(inner)`, …) routes to a typed
-// sub-dispatcher; each modifier pattern (`Hover(inner)`, `Md(inner)`,
-// …) wraps the composed inner CSS in the matching pseudo/media block
-// via `tokensToCss`. Adding a new top-level section + modifier requires
-// extending both this switch and the corresponding sub-dispatcher.
-fn tokenToCss(t: Token) -> string {
+// Drain the cell and render the document under `o`. Per-render contract — two
+// consecutive calls emit two independent documents; the second carries the
+// theme and base layers `o` asks for and no `@layer utilities` body, because
+// nothing registered in between.
+//
+// Async (`@Future<string>`) so the SSR caller can chain it with the other
+// async pieces of a render pipeline (`await renderToString(page) + await
+// flush()`). Tests resolve the future inline via the implicit `test {…}`
+// future context.
+#[@future]
+pub fn flushWith(o: Options) -> @Future<string> {
+    val raw = await drainRules();
+    return renderDocument(raw, o);
+}
+
+// The stock render: emilia's default theme, no reset, no prefix, cascade
+// layers on. The signature is the one it had before front 56.
+#[@future]
+pub fn flush() -> @Future<string> {
+    return await flushWith(defaultOptions());
+}
+
+// ── the shared dispatcher ───────────────────────────────────────────
+
+// Exhaustive dispatch over the V1 nested-section `Token` enum, and the ONE
+// line each of fronts 33-47 owns. A section arm adapts its sub-dispatcher's
+// declaration string with `declSheet(…)`; a modifier arm wraps the inner
+// sheet in a `Variant`. A front whose tokens genuinely need a selector
+// (`space-x-*`, `divide-*`) swaps its arm for `…TokenToSheet(_inner, th)` and
+// says so in its own README: two shapes, one line each.
+//
+// THE THEME REACHES THIS DISPATCHER, NOT THE SUB-DISPATCHERS. The ten section
+// sub-dispatchers keep their front 54 signature; the front that needs the
+// theme adds the parameter to its own function and to its own line here. The
+// spec of this front asks 56 to change all ten signatures at once, which would
+// have front 56 editing ten functions three other fronts are rewriting in
+// parallel for no gain — the arm is one line either way.
+fn tokenToSheet(t: Token, th: Theme) -> Sheet {
     val out = case t {
-        Text(_inner) -> textTokenToCss(_inner);
-        Font(_inner) -> fontTokenToCss(_inner);
-        Color(_inner) -> colorTokenToCss(_inner);
-        Bg(_inner) -> bgTokenToCss(_inner);
-        Pad(_inner) -> padTokenToCss(_inner);
-        Margin(_inner) -> marginTokenToCss(_inner);
-        Layout(_inner) -> layoutTokenToCss(_inner);
-        Flex(_inner) -> flexTokenToCss(_inner);
-        Border(_inner) -> borderTokenToCss(_inner);
-        Effect(_inner) -> effectTokenToCss(_inner);
-        Hover(inner) -> ":hover{" + tokensToCss(inner) + "}";
-        Focus(inner) -> ":focus{" + tokensToCss(inner) + "}";
-        Active(inner) -> ":active{" + tokensToCss(inner) + "}";
-        Md(inner) -> "@media(min-width:768px){" + tokensToCss(inner) + "}";
-        Lg(inner) -> "@media(min-width:1024px){" + tokensToCss(inner) + "}";
-        Xl(inner) -> "@media(min-width:1280px){" + tokensToCss(inner) + "}";
+        Text(_inner) -> declSheet(textTokenToCss(_inner));
+        Font(_inner) -> declSheet(fontTokenToCss(_inner));
+        Color(_inner) -> declSheet(colorTokenToCss(_inner));
+        Bg(_inner) -> declSheet(bgTokenToCss(_inner));
+        Pad(_inner) -> declSheet(padTokenToCss(_inner));
+        Margin(_inner) -> declSheet(marginTokenToCss(_inner));
+        Layout(_inner) -> declSheet(layoutTokenToCss(_inner));
+        Flex(_inner) -> declSheet(flexTokenToCss(_inner));
+        Border(_inner) -> declSheet(borderTokenToCss(_inner));
+        Effect(_inner) -> declSheet(effectTokenToCss(_inner));
+        Hover(inner) -> nestVariant(tokensToSheet(inner, th), hoverVariant());
+        Focus(inner) -> nestVariant(tokensToSheet(inner, th), focusVariant());
+        Active(inner) -> nestVariant(tokensToSheet(inner, th), activeVariant());
+        Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th));
+        Lg(inner) -> nestVariant(tokensToSheet(inner, th), lgVariant(th));
+        Xl(inner) -> nestVariant(tokensToSheet(inner, th), xlVariant(th));
     };
     return out;
 }
 
-// Recursive helper used by the modifier arms — same fold-to-CSS shape
-// as the (deferred) public `emilia()` entry point's inner pipeline,
-// but WITHOUT the `register` side effect. Modifiers compose their inner
-// declarations into a single wrapped string; the outer `emilia()`
-// (when re-authored under the F0 follow-up — V0 surface dropped during
-// the `3f77623` WIP migration to V1 enum-sections) does the hashing +
-// register once at the top.
-fn tokensToCss(tokens: Token[]) -> string {
-    return tokens.map({ t -> tokenToCss(t) }).filter({ d -> d != "" }).join(";");
+// Fold a token list into one sheet. LIST ORDER IS PRESERVED, which is what
+// makes token order class identity and what makes the last token setting a
+// property the one that wins.
+fn tokensToSheet(tokens: Token[], th: Theme) -> Sheet {
+    return tokens.fold(emptySheet(), { acc, t -> mergeSheet(acc, tokenToSheet(t, th)) });
 }
+
+// ── the six V1 modifiers, as variants ───────────────────────────────────
+//
+// FRONT 34 OWNS THE VARIANT TABLE. These six are the modifiers the V1 `Token`
+// enum already carries, written against the reference's variant table rather
+// than against the literals they used to emit: `hover` is
+// `@media (hover: hover) { &:hover }` and not a bare `:hover`, and a breakpoint
+// is `@media (width >= 48rem)` and not `@media(min-width:768px)`. Front 34
+// moves them into its own table and adds the other ninety.
+//
+// A breakpoint reads its width FROM THE THEME, so a project that overrides
+// `--breakpoint-md` gets its own media query rather than emilia's — and so the
+// theme is genuinely an input to the class hash, which is the clause of
+// contract 4 this front amends.
+pub fn hoverVariant() -> Variant {
+    return Variant(atRule: "@media (hover: hover)", selector: "&:hover");
+}
+
+pub fn focusVariant() -> Variant {
+    return Variant(atRule: "", selector: "&:focus");
+}
+
+pub fn activeVariant() -> Variant {
+    return Variant(atRule: "", selector: "&:active");
+}
+
+fn breakpointVariant(th: Theme, name: string) -> Variant {
+    return Variant(atRule: "@media (width >= " + themeValue(th, name) + ")", selector: "&");
+}
+
+pub fn mdVariant(th: Theme) -> Variant {
+    return breakpointVariant(th, "--breakpoint-md");
+}
+
+pub fn lgVariant(th: Theme) -> Variant {
+    return breakpointVariant(th, "--breakpoint-lg");
+}
+
+pub fn xlVariant(th: Theme) -> Variant {
+    return breakpointVariant(th, "--breakpoint-xl");
+}
+
+//// ═══ END FRONT 56 — everything below is fronts 33-47, 57 and 58 ═════════
 
 fn textTokenToCss(t: Token.Text) -> string {
     val out = case t {
@@ -397,93 +496,233 @@ fn redPaletteHex(s: Token.Color.Red) -> string {
     return out;
 }
 
-// ── tests ────────────────────────────────────────────────────────────────────
-// V1 enum-section dispatch smoke. The full `emilia(tokens)/flush()`
-// public surface dropped during the `3f77623` WIP migration is not
-// re-authored here (a follow-up under `v0.beta.22 ecosystem-and-snap-
-// tail` F0-extension); these tests pin `tokenToCss` exhaustiveness +
-// modifier composition shape for the post-V1 leaf set.
+// ── front 56 · test helpers ───────────────────────────────────────────
 
-test "tokenToCss — Text.Bold lowers to font-weight:bold" {
-    assert tokenToCss(.Text.Bold) == "font-weight:bold";
+// A document with no theme in it, so a cascade assertion reads as the rules
+// the test registered rather than as the stock theme's hundred variables.
+fn bareOptions() -> Options {
+    return withTheme(defaultOptions(), emptyTheme());
 }
 
-test "tokenToCss — Text.Size.Lg lowers to font-size:1.125rem" {
-    assert tokenToCss(.Text.Size.Lg) == "font-size:1.125rem";
+fn firstRuleOf(s: Sheet) -> Rule {
+    val none: string[] = [];
+    val fallback = Rule(layer: "", atRules: none, selector: "", declarations: "", important: false);
+    val out = s.rules.at(0) ?? fallback;
+    return out;
 }
 
-test "tokenToCss — Color.Black lowers to color:#000000" {
-    assert tokenToCss(.Color.Black) == "color:#000000";
+// What one token declares, ignoring where it declares it. The seven leaf tests
+// below read this; anything about a selector or an at-rule reads the rule.
+fn tokenDeclarations(t: Token) -> string {
+    return declarationsOf(tokenToSheet(t, defaultTheme())).join(";");
 }
 
-test "tokenToCss — Bg.White lowers to background:#ffffff" {
-    assert tokenToCss(.Bg.White) == "background:#ffffff";
+// ── tests · the leaf dispatchers ────────────────────────────────────────
+// V1 enum-section dispatch smoke, unchanged in substance by front 56: a
+// section sub-dispatcher still answers a declaration string, and these pin
+// that. What changed is that the string reaches the document through a `Rule`.
+
+test "tokenToSheet — Text.Bold lowers to font-weight:bold" {
+    assert tokenDeclarations(.Text.Bold) == "font-weight:bold";
 }
 
-test "tokenToCss — Layout.Flex lowers to display:flex" {
-    assert tokenToCss(.Layout.Flex) == "display:flex";
+test "tokenToSheet — Text.Size.Lg lowers to font-size:1.125rem" {
+    assert tokenDeclarations(.Text.Size.Lg) == "font-size:1.125rem";
 }
 
-test "tokenToCss — Border.Rounded.Full lowers to border-radius:9999px" {
-    assert tokenToCss(.Border.Rounded.Full) == "border-radius:9999px";
+test "tokenToSheet — Color.Black lowers to color:#000000" {
+    assert tokenDeclarations(.Color.Black) == "color:#000000";
 }
 
-test "tokenToCss — Effect.Shadow.Md lowers to box-shadow:md" {
-    assert tokenToCss(.Effect.Shadow.Md) == "box-shadow:md";
+test "tokenToSheet — Bg.White lowers to background:#ffffff" {
+    assert tokenDeclarations(.Bg.White) == "background:#ffffff";
 }
 
-test "tokenToCss — Hover modifier wraps inner CSS in :hover{...}" {
+test "tokenToSheet — Layout.Flex lowers to display:flex" {
+    assert tokenDeclarations(.Layout.Flex) == "display:flex";
+}
+
+test "tokenToSheet — Border.Rounded.Full lowers to border-radius:9999px" {
+    assert tokenDeclarations(.Border.Rounded.Full) == "border-radius:9999px";
+}
+
+test "tokenToSheet — Effect.Shadow.Md lowers to box-shadow:md" {
+    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:md";
+}
+
+test "tokenToSheet — a section token is one utilities rule on the bare ampersand" {
+    val r = firstRuleOf(tokenToSheet(.Text.Bold, defaultTheme()));
+    assert r.layer == "utilities";
+    assert r.selector == "&";
+    assert r.atRules.length == 0;
+    assert r.important == false;
+}
+
+// ── tests · the six modifiers, against the variant reference ────────────────
+//
+// Every expected selector below names the row of the reference's variant table
+// it comes from. These six assertions used to read `":hover{…}"` and
+// `"@media(min-width:768px){…}"`, both of which the table contradicts; front 56
+// owns the break.
+
+test "Hover — the `hover` row is `@media (hover: hover) { &:hover }`, not a bare :hover" {
     val inner: Token[] = [.Color.Black];
-    val h = Token.Hover(inner);
-    val css = tokenToCss(h);
-    assert css == ":hover{color:#000000}";
+    val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
+    assert r.selector == "&:hover";
+    assert r.atRules.join("|") == "@media (hover: hover)";
+    assert r.declarations == "color:#000000";
 }
 
-test "tokenToCss — Md modifier wraps inner CSS in @media(min-width:768px){...}" {
+test "Focus and Active — the `focus` and `active` rows are selector-only" {
     val inner: Token[] = [.Text.Bold];
-    val m = Token.Md(inner);
-    val css = tokenToCss(m);
-    assert css == "@media(min-width:768px){font-weight:bold}";
+    val f = firstRuleOf(tokenToSheet(Token.Focus(inner), defaultTheme()));
+    assert f.selector == "&:focus";
+    assert f.atRules.length == 0;
+    val a = firstRuleOf(tokenToSheet(Token.Active(inner), defaultTheme()));
+    assert a.selector == "&:active";
+    assert a.atRules.length == 0;
 }
 
-test "tokensToCss — composes a multi-token list with ';' separator" {
+test "Md, Lg and Xl — the breakpoint rows are `@media (width >= <n>rem)`, read from the theme" {
+    val inner: Token[] = [.Text.Bold];
+    assert firstRuleOf(tokenToSheet(Token.Md(inner), defaultTheme())).atRules.join("|") == "@media (width >= 48rem)";
+    assert firstRuleOf(tokenToSheet(Token.Lg(inner), defaultTheme())).atRules.join("|") == "@media (width >= 64rem)";
+    assert firstRuleOf(tokenToSheet(Token.Xl(inner), defaultTheme())).atRules.join("|") == "@media (width >= 80rem)";
+    assert firstRuleOf(tokenToSheet(Token.Md(inner), defaultTheme())).selector == "&";
+}
+
+test "tokensToSheet — a multi-token list is one rule per token, in order" {
     val list: Token[] = [.Text.Bold, .Color.Black];
-    val css = tokensToCss(list);
-    assert css == "font-weight:bold;color:#000000";
+    val s = tokensToSheet(list, defaultTheme());
+    assert s.rules.length == 2;
+    assert declarationsOf(s).join(";") == "font-weight:bold;color:#000000";
 }
 
-test "tokenToCss — nested modifiers compose left-to-right" {
+test "nested modifiers — the outer modifier is outermost, in both halves" {
     val deepest: Token[] = [.Text.Bold];
     val mid: Token[] = [Token.Md(deepest)];
-    val outer = Token.Hover(mid);
-    val css = tokenToCss(outer);
-    assert css == ":hover{@media(min-width:768px){font-weight:bold}}";
+    val r = firstRuleOf(tokenToSheet(Token.Hover(mid), defaultTheme()));
+    assert r.selector == "&:hover";
+    assert r.atRules.join("|") == "@media (hover: hover)|@media (width >= 48rem)";
 }
 
-// ── public emilia/flush smoke ────────────────────────────────────────────────
+test "a breakpoint follows the theme, so the theme is an input to the class hash" {
+    val wide: ThemeEntry[] = [ThemeEntry(name: "--breakpoint-md", value: "50rem")];
+    val th = extendTheme(defaultTheme(), wide);
+    val inner: Token[] = [.Text.Bold];
+    assert firstRuleOf(tokenToSheet(Token.Md(inner), th)).atRules.join("|") == "@media (width >= 50rem)";
+    val tokens: Token[] = [Token.Md(inner)];
+    assert emiliaWith(tokens, th) != emiliaWith(tokens, defaultTheme());
+    val _drop = await flush();
+}
 
-test "emilia of an empty token list registers a (stable) empty-body class" {
+// ── tests · the codec assumption, over the dispatcher's own output ──────────
+
+fn everySectionToken() -> Token[] {
+    val hoverInner: Token[] = [.Color.Black];
+    val mdInner: Token[] = [.Text.Bold];
+    val out: Token[] = [
+        .Text.Bold,
+        .Text.Size.Lg,
+        .Font.Sans,
+        .Font.Weight.Bold,
+        .Color.Black,
+        .Bg.White,
+        .Pad.All.__4,
+        .Margin.Y.__2,
+        .Layout.Flex,
+        .Flex.Gap.__4,
+        .Border.Rounded.Full,
+        .Effect.Shadow.Md,
+        Token.Hover(hoverInner),
+        Token.Md(mdInner),
+    ];
+    return out;
+}
+
+test "codec — no declaration any dispatcher produces carries a codec separator" {
+    val s = tokensToSheet(everySectionToken(), defaultTheme());
+    assert s.rules.length == 14;
+    assert declarationsOf(s).any({ d -> carriesSeparator(d) }) == false;
+    assert s.rules.any({ r -> carriesSeparator(r.selector) }) == false;
+    assert s.rules.any({ r -> carriesSeparator(r.atRules.join("")) }) == false;
+}
+
+test "codec — a full dispatcher sheet round-trips through the cell encoding" {
+    val s = tokensToSheet(everySectionToken(), defaultTheme());
+    val raw = encodeSheet(s);
+    assert encodeSheet(decodeSheet(raw)) == raw;
+    assert decodeSheet(raw).rules.length == 14;
+}
+
+// ── tests · the host cell and the drain ────────────────────────────────
+//
+// The two templates are written twice, once per target, and the whole point of
+// moving assembly out of them is that the divergence became testable: every
+// assertion here runs on `--target commonJS` and on `--target erlang`, and a
+// drain that is green on one only means the other is wrong.
+
+test "drainRules — nothing registered drains to the empty string" {
+    val raw = await drainRules();
+    assert raw == "";
+}
+
+test "drainRules — the payloads come back verbatim, in insertion order" {
+    register("e_a", "P1");
+    register("e_b", "P2");
+    val raw = await drainRules();
+    assert raw == "e_a\tP1\ne_b\tP2";
+}
+
+test "drainRules — a drain clears the cell, so the second of two is empty" {
+    register("e_a", "P1");
+    val first = await drainRules();
+    val second = await drainRules();
+    assert first == "e_a\tP1";
+    assert second == "";
+}
+
+test "drainRules — re-registering a name keeps its position and replaces its payload" {
+    register("e_a", "P1");
+    register("e_b", "P2");
+    register("e_a", "P3");
+    val raw = await drainRules();
+    assert raw == "e_a\tP3\ne_b\tP2";
+}
+
+test "drainRules — the cell assembles nothing: no `<style>`, no brace, in what it hands back" {
+    val tokens: Token[] = [.Bg.Black];
+    val _cls = emilia(tokens);
+    val raw = await drainRules();
+    assert raw.indexOf("<") == -1;
+    assert raw.indexOf("{") == -1;
+    assert raw.indexOf("}") == -1;
+}
+
+// ── tests · the public surface ──────────────────────────────────────
+
+test "emilia of an empty token list is a stable class that contributes no rule" {
     val empty: Token[] = [];
     val a = emilia(empty);
     val b = emilia(empty);
     assert a == b;
     assert a.startsWith("e_");
-    val styles = await flush();
-    assert styles == "<style>." + a + "{}</style>";
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;</style>";
 }
 
 test "emilia of one text token produces a single-declaration rule" {
     val tokens: Token[] = [.Text.Bold];
     val cls = emilia(tokens);
-    val styles = await flush();
-    assert styles == "<style>." + cls + "{font-weight:bold}</style>";
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{." + cls + "{font-weight:bold}}</style>";
 }
 
-test "emilia of mixed tokens joins declarations with ';'" {
+test "emilia of mixed tokens folds one class into one rule" {
     val tokens: Token[] = [.Bg.White, .Text.Size.Lg];
     val cls = emilia(tokens);
-    val styles = await flush();
-    assert styles == "<style>." + cls + "{background:#ffffff;font-size:1.125rem}</style>";
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{." + cls + "{background:#ffffff;font-size:1.125rem}}</style>";
 }
 
 test "two emilia sites with the same token list collapse to one class" {
@@ -491,8 +730,8 @@ test "two emilia sites with the same token list collapse to one class" {
     val a = emilia(tokens);
     val b = emilia(tokens);
     assert a == b;
-    val styles = await flush();
-    assert styles == "<style>." + a + "{background:#ffffff}</style>";
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{." + a + "{background:#ffffff}}</style>";
 }
 
 // Hex(value) payload variant inside a nested section can't be constructed
@@ -502,19 +741,85 @@ test "two emilia sites with the same token list collapse to one class" {
 // shorthand for that shape lands, callers wrap the call in a fn or use
 // the typed `val` intermediate. Tracked as part of `enum-sections` tail.
 
-test "Hover modifier wraps inner tokens in a ':hover{...}' block" {
+test "a modifier is a SIBLING rule now, not a block nested inside the class" {
     val inner: Token[] = [.Bg.White, .Text.Bold];
     val tokens: Token[] = [.Bg.Black, Token.Hover(inner)];
     val cls = emilia(tokens);
-    val styles = await flush();
-    assert styles == "<style>." + cls + "{background:#000000;:hover{background:#ffffff;font-weight:bold}}</style>";
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{background:#000000}@media (hover: hover){." + cls
+        + ":hover{background:#ffffff;font-weight:bold}}}</style>";
 }
 
-test "two consecutive flushes emit two independent blocks" {
+test "two consecutive flushes emit two independent documents" {
     val first: Token[] = [.Text.Bold];
     val _a = emilia(first);
-    val s1 = await flush();
-    val s2 = await flush();
-    assert s1.startsWith("<style>");
-    assert s2 == "<style></style>";
+    val s1 = await flushWith(bareOptions());
+    val s2 = await flushWith(bareOptions());
+    assert s1.indexOf("@layer utilities{") != -1;
+    assert s2 == "<style>@layer theme, base, components, utilities;</style>";
 }
+
+test "flush — the stock render carries the theme layer and the stock keyframes" {
+    val tokens: Token[] = [.Text.Bold];
+    val cls = emilia(tokens);
+    val styles = await flush();
+    assert styles.startsWith("<style>@layer theme, base, components, utilities;@layer theme{:root{--spacing:0.25rem;");
+    assert styles.indexOf("@layer utilities{." + cls + "{font-weight:bold}}") != -1;
+    assert styles.endsWith("@keyframes bounce{0%,100%{transform:translateY(-25%);animation-timing-function:cubic-bezier(0.8,0,1,1)}50%{transform:none;animation-timing-function:cubic-bezier(0,0,0.2,1)}}</style>");
+}
+
+// ── tests · the conflict rule ───────────────────────────────────────
+//
+// The reference's conflict section: the LAST rule in the stylesheet wins, and
+// its own worked example is `class="grid flex"` resolving to `display:flex`.
+// Inside one `emilia()` call that is the token list order; across calls it is
+// registration order. Before front 56 nothing said either.
+
+test "conflict — `grid flex` renders in list order, so the last one wins" {
+    val tokens: Token[] = [.Layout.Grid, .Layout.Flex];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{." + cls + "{display:grid;display:flex}}</style>";
+}
+
+test "conflict — reversing the list reverses the winner, and is a different class" {
+    val a: Token[] = [.Layout.Grid, .Layout.Flex];
+    val b: Token[] = [.Layout.Flex, .Layout.Grid];
+    val clsA = emiliaWith(a, defaultTheme());
+    val clsB = emiliaWith(b, defaultTheme());
+    assert clsA != clsB;
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("." + clsA + "{display:grid;display:flex}") != -1;
+    assert styles.indexOf("." + clsB + "{display:flex;display:grid}") != -1;
+}
+
+test "conflict — two emilia calls setting the same property render in CALL order" {
+    val first: Token[] = [.Layout.Grid];
+    val second: Token[] = [.Layout.Flex];
+    val clsA = emilia(first);
+    val clsB = emilia(second);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("." + clsA + "{display:grid}") < styles.indexOf("." + clsB + "{display:flex}");
+}
+
+test "conflict — reordering an unrelated token moves no other rule" {
+    val one: Token[] = [.Text.Bold, .Layout.Flex, .Color.Black];
+    val two: Token[] = [.Layout.Flex, .Text.Bold, .Color.Black];
+    val clsA = emilia(one);
+    val clsB = emilia(two);
+    val styles = await flushWith(bareOptions());
+    assert styles.indexOf("." + clsA + "{font-weight:bold;display:flex;color:#000000}") != -1;
+    assert styles.indexOf("." + clsB + "{display:flex;font-weight:bold;color:#000000}") != -1;
+    assert styles.indexOf("." + clsA) < styles.indexOf("." + clsB);
+}
+
+test "conflict — a variant of a rule follows the rule it varies" {
+    val inner: Token[] = [.Layout.Grid];
+    val tokens: Token[] = [Token.Md(inner), .Layout.Flex];
+    val cls = emilia(tokens);
+    val styles = await flushWith(bareOptions());
+    assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
+        + cls + "{display:flex}@media (width >= 48rem){." + cls + "{display:grid}}}</style>";
+}
+

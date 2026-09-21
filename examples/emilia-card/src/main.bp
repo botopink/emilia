@@ -12,8 +12,14 @@
 //     media wrappers around their inner tokens.
 //   - Identical token lists on two sites collapse to ONE class name
 //     (content-derived `e_<hash>`).
-//   - `flush()` returns a `<style>...</style>` block and clears
+//   - `flush()` returns a `<style>...</style>` document and clears
 //     the per-render registry.
+//
+// Front 56 changed WHAT that document looks like. A modifier is no longer a
+// block nested inside the class body: it is a SIBLING rule, hoisted out with
+// its own selector and its own at-rule, inside the `utilities` cascade layer,
+// under a document that opens with `@layer theme, base, components,
+// utilities;` and a `:root` block carrying the theme.
 //
 // Composition mirrors the SSR contract from the spec ("Render output"):
 //   `renderToString(page) + flush()` — markup first, then the
@@ -105,9 +111,9 @@ test "identical token lists collapse to the same class name" {
     assert cardBg2 == cardBg;
 }
 
-test "flush returns a `<style>...</style>` block with the registered rules" {
+test "flush returns a layered `<style>...</style>` document with the registered rules" {
     val styles = await flush();
-    assert styles.startsWith("<style>");
+    assert styles.startsWith("<style>@layer theme, base, components, utilities;@layer theme{:root{");
     assert styles.endsWith("</style>");
     // Three distinct classes were registered above (cardBg, titleStyle,
     // bodyStyle) PLUS one re-registration in the previous test — the Map
@@ -115,10 +121,28 @@ test "flush returns a `<style>...</style>` block with the registered rules" {
     assert styles.indexOf(cardBg) != -1;
     assert styles.indexOf(titleStyle) != -1;
     assert styles.indexOf(bodyStyle) != -1;
-    // Modifier composition shows through into the body class.
+    // Modifier composition is a SIBLING rule now, hoisted out of the class
+    // body with the selector and the at-rule the variant reference gives it —
+    // `@media (hover: hover) { &:hover }` for hover, `@media (width >= 48rem)`
+    // for the `md` breakpoint, read from the theme's `--breakpoint-md`.
     // (Color palette dispatch is still stubbed in V1 — `.Color.Red.__500`
     // currently lowers to `color:red`, not `color:#ef4444`. Palette
-    // resolution is a follow-up under emilia F1.)
-    assert styles.indexOf(":hover{color:red}") != -1;
-    assert styles.indexOf("@media(min-width:768px){font-size:1.125rem}") != -1;
+    // resolution is front 33's.)
+    assert styles.indexOf("@media (hover: hover){." + bodyStyle + ":hover{color:red}}") != -1;
+    assert styles.indexOf("@media (width >= 48rem){." + bodyStyle + "{font-size:1.125rem}}") != -1;
+    // `.Text.Size.Base` and `.Text.Size.X3xl` are MISSING from the two class
+    // bodies below, and they were missing before front 56 too (the pre-56
+    // document read `.e_x{;font-weight:bold;color:red}` — the empty leading
+    // declaration is the same token going nowhere). The cause is a commonJS
+    // codegen defect, not an emilia one: a `case` arm whose variant name is
+    // unique in the program lowers to `instanceof`, and a consumer package
+    // re-emits its own copy of the enum classes, so a value built in
+    // `emilia-card` is never `instanceof` the class `emilia` matches against
+    // and the whole `case` answers `undefined`. `Sm`/`Lg`/`Xl` survive only
+    // because their names repeat elsewhere in `Token`, which makes the same
+    // compiler lower those arms to a `tag` comparison instead. Reported to
+    // botopink-lang; the assertions below pin what is actually emitted so the
+    // fix is visible as a change here.
+    assert styles.indexOf("." + bodyStyle + "{color:gray}") != -1;
+    assert styles.indexOf("." + titleStyle + "{font-weight:bold;color:red}") != -1;
 }
