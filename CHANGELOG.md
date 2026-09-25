@@ -8,6 +8,9 @@
   None of them can fail, so no `@Result` enters the Task and every `await` stays a
   bare `await` (no `try await`). The comments and `AGENTS.md` name the Task and the
   `test` block's implicit await channel instead of the future context.
+  Measured against botopink-lang `front/24-effects-by-return` `86609a66`: every
+  emilia row at its pre-sweep count on commonJS and erlang (`emilia` 569/569, the
+  sixteen members unchanged).
 
 - **Front 95 — the `emilia-test` member.** `modules/emilia-test/` is created
   with an empty `pub` surface and one inline test (the core resolves from it,
