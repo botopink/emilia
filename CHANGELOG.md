@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.beta.22
 
+- **Front 95 — the `emilia-test` member.** `modules/emilia-test/` is created
+  with an empty `pub` surface and one inline test (the core resolves from it,
+  1/1 on commonJS and erlang), `emilia` as `{ "workspace": true }`. It is where
+  the track-D `assert<Subject>(loc, …)` snapshot helpers land; nothing else in
+  the workspace changes.
+
 - **`Transform` added — the whole of `§ 16`** (1.0.10-beta front
   `45-emilia-transforms`). 96 leaves in one section of sixteen sub-sections,
   plus the two top-level variants `TransformRotateRaw` and

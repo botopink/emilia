@@ -19,7 +19,9 @@ runtime fall-throughs.
 nothing, and `botopink build`/`botopink test` there is a refusal naming the
 members. The core is the member [`modules/emilia/`](modules/emilia/) — `from
 "emilia"` resolves to it, and its `files` (`root.bp`, `tokens.bp`,
-`emilia.bp`) is exactly what a consumer sees — beside the runnable example
+`emilia.bp`) is exactly what a consumer sees — beside the test-helper member
+[`modules/emilia-test/`](modules/emilia-test/) (`from "emilia-test"`, empty
+until the track-D fronts fill it) and the runnable examples such as
 [`examples/emilia-card/`](examples/emilia-card/) (member `emilia-card`).
 `botopink test` runs inside a member, never at the root.
 
