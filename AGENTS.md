@@ -474,7 +474,7 @@ The repository is a **workspace** (decision 75 of 1.0.10-beta): the root
 `botopink.json` declares members and is never a package — no `src`, `files`,
 `entry` or `dependencies`; `botopink build`/`botopink test` there is the
 located refusal `botopink.json is a workspace, not a package — run this
-command inside one of its members: emilia, emilia-backgrounds, emilia-borders,
+command inside one of its members: emilia, emilia-test, emilia-backgrounds, emilia-borders,
 emilia-card, emilia-cascade, emilia-effects, emilia-grid, emilia-layout,
 emilia-modifiers, emilia-outline-ring, emilia-spacing, emilia-text-decoration,
 emilia-theme, emilia-transforms, emilia-transitions, emilia-typography`. Every `modules/*/`
@@ -491,6 +491,12 @@ emilia/
 │                        inherits and may only restrict) · workspaces
 │                        ["modules/*", "examples/*"]. Nothing importable.
 ├── modules/
+│   ├── emilia-test/   ← front 95: the test-helper member — `from "emilia-test"`;
+│   │   │                files [root.bp], `emilia` via { "workspace": true };
+│   │   │                EMPTY `pub` surface until the track-D fronts add the
+│   │   │                `assert<Subject>(loc, …)` helpers
+│   │   │                (`specs/1.0.10-beta/05-emilia/modules.md`)
+│   │   └── src/root.bp ← one inline `test` proving the core resolves from it
 │   └── emilia/        ← THE CORE — what `from "emilia"` gives a consumer
 │       ├── botopink.json  name emilia · src src/ · entry root.bp ·
 │       │                    target commonJS · targets [commonJS, erlang] ·
@@ -709,8 +715,10 @@ emilia/
     └── known-broken-examples.txt ← the examples allowed to fail
 ```
 
-There is **no `modules/emilia-test/` yet**: front `02-packaging` step 4 creates
-it once `01-std` steps 2–3 give it `std/asserts` and `std/snapshots` to stand on.
+`modules/emilia-test/` is the `<lib>-test` member front 95 created empty; it
+stands on std's `asserts` and `snapshots`, re-exports nothing from std, and
+`02-packaging` step 4 / the track-D fronts give it its first
+`assert<Subject>(loc, …)`.
 
 `.d.bp` files are NOT in the module tree (memory:
 `project_libs_module_migration_done`); emilia has none today.
