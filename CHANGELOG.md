@@ -2,6 +2,13 @@
 
 ## Unreleased — v0.beta.22
 
+- **Front 24 — effects by return type** (botopink decisions 118 and 120). The
+  `#[@future]` annotation leaves: `drainRules`, `flushWith` and `flush` are
+  `-> @Task<string>`, and the eight examples' `main` is `fn main() -> @Task<void>`.
+  None of them can fail, so no `@Result` enters the Task and every `await` stays a
+  bare `await` (no `try await`). The comments and `AGENTS.md` name the Task and the
+  `test` block's implicit await channel instead of the future context.
+
 - **Front 95 — the `emilia-test` member.** `modules/emilia-test/` is created
   with an empty `pub` surface and one inline test (the core resolves from it,
   1/1 on commonJS and erlang), `emilia` as `{ "workspace": true }`. It is where

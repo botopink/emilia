@@ -1147,9 +1147,9 @@ to the commonJS row and runs once.
     keyframes);
   - 5 cascade tests (the conflict rule, list order, call order, an
     unrelated reorder, a variant following the rule it varies).
-  The async `flush()` returns `@Future<string>`; tests `await flush()`
-  via the implicit `test {…}` future context shipped in bot-lang's
-  `test-runner-async` commit.
+  The async `flush()` returns `@Task<string>` (it cannot fail, so no
+  `@Result` and a bare `await`); tests `await flush()` via the implicit
+  await channel of a `test {…}` block (bot-lang's `test-runner-async` commit).
 - `examples/emilia-backgrounds/` is the member `emilia-backgrounds` and is
   front 39's worked example: the seven keyword sub-sections of `Bg` as one rule
   each, the eight gradient directions, a hero panel whose photograph covers its
@@ -1351,7 +1351,7 @@ to the commonJS row and runs once.
 | F1 — fill out `Token` | DONE (V1 nested-section landed `3f77623`) |
 | F2 — `tokenToCss` exhaustive | DONE for V1 (re-pinned under v0.beta.22 ecosystem-and-snap-tail F2) |
 | F3 — modifier composition | DONE for V1 (re-pinned alongside F2) |
-| F4 — `flush()` per-render | DONE — async (`@Future<string>`); test bodies await via implicit future context (bot-lang `<test-runner-async>` commit) |
+| F4 — `flush()` per-render | DONE — async (`@Task<string>`); test bodies await via the implicit await channel of a `test` block (bot-lang `<test-runner-async>` commit) |
 | F5 — example + docs sweep | DONE — `examples/emilia-card/` migrated to V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.__500`, …) + `await flush()` |
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 34 — modifiers | DONE — the variant table in `tokens.bp` + `emilia.bp` under the front's banner; 83 modifiers; steps 1-7. One `Variant`-returning fn per name and no wrapping logic: front 56's `nestVariant` applies them |
@@ -1415,4 +1415,5 @@ again (`botopink run` prints the tree, the three `e_<hash>` class names and the
 beside emilia before the examples gate. Its builder calls pass `attrs`
 explicitly (`h1([…], [])`) — parameter defaults are not applied by the compiler
 yet (botopink-lang 1.0.4-beta 06 N1) — and its `main` is
-`#[@future] fn main() -> @Future<void>` so `flush()` can be awaited.
+`fn main() -> @Task<void>` so `flush()` can be awaited (the return is the effect,
+botopink decision 118).

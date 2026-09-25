@@ -174,8 +174,7 @@ pub fn byAttribute() -> Theme {
     return withDarkMode(defaultTheme(), DarkMode.Attribute(name: "data-theme", value: "dark"));
 }
 
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     @print(nav());
     @print(navLink());
     @print(input());

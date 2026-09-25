@@ -163,8 +163,7 @@ fn brandTheme() -> Theme {
     return extendTheme(defaultTheme(), brand);
 }
 
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     @print(heroPanel());
     @print(gradientCta());
     @print(gradientBanner());

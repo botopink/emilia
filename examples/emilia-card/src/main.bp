@@ -87,8 +87,7 @@ val page = div([
 ], []);
 
 // Pretty-print the test summary (`@print` is the test-runner ergonomic).
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     @print(renderToString(page));
     @print(cardBg);
     @print(titleStyle);

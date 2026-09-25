@@ -150,8 +150,7 @@ pub fn tightTheme() -> Theme {
     return extendTheme(defaultTheme(), tighter);
 }
 
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     @print(articleShell());
     @print(fullBleedHeader());
     @print(commentThread());

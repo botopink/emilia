@@ -142,8 +142,7 @@ pub fn dashboardFooter() -> string {
     return emilia(footer);
 }
 
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     @print(toolbarBar());
     @print(toolbarHeading());
     @print(toolbarAction());

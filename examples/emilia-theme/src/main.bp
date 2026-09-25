@@ -61,8 +61,7 @@ pub fn card() -> string {
     return emilia(tokens);
 }
 
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     val th = brandTheme();
     @print(themeValue(th, "--color-lagoon"));
     @print(themeVar("--color-lagoon"));
