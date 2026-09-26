@@ -2,6 +2,11 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Table` added — `§ 14`** (1.0.10-beta front `43-emilia-tables`). 21 leaves
+  over `border-collapse`, `table-layout`, `border-spacing` (front 54's
+  `spacing(n)`, no resolved length) and `caption-side`, plus `TableSpacingRaw`
+  and `rawTableSpacing`. `emilia` 598 → 608 on commonJS and erlang.
+
 - **`Filter` and `BackdropFilter` added — `§ 13`** (1.0.10-beta front
   `42-emilia-filters`). 108 leaves in two sections plus the top-level
   `FilterRaw` / `BackdropRaw` and the wrappers `rawFilter` / `rawBackdropFilter`.

@@ -174,6 +174,10 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         FilterRaw(value) -> declSheet("filter:" + value);
         BackdropRaw(value) -> declSheet("backdrop-filter:" + value);
         // ── end front 42 ───────────────────────────────────────
+        // ── front 43 — tables ──────────────────────────────────
+        Table(_inner) -> declSheet(tableTokenToCss(_inner, th));
+        TableSpacingRaw(value) -> declSheet("border-spacing:" + value);
+        // ── end front 43 ───────────────────────────────────────
         // ── front 44 — transitions and animation ───────────────
         Transition(_inner) -> declSheet(transitionTokenToCss(_inner, th));
         // THE ONE ARM OF THIS FRONT THAT DOES NOT GO THROUGH `declSheet`: a
@@ -12431,6 +12435,186 @@ test "Filter — the class name is a literal, and both targets must agree" {
 }
 // ── end front 42 ─────────────────────────────────────────────────────────────
 
+
+// ── front 43 — tables ────────────────────────────────────────────────────────
+//
+// FRONT 43 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the
+// `Table` dispatcher and its sub-dispatchers, the wrapper `rawTableSpacing`
+// and the tests under the same name.
+//
+// NO LEAF RESOLVES A LENGTH. `border-spacing-2` is front 54's `spacing(2)`,
+// `calc(var(--spacing) * 2)`, which is `§ 14.2`'s `0.5rem` under the default
+// theme and follows a project's `--spacing` otherwise. `spacing(0)` is the
+// bare `0` `§ 14.2` prints, so the zero rows need no special case.
+//
+// THE AXES ARE THE ONE- AND TWO-VALUE FORMS OF ONE PROPERTY, as the spec
+// designs them: `SpacingX.2` is `border-spacing:calc(…) 0`, so an X and a Y
+// token in one list are two `border-spacing` declarations and the last wins.
+// Upstream composes them through `--tw-border-spacing-x/-y`; this front does
+// not, and says so here rather than in a test that would pass by accident.
+
+fn tableSpacingValue(v: Token.Table.Spacing) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn tableSpacingXValue(v: Token.Table.SpacingX) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn tableSpacingYValue(v: Token.Table.SpacingY) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn tableLayoutToCss(l: Token.Table.Layout) -> string {
+    val out = case l {
+        Auto -> "table-layout:auto";
+        Fixed -> "table-layout:fixed";
+    };
+    return out;
+}
+
+fn tableCaptionToCss(c: Token.Table.Caption) -> string {
+    val out = case c {
+        Top -> "caption-side:top";
+        Bottom -> "caption-side:bottom";
+    };
+    return out;
+}
+
+// `§ 14`. `th` is the contract `§ 4a` parameter; `spacing(n)` builds a
+// REFERENCE and never resolves one.
+fn tableTokenToCss(t: Token.Table, th: Theme) -> string {
+    val out = case t {
+        Collapse -> "border-collapse:collapse";
+        Separate -> "border-collapse:separate";
+        Layout(_inner) -> tableLayoutToCss(_inner);
+        Spacing(_inner) -> oneDecl("border-spacing", tableSpacingValue(_inner));
+        SpacingX(_inner) -> oneDecl("border-spacing", tableSpacingXValue(_inner) + " 0");
+        SpacingY(_inner) -> oneDecl("border-spacing", "0 " + tableSpacingYValue(_inner));
+        Caption(_inner) -> tableCaptionToCss(_inner);
+    };
+    return out;
+}
+
+// A leading-dot path followed by a payload call does not carry the typed-array
+// context, so `[.TableSpacingRaw("1px 2px")]` does not parse; this does.
+pub fn rawTableSpacing(value: string) -> Token {
+    return Token.TableSpacingRaw(value: value);
+}
+
+// ── front 43 · tests ─────────────────────────────────────────────────────────
+
+test "Table — border-collapse and table-layout, `§ 14.1` and `§ 14.3`" {
+    assert tokenDeclarations(.Table.Collapse) == "border-collapse:collapse";
+    assert tokenDeclarations(.Table.Separate) == "border-collapse:separate";
+    assert tokenDeclarations(.Table.Layout.Auto) == "table-layout:auto";
+    assert tokenDeclarations(.Table.Layout.Fixed) == "table-layout:fixed";
+}
+
+test "Table.Spacing — the five steps as spacing multipliers, `§ 14.2`" {
+    assert tokenDeclarations(.Table.Spacing.__0) == "border-spacing:0";
+    assert tokenDeclarations(.Table.Spacing.__1) == "border-spacing:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Table.Spacing.__2) == "border-spacing:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Table.Spacing.__4) == "border-spacing:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Table.Spacing.__8) == "border-spacing:calc(var(--spacing) * 8)";
+}
+
+// THE TWO AXES IN ADJACENT LINES: a copy-paste between them is the likeliest
+// defect in this front and a one-sided test cannot see it.
+test "Table.SpacingX / SpacingY — the axes are not interchangeable" {
+    assert tokenDeclarations(.Table.SpacingX.__2) == "border-spacing:calc(var(--spacing) * 2) 0";
+    assert tokenDeclarations(.Table.SpacingY.__2) == "border-spacing:0 calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Table.SpacingX.__1) == "border-spacing:calc(var(--spacing) * 1) 0";
+    assert tokenDeclarations(.Table.SpacingX.__4) == "border-spacing:calc(var(--spacing) * 4) 0";
+    assert tokenDeclarations(.Table.SpacingX.__8) == "border-spacing:calc(var(--spacing) * 8) 0";
+    assert tokenDeclarations(.Table.SpacingY.__1) == "border-spacing:0 calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Table.SpacingY.__4) == "border-spacing:0 calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Table.SpacingY.__8) == "border-spacing:0 calc(var(--spacing) * 8)";
+}
+
+// The one place the two axes agree, and the unitless zero with no `calc`.
+test "Table.Spacing — the zero rows carry no unit and no calc" {
+    assert tokenDeclarations(.Table.SpacingX.__0) == "border-spacing:0 0";
+    assert tokenDeclarations(.Table.SpacingY.__0) == "border-spacing:0 0";
+    assert tokenDeclarations(.Table.Spacing.__0).indexOf("calc") == -1;
+}
+
+test "Table.Caption — the two rows of `§ 14.4`" {
+    assert tokenDeclarations(.Table.Caption.Top) == "caption-side:top";
+    assert tokenDeclarations(.Table.Caption.Bottom) == "caption-side:bottom";
+}
+
+test "TableSpacingRaw — the escape hatch constructs and emits" {
+    val t = Token.TableSpacingRaw(value: "1px 2px");
+    assert tokenDeclarations(t) == "border-spacing:1px 2px";
+    assert tokenDeclarations(rawTableSpacing("3px")) == "border-spacing:3px";
+}
+
+// THE REAL RULE: four properties in list order, one rule per token.
+test "Table — a separated, row-gapped, fixed table with a bottom caption" {
+    val tokens: Token[] = [
+        .Table.Separate, .Table.SpacingY.__2, .Table.Layout.Fixed, .Table.Caption.Bottom,
+    ];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
+    assert decls.join(";") == "border-collapse:separate;border-spacing:0 calc(var(--spacing) * 2);table-layout:fixed;caption-side:bottom";
+}
+
+test "Table — a fixed layout under Md reaches front 34's variant" {
+    val inner: Token[] = [.Table.Layout.Fixed];
+    val outer: Token[] = [Token.Md(inner)];
+    val s = tokensToSheet(outer, defaultTheme());
+    assert declarationsOf(s).join(";") == "table-layout:fixed";
+    assert (firstRuleOf(s).atRules.at(0) ?? "") != "";
+}
+
+fn f43AllLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Table.Collapse, .Table.Separate, .Table.Layout.Auto, .Table.Layout.Fixed,
+        .Table.Spacing.__0, .Table.Spacing.__1, .Table.Spacing.__2, .Table.Spacing.__4,
+        .Table.Spacing.__8, .Table.SpacingX.__0, .Table.SpacingX.__1, .Table.SpacingX.__2,
+        .Table.SpacingX.__4, .Table.SpacingX.__8, .Table.SpacingY.__0, .Table.SpacingY.__1,
+        .Table.SpacingY.__2, .Table.SpacingY.__4, .Table.SpacingY.__8,
+        .Table.Caption.Top, .Table.Caption.Bottom,
+    ];
+    return leaves;
+}
+
+// NO LEAF RESOLVES A LENGTH — and the probe is shown to discriminate on a
+// hand-built string, `§ 14.2`'s own resolved row.
+test "front 43 — 21 leaves, every one well-formed, none resolving a length" {
+    val decls = f43AllLeaves().map({ t -> tokenDeclarations(t) });
+    assert decls.length == 21;
+    assert decls.filter({ d -> d == "" || d.indexOf(":") == -1 }).length == 0;
+    assert decls.filter({ d -> d.indexOf("rem") != -1 || d.indexOf("px") != -1 }).length == 0;
+    assert "border-spacing:0.5rem".indexOf("rem") != -1;
+}
+
+test "Table — the class name is a literal, and both targets must agree" {
+    val tokens: Token[] = [.Table.Collapse, .Table.Spacing.__2, .Table.Caption.Top];
+    assert emiliaWith(tokens, defaultTheme()) == "e_38a1ad07";
+}
+// ── end front 43 ─────────────────────────────────────────────────────────────
 
 // ── front 44 — transitions and animation ─────────────────────────────────────
 //

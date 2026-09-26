@@ -1353,6 +1353,20 @@ The values are the reference's own (`brightness(.5)`, `grayscale(100%)`,
 Arbitrary values: `rawFilter("…")` and `rawBackdropFilter("…")`
 (`Token.FilterRaw` / `Token.BackdropRaw`).
 
+### Table — `§ 14`
+
+| Token | Emits |
+| --- | --- |
+| `.Table.Collapse` / `.Table.Separate` | `border-collapse:collapse` / `separate` |
+| `.Table.Layout.Auto` / `.Fixed` | `table-layout:auto` / `fixed` |
+| `.Table.Spacing.__N` (0, 1, 2, 4, 8) | `border-spacing:calc(var(--spacing) * N)` (`0` for 0) |
+| `.Table.SpacingX.__N` / `.SpacingY.__N` | `border-spacing:<n> 0` / `border-spacing:0 <n>` |
+| `.Table.Caption.Top` / `.Bottom` | `caption-side:top` / `bottom` |
+
+The two axes are the two-value form of one property, so an X and a Y token in
+one list do not add up — the last wins. Arbitrary values:
+`rawTableSpacing("1px 2px")` (`Token.TableSpacingRaw`).
+
 ### Transition and Animate — `§ 15`
 
 Before front 44 there was no `transition` token anywhere in emilia, which meant
