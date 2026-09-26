@@ -16,6 +16,7 @@
     "arbitrary.bp",
     "container.bp",
     "compose.bp",
+    "attributes.bp",
     "emilia.bp"
   ]
 }

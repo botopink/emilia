@@ -2,6 +2,13 @@
 
 ## Unreleased — v0.beta.22
 
+- **The class slot — `attributes.bp`** (1.0.10-beta front
+  `48-emilia-attributes`). `className` / `styled` / `styledWith` / `cls` /
+  `clsWith` over one `Theme`, the static-first `mergeClass`, the ASCII gate, and
+  contract 4's shared fixture (`e_39b87d03`). The ident and length reject sets of
+  front 57 no longer scan with `split("")`, which drops non-ASCII text on
+  erlang. `emilia` 711 → 722 on commonJS and erlang.
+
 - **Custom utilities and variants — `compose.bp`** (1.0.10-beta front
   `59-emilia-custom-utilities-and-variants`). Bundles as `Token[]` functions,
   `compose`, `hocus` / `selector` / `themeMidnight`, and `named(class, tokens)`

@@ -14,6 +14,7 @@ import {containerName, containerAtMd, containerAtSm} from "container";
 import {scrollbarHidden, compose, hocus, selector as customVariant, themeMidnight} from "compose";
 import {preflightRules} from "preflight";
 import {refusesIdent, panicMessage} from "arbitrary";
+import {mergeClass, nonAsciiIn} from "attributes";
 
 //// ═══ FRONT 56 · the host cells and the public entry points ═══════════════
 ////
@@ -164,6 +165,48 @@ pub fn named(className: string, tokens: Token[]) -> string {
     if (existing != "" && existing != payload) @panic("emilia compose: '" + name + "' is already registered with different tokens — a named class is registered once");
     register(name, payload);
     return name;
+}
+
+// ── front 48 · the class slot ────────────────────────────────────────────────
+//
+// `attributes.bp` carries the contract (its header) and the two pure pieces;
+// these hash a sheet, so they live beside the hash. Every one but the merge
+// takes `th: Theme` — the theme is part of the class identity, and both halves
+// of an app must pass the SAME value.
+
+// Clause 3: a rule body that is not ASCII is refused at the call — naming the
+// offending text — never hashed into a class the two targets disagree on.
+pub fn assertAsciiBody(tokens: Token[], th: Theme) -> bool {
+    val bad = nonAsciiIn(encodeSheet(tokensToSheet(tokens, th)));
+    if (bad != "") @panic("emilia attributes: a class body must be ASCII (the JS and erlang hashes diverge above U+FFFF); this token list carries '" + bad + "'");
+    return true;
+}
+
+// The class name alone — the value a `[class]={…}` hole and a hydrator compare.
+pub fn className(tokens: Token[], th: Theme) -> string {
+    val ok = assertAsciiBody(tokens, th);
+    return emiliaWith(tokens, th);
+}
+
+// `#("class", <the emilia class>)` — drops into any builder's `attrs:`.
+pub fn styled(tokens: Token[], th: Theme) -> #(string, string) {
+    return #("class", className(tokens, th));
+}
+
+// The static class first, then the emilia class — through `mergeClass`, the
+// one implementation.
+pub fn styledWith(base: string, tokens: Token[], th: Theme) -> #(string, string) {
+    return #("class", mergeClass(base, className(tokens, th)));
+}
+
+// The `[class]={…}` hole's two short names (the spec's `html_hook.bp`). A hole
+// may not contain a space, so bind the result to a `val` first.
+pub fn cls(tokens: Token[], th: Theme) -> string {
+    return className(tokens, th);
+}
+
+pub fn clsWith(base: string, tokens: Token[], th: Theme) -> string {
+    return mergeClass(base, className(tokens, th));
 }
 
 // The single public emilia call, on the stock theme. The signature is the one
@@ -16199,6 +16242,100 @@ test "named — a named class and a utility on one element: the utilities layer 
 }
 
 // ── end front 59 tests ─────────────────────────────────────────────────────
+
+// ── front 48 · tests — the five ways the halves can disagree ─────────────────
+//
+// On the class name and the CSS string alone: nothing here renders HTML or
+// imports jhonstart. The rendered-markup round trip is the `jhonstart-emilia`
+// bridge's (jhonstart front 30).
+
+fn cardTokens() -> Token[] {
+    val hovered: Token[] = [.Bg.Color.Gray.__100];
+    val card: Token[] = [.Bg.White, .Pad.All.__4, .Text.Bold, Token.Hover(hovered)];
+    return card;
+}
+
+// THE SHARED FIXTURE — contract 4's emilia-side literal. The commonJS and the
+// erlang rows run this one line; the bridge test and onze front 68 assert the
+// same value for the same list and theme.
+test "class: attributes — the shared fixture" {
+    val drained = await flushWith(bareOptions());
+    assert drained.startsWith("<style>");
+    val c = className(cardTokens(), defaultTheme());
+    assert c == "e_39b87d03";
+    val sheet = await flushWith(bareOptions());
+    assert sheet.indexOf("." + c + "{") != -1;
+    assert sheet.indexOf("." + c + ":hover{") != -1;
+}
+
+test "styled — the attribute pair, and the same class the three names give" {
+    val th = defaultTheme();
+    val pair = styled(cardTokens(), th);
+    assert pair._0 == "class";
+    assert pair._1 == emiliaWith(cardTokens(), th);
+    assert cls(cardTokens(), th) == className(cardTokens(), th);
+    assert className(cardTokens(), th) == emiliaWith(cardTokens(), th);
+    assert cls(cardTokens(), th).startsWith("e_");
+    assert cls(cardTokens(), th).indexOf(" ") == -1;
+}
+
+test "purity — the same class twice, and after an unrelated emilia() call" {
+    val th = defaultTheme();
+    val first = className(cardTokens(), th);
+    val other: Token[] = [.Text.Italic];
+    val _o = emilia(other);
+    assert className(cardTokens(), th) == first;
+}
+
+// Clause 1b: a theme that differs in an entry the tokens READ is another class.
+test "the theme is an input — a moved breakpoint is another class" {
+    val inner: Token[] = [.Text.Bold];
+    val tokens: Token[] = [Token.Md(inner)];
+    val wide: ThemeEntry[] = [ThemeEntry(name: "--breakpoint-md", value: "50rem")];
+    val a = className(tokens, defaultTheme());
+    val b = className(tokens, extendTheme(defaultTheme(), wide));
+    assert a != b;
+}
+
+test "order is identity — two orders, two classes" {
+    val one: Token[] = [.Text.Bold, .Color.Black];
+    val two: Token[] = [.Color.Black, .Text.Bold];
+    assert className(one, defaultTheme()) != className(two, defaultTheme());
+}
+
+test "merge order — styledWith is the static class, one space, then the emilia class" {
+    val th = defaultTheme();
+    val pair = styledWith("card", cardTokens(), th);
+    assert pair._0 == "class";
+    assert pair._1.startsWith("card ");
+    assert pair._1.endsWith(className(cardTokens(), th));
+    assert clsWith("card", cardTokens(), th) == pair._1;
+    assert clsWith("", cardTokens(), th) == className(cardTokens(), th);
+}
+
+// Attribute order is argument order: the slot is APPENDED to the base array.
+test "attribute order — the slot appends after the base attributes" {
+    val base: #(string, string)[] = [#("id", "x")];
+    val extra: #(string, string)[] = [styled(cardTokens(), defaultTheme())];
+    val attrs = base.append(extra);
+    assert attrs.length == 2;
+    val none = #("", "");
+    val first = attrs.at(0) ?? none;
+    val second = attrs.at(1) ?? none;
+    assert first._0 == "id";
+    assert second._0 == "class";
+}
+
+// Clause 3: an ASCII body passes; a non-ASCII payload is refused, naming it.
+test "the ASCII gate — refuses a non-ASCII payload instead of hashing it" {
+    val th = defaultTheme();
+    assert assertAsciiBody(cardTokens(), th);
+    val bad: Token[] = [arbValue("content", "\"→\"")];
+    val m = panicMessage({ -> val c = className(bad, th); 0; });
+    assert m.indexOf("must be ASCII") != -1;
+    assert m.indexOf("→") != -1;
+}
+// ── end front 48 tests ─────────────────────────────────────────────────────
 
 // ── front 56 · test helpers ───────────────────────────────────────────
 

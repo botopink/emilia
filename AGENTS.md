@@ -330,6 +330,21 @@ modules; front 59's rendering tests live there too. The test helper
 `panicMessage` is `arbitrary.bp`'s — on erlang it unwraps `{panic, Msg}` so a
 panic message compares byte for byte on both targets.
 
+Front 48 owns **the class slot** — `attributes.bp` (the contract in its header,
+`mergeClass`, `nonAsciiIn`) and, under the front 48 banner in `emilia.bp`,
+`className`, `styled`, `styledWith`, `cls`, `clsWith` and `assertAsciiBody`: they
+hash a sheet, and a sibling cannot import `emilia.bp`, so the spec's
+`html_hook.bp` is not a file — its two functions are `cls`/`clsWith` there. The
+class is `emiliaWith(tokens, th)` refused first when its body is not ASCII
+(the JS and erlang hashes diverge above U+FFFF). The shared fixture
+`class: attributes — the shared fixture` asserts `e_39b87d03` for `cardTokens()`
+under `defaultTheme()` on both rows; the jhonstart-emilia bridge (jhonstart front
+30) and onze front 68 must assert the same literal. jhonstart's half is
+`modules/jhonstart/src/html_attrs.bp` (`classAttr`, `withAttrs`, `attrValue`),
+which names no styling library. **A `[class]={…}` hole may not contain a space**
+(jhonstart `html.bp` splits a tag body on `" "`): bind `cls(tokens, th)` to a
+`val` first.
+
 Front 44 owns **transitions and animation** — the `Transition` and `Animate`
 sections of `tokens.bp` and the two top-level variants `TransitionProperty` /
 `AnimateRaw`, and `transitionTokenToCss`, `animateTokenToSheet`,
@@ -615,6 +630,7 @@ emilia/
 │       │                    files: root.bp · tokens.bp · theme.bp ·
 │       │                    spacing.bp · output.bp · preflight.bp ·
 │       │                    arbitrary.bp · container.bp · compose.bp ·
+│       │                    attributes.bp ·
 │       │                    emilia.bp · no dependencies
 │       └── src/
 │           ├── root.bp    ← `pub mod tokens; pub mod theme;
@@ -661,6 +677,12 @@ emilia/
 │           │                variants (`named(class, tokens)` is in `emilia.bp`,
 │           │                beside the cell it registers into). No external,
 │           │                no `Token`, no arm, no compile-time block
+│           ├── attributes.bp ← front 48: the class-name CONTRACT (its header,
+│           │                contract 4 word for word), `mergeClass` — the one
+│           │                static-first merge in the workspace — and
+│           │                `nonAsciiIn`. The slot itself (`className`,
+│           │                `styled`, `styledWith`, `cls`, `clsWith`,
+│           │                `assertAsciiBody`) is in `emilia.bp`, beside the hash
 │           ├── output.bp  ← front 56: the rule model (`Rule`, `Block`,
 │           │                `Sheet`, `Variant`), `nestVariant` /
 │           │                `markImportant`, the `\t`/`\n`/`\r` codec that
@@ -1062,6 +1084,13 @@ to the commonJS row and runs once.
   section head may repeat a section head, and renaming to dodge one costs a
   path and buys nothing.
 
+- **NEVER `s.split("")` A STRING THAT MAY CARRY NON-ASCII.** On erlang
+  `"a→b".split("")` answers `["a"]` — everything from the first non-ASCII
+  codepoint on is dropped — so a character scan written that way ADMITS the very
+  payload it exists to refuse (front 57's ident and length reject sets were, and
+  front 48's ASCII gate would have been). Remove each allowed character from the
+  string instead (`arbitrary.bp`'s `residue`): the allowed set is ASCII, so
+  splitting IT is safe. Reported with a one-file repro.
 - **A SIBLING MODULE MAY NOT IMPORT `from "emilia"`.** Inside the package
   `"emilia"` names the default module `emilia.bp`, and a sibling importing it
   compiles and passes `botopink test` in `modules/emilia/` — and does NOT
@@ -1160,9 +1189,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **711/711** on
+  refuses) runs every module's in-file `test {}` blocks, **722/722** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 592 (`emilia.bp`) + 14 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 2 (`compose.bp`). The figure below breaks down the 375
+  (`output.bp`) + 600 (`emilia.bp`) + 14 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 2 (`compose.bp`) + 3 (`attributes.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
@@ -1541,6 +1570,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 57 — escape hatches | DONE — steps 1–5. Six top-level `Arb*` variants, `arbitrary.bp` with the validating builders, the run-time reject sets re-checked at dispatch, and five comptime validators (their build failures verified against the compiler on 2026-09-26). +8 `emilia.bp` / +9 `arbitrary.bp` tests, **683** on both targets |
 | 1.0.10-beta front 58 — container queries | DONE — steps 1–5. `container.bp`, the `Container` markers and three top-level variants; the thirteen widths read from `--container-*`, an undefined one panics; nesting pinned in both orders. +8 `emilia.bp` / +6 `container.bp` tests, **697** on both targets |
 | 1.0.10-beta front 59 — custom utilities and variants | DONE — steps 1–5. `compose.bp`: bundles, `compose`, `hocus`/`selector`/`themeMidnight`, and `named()` in `@layer components` with its three refusals; the contract-4 hash re-asserted beside it. `named()` and the read-only `lookupRule` cell live in `emilia.bp` (a sibling cannot import it). 14 tests, **711** on both targets |
+| 1.0.10-beta front 48 — attributes | DONE (emilia half) — `attributes.bp` + the slot in `emilia.bp` (`className`/`styled`/`styledWith`/`cls`/`clsWith`, the ASCII gate), the shared fixture `e_39b87d03`, and jhonstart's `html_attrs.bp`. The rendered-markup round trip is the jhonstart-emilia bridge's (jhonstart front 30). +8 `emilia.bp` / +3 `attributes.bp` tests, **722** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

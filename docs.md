@@ -99,6 +99,22 @@ every `md` query. `containerNamed(ContainerSize.Sm, "main", inner)` is `@sm/main
 Do not import `ContainerSize` into a module that writes `Token.Sm(…)` (see the
 maintainer notes).
 
+## Putting the class on an element
+
+```bp
+import { styled, styledWith, cls, defaultTheme } from "emilia";
+
+val th = defaultTheme();                    // ONE theme value, on the server and the client
+div([...], attrs: [styled(cardTokens(), th)])              // #("class", "e_…")
+div([...], attrs: [styledWith("card", cardTokens(), th)])  // "card e_…", static first
+val card = cls(cardTokens(), th);           // for a `[class]={card}` hole — bind it first,
+                                            // a hole may not contain a space
+```
+
+The class is a pure function of the token list, in order, and of the theme; a
+token list whose CSS is not ASCII is refused rather than hashed differently on
+the two targets.
+
 ## Your own utilities and variants
 
 A bundle is a function; `@apply` is `append`; a custom variant is a function

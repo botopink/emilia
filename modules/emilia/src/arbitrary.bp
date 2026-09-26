@@ -62,10 +62,17 @@ pub fn refusesValue(raw: string) -> bool {
     return hitsOf(raw, chars) > 0;
 }
 
+// What is left of `raw` once every character of `allowed` is removed. NEVER
+// `raw.split("")`: on erlang `"a→b".split("")` answers `["a"]` — everything
+// from the first non-ASCII codepoint on is dropped — so a character scan over
+// `raw` would ADMIT exactly the payload it must refuse. `allowed` is ASCII, so
+// splitting it is safe on both targets.
+fn residue(raw: string, allowed: string) -> string {
+    return allowed.split("").fold(raw, { acc, c -> acc.split(c).join("") });
+}
+
 pub fn refusesIdent(raw: string) -> bool {
-    val allowed = identChars();
-    val bad = raw.split("").filter({ c -> allowed.indexOf(c) == -1 });
-    return raw == "" || bad.length > 0;
+    return raw == "" || residue(raw, identChars()) != "";
 }
 
 pub fn refusesSelector(raw: string) -> bool {
@@ -79,10 +86,10 @@ pub fn refusesQuery(raw: string) -> bool {
 }
 
 pub fn refusesLength(raw: string) -> bool {
-    val digits = raw.split("").filter({ c -> "0123456789".indexOf(c) != -1 });
-    val unit = raw.split("").filter({ c -> "0123456789.".indexOf(c) == -1 }).join("");
+    val noDigits = residue(raw, "0123456789") == raw;
+    val unit = residue(raw, "0123456789.");
     val known = lengthUnits().indexOf(unit) != -1;
-    return digits.length == 0 || !known || !raw.endsWith(unit);
+    return noDigits || !known || !raw.endsWith(unit);
 }
 
 // ── the run-time gate ────────────────────────────────────────────────────────
@@ -192,9 +199,8 @@ pub fn cssValue(comptime q: @Expr<string>) -> @Expr<string> {
 pub fn cssIdent(comptime q: @Expr<string>) -> @Expr<string> {
     val raw = q.text();
     val allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
-    val chars = raw.split("");
-    val bad = chars.filter({ c -> allowed.indexOf(c) == -1 });
-    val safe = if (bad.length > 0 || chars.length == 0) { q.fail("emilia: an arbitrary property name may contain only letters, digits, - and _: " + raw); raw; } else { raw; };
+    val rest = allowed.split("").fold(raw, { acc, c -> acc.split(c).join("") });
+    val safe = if (rest != "" || raw == "") { q.fail("emilia: an arbitrary property name may contain only letters, digits, - and _: " + raw); raw; } else { raw; };
     return @expr(safe);
 }
 
@@ -219,12 +225,11 @@ pub fn cssQuery(comptime q: @Expr<string>) -> @Expr<string> {
 
 pub fn cssLength(comptime q: @Expr<string>) -> @Expr<string> {
     val raw = q.text();
-    val chars = raw.split("");
-    val digits = chars.filter({ c -> "0123456789".indexOf(c) != -1 });
-    val unit = chars.filter({ c -> "0123456789.".indexOf(c) == -1 }).join("");
+    val unit = "0123456789.".split("").fold(raw, { acc, c -> acc.split(c).join("") });
+    val bare = "0123456789".split("").fold(raw, { acc, c -> acc.split(c).join("") });
     val units: string[] = ["px", "em", "rem", "ch", "vw", "vh", "%"];
     val known = units.indexOf(unit) != -1 && raw.endsWith(unit);
-    val safe = if (digits.length == 0 || !known) { q.fail("emilia: a breakpoint length is digits and one unit of px em rem ch vw vh %: " + raw); raw; } else { raw; };
+    val safe = if (bare == raw || !known) { q.fail("emilia: a breakpoint length is digits and one unit of px em rem ch vw vh %: " + raw); raw; } else { raw; };
     return @expr(safe);
 }
 
@@ -288,6 +293,10 @@ test "the reject sets — each refuses its breakout and admits the ordinary case
     assert refusesIdent("a;b");
     assert refusesIdent("");
     assert refusesIdent("--gutter-width") == false;
+    assert refusesIdent("a→b");
+    assert refusesIdent("→");
+    assert refusesLength("1→px");
+    assert refusesValue("a→}") ;
     assert refusesSelector(".is-dragging");
     assert refusesSelector("&.a &.b");
     assert refusesSelector("&{}");
