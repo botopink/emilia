@@ -43,27 +43,27 @@ import { emilia, flush, Token } from "emilia";
 import { div, h1, p, renderToString } from "jhonstart";
 
 val cardBg = emilia([
-    Token.PadAll4,
-    Token.BgWhite,
-    Token.ColorBlack,
+    .Pad.All.__4,
+    .Bg.White,
+    .Color.Black,
 ]);
 
 val titleStyle = emilia([
-    Token.TextSizeX3xl,
-    Token.TextBold,
-    Token.ColorRed500,
+    .Text.Size.X3xl,
+    .Text.Bold,
+    .Color.Red.__500,
 ]);
 
 val bodyStyle = emilia([
-    Token.TextSizeBase,
-    Token.ColorGray500,
-    Token.Hover([Token.ColorRed500]),         // :hover{color:#ef4444}
-    Token.Md([Token.TextSizeLg]),             // @media(min-width:768px){...}
+    .Text.Size.Base,
+    .Color.Gray.__500,
+    Token.Hover([.Color.Red.__500]),          // a sibling `&:hover` rule
+    Token.Md([.Text.Size.Lg]),                // hoisted `@media (width >= 48rem)`
 ]);
 
 // Render then flush — SSR composition pattern from the spec.
 val markup = renderToString(div([h1([]), p([])]));
-val styles = flush();
+val styles = await flush();
 val html   = "<html><head>" + styles + "</head><body>" + markup + "</body></html>";
 ```
 

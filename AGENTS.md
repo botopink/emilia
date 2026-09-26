@@ -473,10 +473,10 @@ attachment syntaxes.
   body must be one of the new "call-site decorator" shapes that pass
   the call's argument list as `@Expr<Token[]>`.
 - **`Token[]` for the modifier payload.** The modifier variants
-  (`Hover([Token]), Md([Token])`, …) recurse through `tokensToCss` to
-  produce a single wrapped string (`":hover{...}"`,
-  `"@media(min-width:768px){...}"`), which is concatenated into the
-  outer class body just like any flat declaration.
+  (`Hover([Token]), Md([Token])`, …) recurse through `tokensToSheet` and
+  wrap the inner sheet in a `Variant` (`nestVariant`): a selector template
+  (`&:hover`) and/or an at-rule (`@media (width >= 48rem)`), so a modified
+  token becomes a SIBLING rule of the class, never text nested in its body.
 - **Lowering to JS.** v0 lowers to plain `function emilia(tokens) {
   ... }` + a host expression per `#[@External.<targert>(...)]` declaration. There is
   **no compiler change** beyond what was already in `feat` (`@external`

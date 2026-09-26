@@ -1411,6 +1411,18 @@ test "three deep — `dark:md:hover:` comes out in source order" {
         == "@media (prefers-color-scheme: dark){@media (width >= 48rem){@media (hover: hover){.x:hover{font-weight:bold}}}}";
 }
 
+// THE OTHER ORDER: `md:dark:` puts the breakpoint outermost, and the blocks
+// come out in source order both ways round.
+test "`md:dark:` — Dark inside a breakpoint, the breakpoint outermost" {
+    val inner = boldInner();
+    val dark: Token[] = [Token.Dark(inner)];
+    assert modifierCss(Token.Md(dark))
+        == "@media (width >= 48rem){@media (prefers-color-scheme: dark){.x{font-weight:bold}}}";
+    val md: Token[] = [Token.Md(inner)];
+    assert modifierCss(Token.Dark(md))
+        == "@media (prefers-color-scheme: dark){@media (width >= 48rem){.x{font-weight:bold}}}";
+}
+
 test "a pseudo-element under a state nests the right way round" {
     val inner = boldInner();
     val before: Token[] = [Token.Before(inner)];
