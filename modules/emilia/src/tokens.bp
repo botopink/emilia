@@ -215,6 +215,18 @@
 ////              Composite, Image, Mode, Origin, Position, Repeat, Size, Type.
 ////              Every value is a CSS keyword; nothing here reads the theme.
 ////              29 leaves
+////   Filter   — front 42: `§ 13.1`, nine families on `filter` — Blur,
+////              Brightness, Contrast, DropShadow, Grayscale, HueRotate,
+////              Invert, Saturate, Sepia. Every leaf but Blur.None writes its
+////              `--tw-<family>` custom property AND one `filter` that reads the
+////              nine back (`var(--tw-blur, ) var(--tw-brightness, ) …`), so two
+////              filter tokens in one list COMPOSE instead of the last one
+////              winning. Blur and DropShadow read front 54's `--blur-*` /
+////              `--drop-shadow-*` namespaces (`filterEntries()`). 50 leaves
+////   BackdropFilter — front 42: `§ 13.2`, the same shape on
+////              `backdrop-filter` over `--tw-backdrop-*`, with Opacity (the
+////              fifteen steps of `§ 12.3`) and no DropShadow. Not `Backdrop`:
+////              that name is front 34's `::backdrop` modifier. 58 leaves
 ////   Transition — front 44: `§ 15.1`-`§ 15.5`. Seven flat leaves — None and
 ////              the six PRESETS, each of which is THREE declarations from one
 ////              token (the property list, `var(--ease-out)` and `150ms`),
@@ -1792,6 +1804,182 @@ pub type Token {
     EffectTextShadowRaw(value: string),
     MaskImageRaw(value: string),
     // ── end front 41 ─────────────────────────────────────────────────────────
+
+    // ── front 42 — filters ───────────────────────────────────────────────────
+    //
+    // `§ 13` in two sections. `Filter` is `§ 13.1` — nine families on the
+    // `filter` property — and `BackdropFilter` is `§ 13.2`, the same families
+    // on `backdrop-filter` with `Opacity` in place of `DropShadow`.
+    //
+    // THE SECTION IS `BackdropFilter`, NOT THE SPEC'S `Backdrop`. `Backdrop(inner:
+    // Token[])` is already a top-level modifier variant of front 34's (the
+    // `::backdrop` pseudo-element), and a section head named like a top-level
+    // payload variant is the collision that silently breaks the variant's
+    // projection. Every other head added here — `Filter`, `Blur`, `Brightness`,
+    // `Contrast`, `DropShadow`, `Grayscale`, `HueRotate`, `Invert`,
+    // `Saturate`, `Sepia`, `Opacity` — was checked against the top-level
+    // payload variants and the keyword table; `Opacity` repeats the HEAD
+    // `Effect.Opacity`, which is a head beside a head and safe.
+    //
+    // THE TWO FAMILIES COMPOSE. Every leaf but `Blur.None` writes TWO
+    // declarations — its family's own `--tw-<family>` custom property and the
+    // one `filter` (or `backdrop-filter`) that reads all nine families back
+    // with an EMPTY fallback each, upstream's `var(--tw-blur, )` chain — so
+    // `[.Filter.Blur.Sm, .Filter.Grayscale.__100]` keeps both.
+    Filter {
+        Blur {
+            None,
+            Xs,
+            Sm,
+            Md,
+            Lg,
+            Xl,
+            X2xl,
+            X3xl,
+        }
+        Brightness {
+            0,
+            50,
+            75,
+            90,
+            95,
+            100,
+            105,
+            110,
+            125,
+            150,
+            200,
+        }
+        Contrast {
+            0,
+            50,
+            75,
+            100,
+            125,
+            150,
+            200,
+        }
+        DropShadow {
+            None,
+            Xs,
+            Sm,
+            Md,
+            Lg,
+            Xl,
+            X2xl,
+        }
+        Grayscale {
+            0,
+            100,
+        }
+        HueRotate {
+            0,
+            15,
+            30,
+            60,
+            90,
+            180,
+        }
+        Invert {
+            0,
+            100,
+        }
+        Saturate {
+            0,
+            50,
+            100,
+            150,
+            200,
+        }
+        Sepia {
+            0,
+            100,
+        }
+    }
+    BackdropFilter {
+        Blur {
+            None,
+            Xs,
+            Sm,
+            Md,
+            Lg,
+            Xl,
+            X2xl,
+            X3xl,
+        }
+        Brightness {
+            0,
+            50,
+            75,
+            90,
+            95,
+            100,
+            105,
+            110,
+            125,
+            150,
+            200,
+        }
+        Contrast {
+            0,
+            50,
+            75,
+            100,
+            125,
+            150,
+            200,
+        }
+        Grayscale {
+            0,
+            100,
+        }
+        HueRotate {
+            0,
+            15,
+            30,
+            60,
+            90,
+            180,
+        }
+        Invert {
+            0,
+            100,
+        }
+        Opacity {
+            0,
+            5,
+            10,
+            20,
+            25,
+            30,
+            40,
+            50,
+            60,
+            70,
+            75,
+            80,
+            90,
+            95,
+            100,
+        }
+        Saturate {
+            0,
+            50,
+            100,
+            150,
+            200,
+        }
+        Sepia {
+            0,
+            100,
+        }
+    }
+
+    // Arbitrary values are TOP-LEVEL variants, never section leaves — a payload
+    // leaf inside a section cannot be constructed by any spelling.
+    FilterRaw(value: string),
+    BackdropRaw(value: string),
+    // ── end front 42 ─────────────────────────────────────────────────────────
 
     // ── front 44 — transitions and animation ─────────────────────────────────
     //

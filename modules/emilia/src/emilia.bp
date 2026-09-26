@@ -166,6 +166,14 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         EffectTextShadowRaw(value) -> declSheet("text-shadow:" + value);
         MaskImageRaw(value) -> declSheet("mask-image:" + value);
         // ── end front 41 ───────────────────────────────────────
+        // ── front 42 — filters ─────────────────────────────────
+        Filter(_inner) -> declSheet(filterTokenToCss(_inner, th));
+        BackdropFilter(_inner) -> declSheet(backdropFilterTokenToCss(_inner, th));
+        // The two arbitrary-value variants are SIBLINGS of `Filter` and
+        // `BackdropFilter`, destructured by their DECLARED FIELD NAME.
+        FilterRaw(value) -> declSheet("filter:" + value);
+        BackdropRaw(value) -> declSheet("backdrop-filter:" + value);
+        // ── end front 42 ───────────────────────────────────────
         // ── front 44 — transitions and animation ───────────────
         Transition(_inner) -> declSheet(transitionTokenToCss(_inner, th));
         // THE ONE ARM OF THIS FRONT THAT DOES NOT GO THROUGH `declSheet`: a
@@ -11630,6 +11638,799 @@ test "regression — the walk fails when a foreign class fragment is planted in 
 }
 
 // ── end front 41 ─────────────────────────────────────────────────────────────
+
+// ── front 42 — filters ───────────────────────────────────────────────────────
+//
+// FRONT 42 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the
+// `Filter` and `BackdropFilter` dispatchers and their sub-dispatchers, the two
+// composition chains, `filterEntries()`, the two arbitrary-value wrappers and
+// the tests under the same name.
+//
+// THE COMPOSITION, AND WHY IT IS NOT THE SPEC'S `var(--tw-filter)`. `filter` is
+// one property, so two tokens that each wrote `filter:<fn>` would leave the
+// last one standing. Upstream answers with a custom property per family and
+// ONE `filter` that reads all nine back — and this front emits exactly that:
+// `.Filter.Blur.Sm` is `--tw-blur:blur(var(--blur-sm))` followed by
+// `filter:var(--tw-blur, ) var(--tw-brightness, ) … var(--tw-drop-shadow, )`.
+// The spec wrote the reader as `filter:var(--tw-filter)` with `--tw-filter` a
+// front 54 theme entry. That cannot work twice over: `extendTheme` refuses
+// `--tw-` (no namespace of `Ns` holds it — front 45 met the same wall), and
+// even a `:root` definition would be resolved ON `:root`, where no family is
+// set, so every element would inherit an empty chain. The chain therefore
+// lives in the rule, spelled ONCE by `filterChain()` / `backdropFilterChain()`,
+// and every family reference carries front 39's `cssVarOr` with an EMPTY
+// fallback — upstream's `var(--tw-blur, )` — so an unset family contributes
+// nothing instead of invalidating the declaration.
+//
+// NO LEAF RESOLVES A LENGTH OR A SHADOW. The blur scale and the drop shadows
+// are front 54's `--blur-*` / `--drop-shadow-*` namespaces, read through
+// `themeVar`; their values are `filterEntries()` below, transcribed from
+// upstream's `theme.css`. Every other value is the reference's own literal —
+// `brightness(.5)` without its leading zero, `grayscale(100%)` with its sign.
+//
+// TWO ROWS OF `§ 13` ARE NOT EMITTED AS WRITTEN. `drop-shadow-none` is
+// `filter: drop-shadow(none)` in the reference, which is not valid CSS
+// (`drop-shadow()` takes a shadow, never `none`); upstream writes
+// `--tw-drop-shadow: ` (the empty family) plus the chain, and so does this
+// front. `blur-none` keeps the reference's `filter:none`, which IS valid CSS.
+// `BackdropFilter.Blur.Xs` is not in `§ 13.2`'s table and is in upstream's
+// (`backdrop-blur-xs`, the same `--blur-xs` entry), so the two blur ladders
+// are the same eight leaves.
+
+// The reader half of every filter token, spelled once. Upstream's order.
+fn filterChain() -> string {
+    val fams: string[] = [
+        "blur", "brightness", "contrast", "grayscale", "hue-rotate", "invert",
+        "saturate", "sepia", "drop-shadow",
+    ];
+    return fams.map({ f -> cssVarOr("--tw-" + f, "") }).join(" ");
+}
+
+fn backdropFilterChain() -> string {
+    val fams: string[] = [
+        "blur", "brightness", "contrast", "grayscale", "hue-rotate", "invert",
+        "opacity", "saturate", "sepia",
+    ];
+    return fams.map({ f -> cssVarOr("--tw-backdrop-" + f, "") }).join(" ");
+}
+
+// The two-declaration shape: the family's own custom property, then the reader.
+fn filterFamilyDecl(family: string, call: string) -> string {
+    return oneDecl("--tw-" + family, call) + ";" + oneDecl("filter", filterChain());
+}
+
+fn backdropFamilyDecl(family: string, call: string) -> string {
+    return oneDecl("--tw-backdrop-" + family, call) + ";"
+        + oneDecl("backdrop-filter", backdropFilterChain());
+}
+
+fn blurCall(size: string) -> string {
+    return "blur(" + themeVar(nsPrefix(Ns.Blur) + size) + ")";
+}
+
+fn filterBlurToCss(b: Token.Filter.Blur) -> string {
+    val out = case b {
+        None -> "filter:none";
+        Xs -> filterFamilyDecl("blur", blurCall("xs"));
+        Sm -> filterFamilyDecl("blur", blurCall("sm"));
+        Md -> filterFamilyDecl("blur", blurCall("md"));
+        Lg -> filterFamilyDecl("blur", blurCall("lg"));
+        Xl -> filterFamilyDecl("blur", blurCall("xl"));
+        X2xl -> filterFamilyDecl("blur", blurCall("2xl"));
+        X3xl -> filterFamilyDecl("blur", blurCall("3xl"));
+    };
+    return out;
+}
+
+fn backdropBlurToCss(b: Token.BackdropFilter.Blur) -> string {
+    val out = case b {
+        None -> "backdrop-filter:none";
+        Xs -> backdropFamilyDecl("blur", blurCall("xs"));
+        Sm -> backdropFamilyDecl("blur", blurCall("sm"));
+        Md -> backdropFamilyDecl("blur", blurCall("md"));
+        Lg -> backdropFamilyDecl("blur", blurCall("lg"));
+        Xl -> backdropFamilyDecl("blur", blurCall("xl"));
+        X2xl -> backdropFamilyDecl("blur", blurCall("2xl"));
+        X3xl -> backdropFamilyDecl("blur", blurCall("3xl"));
+    };
+    return out;
+}
+
+fn filterDropShadowToCss(d: Token.Filter.DropShadow) -> string {
+    val out = case d {
+        None -> oneDecl("--tw-drop-shadow", " ") + ";" + oneDecl("filter", filterChain());
+        Xs -> filterFamilyDecl("drop-shadow", "drop-shadow(" + themeVar(nsPrefix(Ns.DropShadow) + "xs") + ")");
+        Sm -> filterFamilyDecl("drop-shadow", "drop-shadow(" + themeVar(nsPrefix(Ns.DropShadow) + "sm") + ")");
+        Md -> filterFamilyDecl("drop-shadow", "drop-shadow(" + themeVar(nsPrefix(Ns.DropShadow) + "md") + ")");
+        Lg -> filterFamilyDecl("drop-shadow", "drop-shadow(" + themeVar(nsPrefix(Ns.DropShadow) + "lg") + ")");
+        Xl -> filterFamilyDecl("drop-shadow", "drop-shadow(" + themeVar(nsPrefix(Ns.DropShadow) + "xl") + ")");
+        X2xl -> filterFamilyDecl("drop-shadow", "drop-shadow(" + themeVar(nsPrefix(Ns.DropShadow) + "2xl") + ")");
+    };
+    return out;
+}
+
+fn filterBrightnessValue(v: Token.Filter.Brightness) -> string {
+    val out = case v {
+        __0 -> "0";
+        __50 -> ".5";
+        __75 -> ".75";
+        __90 -> ".9";
+        __95 -> ".95";
+        __100 -> "1";
+        __105 -> "1.05";
+        __110 -> "1.1";
+        __125 -> "1.25";
+        __150 -> "1.5";
+        __200 -> "2";
+    };
+    return out;
+}
+
+fn backdropBrightnessValue(v: Token.BackdropFilter.Brightness) -> string {
+    val out = case v {
+        __0 -> "0";
+        __50 -> ".5";
+        __75 -> ".75";
+        __90 -> ".9";
+        __95 -> ".95";
+        __100 -> "1";
+        __105 -> "1.05";
+        __110 -> "1.1";
+        __125 -> "1.25";
+        __150 -> "1.5";
+        __200 -> "2";
+    };
+    return out;
+}
+
+fn filterContrastValue(v: Token.Filter.Contrast) -> string {
+    val out = case v {
+        __0 -> "0";
+        __50 -> ".5";
+        __75 -> ".75";
+        __100 -> "1";
+        __125 -> "1.25";
+        __150 -> "1.5";
+        __200 -> "2";
+    };
+    return out;
+}
+
+fn backdropContrastValue(v: Token.BackdropFilter.Contrast) -> string {
+    val out = case v {
+        __0 -> "0";
+        __50 -> ".5";
+        __75 -> ".75";
+        __100 -> "1";
+        __125 -> "1.25";
+        __150 -> "1.5";
+        __200 -> "2";
+    };
+    return out;
+}
+
+fn filterGrayscaleValue(v: Token.Filter.Grayscale) -> string {
+    val out = case v {
+        __0 -> "0";
+        __100 -> "100%";
+    };
+    return out;
+}
+
+fn backdropGrayscaleValue(v: Token.BackdropFilter.Grayscale) -> string {
+    val out = case v {
+        __0 -> "0";
+        __100 -> "100%";
+    };
+    return out;
+}
+
+fn filterHueRotateValue(v: Token.Filter.HueRotate) -> string {
+    val out = case v {
+        __0 -> "0deg";
+        __15 -> "15deg";
+        __30 -> "30deg";
+        __60 -> "60deg";
+        __90 -> "90deg";
+        __180 -> "180deg";
+    };
+    return out;
+}
+
+fn backdropHueRotateValue(v: Token.BackdropFilter.HueRotate) -> string {
+    val out = case v {
+        __0 -> "0deg";
+        __15 -> "15deg";
+        __30 -> "30deg";
+        __60 -> "60deg";
+        __90 -> "90deg";
+        __180 -> "180deg";
+    };
+    return out;
+}
+
+fn filterInvertValue(v: Token.Filter.Invert) -> string {
+    val out = case v {
+        __0 -> "0";
+        __100 -> "100%";
+    };
+    return out;
+}
+
+fn backdropInvertValue(v: Token.BackdropFilter.Invert) -> string {
+    val out = case v {
+        __0 -> "0";
+        __100 -> "100%";
+    };
+    return out;
+}
+
+fn filterSaturateValue(v: Token.Filter.Saturate) -> string {
+    val out = case v {
+        __0 -> "0";
+        __50 -> ".5";
+        __100 -> "1";
+        __150 -> "1.5";
+        __200 -> "2";
+    };
+    return out;
+}
+
+fn backdropSaturateValue(v: Token.BackdropFilter.Saturate) -> string {
+    val out = case v {
+        __0 -> "0";
+        __50 -> ".5";
+        __100 -> "1";
+        __150 -> "1.5";
+        __200 -> "2";
+    };
+    return out;
+}
+
+fn filterSepiaValue(v: Token.Filter.Sepia) -> string {
+    val out = case v {
+        __0 -> "0";
+        __100 -> "100%";
+    };
+    return out;
+}
+
+fn backdropSepiaValue(v: Token.BackdropFilter.Sepia) -> string {
+    val out = case v {
+        __0 -> "0";
+        __100 -> "100%";
+    };
+    return out;
+}
+
+fn backdropOpacityValue(v: Token.BackdropFilter.Opacity) -> string {
+    val out = case v {
+        __0 -> "0";
+        __5 -> "0.05";
+        __10 -> "0.1";
+        __20 -> "0.2";
+        __25 -> "0.25";
+        __30 -> "0.3";
+        __40 -> "0.4";
+        __50 -> "0.5";
+        __60 -> "0.6";
+        __70 -> "0.7";
+        __75 -> "0.75";
+        __80 -> "0.8";
+        __90 -> "0.9";
+        __95 -> "0.95";
+        __100 -> "1";
+    };
+    return out;
+}
+
+// `§ 13.1`. `th` is the contract `§ 4a` parameter; nothing here reads it,
+// because `themeVar` builds a REFERENCE and never resolves one.
+fn filterTokenToCss(t: Token.Filter, th: Theme) -> string {
+    val out = case t {
+        Blur(_inner) -> filterBlurToCss(_inner);
+        Brightness(_inner) -> filterFamilyDecl("brightness", "brightness(" + filterBrightnessValue(_inner) + ")");
+        Contrast(_inner) -> filterFamilyDecl("contrast", "contrast(" + filterContrastValue(_inner) + ")");
+        DropShadow(_inner) -> filterDropShadowToCss(_inner);
+        Grayscale(_inner) -> filterFamilyDecl("grayscale", "grayscale(" + filterGrayscaleValue(_inner) + ")");
+        HueRotate(_inner) -> filterFamilyDecl("hue-rotate", "hue-rotate(" + filterHueRotateValue(_inner) + ")");
+        Invert(_inner) -> filterFamilyDecl("invert", "invert(" + filterInvertValue(_inner) + ")");
+        Saturate(_inner) -> filterFamilyDecl("saturate", "saturate(" + filterSaturateValue(_inner) + ")");
+        Sepia(_inner) -> filterFamilyDecl("sepia", "sepia(" + filterSepiaValue(_inner) + ")");
+    };
+    return out;
+}
+
+// `§ 13.2`, the same families on `backdrop-filter`, `Opacity` in place of
+// `DropShadow`.
+fn backdropFilterTokenToCss(t: Token.BackdropFilter, th: Theme) -> string {
+    val out = case t {
+        Blur(_inner) -> backdropBlurToCss(_inner);
+        Brightness(_inner) -> backdropFamilyDecl("brightness", "brightness(" + backdropBrightnessValue(_inner) + ")");
+        Contrast(_inner) -> backdropFamilyDecl("contrast", "contrast(" + backdropContrastValue(_inner) + ")");
+        Grayscale(_inner) -> backdropFamilyDecl("grayscale", "grayscale(" + backdropGrayscaleValue(_inner) + ")");
+        HueRotate(_inner) -> backdropFamilyDecl("hue-rotate", "hue-rotate(" + backdropHueRotateValue(_inner) + ")");
+        Invert(_inner) -> backdropFamilyDecl("invert", "invert(" + backdropInvertValue(_inner) + ")");
+        Opacity(_inner) -> backdropFamilyDecl("opacity", "opacity(" + backdropOpacityValue(_inner) + ")");
+        Saturate(_inner) -> backdropFamilyDecl("saturate", "saturate(" + backdropSaturateValue(_inner) + ")");
+        Sepia(_inner) -> backdropFamilyDecl("sepia", "sepia(" + backdropSepiaValue(_inner) + ")");
+    };
+    return out;
+}
+
+// ── the theme entries this front contributes ─────────────────────────────────
+//
+// The seven `--blur-*` and six `--drop-shadow-*` values, transcribed from
+// upstream's `theme.css` (the reference prints the blur lengths in parentheses
+// in `§ 13.1` and no drop-shadow value at all). `defaultTheme()` carries
+// neither namespace, so a project composes
+// `extendTheme(defaultTheme(), filterEntries())`, as with front 33's palette.
+pub fn filterEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--blur-xs", value: "4px"),
+        ThemeEntry(name: "--blur-sm", value: "8px"),
+        ThemeEntry(name: "--blur-md", value: "12px"),
+        ThemeEntry(name: "--blur-lg", value: "16px"),
+        ThemeEntry(name: "--blur-xl", value: "24px"),
+        ThemeEntry(name: "--blur-2xl", value: "40px"),
+        ThemeEntry(name: "--blur-3xl", value: "64px"),
+        ThemeEntry(name: "--drop-shadow-xs", value: "0 1px 1px rgb(0 0 0 / 0.05)"),
+        ThemeEntry(name: "--drop-shadow-sm", value: "0 1px 2px rgb(0 0 0 / 0.15)"),
+        ThemeEntry(name: "--drop-shadow-md", value: "0 3px 3px rgb(0 0 0 / 0.12)"),
+        ThemeEntry(name: "--drop-shadow-lg", value: "0 4px 4px rgb(0 0 0 / 0.15)"),
+        ThemeEntry(name: "--drop-shadow-xl", value: "0 9px 7px rgb(0 0 0 / 0.1)"),
+        ThemeEntry(name: "--drop-shadow-2xl", value: "0 25px 25px rgb(0 0 0 / 0.15)"),
+    ];
+    return out;
+}
+
+// ── the two arbitrary-value wrappers ─────────────────────────────────────────
+//
+// A leading-dot path followed by a payload call does not carry the typed-array
+// context, so `[.FilterRaw("blur(2px)")]` does not parse; these do.
+pub fn rawFilter(value: string) -> Token {
+    return Token.FilterRaw(value: value);
+}
+
+pub fn rawBackdropFilter(value: string) -> Token {
+    return Token.BackdropRaw(value: value);
+}
+
+// ── front 42 · tests ─────────────────────────────────────────────────────────
+//
+// Every row is asserted WHOLE — the custom property and the reader — because a
+// test over the function alone passes a front that forgot the reader.
+
+test "Filter.Blur — the eight rows of `§ 13.1`, as theme references" {
+    assert tokenDeclarations(.Filter.Blur.None) == "filter:none";
+    assert tokenDeclarations(.Filter.Blur.Xs) == "--tw-blur:blur(var(--blur-xs));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Blur.Sm) == "--tw-blur:blur(var(--blur-sm));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Blur.Md) == "--tw-blur:blur(var(--blur-md));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Blur.Lg) == "--tw-blur:blur(var(--blur-lg));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Blur.Xl) == "--tw-blur:blur(var(--blur-xl));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Blur.X2xl) == "--tw-blur:blur(var(--blur-2xl));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Blur.X3xl) == "--tw-blur:blur(var(--blur-3xl));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.Brightness — every row of `§ 13.1`, custom property and reader" {
+    assert tokenDeclarations(.Filter.Brightness.__0) == "--tw-brightness:brightness(0);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__50) == "--tw-brightness:brightness(.5);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__75) == "--tw-brightness:brightness(.75);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__90) == "--tw-brightness:brightness(.9);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__95) == "--tw-brightness:brightness(.95);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__100) == "--tw-brightness:brightness(1);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__105) == "--tw-brightness:brightness(1.05);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__110) == "--tw-brightness:brightness(1.1);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__125) == "--tw-brightness:brightness(1.25);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__150) == "--tw-brightness:brightness(1.5);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Brightness.__200) == "--tw-brightness:brightness(2);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.Contrast — every row of `§ 13.1`, custom property and reader" {
+    assert tokenDeclarations(.Filter.Contrast.__0) == "--tw-contrast:contrast(0);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Contrast.__50) == "--tw-contrast:contrast(.5);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Contrast.__75) == "--tw-contrast:contrast(.75);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Contrast.__100) == "--tw-contrast:contrast(1);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Contrast.__125) == "--tw-contrast:contrast(1.25);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Contrast.__150) == "--tw-contrast:contrast(1.5);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Contrast.__200) == "--tw-contrast:contrast(2);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.Grayscale — every row of `§ 13.1`, custom property and reader" {
+    assert tokenDeclarations(.Filter.Grayscale.__0) == "--tw-grayscale:grayscale(0);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Grayscale.__100) == "--tw-grayscale:grayscale(100%);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.HueRotate — every row of `§ 13.1`, custom property and reader" {
+    assert tokenDeclarations(.Filter.HueRotate.__0) == "--tw-hue-rotate:hue-rotate(0deg);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.HueRotate.__15) == "--tw-hue-rotate:hue-rotate(15deg);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.HueRotate.__30) == "--tw-hue-rotate:hue-rotate(30deg);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.HueRotate.__60) == "--tw-hue-rotate:hue-rotate(60deg);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.HueRotate.__90) == "--tw-hue-rotate:hue-rotate(90deg);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.HueRotate.__180) == "--tw-hue-rotate:hue-rotate(180deg);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.Invert — every row of `§ 13.1`, custom property and reader" {
+    assert tokenDeclarations(.Filter.Invert.__0) == "--tw-invert:invert(0);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Invert.__100) == "--tw-invert:invert(100%);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.Saturate — every row of `§ 13.1`, custom property and reader" {
+    assert tokenDeclarations(.Filter.Saturate.__0) == "--tw-saturate:saturate(0);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Saturate.__50) == "--tw-saturate:saturate(.5);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Saturate.__100) == "--tw-saturate:saturate(1);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Saturate.__150) == "--tw-saturate:saturate(1.5);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Saturate.__200) == "--tw-saturate:saturate(2);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.Sepia — every row of `§ 13.1`, custom property and reader" {
+    assert tokenDeclarations(.Filter.Sepia.__0) == "--tw-sepia:sepia(0);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.Sepia.__100) == "--tw-sepia:sepia(100%);filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+}
+
+test "Filter.DropShadow — six theme references and upstream's empty `none`" {
+    assert tokenDeclarations(.Filter.DropShadow.Xs) == "--tw-drop-shadow:drop-shadow(var(--drop-shadow-xs));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.DropShadow.Sm) == "--tw-drop-shadow:drop-shadow(var(--drop-shadow-sm));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.DropShadow.Md) == "--tw-drop-shadow:drop-shadow(var(--drop-shadow-md));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.DropShadow.Lg) == "--tw-drop-shadow:drop-shadow(var(--drop-shadow-lg));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.DropShadow.Xl) == "--tw-drop-shadow:drop-shadow(var(--drop-shadow-xl));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.DropShadow.X2xl) == "--tw-drop-shadow:drop-shadow(var(--drop-shadow-2xl));filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.DropShadow.None) == "--tw-drop-shadow: ;filter:var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert tokenDeclarations(.Filter.DropShadow.None).indexOf("drop-shadow(none)") == -1;
+}
+
+test "BackdropFilter.Blur — the same eight leaves on backdrop-filter" {
+    assert tokenDeclarations(.BackdropFilter.Blur.None) == "backdrop-filter:none";
+    assert tokenDeclarations(.BackdropFilter.Blur.Xs) == "--tw-backdrop-blur:blur(var(--blur-xs));backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Blur.Sm) == "--tw-backdrop-blur:blur(var(--blur-sm));backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Blur.Md) == "--tw-backdrop-blur:blur(var(--blur-md));backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Blur.Lg) == "--tw-backdrop-blur:blur(var(--blur-lg));backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Blur.Xl) == "--tw-backdrop-blur:blur(var(--blur-xl));backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Blur.X2xl) == "--tw-backdrop-blur:blur(var(--blur-2xl));backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Blur.X3xl) == "--tw-backdrop-blur:blur(var(--blur-3xl));backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.Brightness — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.Brightness.__0) == "--tw-backdrop-brightness:brightness(0);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__50) == "--tw-backdrop-brightness:brightness(.5);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__75) == "--tw-backdrop-brightness:brightness(.75);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__90) == "--tw-backdrop-brightness:brightness(.9);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__95) == "--tw-backdrop-brightness:brightness(.95);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__100) == "--tw-backdrop-brightness:brightness(1);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__105) == "--tw-backdrop-brightness:brightness(1.05);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__110) == "--tw-backdrop-brightness:brightness(1.1);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__125) == "--tw-backdrop-brightness:brightness(1.25);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__150) == "--tw-backdrop-brightness:brightness(1.5);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Brightness.__200) == "--tw-backdrop-brightness:brightness(2);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.Contrast — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.Contrast.__0) == "--tw-backdrop-contrast:contrast(0);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Contrast.__50) == "--tw-backdrop-contrast:contrast(.5);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Contrast.__75) == "--tw-backdrop-contrast:contrast(.75);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Contrast.__100) == "--tw-backdrop-contrast:contrast(1);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Contrast.__125) == "--tw-backdrop-contrast:contrast(1.25);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Contrast.__150) == "--tw-backdrop-contrast:contrast(1.5);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Contrast.__200) == "--tw-backdrop-contrast:contrast(2);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.Grayscale — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.Grayscale.__0) == "--tw-backdrop-grayscale:grayscale(0);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Grayscale.__100) == "--tw-backdrop-grayscale:grayscale(100%);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.HueRotate — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.HueRotate.__0) == "--tw-backdrop-hue-rotate:hue-rotate(0deg);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.HueRotate.__15) == "--tw-backdrop-hue-rotate:hue-rotate(15deg);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.HueRotate.__30) == "--tw-backdrop-hue-rotate:hue-rotate(30deg);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.HueRotate.__60) == "--tw-backdrop-hue-rotate:hue-rotate(60deg);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.HueRotate.__90) == "--tw-backdrop-hue-rotate:hue-rotate(90deg);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.HueRotate.__180) == "--tw-backdrop-hue-rotate:hue-rotate(180deg);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.Invert — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.Invert.__0) == "--tw-backdrop-invert:invert(0);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Invert.__100) == "--tw-backdrop-invert:invert(100%);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.Opacity — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.Opacity.__0) == "--tw-backdrop-opacity:opacity(0);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__5) == "--tw-backdrop-opacity:opacity(0.05);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__10) == "--tw-backdrop-opacity:opacity(0.1);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__20) == "--tw-backdrop-opacity:opacity(0.2);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__25) == "--tw-backdrop-opacity:opacity(0.25);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__30) == "--tw-backdrop-opacity:opacity(0.3);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__40) == "--tw-backdrop-opacity:opacity(0.4);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__50) == "--tw-backdrop-opacity:opacity(0.5);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__60) == "--tw-backdrop-opacity:opacity(0.6);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__70) == "--tw-backdrop-opacity:opacity(0.7);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__75) == "--tw-backdrop-opacity:opacity(0.75);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__80) == "--tw-backdrop-opacity:opacity(0.8);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__90) == "--tw-backdrop-opacity:opacity(0.9);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__95) == "--tw-backdrop-opacity:opacity(0.95);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Opacity.__100) == "--tw-backdrop-opacity:opacity(1);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.Saturate — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.Saturate.__0) == "--tw-backdrop-saturate:saturate(0);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Saturate.__50) == "--tw-backdrop-saturate:saturate(.5);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Saturate.__100) == "--tw-backdrop-saturate:saturate(1);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Saturate.__150) == "--tw-backdrop-saturate:saturate(1.5);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Saturate.__200) == "--tw-backdrop-saturate:saturate(2);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+test "BackdropFilter.Sepia — every step, custom property and reader" {
+    assert tokenDeclarations(.BackdropFilter.Sepia.__0) == "--tw-backdrop-sepia:sepia(0);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.BackdropFilter.Sepia.__100) == "--tw-backdrop-sepia:sepia(100%);backdrop-filter:var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+}
+
+// The value half of a two-declaration token: `--tw-blur:blur(…)` → `blur(…)`.
+fn f42FamilyCall(t: Token) -> string {
+    val first = tokenDeclarations(t).split(";").at(0) ?? "";
+    val out = first.split(":").at(1) ?? "";
+    return out;
+}
+
+// The family a two-declaration token names, with `prefix` taken off its
+// custom property: `--tw-blur:…` under `--tw-` → `blur`. Answers "" when the
+// token's first declaration does not start with `prefix`.
+fn f42FamilyProp(t: Token, prefix: string) -> string {
+    val first = tokenDeclarations(t).split(";").at(0) ?? "";
+    val prop = first.split(":").at(0) ?? "";
+    val rest = prop.split(prefix).at(1) ?? "";
+    val out = if (prop.startsWith(prefix)) { rest; } else { ""; };
+    return out;
+}
+
+fn f42FilterTwins() -> Token[] {
+    val leaves: Token[] = [
+        .Filter.Brightness.__0,
+        .Filter.Brightness.__50,
+        .Filter.Brightness.__75,
+        .Filter.Brightness.__90,
+        .Filter.Brightness.__95,
+        .Filter.Brightness.__100,
+        .Filter.Brightness.__105,
+        .Filter.Brightness.__110,
+        .Filter.Brightness.__125,
+        .Filter.Brightness.__150,
+        .Filter.Brightness.__200,
+        .Filter.Contrast.__0,
+        .Filter.Contrast.__50,
+        .Filter.Contrast.__75,
+        .Filter.Contrast.__100,
+        .Filter.Contrast.__125,
+        .Filter.Contrast.__150,
+        .Filter.Contrast.__200,
+        .Filter.Grayscale.__0,
+        .Filter.Grayscale.__100,
+        .Filter.HueRotate.__0,
+        .Filter.HueRotate.__15,
+        .Filter.HueRotate.__30,
+        .Filter.HueRotate.__60,
+        .Filter.HueRotate.__90,
+        .Filter.HueRotate.__180,
+        .Filter.Invert.__0,
+        .Filter.Invert.__100,
+        .Filter.Saturate.__0,
+        .Filter.Saturate.__50,
+        .Filter.Saturate.__100,
+        .Filter.Saturate.__150,
+        .Filter.Saturate.__200,
+        .Filter.Sepia.__0,
+        .Filter.Sepia.__100,
+        .Filter.Blur.Xs,
+        .Filter.Blur.Sm,
+        .Filter.Blur.Md,
+        .Filter.Blur.Lg,
+        .Filter.Blur.Xl,
+        .Filter.Blur.X2xl,
+        .Filter.Blur.X3xl,
+    ];
+    return leaves;
+}
+
+fn f42BackdropTwins() -> Token[] {
+    val leaves: Token[] = [
+        .BackdropFilter.Brightness.__0,
+        .BackdropFilter.Brightness.__50,
+        .BackdropFilter.Brightness.__75,
+        .BackdropFilter.Brightness.__90,
+        .BackdropFilter.Brightness.__95,
+        .BackdropFilter.Brightness.__100,
+        .BackdropFilter.Brightness.__105,
+        .BackdropFilter.Brightness.__110,
+        .BackdropFilter.Brightness.__125,
+        .BackdropFilter.Brightness.__150,
+        .BackdropFilter.Brightness.__200,
+        .BackdropFilter.Contrast.__0,
+        .BackdropFilter.Contrast.__50,
+        .BackdropFilter.Contrast.__75,
+        .BackdropFilter.Contrast.__100,
+        .BackdropFilter.Contrast.__125,
+        .BackdropFilter.Contrast.__150,
+        .BackdropFilter.Contrast.__200,
+        .BackdropFilter.Grayscale.__0,
+        .BackdropFilter.Grayscale.__100,
+        .BackdropFilter.HueRotate.__0,
+        .BackdropFilter.HueRotate.__15,
+        .BackdropFilter.HueRotate.__30,
+        .BackdropFilter.HueRotate.__60,
+        .BackdropFilter.HueRotate.__90,
+        .BackdropFilter.HueRotate.__180,
+        .BackdropFilter.Invert.__0,
+        .BackdropFilter.Invert.__100,
+        .BackdropFilter.Saturate.__0,
+        .BackdropFilter.Saturate.__50,
+        .BackdropFilter.Saturate.__100,
+        .BackdropFilter.Saturate.__150,
+        .BackdropFilter.Saturate.__200,
+        .BackdropFilter.Sepia.__0,
+        .BackdropFilter.Sepia.__100,
+        .BackdropFilter.Blur.Xs,
+        .BackdropFilter.Blur.Sm,
+        .BackdropFilter.Blur.Md,
+        .BackdropFilter.Blur.Lg,
+        .BackdropFilter.Blur.Xl,
+        .BackdropFilter.Blur.X2xl,
+        .BackdropFilter.Blur.X3xl,
+    ];
+    return leaves;
+}
+
+// THE MIRROR IS A MIRROR. Every `BackdropFilter` leaf with a `Filter` twin
+// writes the SAME function call into the `--tw-backdrop-` twin of the
+// `--tw-` property, walked over both lists index for index.
+test "BackdropFilter — every twin writes the Filter leaf's function call" {
+    val fs = f42FilterTwins();
+    val bs = f42BackdropTwins();
+    assert fs.length == bs.length;
+    assert fs.length == 42;
+    val fCalls = fs.map({ t -> f42FamilyCall(t) });
+    val bCalls = bs.map({ t -> f42FamilyCall(t) });
+    assert fCalls.filter({ c -> c == "" }).length == 0;
+    assert fCalls.join("|") == bCalls.join("|");
+    val fProps = fs.map({ t -> f42FamilyProp(t, "--tw-") });
+    val bProps = bs.map({ t -> f42FamilyProp(t, "--tw-backdrop-") });
+    assert fProps.filter({ p -> p == "" }).length == 0;
+    assert fProps.join("|") == bProps.join("|");
+}
+
+// `brightness(.5)` IS NOT `brightness(0.5)`. The reference writes the leading
+// dot off, and byte-equality is the gate — a normaliser that added the zero
+// would pass a test over the function name and fail this one.
+test "Filter — the leading-dot decimals and the percent signs of `§ 13.1`" {
+    assert f42FamilyCall(.Filter.Brightness.__50) == "brightness(.5)";
+    assert f42FamilyCall(.Filter.Saturate.__50) == "saturate(.5)";
+    assert f42FamilyCall(.Filter.Contrast.__75) == "contrast(.75)";
+    assert tokenDeclarations(.Filter.Brightness.__50).indexOf("0.5") == -1;
+    assert f42FamilyCall(.Filter.Grayscale.__100) == "grayscale(100%)";
+    assert f42FamilyCall(.Filter.Invert.__100) == "invert(100%)";
+    assert f42FamilyCall(.Filter.Sepia.__100) == "sepia(100%)";
+    assert f42FamilyCall(.Filter.Brightness.__100) == "brightness(1)";
+    assert tokenDeclarations(.Filter.Brightness.__100).indexOf("%") == -1;
+}
+
+// `backdrop-opacity-*` takes `§ 12.3`'s fifteen steps, which DO carry their
+// leading zero — that table writes `opacity: 0.05`.
+test "BackdropFilter.Opacity — the fifteen steps of `§ 12.3`, leading zero kept" {
+    assert f42FamilyCall(.BackdropFilter.Opacity.__5) == "opacity(0.05)";
+    assert f42FamilyCall(.BackdropFilter.Opacity.__50) == "opacity(0.5)";
+    assert f42FamilyCall(.BackdropFilter.Opacity.__100) == "opacity(1)";
+}
+
+// THE COMPOSITION, ASSERTED AS COMPOSITION. Two filter families in one list
+// are two custom properties and two IDENTICAL readers in one rule: both
+// families survive, and the duplicate reader is idempotent.
+test "Filter — blur and grayscale in one list compose instead of overwriting" {
+    val tokens: Token[] = [.Filter.Blur.Sm, .Filter.Grayscale.__100];
+    val s = tokensToSheet(tokens, defaultTheme());
+    assert s.rules.length == 2;
+    val decls = declarationsOf(s).join(";").split(";");
+    assert decls.length == 4;
+    assert (decls.at(0) ?? "") == "--tw-blur:blur(var(--blur-sm))";
+    assert (decls.at(2) ?? "") == "--tw-grayscale:grayscale(100%)";
+    assert (decls.at(1) ?? "") == "filter:" + filterChain();
+    assert (decls.at(3) ?? "") == (decls.at(1) ?? "x");
+    assert filterChain().indexOf("var(--tw-blur, )") != -1;
+    assert filterChain().indexOf("var(--tw-grayscale, )") != -1;
+}
+
+// THE READER IS SELF-CONTAINED: it names no `--tw-filter` (a variable no theme
+// entry can hold and no `:root` rule could compose), and every family carries
+// an empty fallback so an unset one contributes nothing.
+test "Filter — the reader names every family, each with an empty fallback" {
+    assert filterChain() == "var(--tw-blur, ) var(--tw-brightness, ) var(--tw-contrast, ) var(--tw-grayscale, ) var(--tw-hue-rotate, ) var(--tw-invert, ) var(--tw-saturate, ) var(--tw-sepia, ) var(--tw-drop-shadow, )";
+    assert backdropFilterChain() == "var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, )";
+    assert tokenDeclarations(.Filter.Blur.Md).indexOf("--tw-filter") == -1;
+    assert tokenDeclarations(.BackdropFilter.Blur.Md).indexOf("--tw-backdrop-filter") == -1;
+}
+
+// A frosted panel: a backdrop blur and a backdrop saturate compose the same way.
+test "BackdropFilter — blur and saturate in one list compose" {
+    val tokens: Token[] = [.BackdropFilter.Blur.Md, .BackdropFilter.Saturate.__150];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme())).join(";").split(";");
+    assert decls.length == 4;
+    assert (decls.at(0) ?? "") == "--tw-backdrop-blur:blur(var(--blur-md))";
+    assert (decls.at(2) ?? "") == "--tw-backdrop-saturate:saturate(1.5)";
+    assert (decls.at(3) ?? "") == "backdrop-filter:" + backdropFilterChain();
+}
+
+test "FilterRaw / BackdropRaw — the escape hatches construct and emit" {
+    val f = Token.FilterRaw(value: "blur(8px) grayscale(100%)");
+    val b = Token.BackdropRaw(value: "blur(2px)");
+    assert tokenDeclarations(f) == "filter:blur(8px) grayscale(100%)";
+    assert tokenDeclarations(b) == "backdrop-filter:blur(2px)";
+    assert tokenDeclarations(rawFilter("sepia(40%)")) == "filter:sepia(40%)";
+    assert tokenDeclarations(rawBackdropFilter("invert(1)")) == "backdrop-filter:invert(1)";
+}
+
+test "Filter — a brightness under Hover reaches front 34's variant" {
+    val inner: Token[] = [.Filter.Brightness.__110];
+    val outer: Token[] = [Token.Hover(inner)];
+    val s = tokensToSheet(outer, defaultTheme());
+    assert declarationsOf(s).join(";") == "--tw-brightness:brightness(1.1);filter:" + filterChain();
+    assert firstRuleOf(s).selector == "&:hover";
+}
+
+test "filterEntries — seven blurs and six drop shadows, composed into a theme" {
+    val es = filterEntries();
+    assert es.length == 13;
+    assert es.filter({ e -> e.name.startsWith(nsPrefix(Ns.Blur)) }).length == 7;
+    assert es.filter({ e -> e.name.startsWith(nsPrefix(Ns.DropShadow)) }).length == 6;
+    val th = extendTheme(defaultTheme(), filterEntries());
+    assert themeValue(th, "--blur-sm") == "8px";
+    assert themeValue(th, "--blur-3xl") == "64px";
+    assert themeValue(th, "--drop-shadow-md") == "0 3px 3px rgb(0 0 0 / 0.12)";
+    assert themeValue(defaultTheme(), "--blur-sm") == "";
+}
+
+// ── the regression walk ──────────────────────────────────────────────────────
+
+fn f42AllLeaves() -> Token[] {
+    val extra: Token[] = [
+        .Filter.Blur.None, .BackdropFilter.Blur.None, .Filter.DropShadow.None,
+        .Filter.DropShadow.Xs, .Filter.DropShadow.Sm, .Filter.DropShadow.Md,
+        .Filter.DropShadow.Lg, .Filter.DropShadow.Xl, .Filter.DropShadow.X2xl,
+        .BackdropFilter.Opacity.__0, .BackdropFilter.Opacity.__5,
+        .BackdropFilter.Opacity.__10, .BackdropFilter.Opacity.__20,
+        .BackdropFilter.Opacity.__25, .BackdropFilter.Opacity.__30,
+        .BackdropFilter.Opacity.__40, .BackdropFilter.Opacity.__50,
+        .BackdropFilter.Opacity.__60, .BackdropFilter.Opacity.__70,
+        .BackdropFilter.Opacity.__75, .BackdropFilter.Opacity.__80,
+        .BackdropFilter.Opacity.__90, .BackdropFilter.Opacity.__95,
+        .BackdropFilter.Opacity.__100,
+    ];
+    return f42FilterTwins().append(f42BackdropTwins()).append(extra);
+}
+
+// A resolved length or shadow inside a filter declaration: a `px` or a colour
+// function. The predicate takes a STRING, so its control is a string.
+fn f42CarriesNoLiteral(decl: string) -> bool {
+    return decl.indexOf("px") == -1 && decl.indexOf("rgb(") == -1
+        && decl.indexOf("rem") == -1;
+}
+
+test "front 42 — 108 leaves, every one well-formed, none resolving a length" {
+    val leaves = f42AllLeaves();
+    assert leaves.length == 108;
+    val decls = leaves.map({ t -> tokenDeclarations(t) });
+    assert decls.filter({ d -> d == "" || d.indexOf(":") == -1 }).length == 0;
+    assert decls.filter({ d -> !f42CarriesNoLiteral(d) }).length == 0;
+    assert f42CarriesNoLiteral("--tw-blur:blur(8px)") == false;
+    assert f42CarriesNoLiteral("--tw-drop-shadow:drop-shadow(0 1px 1px rgb(0 0 0 / 0.05))") == false;
+    val readers = decls.filter({ d -> d.indexOf(";filter:") != -1 || d.indexOf(";backdrop-filter:") != -1 });
+    assert readers.length == 106;
+}
+
+// DETERMINISM ACROSS TARGETS: the class name for a fixed list under a fixed
+// theme is a literal both targets must fold to.
+test "Filter — the class name is a literal, and both targets must agree" {
+    val tokens: Token[] = [.Filter.Blur.Sm, .Filter.Grayscale.__100, .BackdropFilter.Blur.Md];
+    assert emiliaWith(tokens, defaultTheme()) == "e_4cb5836b";
+}
+// ── end front 42 ─────────────────────────────────────────────────────────────
+
 
 // ── front 44 — transitions and animation ─────────────────────────────────────
 //

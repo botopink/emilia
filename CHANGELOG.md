@@ -2,6 +2,16 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Filter` and `BackdropFilter` added — `§ 13`** (1.0.10-beta front
+  `42-emilia-filters`). 108 leaves in two sections plus the top-level
+  `FilterRaw` / `BackdropRaw` and the wrappers `rawFilter` / `rawBackdropFilter`.
+  Every leaf but `Blur.None` writes its family's `--tw-*` custom property and one
+  reader of all the families with empty fallbacks, so filters compose instead of
+  the last one winning. The backdrop section is `BackdropFilter` because
+  `Backdrop` is the `::backdrop` modifier. `filterEntries()` carries the
+  `--blur-*` / `--drop-shadow-*` values. `emilia` 569 → 598 on commonJS and
+  erlang.
+
 - **Front 24 — effects by return type** (botopink decisions 118 and 120). The
   `#[@future]` annotation leaves: `drainRules`, `flushWith` and `flush` are
   `-> @Task<string>`, and the eight examples' `main` is `fn main() -> @Task<void>`.
