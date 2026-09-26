@@ -2,6 +2,11 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Transform.Translate` — both axes** (front 45, from the track-D audit):
+  `.Transform.Translate.{0,Px,1,Half,Full}` is `translate:<v> <v>`. The
+  sub-dispatchers of fronts 41 and 45 take `th: Theme` like every other front's.
+  `emilia` 723 → 724.
+
 - **`space-*` and `divide-*` take upstream's form** (fronts 35 and 40, from the
   track-D audit). The child selector is `:where(& > :not(:last-child))` (no added
   specificity) and both sides of the gap are written through the reverse flag,

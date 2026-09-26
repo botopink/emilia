@@ -13889,6 +13889,25 @@ fn transformScaleYValue(s: Token.Transform.ScaleY, th: Theme) -> string {
 // See note (2) in the banner. The axis literal is this utility's own; the other
 // axis is a reference carrying the `0` upstream registers with `@property`.
 
+// `translate-<n>`, both axes at once: upstream writes the two variables and
+// `translate: var(--tw-translate-x) var(--tw-translate-y)`; this front writes
+// no `--tw-*` variable (see the banner), so the both-axes row is the value on
+// each axis — which is also the one translate row that needs no fallback.
+fn transformTranslateDecl(value: string) -> string {
+    return "translate:" + value + " " + value;
+}
+
+fn transformTranslateValue(t: Token.Transform.Translate, th: Theme) -> string {
+    val out = case t {
+        __0 -> spacing(0);
+        Px -> "1px";
+        __1 -> spacing(1);
+        Half -> "50%";
+        Full -> "100%";
+    };
+    return out;
+}
+
 fn transformTranslateXDecl(value: string) -> string {
     return "translate:" + value + " " + cssVarOr(twTranslateY(), "0");
 }
@@ -14091,6 +14110,7 @@ fn transformTokenToCss(t: Token.Transform, th: Theme) -> string {
         ScaleY(_inner) -> "scale:1 " + transformScaleYValue(_inner, th);
         TranslateX(_inner) -> transformTranslateXDecl(transformTranslateXValue(_inner, th));
         TranslateY(_inner) -> transformTranslateYDecl(transformTranslateYValue(_inner, th));
+        Translate(_inner) -> transformTranslateDecl(transformTranslateValue(_inner, th));
         SkewX(_inner) -> transformSkewXToCss(_inner, th);
         SkewY(_inner) -> transformSkewYToCss(_inner, th);
         Origin(_inner) -> transformOriginToCss(_inner, th);
@@ -14193,6 +14213,15 @@ test "Transform.Rotate — the v4 property, never the v3 `transform:` function" 
     assert tokenDeclarations(.Transform.Rotate.__45).indexOf("transform:") == -1;
     assert tokenDeclarations(.Transform.Rotate.__45).indexOf("rotate(") == -1;
     assert tokenDeclarations(.Transform.Rotate.__45).startsWith("rotate:");
+}
+
+test "Transform.Translate — both axes, the value on each and no fallback" {
+    assert tokenDeclarations(.Transform.Translate.__0) == "translate:0 0";
+    assert tokenDeclarations(.Transform.Translate.Px) == "translate:1px 1px";
+    assert tokenDeclarations(.Transform.Translate.__1) == "translate:calc(var(--spacing) * 1) calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Transform.Translate.Half) == "translate:50% 50%";
+    assert tokenDeclarations(.Transform.Translate.Full) == "translate:100% 100%";
+    assert tokenDeclarations(.Transform.Translate.Full).indexOf("--tw-") == -1;
 }
 
 // ── `§ 16.5` · scale ─────────────────────────────────────────────────────────
@@ -14625,6 +14654,8 @@ fn f45TranslateLeaves() -> Token[] {
         .Transform.TranslateX.Half, .Transform.TranslateX.Full,
         .Transform.TranslateY.__0, .Transform.TranslateY.__1,
         .Transform.TranslateY.Half, .Transform.TranslateY.Full,
+        .Transform.Translate.__0, .Transform.Translate.__1,
+        .Transform.Translate.Half, .Transform.Translate.Full,
     ];
     return leaves;
 }
@@ -14722,14 +14753,14 @@ fn f45CarriesItsUnit(decl: string) -> bool {
     return out;
 }
 
-test "regression — every one of the 94 walked leaves of this front declares something" {
+test "regression — every one of the 98 walked leaves of this front declares something" {
     assert f45RotateLeaves().length == 10;
     assert f45ScaleLeaves().length == 30;
-    assert f45TranslateLeaves().length == 8;
+    assert f45TranslateLeaves().length == 12;
     assert f45SkewLeaves().length == 12;
     assert f45KeywordLeaves().length == 34;
     val leaves = front45Leaves();
-    assert leaves.length == 94;
+    assert leaves.length == 98;
     assert leaves.all({ t -> f45IsWellFormed(tokenDeclarations(t)) });
 }
 
@@ -14749,17 +14780,17 @@ test "regression — every angle this front emits carries its `deg`" {
 
 // EVERY LEAF IS DISTINCT BUT ONE PAIR, AND THE PAIR IS NAMED. A sub-dispatcher
 // that discarded its payload — front 40's historical defect, `border-color:red`
-// for all 286 cells — passes every probe above and fails this one. The 96
-// tokens include the two `Px` leaves the length walk holds out.
+// for all 286 cells — passes every probe above and fails this one. The 101
+// tokens include the three `Px` leaves the length walk holds out.
 //
 // THE ONE COLLISION IS `§ 16.5`'s OWN: `scale-x-100` and `scale-y-100` both
 // mean "identity on my axis", so both are `scale:1 1` under the two-value shape
 // the reference states. It is pinned BY NAME rather than allowed as a count, so
 // a second collision appearing anywhere else still reds.
-test "regression — the 96 leaves emit 95 distinct declarations, and the pair is named" {
-    val px: Token[] = [.Transform.TranslateX.Px, .Transform.TranslateY.Px];
+test "regression — the 101 leaves emit 100 distinct declarations, and the pair is named" {
+    val px: Token[] = [.Transform.TranslateX.Px, .Transform.TranslateY.Px, .Transform.Translate.Px];
     val all = front45Leaves().append(px);
-    assert all.length == 96;
+    assert all.length == 101;
     val decls = all.map({ t -> tokenDeclarations(t) });
     // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
     // rather than searched — front 40's rule, followed here.

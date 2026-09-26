@@ -429,7 +429,8 @@ Front 45 owns **transforms** — the `Transform` section of `tokens.bp` and the
 two top-level variants `TransformRotateRaw` / `TransformTranslateRaw`, and
 `transformTokenToCss` with its sixteen sub-dispatchers, `transformEntries()` and
 the wrappers `rawRotate` / `rawTranslate` in `emilia.bp`, fenced by the
-`// ── front 45 — transforms ──` banner in both files. **96 leaves** over the
+`// ── front 45 — transforms ──` banner in both files. **101 leaves** (96, plus the
+both-axes `Translate` the audit pass added) over the
 whole of `§ 16`. Its rule is fronts 35-41's: **no leaf resolves a LENGTH.**
 `translate-x-1` is front 54's `spacing(1)` and the five perspective keywords are
 `--perspective-*` references, so the `100px` … `1200px` the reference prints in
@@ -499,10 +500,12 @@ steps on each of `ScaleX` and `ScaleY` (`§ 16.5` enumerates `scale-x-50` and
 magnitudes (`§ 16.4`'s HTML names `-rotate-12`; `1`, `45`, `90` and `180` mirror
 the positive table). **Confirmed against upstream while writing**: the five
 `translate-y-*` rows the reference file omits, and `§ 16.6`'s property.
-**Reference gaps left undeclared**: `rotate-x/y/z-*`, `translate-z-*`,
-`scale-z-*` and a `Translate` both-axes section — `§ 16` enumerates no 3-D axis
-variant and no unaxed translate anywhere, and the front's own Definition of Done
-lists a `Translate` section the spec's own Step 3 table does not contain.
+**Reference gaps left undeclared**: `rotate-x/y/z-*`, `translate-z-*` and
+`scale-z-*` — `§ 16` enumerates no 3-D axis variant. The both-axes `Translate`
+section the front's Definition of Done lists (and its Step 3 table does not)
+was added in the audit pass: `.Transform.Translate.{0,Px,1,Half,Full}` is
+`translate:<v> <v>`, upstream's `translate-<n>` with the value on each axis and
+no `--tw-*` variable, the one translate row that needs no fallback.
 
 **`.Transition.Base`, never `.Transition.Default`** — `default` is in the
 keyword table AND `Default(inner)` is already a top-level modifier variant, so
@@ -1205,9 +1208,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **723/723** on
+  refuses) runs every module's in-file `test {}` blocks, **724/724** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 601 (`emilia.bp`) + 14 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 2 (`compose.bp`) + 3 (`attributes.bp`). The figure below breaks down the 375
+  (`output.bp`) + 602 (`emilia.bp`) + 14 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 2 (`compose.bp`) + 3 (`attributes.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on

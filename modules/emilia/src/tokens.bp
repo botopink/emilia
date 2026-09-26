@@ -251,7 +251,7 @@
 ////              `@keyframes spin{…}` beside it, and a keyframes rule is not a
 ////              style rule. The four bodies are front 54's `keyframeEntries()`
 ////              read back through `keyframeCss(th)`, never a second copy
-////   Transform — front 45: the whole of `§ 16`, 96 leaves over sixteen
+////   Transform — front 45: the whole of `§ 16`, 101 leaves over seventeen
 ////              sub-sections. In v4 `rotate`, `scale` and `translate` are
 ////              INDEPENDENT CSS PROPERTIES rather than `transform` functions,
 ////              so three of them in one list are three declarations in one
@@ -2271,6 +2271,13 @@ pub type Token {
             Full,
         }
         TranslateY {
+            0,
+            Px,
+            1,
+            Half,
+            Full,
+        }
+        Translate {
             0,
             Px,
             1,
