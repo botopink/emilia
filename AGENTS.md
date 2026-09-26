@@ -288,6 +288,20 @@ zero width over the browser's `border-style: none` leaves every `Border.W.*`
 inert. **The reset is opt-in and an argument only**: `defaultOptions()` carries
 `base: []`; `withBase(o, preflightRules())` turns it on.
 
+Front 57 owns **the escape hatches** — `arbitrary.bp` and the six TOP-LEVEL
+variants `Arb(prop, value)`, `ArbProp(name, value)`, `ArbVariant(selector,
+inner)`, `ArbAt(query, inner)`, `ArbMin(px, inner)`, `ArbMax(px, inner)` under
+the `// ── front 57 — escape hatches ──` banner at the end of `Token`, with six
+arms in `tokenToSheet`. **This is emilia's security surface: refuse, never
+sanitise, no opt-out.** A payload that could close a rule (`}`) or the `<style>`
+element (`<`) is refused twice — at COMPTIME by the template validators
+(`cssValue`/`cssIdent`/`cssSelector`/`cssQuery`/`cssLength`, which fail the
+build with the text) and at RUN TIME by the builders and again by the dispatcher
+helpers (`@panic`), because a bare `Token.Arb(…)` constructor cannot be made
+private. `arbitrary.bp` cannot import `emilia.bp` (which imports it), so the
+`Token[]`-carrying helpers take the inner list already folded to a `Sheet`, and
+the rendering tests live in `emilia.bp` under the front's banner.
+
 Front 44 owns **transitions and animation** — the `Transition` and `Animate`
 sections of `tokens.bp` and the two top-level variants `TransitionProperty` /
 `AnimateRaw`, and `transitionTokenToCss`, `animateTokenToSheet`,
@@ -572,6 +586,7 @@ emilia/
 │       │                    target commonJS · targets [commonJS, erlang] ·
 │       │                    files: root.bp · tokens.bp · theme.bp ·
 │       │                    spacing.bp · output.bp · preflight.bp ·
+│       │                    arbitrary.bp ·
 │       │                    emilia.bp · no dependencies
 │       └── src/
 │           ├── root.bp    ← `pub mod tokens; pub mod theme;
@@ -600,6 +615,12 @@ emilia/
 │           │                byte-equality with upstream `preflight.css`) —
 │           │                and `preflight()`, the same as a CSS fragment.
 │           │                Opt-in only: `withBase(o, preflightRules())`
+│           ├── arbitrary.bp ← front 57: the six `Arb*` escape hatches' validating
+│           │                builders (`arbValue`, `arbProp`, `arbSel`, `arbAt`,
+│           │                `arbMin`, `arbMax`), their dispatcher helpers, the
+│           │                run-time reject sets (`refusesValue` …) and the five
+│           │                comptime validators (`cssValue`, `cssIdent`,
+│           │                `cssSelector`, `cssQuery`, `cssLength`)
 │           ├── output.bp  ← front 56: the rule model (`Rule`, `Block`,
 │           │                `Sheet`, `Variant`), `nestVariant` /
 │           │                `markImportant`, the `\t`/`\n`/`\r` codec that
@@ -1068,9 +1089,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **666/666** on
+  refuses) runs every module's in-file `test {}` blocks, **683/683** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 561 (`emilia.bp`) + 17 (`preflight.bp`). The figure below breaks down the 375
+  (`output.bp`) + 569 (`emilia.bp`) + 17 (`preflight.bp`) + 9 (`arbitrary.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
@@ -1446,6 +1467,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 46 — interactivity | DONE — steps 1–7. **161 leaves** over `§ 17` in `Interact` plus `InteractAccent`/`InteractCaret`/`InteractScrollbarColor` (payload = `paletteVar`); scroll offsets are `spacing(n)`; `Snap.Type` reads `--tw-scroll-snap-strictness` with `proximity` as its fallback. +25 inline tests, **633** on both targets |
 | 1.0.10-beta front 47 — SVG and accessibility | DONE — steps 1–5. **11 leaves** in `Svg` and `A11y` plus `SvgFill`/`SvgStroke`/`SvgStrokeWidthRaw`; `sr-only`/`not-sr-only` are upstream's bodies (read 2026-09-26, `not-sr-only` leaves `border-width`, as upstream). +10 inline tests, **643** on both targets |
 | 1.0.10-beta front 55 — preflight | DONE — steps 1–5. `preflight.bp`: eleven `base`-layer rules over `§ 4`'s eight bullets (parity, not byte-equality with upstream), `border-style:solid` beside `border-width:0` as a decision, `preflight()` as a fragment; opt-in through `withBase` only. 17 inline tests, **661** on both targets |
+| 1.0.10-beta front 57 — escape hatches | DONE — steps 1–5. Six top-level `Arb*` variants, `arbitrary.bp` with the validating builders, the run-time reject sets re-checked at dispatch, and five comptime validators (their build failures verified against the compiler on 2026-09-26). +8 `emilia.bp` / +9 `arbitrary.bp` tests, **683** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

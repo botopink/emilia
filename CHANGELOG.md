@@ -2,6 +2,13 @@
 
 ## Unreleased — v0.beta.22
 
+- **Arbitrary values — `arbitrary.bp`** (1.0.10-beta front
+  `57-emilia-escape-hatches`). Six top-level variants (`Arb`, `ArbProp`,
+  `ArbVariant`, `ArbAt`, `ArbMin`, `ArbMax`) built through validating builders;
+  a payload that could break out of its rule or the `<style>` element is refused
+  at comptime (five template validators) and at run time (the builders and the
+  dispatcher), never escaped. `emilia` 666 → 683 on commonJS and erlang.
+
 - **`fullTheme()`, `fullOptions()` and `styleRule()`** (1.0.10-beta front
   `56-emilia-cascade-and-output`, decision 80). `flush()` now renders under
   `fullTheme()` — `defaultTheme()` extended by the palette, typography,

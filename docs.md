@@ -78,6 +78,28 @@ inherited link colour and decoration, block images, inherited fonts in form
 controls, and `content:""` on `::before`/`::after`. Parity with `§ 4`, not a
 byte copy of upstream's `preflight.css`.
 
+## Arbitrary values — the escape hatches
+
+When no token names the value, build one — every builder validates its payload:
+
+```bp
+import { arbValue, arbProp, arbSel, arbAt, arbMin, arbMax, cssValue } from "emilia";
+
+val brand = emilia([arbValue("background-color", cssValue """#316ff6""")]);
+val gutter = emilia([arbProp("--gutter-width", "1rem")]);
+val dragging: Token[] = [.Interact.Cursor.Grabbing];
+val handle = emilia([.Interact.Cursor.Grab, arbSel("&.is-dragging", dragging)]);
+val gridOnly: Token[] = [.Layout.Grid];
+val layout = emilia([arbAt("supports(display:grid)", gridOnly), arbMin("320px", gridOnly)]);
+```
+
+A payload that could close the rule or the `<style>` element (`{ } < > ; @ \`
+in a value, anything but `[A-Za-z0-9-_]` in a name, a selector without exactly
+one `&`, a length without a unit) is REFUSED, never escaped: the comptime
+validators (`cssValue`, `cssIdent`, `cssSelector`, `cssQuery`, `cssLength`) fail
+the build, and the builders `@panic` at run time. `ArbMin`/`ArbMax` are
+`@media (width >= …)` / `(width < …)`; `arbAt` adds the `@`.
+
 ## The `Token` enum
 
 Every utility is a typed enum variant. Unknown variants are type errors

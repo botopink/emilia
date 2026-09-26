@@ -34,4 +34,5 @@ pub mod theme;
 pub mod spacing;
 pub mod output;
 pub mod preflight;
+pub mod arbitrary;
 pub default mod emilia;

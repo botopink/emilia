@@ -7,6 +7,8 @@ import {Rule, Block, Sheet, Variant, Options} from "output";
 import {emptySheet, declSheet, blockSheet, mergeSheet, declarationsOf, nestVariant, markImportant} from "output";
 import {encodeSheet, decodeSheet, carriesSeparator} from "output";
 import {defaultOptions, withTheme, renderRule, renderDocument} from "output";
+import {arbValueToSheet, arbPropToSheet, arbVariantToSheet, arbAtToSheet, arbMinToSheet, arbMaxToSheet} from "arbitrary";
+import {arbValue, arbProp, arbSel, arbAt, arbMin, arbMax} from "arbitrary";
 
 //// ═══ FRONT 56 · the host cells and the public entry points ═══════════════
 ////
@@ -262,6 +264,14 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         SvgStroke(value) -> declSheet("stroke:" + value);
         SvgStrokeWidthRaw(value) -> declSheet("stroke-width:" + value);
         // ── end front 47 ───────────────────────────────────────
+        // ── front 57 — escape hatches ──────────────────────────
+        Arb(prop, value) -> arbValueToSheet(prop, value);
+        ArbProp(name, value) -> arbPropToSheet(name, value);
+        ArbVariant(selector, inner) -> arbVariantToSheet(selector, tokensToSheet(inner, th));
+        ArbAt(query, inner) -> arbAtToSheet(query, tokensToSheet(inner, th));
+        ArbMin(px, inner) -> arbMinToSheet(px, tokensToSheet(inner, th));
+        ArbMax(px, inner) -> arbMaxToSheet(px, tokensToSheet(inner, th));
+        // ── end front 57 ───────────────────────────────────────
         // ── front 34 — modifiers ─────────────────────────────────────────
         Sm(inner) -> nestVariant(tokensToSheet(inner, th), smVariant(th));
         Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th));
@@ -15794,6 +15804,80 @@ test "Svg / A11y — the class name is a literal, and both targets must agree" {
 // ── end front 47 ─────────────────────────────────────────────────────────────
 
 
+
+// ── front 57 — escape hatches ────────────────────────────────────────────────
+//
+// The six `Arb*` arms of `tokenToSheet` dispatch to `arbitrary.bp`, which owns
+// the builders, the validators and the helpers; these are the rendering tests,
+// which need `tokensToSheet` and so live here. The refusal tests live in
+// `arbitrary.bp`.
+
+fn f57Doc(tokens: Token[]) -> string {
+    return renderDocument("e_x\t" + encodeSheet(tokensToSheet(tokens, defaultTheme())), bareOptions());
+}
+
+test "Arb — `§ 3.1`'s `bg-[#316ff6]` row, as a known property with an arbitrary value" {
+    val tokens: Token[] = [arbValue("background-color", "#316ff6")];
+    assert f57Doc(tokens) == "<style>@layer theme, base, components, utilities;@layer utilities{.e_x{background-color:#316ff6}}</style>";
+}
+
+test "ArbProp — `§ 3.1`'s `[--gutter-width:1rem]` row, an arbitrary property" {
+    val tokens: Token[] = [arbProp("--gutter-width", "1rem")];
+    assert f57Doc(tokens).indexOf(".e_x{--gutter-width:1rem}") != -1;
+}
+
+test "ArbVariant — `§ 3.2`'s `[&.is-dragging]:` row, a sibling rule with the class for `&`" {
+    val inner: Token[] = [.Interact.Cursor.Grabbing];
+    val tokens: Token[] = [.Interact.Cursor.Grab, arbSel("&.is-dragging", inner)];
+    val doc = f57Doc(tokens);
+    assert doc.indexOf(".e_x{cursor:grab}") != -1;
+    assert doc.indexOf(".e_x.is-dragging{cursor:grabbing}") != -1;
+    assert doc.indexOf(".e_x{cursor:grab}") < doc.indexOf(".e_x.is-dragging{");
+}
+
+test "ArbAt — `§ 3.2`'s `[@supports(display:grid)]:` row, the at-rule emilia prefixes" {
+    val inner: Token[] = [.Layout.Grid];
+    val tokens: Token[] = [arbAt("supports(display:grid)", inner)];
+    assert f57Doc(tokens).indexOf("@supports(display:grid){.e_x{display:grid}}") != -1;
+}
+
+test "ArbMin / ArbMax — `§ 3.3`'s `min-[320px]:` and `max-[600px]:`, hoisted" {
+    val inner: Token[] = [.Text.Bold];
+    val min: Token[] = [arbMin("320px", inner)];
+    val max: Token[] = [arbMax("600px", inner)];
+    assert f57Doc(min) == "<style>@layer theme, base, components, utilities;@layer utilities{@media (width >= 320px){.e_x{font-weight:bold}}}</style>";
+    assert f57Doc(max).indexOf("@media (width < 600px){.e_x{font-weight:bold}}") != -1;
+}
+
+// COMPOSITION, both orders: the outer modifier is outermost.
+test "ArbVariant inside Md — the media query wraps the arbitrary selector" {
+    val inner: Token[] = [.Text.Bold];
+    val arb: Token[] = [arbSel("&.is-active", inner)];
+    val tokens: Token[] = [Token.Md(arb)];
+    assert f57Doc(tokens).indexOf("@media (width >= 48rem){.e_x.is-active{font-weight:bold}}") != -1;
+    val md: Token[] = [Token.Md(inner)];
+    val outer: Token[] = [arbSel("&.is-active", md)];
+    assert f57Doc(outer).indexOf("@media (width >= 48rem){.e_x.is-active{font-weight:bold}}") != -1;
+    val hover: Token[] = [Token.Hover(inner)];
+    val dragged: Token[] = [arbSel("&.is-dragging", hover)];
+    assert f57Doc(dragged).indexOf(".e_x.is-dragging:hover{font-weight:bold}") != -1;
+}
+
+// THE THEME INTERACTION: an arbitrary value reaches back into the theme by
+// concatenation, and `calc(` / `var(` trip no reject set.
+test "Arb — a value built from spacing() and themeVar() needs no validator change" {
+    val a = arbValue("max-height", "calc(100dvh - " + spacing(6) + ")");
+    assert tokenDeclarations(a) == "max-height:calc(100dvh - calc(var(--spacing) * 6))";
+    val b = arbValue("color", themeVar("--color-brand"));
+    assert tokenDeclarations(b) == "color:var(--color-brand)";
+}
+
+test "Arb — the class name is a literal, and both targets must agree" {
+    val inner: Token[] = [.Text.Bold];
+    val tokens: Token[] = [arbValue("background-color", "#316ff6"), arbMin("320px", inner)];
+    assert emiliaWith(tokens, defaultTheme()) == "e_65bc49a6";
+}
+// ── end front 57 ─────────────────────────────────────────────────────────────
 
 // ── front 56 · test helpers ───────────────────────────────────────────
 

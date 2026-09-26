@@ -292,6 +292,13 @@
 ////   A11y     — front 47: `§ 19` — SrOnly and NotSrOnly (upstream's bodies,
 ////              read from `utilities.ts` because `§ 19.2` prints none) and
 ////              ForcedColorAdjust { Auto, None }. 4 leaves
+////   Arb*     — front 57: six TOP-LEVEL escape hatches — Arb(prop, value),
+////              ArbProp(name, value), ArbVariant(selector, inner),
+////              ArbAt(query, inner), ArbMin(px, inner), ArbMax(px, inner) —
+////              built through `arbitrary.bp`'s validating builders; a payload
+////              that could close a rule or the `<style>` element is REFUSED
+////              (build failure at comptime, `@panic` at run time), never
+////              escaped
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
 ////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
@@ -2863,4 +2870,18 @@ pub type Token {
     // the priority wrapper — not a variant, a flag on every rule it wraps
     Important(inner: Token[]),
     // ── end front 34 ─────────────────────────────────────────────────────────
+
+    // ── front 57 — escape hatches ────────────────────────────────────────────
+    //
+    // Six TOP-LEVEL variants, builtin-typed fields only; built through
+    // `arbitrary.bp`'s validating builders (`arbValue`, `arbProp`, `arbSel`,
+    // `arbAt`, `arbMin`, `arbMax`), and every payload re-checked when it is
+    // dispatched.
+    Arb(prop: string, value: string),
+    ArbProp(name: string, value: string),
+    ArbVariant(selector: string, inner: Token[]),
+    ArbAt(query: string, inner: Token[]),
+    ArbMin(px: string, inner: Token[]),
+    ArbMax(px: string, inner: Token[]),
+    // ── end front 57 ─────────────────────────────────────────────────────────
 }
