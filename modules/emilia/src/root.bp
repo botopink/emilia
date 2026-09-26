@@ -36,4 +36,5 @@ pub mod output;
 pub mod preflight;
 pub mod arbitrary;
 pub mod container;
+pub mod compose;
 pub default mod emilia;

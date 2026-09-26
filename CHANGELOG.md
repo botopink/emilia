@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.beta.22
 
+- **Custom utilities and variants — `compose.bp`** (1.0.10-beta front
+  `59-emilia-custom-utilities-and-variants`). Bundles as `Token[]` functions,
+  `compose`, `hocus` / `selector` / `themeMidnight`, and `named(class, tokens)`
+  in `@layer components` (refusing `e_`, a bad ident and a duplicate). `emilia`
+  697 → 709 on commonJS and erlang.
+
 - **Container queries — `container.bp`** (1.0.10-beta front
   `58-emilia-container-queries`). `.Container.{Inline,Normal,Size}`,
   `containerName(name)` and the thirteen `containerAt<Size>(inner)` builders plus

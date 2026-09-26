@@ -15,6 +15,7 @@
     "preflight.bp",
     "arbitrary.bp",
     "container.bp",
+    "compose.bp",
     "emilia.bp"
   ]
 }

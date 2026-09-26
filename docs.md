@@ -99,6 +99,30 @@ every `md` query. `containerNamed(ContainerSize.Sm, "main", inner)` is `@sm/main
 Do not import `ContainerSize` into a module that writes `Token.Sm(…)` (see the
 maintainer notes).
 
+## Your own utilities and variants
+
+A bundle is a function; `@apply` is `append`; a custom variant is a function
+over the inner list; a class whose NAME is part of your API is `named`:
+
+```bp
+import { compose, hocus, selector, named, scrollbarHidden } from "emilia";
+
+fn btn() -> Token[] {
+    val out: Token[] = [.Pad.X.__4, .Pad.Y.__2, .Border.Rounded.Md];
+    return out;
+}
+
+val danger = emilia(btn().append([.Bg.Color.Red.__500]));   // @apply
+val all = emilia(compose([btn(), scrollbarHidden()]));
+val bold: Token[] = [.Text.Bold];
+val link = emilia(hocus(bold));                            // :hover and :focus
+val cls = named("btn", btn());                             // .btn in @layer components
+```
+
+`named` refuses a name starting with `e_`, a name outside `[A-Za-z0-9-_]`, and a
+second registration of the same name with different tokens. A utility on the
+same element beats it, because `components` is layered before `utilities`.
+
 ## Arbitrary values — the escape hatches
 
 When no token names the value, build one — every builder validates its payload:

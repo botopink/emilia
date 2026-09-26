@@ -241,11 +241,18 @@ pub fn cssLength(comptime q: @Expr<string>) -> @Expr<string> {
 //   cssLength """320"""                    cssLength """calc(1px)"""
 // The RUN-TIME gate is observable, and every builder is asserted below.
 
-// The message a body raised, or "" when it completed. Test-only; a host
-// try/catch, because a `@panic` is not a value.
+// The message a body raised, or "" when it completed — a host try/catch,
+// because a `@panic` is not a value. Test support, exported for the sibling
+// modules' refusal tests (`compose.bp` may declare no external of its own).
 #[@External.node(when(argc == 1): """(function(__B){ try { __B(); return ""; } catch (__e) { return (__e && __e.message) ? __e.message : String(__e); } })($0)""")]
-#[@External.Erlang("""(fun(B__) -> try B__(), <<>> catch C__:E__ -> iolist_to_binary(io_lib:format("~p", [E__])) end end)($0)""")]
+#[@External.Erlang("""(fun(B__) -> try B__(), <<>> catch _:{panic, M__} when is_binary(M__) -> M__; _:E__ -> iolist_to_binary(io_lib:format("~p", [E__])) end end)($0)""")]
 declare fn raisedBy(body: fn() -> i32) -> string;
+
+// The importable form: a host cell does not lower across a module boundary, a
+// plain `pub fn` around it does.
+pub fn panicMessage(body: fn() -> i32) -> string {
+    return raisedBy(body);
+}
 
 test "cssValue — a hex compiles and yields itself" {
     assert cssValue """#316ff6""" == "#316ff6";
@@ -303,6 +310,7 @@ test "arbValue / arbProp — a breakout panics and names the property and the pa
     val m2 = raisedBy({ -> val t = arbProp("a;b", "1rem"); 0; });
     assert m2.indexOf("a property name may contain only") != -1;
     assert raisedBy({ -> val t = arbValue("color", "red"); 0; }) == "";
+    assert raisedBy({ -> val t = arbValue("color", "red}"); 0; }) == "emilia arbitrary: the value of 'color' may not contain { } < > ; @ or a backslash: 'red}'";
 }
 
 test "arbSel / arbAt / arbMin / arbMax — each refuses its payload" {

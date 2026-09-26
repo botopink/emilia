@@ -63,6 +63,15 @@ declare fn register(name: string, body: string) -> void;
 #[@External.Erlang("""(fun() -> L__ = case erase('__emilia_sheet') of undefined -> []; X__ -> X__ end, iolist_to_binary(lists:join(<<"\n">>, [[K__, <<"\t">>, V__] || {K__, V__} <- L__])) end)()""")]
 declare fn drainRules() -> @Task<string>;
 
+// The payload registered under `name`, or "" when none is — read WITHOUT
+// draining. Front 59's `named()` needs it to refuse a second, different
+// registration under one author-written class name (the cell is keyed by name,
+// so the loser would vanish silently). It lives here because a host cell
+// cannot be imported across modules (§ Maintainer rules).
+#[@External.node(when(argc == 1): """(function(__N){ var __M = (globalThis.__emilia_sheet ||= new Map()); return __M.has(__N) ? __M.get(__N) : ""; })($0)""")]
+#[@External.Erlang("""(fun(N__) -> L__ = case get('__emilia_sheet') of undefined -> []; X__ -> X__ end, case lists:keyfind(N__, 1, L__) of {_, B__} -> B__; false -> <<>> end end)($0)""")]
+declare fn lookupRule(name: string) -> string;
+
 // Content-derived class id. djb2-style fold over the body's UTF-16 code
 // units, rendered as a lowercase hex string. Identical inputs → identical
 // hex → identical class name (the acceptance gate `hash`). The erlang form
@@ -125,6 +134,16 @@ pub fn fullTheme() -> Theme {
 // `defaultOptions()` under `fullTheme()` — what `flush()` renders with.
 pub fn fullOptions() -> Options {
     return withTheme(defaultOptions(), fullTheme());
+}
+
+// The cell's two operations for a caller that names its own class — front 59's
+// `named()`. Neither hashes anything and neither is an input to contract 4.
+pub fn registeredPayload(name: string) -> string {
+    return lookupRule(name);
+}
+
+pub fn registerPayload(name: string, payload: string) -> void {
+    register(name, payload);
 }
 
 // The single public emilia call, on the stock theme. The signature is the one
