@@ -323,8 +323,10 @@ variant is a function over the inner list (`hocus`, the general
 one registration that does not hash**: it lands in `@layer components` (so a
 utility on the same element wins by layer order), refuses the `e_` prefix and
 anything `cssIdent` refuses, and refuses a SECOND, DIFFERENT registration under
-one name. It reaches the cell through `emilia.bp`'s `registeredPayload` /
-`registerPayload` (a host cell does not cross modules), and the test helper
+one name. **`named()` lives in `emilia.bp`**, beside `register` and the
+read-only `lookupRule` cell it needs, because `compose.bp` cannot import
+`emilia.bp` (see the sibling-import rule below) and a host cell does not cross
+modules; front 59's rendering tests live there too. The test helper
 `panicMessage` is `arbitrary.bp`'s — on erlang it unwraps `{panic, Msg}` so a
 panic message compares byte for byte on both targets.
 
@@ -656,9 +658,9 @@ emilia/
 │           ├── compose.bp ← front 59: bundles are `Token[]` functions
 │           │                (`scrollbarHidden`), `compose` is `@apply`,
 │           │                `hocus`/`selector`/`themeMidnight` are custom
-│           │                variants, and `named(class, tokens)` registers an
-│           │                author-named class in `@layer components`. No
-│           │                external, no `Token`, no arm, no comptime
+│           │                variants (`named(class, tokens)` is in `emilia.bp`,
+│           │                beside the cell it registers into). No external,
+│           │                no `Token`, no arm, no compile-time block
 │           ├── output.bp  ← front 56: the rule model (`Rule`, `Block`,
 │           │                `Sheet`, `Variant`), `nestVariant` /
 │           │                `markImportant`, the `\t`/`\n`/`\r` codec that
@@ -1060,6 +1062,26 @@ to the commonJS row and runs once.
   section head may repeat a section head, and renaming to dodge one costs a
   path and buys nothing.
 
+- **A SIBLING MODULE MAY NOT IMPORT `from "emilia"`.** Inside the package
+  `"emilia"` names the default module `emilia.bp`, and a sibling importing it
+  compiles and passes `botopink test` in `modules/emilia/` — and does NOT
+  resolve when emilia is a DEPENDENCY: every example failed with `unbound
+  variable 'flushWith'` in `emilia/preflight.bp`. So `preflight.bp`,
+  `arbitrary.bp`, `container.bp` and `compose.bp` import `tokens`, `theme`,
+  `output` and each other only; whatever needs `tokensToSheet`, the host cell or
+  a flush lives in `emilia.bp` (the `Token[]`-carrying helpers take the inner
+  list already folded to a `Sheet`, and the rendering tests sit under each
+  front's banner in `emilia.bp`). **Run one example after adding a module** —
+  the core suite cannot see this.
+- **A DUPLICATE TOP-LEVEL `fn` IS NOT REFUSED BY THE CHECKER.** Two `fn
+  bareOptions()` in `emilia.bp` passed commonJS (the second wins) and broke the
+  erlang build (`function bareOptions/0 already defined`). Reported with a
+  one-file repro; until the checker refuses it, the erlang run is what catches it.
+- **An imported `selector` fn did not resolve inside `emilia.bp`** (`type
+  mismatch: expected Token, got string` at the call); `import {selector as
+  customVariant} from "compose"` works. Not reduced to a minimal repro — a
+  two-module attempt passed.
+
 - **AN IMPORTED ENUM THAT SHARES A VARIANT NAME WITH `Token` CAPTURES
   `Token.<Variant>(…)`.** Importing `ContainerSize` (whose `Sm`, `Md`, `Lg`, `Xl`,
   `X2xl` are also top-level `Token` modifiers) into `emilia.bp` made every
@@ -1138,9 +1160,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **709/709** on
+  refuses) runs every module's in-file `test {}` blocks, **711/711** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 577 (`emilia.bp`) + 17 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 12 (`compose.bp`). The figure below breaks down the 375
+  (`output.bp`) + 592 (`emilia.bp`) + 14 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 2 (`compose.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
@@ -1518,7 +1540,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 55 — preflight | DONE — steps 1–5. `preflight.bp`: eleven `base`-layer rules over `§ 4`'s eight bullets (parity, not byte-equality with upstream), `border-style:solid` beside `border-width:0` as a decision, `preflight()` as a fragment; opt-in through `withBase` only. 17 inline tests, **661** on both targets |
 | 1.0.10-beta front 57 — escape hatches | DONE — steps 1–5. Six top-level `Arb*` variants, `arbitrary.bp` with the validating builders, the run-time reject sets re-checked at dispatch, and five comptime validators (their build failures verified against the compiler on 2026-09-26). +8 `emilia.bp` / +9 `arbitrary.bp` tests, **683** on both targets |
 | 1.0.10-beta front 58 — container queries | DONE — steps 1–5. `container.bp`, the `Container` markers and three top-level variants; the thirteen widths read from `--container-*`, an undefined one panics; nesting pinned in both orders. +8 `emilia.bp` / +6 `container.bp` tests, **697** on both targets |
-| 1.0.10-beta front 59 — custom utilities and variants | DONE — steps 1–5. `compose.bp`: bundles, `compose`, `hocus`/`selector`/`themeMidnight`, and `named()` in `@layer components` with its three refusals; the contract-4 hash re-asserted beside it. Two small pub wrappers in `emilia.bp` (`registeredPayload`/`registerPayload`, plus the `lookupRule` cell) because a host cell does not cross modules. 12 tests, **709** on both targets |
+| 1.0.10-beta front 59 — custom utilities and variants | DONE — steps 1–5. `compose.bp`: bundles, `compose`, `hocus`/`selector`/`themeMidnight`, and `named()` in `@layer components` with its three refusals; the contract-4 hash re-asserted beside it. `named()` and the read-only `lookupRule` cell live in `emilia.bp` (a sibling cannot import it). 14 tests, **711** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

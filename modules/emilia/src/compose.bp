@@ -25,16 +25,12 @@
 //// stops being predictable.
 ////
 //// This module declares no external, adds no `Token` and no `tokenToSheet`
-//// arm, and has no comptime block. It reaches the host cell only through
-//// `emilia.bp`'s `registeredPayload` / `registerPayload`, because a host cell
-//// cannot be imported across modules.
+//// arm, and has no compile-time block. `named()` itself is in `emilia.bp`
+//// (see step 4 below).
 
 import {Token} from "tokens";
-import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme} from "theme";
-import {Rule, Block, Sheet, Variant, Options, encodeSheet, decodeSheet} from "output";
-import {defaultOptions, withTheme} from "output";
-import {styleRule, registeredPayload, registerPayload, emilia, flushWith} from "emilia";
-import {refusesIdent, arbValue, arbSel, arbAt, panicMessage} from "arbitrary";
+import {Variant} from "output";
+import {arbValue, arbSel, arbAt} from "arbitrary";
 
 // ── step 1 · a bundle is a function (`§ 20.4`'s `@utility scrollbar-hidden`) ─
 
@@ -82,177 +78,25 @@ pub fn themeMidnight(inner: Token[]) -> Token[] {
     return out;
 }
 
-// ── step 4 · the named-class escape (`§ 3.7`'s `@layer components`) ──────────
+// ── step 4 · the named-class escape ──────────────────────────────────────────
+//
+// `named(className, tokens)` lives in `emilia.bp`, beside the host cell it
+// registers into: this module cannot import `emilia.bp` (a sibling import
+// `from "emilia"` does not resolve when emilia is a dependency), and a host
+// cell cannot be imported at all.
 
-fn checkNamedClass(className: string) -> string {
-    if (refusesIdent(className)) @panic("emilia compose: a named class may contain only letters, digits, - and _: '" + className + "'");
-    if (className.startsWith("e_")) @panic("emilia compose: '" + className + "' is in emilia's generated e_ space — a named class may not start with e_");
-    return className;
-}
+// ── front 59 · tests (the pure half; the rendering half is in `emilia.bp`) ────
 
-fn toComponents(s: Sheet) -> Sheet {
-    val rules = s.rules.map({ r -> Rule(layer: "components", atRules: r.atRules, selector: r.selector, declarations: r.declarations, important: r.important) });
-    return Sheet(rules: rules, blocks: s.blocks);
-}
-
-pub fn named(className: string, tokens: Token[]) -> string {
-    val name = checkNamedClass(className);
-    val payload = encodeSheet(toComponents(decodeSheet(styleRule(tokens, defaultTheme())._1)));
-    val existing = registeredPayload(name);
-    if (existing != "" && existing != payload) @panic("emilia compose: '" + name + "' is already registered with different tokens — a named class is registered once");
-    registerPayload(name, payload);
-    return name;
-}
-
-// ── front 59 · tests ─────────────────────────────────────────────────────────
-
-fn f59Options() -> Options {
-    return withTheme(defaultOptions(), emptyTheme());
-}
-
-fn f59Bold() -> Token[] {
-    val out: Token[] = [.Text.Bold];
-    return out;
-}
-
-fn btn() -> Token[] {
-    val out: Token[] = [.Pad.X.__4, .Pad.Y.__2, .Border.Rounded.Md];
-    return out;
-}
-
-fn redBg() -> Token[] {
-    val out: Token[] = [.Bg.Color.Red.__500];
-    return out;
-}
-
-fn blueBg() -> Token[] {
-    val out: Token[] = [.Bg.Color.Blue.__500];
-    return out;
-}
-
-// `§ 20.4`'s `@utility scrollbar-hidden` body, declaration for declaration.
-test "scrollbarHidden — `§ 20.4`'s body: scrollbar-width and the webkit pseudo-element" {
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val cls = emilia(scrollbarHidden());
-    val doc = await flushWith(f59Options());
-    assert doc.indexOf("." + cls + "{scrollbar-width:none}") != -1;
-    assert doc.indexOf("." + cls + "::-webkit-scrollbar{display:none}") != -1;
-}
-
-test "append — the bundle's declarations, then the extra ones, in that order" {
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val cls = emilia(btn().append(redBg()));
-    val doc = await flushWith(f59Options());
-    val pad = doc.indexOf("padding-left:");
-    val bg = doc.indexOf("background-color:var(--color-red-500)");
-    assert pad != -1;
-    assert bg > pad;
-    assert cls.startsWith("e_");
-}
-
-test "compose — equals chained append by class, and [] is the empty class" {
-    val a = compose([btn(), redBg(), f59Bold()]);
-    val b = btn().append(redBg()).append(f59Bold());
-    assert styleRule(a, defaultTheme())._0 == styleRule(b, defaultTheme())._0;
+test "compose — flattens in order, and [] is empty" {
+    val a: Token[] = [.Text.Bold];
+    val b: Token[] = [.Text.Italic, .Text.Underline];
+    assert compose([a, b]).length == 3;
     val none: Token[][] = [];
-    val empty: Token[] = [];
-    assert styleRule(compose(none), defaultTheme())._0 == styleRule(empty, defaultTheme())._0;
+    assert compose(none).length == 0;
 }
 
-// `§ 3.1`: the last rule wins, so the later bundle's colour is emitted second.
-test "compose — two bundles on one property: the later one is emitted second (`§ 3.1`)" {
-    val decls = decodeSheet(styleRule(compose([redBg(), blueBg()]), defaultTheme())._1).rules.map({ r -> r.declarations });
-    assert decls.join("|") == "background-color:var(--color-red-500)|background-color:var(--color-blue-500)";
-}
-
-test "hocus — `§ 20.3`: two rules, :hover and :focus, one body" {
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val cls = emilia(hocus(f59Bold()));
-    val doc = await flushWith(f59Options());
-    assert doc.indexOf("@media (hover: hover){." + cls + ":hover{font-weight:bold}}") != -1;
-    assert doc.indexOf("." + cls + ":focus{font-weight:bold}") != -1;
-}
-
-test "a custom variant composes with a built-in one, both orders" {
-    val midInMd: Token[] = [Token.Md(themeMidnight(f59Bold()))];
-    val mdInMid = themeMidnight([Token.Md(f59Bold())]);
-    val a = decodeSheet(styleRule(midInMd, defaultTheme())._1).rules.at(0) ?? Rule(layer: "", atRules: [], selector: "", declarations: "", important: false);
-    val b = decodeSheet(styleRule(mdInMid, defaultTheme())._1).rules.at(0) ?? Rule(layer: "", atRules: [], selector: "", declarations: "", important: false);
-    assert a.selector == "&:where([data-theme=\"midnight\"] *)";
-    assert a.atRules.join(",") == "@media (width >= 48rem)";
-    assert b.selector == a.selector;
-    assert b.atRules.join(",") == a.atRules.join(",");
-}
-
-test "selector — an arbitrary Variant, with the class substituted for `&`" {
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val one: Token[] = [selector(Variant(atRule: "", selector: "&:where([data-theme=\"midnight\"] *)"), f59Bold())];
-    val cls = emilia(one);
-    val doc = await flushWith(f59Options());
-    assert doc.indexOf("." + cls + ":where([data-theme=\"midnight\"] *){font-weight:bold}") != -1;
-    val sup: Token[] = [selector(Variant(atRule: "@supports (display:grid)", selector: "&"), f59Bold())];
-    val s2 = decodeSheet(styleRule(sup, defaultTheme())._1).rules.at(0) ?? Rule(layer: "", atRules: [], selector: "", declarations: "", important: false);
-    assert s2.atRules.join(",") == "@supports (display:grid)";
-}
-
-test "selector — a Variant with the wrong number of `&` is refused, no path around it" {
-    assert panicMessage({ -> val t = selector(Variant(atRule: "", selector: "div"), f59Bold()); 0; }).indexOf("exactly one &") != -1;
-    assert panicMessage({ -> val t = selector(Variant(atRule: "", selector: "& &"), f59Bold()); 0; }).indexOf("exactly one &") != -1;
-}
-
-test "named — `btn` lands in `@layer components`, beside the hashed class in utilities" {
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val n = named("btn", btn());
-    val cls = emilia(btn());
-    val doc = await flushWith(f59Options());
-    assert n == "btn";
-    val comps = doc.split("@layer components{").at(1) ?? "";
-    val utils = doc.split("@layer utilities{").at(1) ?? "";
-    assert comps.startsWith(".btn{");
-    assert utils.startsWith("." + cls + "{");
-    assert doc.indexOf("@layer components{") < doc.indexOf("@layer utilities{");
-}
-
-// CONTRACT 4, RE-ASSERTED HERE: the only front that registers without hashing
-// is the only place the class scheme could break unnoticed.
-test "named — the hashed class of the same list is byte-identical either way" {
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val before = emilia(btn());
-    val n = named("btn-contract", btn());
-    val after = emilia(btn());
-    assert before == after;
-    assert before == "e_dce7a2da";
-    val cleared = await flushWith(f59Options());
-    assert cleared.startsWith("<style>");
-}
-
-test "named — refuses the e_ space, a bad ident, and a second different registration" {
-    assert panicMessage({ -> val n = named("e_abc", btn()); 0; }).indexOf("generated e_ space") != -1;
-    assert panicMessage({ -> val n = named("a b", btn()); 0; }).indexOf("named class may contain only") != -1;
-    assert panicMessage({ -> val n = named("x}</style>", btn()); 0; }).indexOf("named class may contain only") != -1;
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val first = named("card", btn());
-    val same = named("card", btn());
-    assert panicMessage({ -> val n = named("card", redBg()); 0; }).indexOf("already registered") != -1;
-    val cleared = await flushWith(f59Options());
-    assert cleared.startsWith("<style>");
-}
-
-// The utility wins BECAUSE its layer is later — asserted as the order, not the
-// outcome.
-test "named — a named class and a utility on one element: the utilities layer is later" {
-    val drained = await flushWith(f59Options());
-    assert drained.startsWith("<style>");
-    val n = named("tag", redBg());
-    val cls = emilia(blueBg());
-    val doc = await flushWith(f59Options());
-    assert doc.startsWith("<style>@layer theme, base, components, utilities;");
-    assert doc.indexOf(".tag{background-color:var(--color-red-500)}") < doc.indexOf("." + cls + "{background-color:var(--color-blue-500)}");
+test "hocus — a selector list is two tokens" {
+    val inner: Token[] = [.Text.Bold];
+    assert hocus(inner).length == 2;
+    assert themeMidnight(inner).length == 1;
 }

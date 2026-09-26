@@ -21,14 +21,14 @@
 //// margins is worse than one that makes you ask. There is no field, file,
 //// environment variable or global toggle that turns it on otherwise.
 ////
-//// This module declares no externals and imports only `output` (and, for its
-//// tests, the public entry points of `emilia`).
+//// This module declares no externals and imports only `output` and `theme`.
+//// The three tests that flush a real document live in `emilia.bp` under a
+//// front 55 banner: a sibling module that imports `from "emilia"` compiles
+//// alone and does NOT resolve when emilia is a dependency (§ Maintainer rules).
 
 import {Rule, Options, defaultOptions, renderRule} from "output";
 import {withBase, withTheme, renderDocument, encodeSheet, declSheet} from "output";
 import {Theme, ThemeEntry, DarkMode, emptyTheme} from "theme";
-import {Token} from "tokens";
-import {emiliaWith, flushWith} from "emilia";
 
 fn baseRule(selector: string, declarations: string) -> Rule {
     val none: string[] = [];
@@ -144,43 +144,6 @@ test "preflight — border-style:solid precedes every utilities body" {
     val doc = renderDocument("e_1\t" + encodeSheet(declSheet("border-width:1px")), o);
     assert doc.indexOf("border-style:solid") != -1;
     assert doc.indexOf("border-style:solid") < doc.indexOf("@layer utilities");
-}
-
-test "preflight — Border.W.1 lands after the zero-width solid base rule" {
-    val drained = await flushWith(noTheme());
-    assert drained.startsWith("<style>");
-    val tokens: Token[] = [.Border.W.__1];
-    val cls = emiliaWith(tokens, emptyTheme());
-    val doc = await flushWith(withBase(noTheme(), preflightRules()));
-    val reset = doc.indexOf("border-width:0;border-style:solid");
-    assert reset != -1;
-    assert reset < doc.indexOf("." + cls + "{border-width:1px}");
-}
-
-// The difference the reset makes, recorded rather than assumed.
-test "preflight — without it, the same class carries no border-style at all" {
-    val drained = await flushWith(noTheme());
-    assert drained.startsWith("<style>");
-    val tokens: Token[] = [.Border.W.__1];
-    val cls = emiliaWith(tokens, emptyTheme());
-    val doc = await flushWith(noTheme());
-    assert doc.indexOf("." + cls + "{border-width:1px}") != -1;
-    assert doc.indexOf("border-style") == -1;
-}
-
-// ── step 3 · the pseudo-element precondition ─────────────────────────────────
-
-test "preflight — ::before,::after{content:\"\"} precedes the utilities" {
-    val drained = await flushWith(noTheme());
-    assert drained.startsWith("<style>");
-    val inner: Token[] = [.Text.Content.Empty];
-    val tokens: Token[] = [Token.Before(inner)];
-    val cls = emiliaWith(tokens, emptyTheme());
-    val doc = await flushWith(withBase(noTheme(), preflightRules()));
-    val base = doc.indexOf("::before,::after{content:\"\"}");
-    assert base != -1;
-    assert base < doc.indexOf("@layer utilities");
-    assert doc.indexOf("." + cls + "::before") > base;
 }
 
 // ── step 4 · the rendered form ───────────────────────────────────────────────

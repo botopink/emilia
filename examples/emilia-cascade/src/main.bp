@@ -30,6 +30,7 @@ import {emilia, flushWith, Token} from "emilia";
 import {Theme, ThemeEntry, DarkMode, Block, Sheet} from "emilia";
 import {Rule, Options, staticSheet, defaultOptions} from "emilia";
 import {withBase, withPrefix, withLayers, withImportant} from "emilia";
+import {scrollbarHidden, named, compose} from "emilia";
 
 // The card. `Hover` and `Md` are the two tokens whose output leaves the class
 // body; the other three stay in it.
@@ -150,4 +151,20 @@ test "two flushes are two independent documents, and the second has no utilities
     assert first.indexOf("@layer utilities{") != -1;
     assert second.indexOf("@layer utilities{") == -1;
     assert second.indexOf("@layer base{html{") != -1;
+}
+
+// Front 59's surface CROSSES THE PACKAGE BOUNDARY: a bundle, `compose` and
+// `named` imported through `from "emilia"`, and the named class in its own
+// `components` layer ahead of the utilities.
+test "a bundle and a named class from compose.bp, used from another package" {
+    val drained = await flushWith(projectOptions());
+    assert drained.startsWith("<style>");
+    val bold: Token[] = [.Text.Bold];
+    val cls = emilia(compose([scrollbarHidden(), bold]));
+    val tag = named("cascade-tag", bold);
+    val doc = await flushWith(projectOptions());
+    assert tag == "cascade-tag";
+    assert doc.indexOf("." + cls + "{scrollbar-width:none}") != -1;
+    assert doc.indexOf("." + cls + "::-webkit-scrollbar{display:none}") != -1;
+    assert doc.indexOf("@layer components{.cascade-tag{font-weight:bold}}") != -1;
 }
