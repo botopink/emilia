@@ -325,7 +325,7 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         AnimateRaw(value) -> declSheet("animation:" + value);
         // ── end front 44 ───────────────────────────────────────
         // ── front 45 — transforms ──────────────────────────────
-        Transform(_inner) -> declSheet(transformTokenToCss(_inner, th));
+        Transform(_inner) -> transformSheet(_inner, th);
         // The two arbitrary-value variants are SIBLINGS of `Transform`, not
         // leaves inside it, so each needs an arm of its own. Each destructures
         // by its DECLARED FIELD NAME — a positional bind type-checks and is
@@ -11312,11 +11312,9 @@ fn maskTypeToCss(t: Token.Mask.Type, th: Theme) -> string {
 // qualified form reports `unknown field 'Shadow' on type 'Token'`, the dot
 // form reports `unbound variable ''`.
 //
-// WHY THE WRAPPERS EXIST: a leading-dot path followed by a payload call does
-// not carry the typed-array context either, so `[.EffectShadowRaw("…")]`
-// reports `unbound variable ''` at the open paren. `Token.EffectShadowRaw(value:
-// "…")` in full works inside a typed array literal and so does a call to one
-// of these three; they are the readable form and the one the example uses.
+// The wrappers are the readable form and the one the example uses;
+// `[.EffectShadowRaw("…")]` and `Token.EffectShadowRaw(value: "…")` build the
+// same token inside a typed array literal.
 pub fn rawShadow(value: string) -> Token {
     return Token.EffectShadowRaw(value: value);
 }
@@ -11642,10 +11640,8 @@ test "the three Raw variants construct, and each reaches its own arm" {
         == "mask-image:linear-gradient(black, transparent)";
 }
 
-// THE WRAPPERS, and the reason they exist: `[.EffectShadowRaw("…")]` does not
-// parse — a leading-dot path followed by a payload call does not carry the
-// typed-array context — so a list spells the variant in full or calls one of
-// these three.
+// THE WRAPPERS, beside the leading-dot payload call a typed array literal also
+// holds.
 test "the Raw wrappers are what a typed array literal can hold" {
     val tokens: Token[] = [
         rawShadow("0 0 0 1px red"),
@@ -12257,8 +12253,7 @@ pub fn filterEntries() -> ThemeEntry[] {
 
 // ── the two arbitrary-value wrappers ─────────────────────────────────────────
 //
-// A leading-dot path followed by a payload call does not carry the typed-array
-// context, so `[.FilterRaw("blur(2px)")]` does not parse; these do.
+// The readable spelling of `[.FilterRaw("blur(2px)")]`.
 pub fn rawFilter(value: string) -> Token {
     return Token.FilterRaw(value: value);
 }
@@ -12784,8 +12779,7 @@ fn tableTokenToCss(t: Token.Table, th: Theme) -> string {
     return out;
 }
 
-// A leading-dot path followed by a payload call does not carry the typed-array
-// context, so `[.TableSpacingRaw("1px 2px")]` does not parse; this does.
+// The readable spelling of `[.TableSpacingRaw("1px 2px")]`.
 pub fn rawTableSpacing(value: string) -> Token {
     return Token.TableSpacingRaw(value: value);
 }
@@ -13126,11 +13120,8 @@ pub fn transitionEntries() -> ThemeEntry[] {
 // animation this library does not ship, so the nested spelling would have shut
 // the door rather than narrowed it.
 //
-// WHY THE WRAPPERS EXIST: a leading-dot path followed by a payload call does
-// not carry the typed-array context either, so `[.AnimateRaw("fade 300ms")]`
-// does not parse. `Token.AnimateRaw(value: "…")` in full works inside a typed
-// array literal and so does a call to one of these two; they are the readable
-// form and the one the example uses.
+// The wrappers are the readable form and the one the example uses;
+// `[.AnimateRaw("fade 300ms")]` builds the same token.
 pub fn rawTransitionProperty(value: string) -> Token {
     return Token.TransitionProperty(value: value);
 }
@@ -13723,47 +13714,30 @@ test "end to end — a transitioned button and a hoisted spinner in one document
 //
 // ── THREE ROWS OF THE REFERENCE DO NOT SURVIVE, AND EACH IS FLAGGED AT ITS ARM
 //
-// (1) `§ 16.6`'s PROPERTY COLUMN IS WRONG AND UPSTREAM SAYS SO. The reference
-// writes `skew-x: 1deg` and `skew-y: 1deg`; neither is a registered CSS
-// property and no browser applies either. The front README asked for an
-// upstream check before this step landed, and for the reference file to lose if
-// the two disagreed. It was made — https://tailwindcss.com/docs/skew, fetched
-// 2026-09-21 — and upstream's class-reference table prints
-// `transform: skewX(<number>deg)` and `transform: skewY(<number>deg)`, with no
-// `--tw-skew-*` row anywhere on the page. So the twelve leaves emit UPSTREAM's
-// property and not the reference file's, and the reference file's spelling is
-// asserted ABSENT rather than merely unwritten.
+// (1) `§ 16.6`'s PROPERTY COLUMN IS WRONG. The reference writes `skew-x: 1deg`
+// and `skew-y: 1deg`; neither is a registered CSS property. Upstream Tailwind
+// v4 (4.3.2, compiled) writes the axis into a variable and composes the chain:
+// `--tw-skew-x: skewX(3deg); transform: var(--tw-rotate-x,) var(--tw-rotate-y,)
+// var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)`. The twelve leaves
+// emit exactly that, so `[.SkewX.3, .SkewY.6]` skews on both axes, and the
+// reference file's spelling is asserted ABSENT.
 //
-// (2) `§ 16.10`'s `translate:` ROWS READ A VARIABLE NO NAMESPACE CAN HOLD. The
-// reference prints `translate: 50% var(--tw-translate-y)` — ONE declaration,
-// the utility's own axis literal beside a reference to the other axis. Upstream
-// prints the same shape and also prints the five `translate-y-*` rows the
-// reference file omits, so the y mirror below is CONFIRMED and not
-// interpolated. What neither of them can give emilia is a value for
-// `--tw-translate-y`: upstream registers it with `@property` (initial `0`),
-// emilia emits no `@property` block, and front 54's `extendTheme` PANICS on a
-// name in no known namespace — there is no `--tw-` prefix among the nineteen of
-// `Ns`, so the identity default cannot be a theme entry either. Left bare, a
-// lone `translate-x-4` is invalid at computed-value time and moves nothing.
-// This is front 39's gradient-stop situation exactly, and it takes front 39's
-// answer: the registered default is written into the reference as a FALLBACK
-// through that front's `cssVarOr`. The divergence from the reference is one
-// `, 0` per row and it is the difference between a token that works and a token
-// that does not.
+// (2) `§ 16.10`'s ONE-AXIS `translate:` ROWS COMPOSE THROUGH TWO VARIABLES.
+// Upstream v4 writes the utility's own axis into `--tw-translate-<axis>` and
+// then `translate: var(--tw-translate-x) var(--tw-translate-y)`; the other axis
+// reads its `@property` initial value `0` unless a sibling token set it. The
+// identity default is not a theme entry — front 54's `extendTheme` panics on a
+// name in no namespace and `--tw-` is in none of `Ns`'s nineteen — it is an
+// `@property` BLOCK each translate sheet carries (`twProperty`, deduplicated by
+// header at flush), plus the `@layer properties` fallback `output.bp` writes for
+// an engine without `@property`. So `[.TranslateX.Half, .TranslateY.Half]`
+// moves diagonally, as upstream's does.
 //
-// (3) `§ 16.7`'s FOUR `transform` ROWS ARE INERT, and saying so is the whole of
-// what this front can honestly do with them. They read six `--tw-*` variables —
-// `--tw-translate-x`, `--tw-translate-y`, `--tw-rotate`, `--tw-skew-x`,
-// `--tw-skew-y`, `--tw-scale-x`, `--tw-scale-y` — and NO TOKEN IN EMILIA SETS
-// ANY OF THEM: `rotate-*` writes the `rotate` property, `scale-*` the `scale`
-// property, `translate-*` the `translate` property and `skew-*` a `transform`
-// of its own, which is what the reference and upstream both print for each.
-// The rows are transcribed verbatim because byte-equality with the reference is
-// the gate, and they are marked inert because a reader who finds `transform-gpu`
-// in the token list deserves to know it composes with nothing here. Giving them
-// fallbacks the way (2) does would be worse, not better: it would make
-// `.Transform.Shorthand.Cpu` emit an IDENTITY transform that silently
-// overwrites whatever `.Transform.SkewX.3` had just written.
+// (3) `§ 16.7`'s `transform-cpu` / `transform-gpu` ROWS ARE v3's. The reference
+// prints a `translate(…) rotate(…) skewX(…) scaleX(…)` chain over seven
+// variables; upstream v4 prints the five-variable chain of (1) — the one the
+// skew leaves write — with `translateZ(0)` in front for `Gpu`. The leaves emit
+// upstream's, so a `Cpu` beside a `SkewX` keeps the skew.
 
 // The one place this front spells a namespace prefix.
 fn perspectiveVar(name: string) -> string {
@@ -13886,15 +13860,16 @@ fn transformScaleYValue(s: Token.Transform.ScaleY, th: Theme) -> string {
 
 // ── `§ 16.10` · translate ────────────────────────────────────────────────────
 //
-// See note (2) in the banner. The axis literal is this utility's own; the other
-// axis is a reference carrying the `0` upstream registers with `@property`.
+// See note (2) in the banner: upstream v4's two-variable form. Every translate
+// sheet also carries the three `@property` registrations (`translateProperties`).
 
-// `translate-<n>`, both axes at once: upstream writes the two variables and
-// `translate: var(--tw-translate-x) var(--tw-translate-y)`; this front writes
-// no `--tw-*` variable (see the banner), so the both-axes row is the value on
-// each axis — which is also the one translate row that needs no fallback.
+fn translateCompose() -> string {
+    return "translate:" + cssVar(twTranslateX()) + " " + cssVar(twTranslateY());
+}
+
+// `translate-<n>`, both axes at once: both variables, then the composition.
 fn transformTranslateDecl(value: string) -> string {
-    return "translate:" + value + " " + value;
+    return twTranslateX() + ":" + value + ";" + twTranslateY() + ":" + value + ";" + translateCompose();
 }
 
 fn transformTranslateValue(t: Token.Transform.Translate, th: Theme) -> string {
@@ -13909,11 +13884,11 @@ fn transformTranslateValue(t: Token.Transform.Translate, th: Theme) -> string {
 }
 
 fn transformTranslateXDecl(value: string) -> string {
-    return "translate:" + value + " " + cssVarOr(twTranslateY(), "0");
+    return twTranslateX() + ":" + value + ";" + translateCompose();
 }
 
 fn transformTranslateYDecl(value: string) -> string {
-    return "translate:" + cssVarOr(twTranslateX(), "0") + " " + value;
+    return twTranslateY() + ":" + value + ";" + translateCompose();
 }
 
 // The five steps, shared by both axes: `0`, the `1px` of `translate-x-px`
@@ -13944,20 +13919,22 @@ fn transformTranslateYValue(t: Token.Transform.TranslateY, th: Theme) -> string 
 
 // ── `§ 16.6` · skew ──────────────────────────────────────────────────────────
 //
-// See note (1) in the banner: this is UPSTREAM's property, checked 2026-09-21,
-// and not the reference file's `skew-x:` column. The consequence worth knowing
-// is that `skew-x-*` and `skew-y-*` both write `transform`, so unlike
-// `rotate`/`scale`/`translate` the two axes DO NOT compose — the second token
-// listed wins. That is upstream's behaviour too (upstream composes them through
-// a `--tw-skew-*` chain emilia does not have) and it is asserted below rather
-// than left to be discovered.
+// See note (1) in the banner: upstream v4's variable and chain, so the two axes
+// compose. Every skew sheet carries the chain's five `@property` registrations.
+
+// The chain upstream's skew leaves and `transform-cpu` write: every variable
+// with an EMPTY fallback (`var(--tw-skew-x,)`), so an unset one is nothing.
+fn transformChain() -> string {
+    val names: string[] = ["--tw-rotate-x", "--tw-rotate-y", "--tw-rotate-z", "--tw-skew-x", "--tw-skew-y"];
+    return names.map({ n -> "var(" + n + ",)" }).join(" ");
+}
 
 fn transformSkewXDecl(value: string) -> string {
-    return "transform:skewX(" + value + "deg)";
+    return "--tw-skew-x:skewX(" + value + "deg);transform:" + transformChain();
 }
 
 fn transformSkewYDecl(value: string) -> string {
-    return "transform:skewY(" + value + "deg)";
+    return "--tw-skew-y:skewY(" + value + "deg);transform:" + transformChain();
 }
 
 fn transformSkewXToCss(s: Token.Transform.SkewX, th: Theme) -> string {
@@ -14077,25 +14054,61 @@ fn transformZoomToCss(z: Token.Transform.Zoom, th: Theme) -> string {
 
 // ── `§ 16.7` · transform ─────────────────────────────────────────────────────
 //
-// See note (3) in the banner: verbatim, and INERT. `transform` and
-// `transform-cpu` are given the IDENTICAL value by `§ 16.7`, so they are one
-// leaf — `Cpu` — rather than two leaves that would hash to one class anyway.
-// `None` is the one row here that reads nothing.
-fn transformChainTail() -> string {
-    return " rotate(" + cssVar("--tw-rotate")
-        + ") skewX(" + cssVar("--tw-skew-x")
-        + ") skewY(" + cssVar("--tw-skew-y")
-        + ") scaleX(" + cssVar("--tw-scale-x")
-        + ") scaleY(" + cssVar("--tw-scale-y") + ")";
-}
-
+// See note (3) in the banner: upstream v4's rows. `transform` and
+// `transform-cpu` are one leaf — `Cpu` — because upstream gives them one value.
+// Neither registers a variable (upstream's `transform-cpu` emits no
+// `@property`): the empty fallbacks make an unset variable nothing.
 fn transformShorthandToCss(s: Token.Transform.Shorthand, th: Theme) -> string {
     val out = case s {
         None -> "transform:none";
-        Cpu -> "transform:translate(" + cssVar(twTranslateX()) + ", "
-            + cssVar(twTranslateY()) + ")" + transformChainTail();
-        Gpu -> "transform:translate3d(" + cssVar(twTranslateX()) + ", "
-            + cssVar(twTranslateY()) + ", 0)" + transformChainTail();
+        Cpu -> "transform:" + transformChain();
+        Gpu -> "transform:translateZ(0) " + transformChain();
+    };
+    return out;
+}
+
+// ── the `@property` registrations ────────────────────────────────────────────
+//
+// Upstream registers every `--tw-*` its transform utilities write with
+// `@property` (`syntax: "*"`, not inherited), the translate axes with the
+// initial value `0` and the chain's five with none. Each is one `Block`, and
+// `renderBlocks` deduplicates by header, so a class of three translate tokens
+// registers each variable once.
+fn twProperty(name: string, initial: string) -> Sheet {
+    val tail = if (initial == "") "" else ";initial-value:" + initial;
+    return blockSheet("@property " + name, "{syntax:\"*\";inherits:false" + tail + "}");
+}
+
+fn translateProperties() -> Sheet {
+    return mergeSheet(mergeSheet(twProperty(twTranslateX(), "0"), twProperty(twTranslateY(), "0")), twProperty("--tw-translate-z", "0"));
+}
+
+fn chainProperties() -> Sheet {
+    val names: string[] = ["--tw-rotate-x", "--tw-rotate-y", "--tw-rotate-z", "--tw-skew-x", "--tw-skew-y"];
+    return names.fold(emptySheet(), { acc, n -> mergeSheet(acc, twProperty(n, "")) });
+}
+
+// The `Transform` arm of `tokenToSheet`: the declarations, and the
+// registrations of the variables they write.
+fn transformSheet(t: Token.Transform, th: Theme) -> Sheet {
+    val decls = declSheet(transformTokenToCss(t, th));
+    val out = case t {
+        TranslateX(_inner) -> mergeSheet(decls, translateProperties());
+        TranslateY(_inner) -> mergeSheet(decls, translateProperties());
+        Translate(_inner) -> mergeSheet(decls, translateProperties());
+        SkewX(_inner) -> mergeSheet(decls, chainProperties());
+        SkewY(_inner) -> mergeSheet(decls, chainProperties());
+        Rotate(_inner) -> decls;
+        Scale(_inner) -> decls;
+        ScaleX(_inner) -> decls;
+        ScaleY(_inner) -> decls;
+        Origin(_inner) -> decls;
+        Style(_inner) -> decls;
+        Backface(_inner) -> decls;
+        Perspective(_inner) -> decls;
+        PerspectiveOrigin(_inner) -> decls;
+        Zoom(_inner) -> decls;
+        Shorthand(_inner) -> decls;
     };
     return out;
 }
@@ -14164,9 +14177,8 @@ pub fn transformEntries() -> ThemeEntry[] {
 //
 // WHY THESE ARE TOP-LEVEL VARIANTS and not `Transform.Rotate.Raw(…)`: a payload
 // leaf nested inside an enum section cannot be constructed by any spelling
-// (fronts 41 and 44 record the two error texts). WHY THE WRAPPERS EXIST: a
-// leading-dot path followed by a payload call does not carry the typed-array
-// context either, so `[.TransformRotateRaw("17deg")]` does not parse.
+// (fronts 41 and 44 record the two error texts). The wrappers are the
+// readable spelling; `[.TransformRotateRaw("17deg")]` builds the same token.
 pub fn rawRotate(value: string) -> Token {
     return Token.TransformRotateRaw(value: value);
 }
@@ -14215,13 +14227,14 @@ test "Transform.Rotate — the v4 property, never the v3 `transform:` function" 
     assert tokenDeclarations(.Transform.Rotate.__45).startsWith("rotate:");
 }
 
-test "Transform.Translate — both axes, the value on each and no fallback" {
-    assert tokenDeclarations(.Transform.Translate.__0) == "translate:0 0";
-    assert tokenDeclarations(.Transform.Translate.Px) == "translate:1px 1px";
-    assert tokenDeclarations(.Transform.Translate.__1) == "translate:calc(var(--spacing) * 1) calc(var(--spacing) * 1)";
-    assert tokenDeclarations(.Transform.Translate.Half) == "translate:50% 50%";
-    assert tokenDeclarations(.Transform.Translate.Full) == "translate:100% 100%";
-    assert tokenDeclarations(.Transform.Translate.Full).indexOf("--tw-") == -1;
+test "Transform.Translate — both axes: both variables, then the composition" {
+    val c = ";translate:var(--tw-translate-x) var(--tw-translate-y)";
+    assert tokenDeclarations(.Transform.Translate.__0) == "--tw-translate-x:0;--tw-translate-y:0" + c;
+    assert tokenDeclarations(.Transform.Translate.Px) == "--tw-translate-x:1px;--tw-translate-y:1px" + c;
+    assert tokenDeclarations(.Transform.Translate.__1)
+        == "--tw-translate-x:calc(var(--spacing) * 1);--tw-translate-y:calc(var(--spacing) * 1)" + c;
+    assert tokenDeclarations(.Transform.Translate.Half) == "--tw-translate-x:50%;--tw-translate-y:50%" + c;
+    assert tokenDeclarations(.Transform.Translate.Full) == "--tw-translate-x:100%;--tw-translate-y:100%" + c;
 }
 
 // ── `§ 16.5` · scale ─────────────────────────────────────────────────────────
@@ -14289,33 +14302,25 @@ test "Transform.Scale — the three ladders agree step for step" {
 
 // ── `§ 16.10` · translate ────────────────────────────────────────────────────
 
-test "Transform.TranslateX — the five rows of `§ 16.10`, whole" {
-    assert tokenDeclarations(.Transform.TranslateX.__0)
-        == "translate:0 var(--tw-translate-y, 0)";
-    assert tokenDeclarations(.Transform.TranslateX.Px)
-        == "translate:1px var(--tw-translate-y, 0)";
-    assert tokenDeclarations(.Transform.TranslateX.__1)
-        == "translate:calc(var(--spacing) * 1) var(--tw-translate-y, 0)";
-    assert tokenDeclarations(.Transform.TranslateX.Half)
-        == "translate:50% var(--tw-translate-y, 0)";
-    assert tokenDeclarations(.Transform.TranslateX.Full)
-        == "translate:100% var(--tw-translate-y, 0)";
+test "Transform.TranslateX — the five rows of `§ 16.10`, upstream v4's form" {
+    val c = ";translate:var(--tw-translate-x) var(--tw-translate-y)";
+    assert tokenDeclarations(.Transform.TranslateX.__0) == "--tw-translate-x:0" + c;
+    assert tokenDeclarations(.Transform.TranslateX.Px) == "--tw-translate-x:1px" + c;
+    assert tokenDeclarations(.Transform.TranslateX.__1) == "--tw-translate-x:calc(var(--spacing) * 1)" + c;
+    assert tokenDeclarations(.Transform.TranslateX.Half) == "--tw-translate-x:50%" + c;
+    assert tokenDeclarations(.Transform.TranslateX.Full) == "--tw-translate-x:100%" + c;
 }
 
 // THE Y MIRROR, IN ADJACENT LINES, and CONFIRMED rather than interpolated: the
-// reference file omits the five `translate-y-*` rows and upstream prints them,
-// checked 2026-09-21. Swapped components are the likeliest defect here.
+// reference file omits the five `translate-y-*` rows and upstream prints them.
+// A swapped variable is the likeliest defect here.
 test "Transform.TranslateY — the same five rows on the other axis" {
-    assert tokenDeclarations(.Transform.TranslateY.__0)
-        == "translate:var(--tw-translate-x, 0) 0";
-    assert tokenDeclarations(.Transform.TranslateY.Px)
-        == "translate:var(--tw-translate-x, 0) 1px";
-    assert tokenDeclarations(.Transform.TranslateY.__1)
-        == "translate:var(--tw-translate-x, 0) calc(var(--spacing) * 1)";
-    assert tokenDeclarations(.Transform.TranslateY.Half)
-        == "translate:var(--tw-translate-x, 0) 50%";
-    assert tokenDeclarations(.Transform.TranslateY.Full)
-        == "translate:var(--tw-translate-x, 0) 100%";
+    val c = ";translate:var(--tw-translate-x) var(--tw-translate-y)";
+    assert tokenDeclarations(.Transform.TranslateY.__0) == "--tw-translate-y:0" + c;
+    assert tokenDeclarations(.Transform.TranslateY.Px) == "--tw-translate-y:1px" + c;
+    assert tokenDeclarations(.Transform.TranslateY.__1) == "--tw-translate-y:calc(var(--spacing) * 1)" + c;
+    assert tokenDeclarations(.Transform.TranslateY.Half) == "--tw-translate-y:50%" + c;
+    assert tokenDeclarations(.Transform.TranslateY.Full) == "--tw-translate-y:100%" + c;
 }
 
 // `translate-x-1` IS `spacing(1)` AND NEVER A `rem`. Asserted against front
@@ -14328,56 +14333,78 @@ test "Transform.TranslateX.1 — front 54's spacing, not a resolved length" {
     assert tokenDeclarations(.Transform.TranslateX.__0).indexOf("calc(") == -1;
 }
 
-// THE TWO AXES DO NOT COMPOSE, and this front says so rather than claiming the
-// opposite. `§ 16.10`'s shape is ONE `translate:` declaration per utility, so
-// two of them in one rule are two declarations of one property and the second
-// wins. `[.TranslateX.Half, .TranslateY.Half]` moves an element 50% DOWN and
-// not diagonally. Composing them needs a `--tw-translate-*` WRITER, which
-// neither the reference nor upstream prints and which front 54's namespaces
-// cannot hold — see note (2).
-test "Transform.Translate — two axes are two declarations, and the last wins" {
+// THE TWO AXES COMPOSE: each token writes its own variable, and the
+// composition both repeat reads the two, so `[.TranslateX.Half,
+// .TranslateY.Half]` moves an element diagonally — upstream v4's behaviour.
+test "Transform.Translate — two axes write two variables, and the element moves on both" {
     val both: Token[] = [.Transform.TranslateX.Half, .Transform.TranslateY.Half];
     val decls = declarationsOf(tokensToSheet(both, defaultTheme()));
     assert decls.length == 2;
-    assert (decls.at(0) ?? "") == "translate:50% var(--tw-translate-y, 0)";
-    assert (decls.at(1) ?? "") == "translate:var(--tw-translate-x, 0) 50%";
-    assert decls.all({ d -> d.startsWith("translate:") });
+    assert decls.join(";").indexOf("--tw-translate-x:50%") != -1;
+    assert decls.join(";").indexOf("--tw-translate-y:50%") != -1;
+    assert decls.all({ d -> d.endsWith(";translate:var(--tw-translate-x) var(--tw-translate-y)") });
+}
+
+// EVERY TRANSLATE SHEET REGISTERS THE THREE AXES, the translate axes with
+// upstream's initial `0`, and nothing else does. Unregistered, a lone
+// `translate-x-4` would read an unset `--tw-translate-y` and move nothing.
+test "Transform.Translate — the sheet carries upstream's three `@property` blocks" {
+    val one: Token[] = [.Transform.TranslateX.Half];
+    val blocks = tokensToSheet(one, defaultTheme()).blocks;
+    assert blocks.map({ b -> b.header }).join("|")
+        == "@property --tw-translate-x|@property --tw-translate-y|@property --tw-translate-z";
+    assert blocks.all({ b -> b.body == "{syntax:\"*\";inherits:false;initial-value:0}" });
+    val rot: Token[] = [.Transform.Rotate.__45];
+    assert tokensToSheet(rot, defaultTheme()).blocks.length == 0;
 }
 
 // ── `§ 16.6` · skew ──────────────────────────────────────────────────────────
 
-test "Transform.SkewX — upstream's property, all six steps" {
-    assert tokenDeclarations(.Transform.SkewX.__0) == "transform:skewX(0deg)";
-    assert tokenDeclarations(.Transform.SkewX.__1) == "transform:skewX(1deg)";
-    assert tokenDeclarations(.Transform.SkewX.__2) == "transform:skewX(2deg)";
-    assert tokenDeclarations(.Transform.SkewX.__3) == "transform:skewX(3deg)";
-    assert tokenDeclarations(.Transform.SkewX.__6) == "transform:skewX(6deg)";
-    assert tokenDeclarations(.Transform.SkewX.__12) == "transform:skewX(12deg)";
+fn skewChain() -> string {
+    return ";transform:var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)";
+}
+
+test "Transform.SkewX — upstream v4's variable and chain, all six steps" {
+    assert tokenDeclarations(.Transform.SkewX.__0) == "--tw-skew-x:skewX(0deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewX.__1) == "--tw-skew-x:skewX(1deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewX.__2) == "--tw-skew-x:skewX(2deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewX.__3) == "--tw-skew-x:skewX(3deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewX.__6) == "--tw-skew-x:skewX(6deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewX.__12) == "--tw-skew-x:skewX(12deg)" + skewChain();
 }
 
 test "Transform.SkewY — the same six on the other axis" {
-    assert tokenDeclarations(.Transform.SkewY.__0) == "transform:skewY(0deg)";
-    assert tokenDeclarations(.Transform.SkewY.__1) == "transform:skewY(1deg)";
-    assert tokenDeclarations(.Transform.SkewY.__2) == "transform:skewY(2deg)";
-    assert tokenDeclarations(.Transform.SkewY.__3) == "transform:skewY(3deg)";
-    assert tokenDeclarations(.Transform.SkewY.__6) == "transform:skewY(6deg)";
-    assert tokenDeclarations(.Transform.SkewY.__12) == "transform:skewY(12deg)";
+    assert tokenDeclarations(.Transform.SkewY.__0) == "--tw-skew-y:skewY(0deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewY.__1) == "--tw-skew-y:skewY(1deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewY.__2) == "--tw-skew-y:skewY(2deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewY.__3) == "--tw-skew-y:skewY(3deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewY.__6) == "--tw-skew-y:skewY(6deg)" + skewChain();
+    assert tokenDeclarations(.Transform.SkewY.__12) == "--tw-skew-y:skewY(12deg)" + skewChain();
+}
+
+// The chain's five variables are registered, with no initial value — the
+// empty fallbacks carry an unset one — on every skew sheet.
+test "Transform.Skew — the sheet carries the chain's five `@property` blocks" {
+    val one: Token[] = [.Transform.SkewY.__6];
+    val blocks = tokensToSheet(one, defaultTheme()).blocks;
+    assert blocks.map({ b -> b.header }).join("|")
+        == "@property --tw-rotate-x|@property --tw-rotate-y|@property --tw-rotate-z|@property --tw-skew-x|@property --tw-skew-y";
+    assert blocks.all({ b -> b.body == "{syntax:\"*\";inherits:false}" });
 }
 
 // THE REFERENCE FILE'S OWN COLUMN, ASSERTED ABSENT. `§ 16.6` writes
-// `skew-x: 1deg`; it is not a registered CSS property, upstream prints
-// `transform: skewX(1deg)` instead (checked 2026-09-21), and this is the
-// assertion that makes the divergence deliberate rather than a typo nobody
-// noticed. If a later front restores the reference file's column, this reds.
-test "Transform.Skew — the reference file's `skew-x:` column is never emitted" {
-    assert tokenDeclarations(.Transform.SkewX.__1).indexOf("skew-x") == -1;
-    assert tokenDeclarations(.Transform.SkewY.__1).indexOf("skew-y") == -1;
-    assert tokenDeclarations(.Transform.SkewX.__1).startsWith("transform:");
-    // and the two axes do not compose, because both write one property
+// `skew-x: 1deg`; it is not a registered CSS property, and upstream writes the
+// variable and the chain instead. If a later front restores the reference
+// file's column, this reds.
+test "Transform.Skew — the reference file's `skew-x:` column is never emitted, and the axes compose" {
+    assert tokenDeclarations(.Transform.SkewX.__1).startsWith("skew-x") == false;
+    assert tokenDeclarations(.Transform.SkewX.__1).indexOf(";skew-x:") == -1;
+    assert tokenDeclarations(.Transform.SkewY.__1).indexOf(";skew-y:") == -1;
+    // each axis writes its own variable, and both read the one chain
     val both: Token[] = [.Transform.SkewX.__3, .Transform.SkewY.__6];
-    val decls = declarationsOf(tokensToSheet(both, defaultTheme()));
-    assert decls.length == 2;
-    assert decls.all({ d -> d.startsWith("transform:skew") });
+    val decls = declarationsOf(tokensToSheet(both, defaultTheme())).join(";");
+    assert decls.indexOf("--tw-skew-x:skewX(3deg)") != -1;
+    assert decls.indexOf("--tw-skew-y:skewY(6deg)") != -1;
 }
 
 // ── `§ 16.8` · transform-origin ──────────────────────────────────────────────
@@ -14473,33 +14500,25 @@ test "Transform — `scale:.5` and `zoom:0.5`, and the difference is the referen
 
 // ── `§ 16.7` · the shorthand, verbatim and inert ─────────────────────────────
 
-test "Transform.Shorthand — `§ 16.7`'s four rows, verbatim" {
+test "Transform.Shorthand — upstream v4's three rows" {
     assert tokenDeclarations(.Transform.Shorthand.None) == "transform:none";
     assert tokenDeclarations(.Transform.Shorthand.Cpu)
-        == "transform:translate(var(--tw-translate-x), var(--tw-translate-y)) "
-        + "rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) "
-        + "scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))";
+        == "transform:var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)";
     assert tokenDeclarations(.Transform.Shorthand.Gpu)
-        == "transform:translate3d(var(--tw-translate-x), var(--tw-translate-y), 0) "
-        + "rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) "
-        + "scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))";
+        == "transform:translateZ(0) var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)";
 }
 
-// INERT, ASSERTED. `transform` and `transform-cpu` are ONE leaf because
-// `§ 16.7` gives them the identical value, and the six variables the two
-// composed rows read are set by NO token in this library — which is the fact a
-// reader needs and the reason this test exists. The day a front adds a
-// `--tw-*` writer, the second half of this reds and is deleted with a note.
-test "Transform.Shorthand — the `--tw-*` chain it reads is written by nothing" {
-    // one leaf, not two: `transform` and `transform-cpu` are the same row
-    assert tokenDeclarations(.Transform.Shorthand.Cpu).indexOf("translate3d") == -1;
-    assert tokenDeclarations(.Transform.Shorthand.Gpu).indexOf("translate3d(") != -1;
-    assert tokenDeclarations(.Transform.Shorthand.Gpu).indexOf(", 0)") != -1;
-    // and no leaf of this front WRITES any of the six
-    val writers = front45Leaves().filter({ t ->
-        tokenDeclarations(t).startsWith("--tw-")
-    });
-    assert writers.length == 0;
+// THE CHAIN `Cpu` READS IS THE ONE THE SKEW LEAVES WRITE, so a `Cpu` beside a
+// `SkewX` keeps the skew rather than overwriting it with an identity. The
+// variables are written by the translate and skew leaves and by nothing else.
+test "Transform.Shorthand — the chain it reads is the skew leaves' chain" {
+    val cpu = tokenDeclarations(.Transform.Shorthand.Cpu);
+    assert tokenDeclarations(.Transform.SkewX.__3).endsWith(cpu);
+    assert tokenDeclarations(.Transform.Shorthand.Gpu).startsWith("transform:translateZ(0) ");
+    val writers = front45Leaves().filter({ t -> tokenDeclarations(t).startsWith("--tw-") });
+    assert writers.length == 24;
+    val shorthand: Token[] = [.Transform.Shorthand.Cpu];
+    assert tokensToSheet(shorthand, defaultTheme()).blocks.length == 0;
 }
 
 // ── the two arbitrary-value variants ─────────────────────────────────────────
@@ -14517,14 +14536,14 @@ test "TransformRotateRaw / TransformTranslateRaw — they construct, and they em
     assert (decls.at(1) ?? "") == "translate:10px 20px";
 }
 
-// The wrappers are the readable form and the one the example uses: a
-// leading-dot path followed by a payload call does not carry the typed-array
-// context, so `[.TransformRotateRaw("17deg")]` does not parse.
-test "rawRotate / rawTranslate — the wrappers a typed array literal accepts" {
+// The wrappers and the leading-dot payload call build the same token.
+test "rawRotate / rawTranslate — the wrappers, and the leading-dot form beside them" {
     val list: Token[] = [rawRotate("17deg"), rawTranslate("-50% -50%")];
     val decls = declarationsOf(tokensToSheet(list, defaultTheme()));
     assert (decls.at(0) ?? "") == "rotate:17deg";
     assert (decls.at(1) ?? "") == "translate:-50% -50%";
+    val dotted: Token[] = [.TransformRotateRaw("17deg"), .TransformTranslateRaw("-50% -50%")];
+    assert declarationsOf(tokensToSheet(dotted, defaultTheme())).join(";") == decls.join(";");
 }
 
 // ── the theme entries ────────────────────────────────────────────────────────
@@ -14587,7 +14606,7 @@ test "Transform — rotate, scale and translate coexist in one rule" {
     val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
     assert decls.length == 3;
     assert decls.join(";")
-        == "rotate:45deg;scale:1.1;translate:var(--tw-translate-x, 0) 100%";
+        == "rotate:45deg;scale:1.1;--tw-translate-y:100%;translate:var(--tw-translate-x) var(--tw-translate-y)";
 }
 
 // A TRANSFORM UNDER A MODIFIER — front 34's `nestVariant`, asserted for the
@@ -14845,12 +14864,12 @@ test "regression — the four transform probes discriminate, in both directions"
     assert f45CarriesItsUnit("zoom:2");
 }
 
-// WHY THE `--tw-translate-*` IDENTITY DEFAULTS ARE A FALLBACK AND NOT A THEME
-// ENTRY, pinned rather than left as prose in the banner: `Ns` has nineteen
-// prefixes and none of them is `--tw-`, so `extendTheme` would refuse the entry
-// the front README asks this front to contribute. The fallback in the
-// declaration is what carries the `0` upstream registers with `@property`.
-test "regression — `--tw-*` is in no namespace, which is why the `0` is inline" {
+// WHY THE `--tw-translate-*` IDENTITY DEFAULTS ARE `@property` BLOCKS AND NOT
+// THEME ENTRIES, pinned rather than left as prose in the banner: `Ns` has
+// nineteen prefixes and none of them is `--tw-`, so `extendTheme` would refuse
+// the entry. The `0` upstream registers travels in the sheet's `@property`
+// block, and the declaration reads the variable bare, as upstream's does.
+test "regression — `--tw-*` is in no namespace, which is why the `0` is a `@property`" {
     // the namespace this front DOES own is real and reachable
     assert nsPrefix(Ns.Perspective) == "--perspective-";
     assert namespace(extendTheme(defaultTheme(), transformEntries()), Ns.Perspective).length == 5;
@@ -14858,8 +14877,9 @@ test "regression — `--tw-*` is in no namespace, which is why the `0` is inline
     // prefix admits one — `extendTheme` panics on an entry in no namespace,
     // which is why the identity default is a fallback in the declaration
     assert defaultTheme().entries.all({ e -> e.name.startsWith("--tw-") == false });
-    assert tokenDeclarations(.Transform.TranslateX.Half).indexOf(", 0)") != -1;
-    assert tokenDeclarations(.Transform.TranslateY.Half).indexOf(", 0)") != -1;
+    assert tokenDeclarations(.Transform.TranslateX.Half).indexOf(", 0)") == -1;
+    val one: Token[] = [.Transform.TranslateY.Half];
+    assert tokensToSheet(one, defaultTheme()).blocks.any({ b -> b.header == "@property --tw-translate-x" && b.body.endsWith("initial-value:0}") });
 }
 
 // ── end to end ───────────────────────────────────────────────────────────────
@@ -14884,7 +14904,9 @@ test "end to end — a lifting card and a flipping chevron in one document" {
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transition-duration:200ms}") != -1;
     assert doc.indexOf("@media (hover: hover){." + c
-        + ":hover{translate:var(--tw-translate-x, 0) 1px;scale:1.05}}") != -1;
+        + ":hover{--tw-translate-y:1px;translate:var(--tw-translate-x) var(--tw-translate-y);scale:1.05}}") != -1;
+    assert doc.indexOf("@property --tw-translate-y{syntax:\"*\";inherits:false;initial-value:0}") != -1;
+    assert doc.startsWith("<style>@layer properties;");
     assert doc.indexOf("." + v + "{transition-property:transform;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transform-origin:center}") != -1;
@@ -16765,12 +16787,9 @@ test "two emilia sites with the same token list collapse to one class" {
     assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{." + a + "{background:#ffffff}}</style>";
 }
 
-// Hex(value) payload variant inside a nested section can't be constructed
-// inline via the current dot-shorthand grammar (`[.Color.Hex("#abc")]`
-// trips the parser — the dot-chain + payload-call combination doesn't
-// propagate the typed-array context inside the array literal). Until the
-// shorthand for that shape lands, callers wrap the call in a fn or use
-// the typed `val` intermediate. Tracked as part of `enum-sections` tail.
+// A payload leaf nested inside an enum section (`[.Color.Hex("#abc")]`)
+// cannot be constructed by any spelling (`language-gaps.md`), so no test here
+// names one.
 
 test "a modifier is a SIBLING rule now (`§ 3.2`'s `hover` row), not a block nested inside the class" {
     val inner: Token[] = [.Bg.White, .Text.Bold];

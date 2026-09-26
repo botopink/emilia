@@ -49,10 +49,10 @@ pub type Rule(
     important: bool,
 )
 
-// A rule that is not a style rule — today only `@keyframes`. `header` is
-// `"@keyframes spin"` and `body` is the brace-balanced keyframe list, braces
-// included, which is exactly the shape `theme.bp`'s `keyframeCss` hands over
-// (`nsPrefix(Ns.Keyframes) + name + value`).
+// A rule that is not a style rule — a `@keyframes` or a `@property`. `header`
+// is `"@keyframes spin"` / `"@property --tw-translate-x"` and `body` is the
+// brace-balanced body, braces included, which is exactly the shape `theme.bp`'s
+// `keyframeCss` hands over (`nsPrefix(Ns.Keyframes) + name + value`).
 pub type Block(header: string, body: string)
 
 // What a token list produces.
@@ -546,17 +546,55 @@ fn renderBlocks(bs: Block[]) -> string {
     return dedupeBlocks(bs).map({ b -> b.header + b.body }).join("");
 }
 
+// ── the `@property` fallback ─────────────────────────────────────────────────
+//
+// Upstream Tailwind v4 registers the `--tw-*` variables its utilities write with
+// `@property`, and for an engine that parses no `@property` it also writes the
+// initial values onto every element, in a `properties` layer declared BEFORE
+// every other one (so a utility that sets the variable always wins), behind the
+// `@supports` test that selects exactly those engines. Front 45's translate and
+// skew sheets carry `@property` blocks; this is the rest of upstream's output.
+
+fn isPropertyBlock(b: Block) -> bool {
+    return b.header.startsWith("@property ");
+}
+
+// `--tw-translate-x:0`, or `--tw-skew-x:initial` for a registration with no
+// initial value — upstream's two spellings.
+fn propertyDefault(b: Block) -> string {
+    val name = field(b.header.split(" "), 1);
+    val parts = b.body.split("initial-value:");
+    val initial = if (parts.length < 2) "initial" else field(field(parts, 1).split("}"), 0);
+    return name + ":" + initial;
+}
+
+fn propertiesSupports() -> string {
+    return "@supports ((-webkit-hyphens:none) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b))))";
+}
+
+pub fn propertiesFallback(bs: Block[], o: Options) -> string {
+    val props = dedupeBlocks(bs).filter({ b -> isPropertyBlock(b) });
+    val decls = props.map({ b -> propertyDefault(b) }).join(";");
+    val inner = propertiesSupports() + "{*,::before,::after,::backdrop{" + decls + "}}";
+    val wrapped = if (o.layers) "@layer properties{" + inner + "}" else inner;
+    val out = if (props.length == 0) "" else wrapped;
+    return out;
+}
+
 // The whole document, from the raw cell payload. Layer order is
-// `layerNames()`; a layer with an empty body emits nothing at all; with
-// `layers == false` no `@layer` token is emitted anywhere and the same rules
-// come out in the same order, so the cascade then rests on document order
-// alone.
+// `layerNames()`, preceded by `properties` when a `@property` block is present;
+// a layer with an empty body emits nothing at all; with `layers == false` no
+// `@layer` token is emitted anywhere and the same rules come out in the same
+// order, so the cascade then rests on document order alone (the fallback's
+// `*` selector loses to every class on specificity).
 pub fn renderDocument(raw: string, o: Options) -> string {
     val d = drain(raw);
+    val fallback = propertiesFallback(d.blocks, o);
+    val propertiesHead = if (o.layers && fallback != "") "@layer properties;" else "";
     val head = if (o.layers) "@layer " + layerNames().join(", ") + ";" else "";
     val body = layerNames().map({ n -> wrapLayer(n, layerBody(n, d, o), o) }).join("");
     val keyframes = renderBlocks(themeBlocks(o.theme).append(d.blocks));
-    return "<style>" + head + body + keyframes + "</style>";
+    return "<style>" + propertiesHead + head + body + keyframes + fallback + "</style>";
 }
 
 // ── tests · the model and its constructors ───────────────────────────────────
@@ -917,4 +955,23 @@ test "renderDocument — the prefix reaches every registered class and no litera
     val doc = renderDocument(barePayload("e_1", declSheet("color:red")), o);
     assert doc.indexOf(".tw_e_1{color:red}") != -1;
     assert doc.indexOf("html{margin:0}") != -1;
+}
+
+// Upstream v4's whole `@property` output for `translate-x-1/2` and `skew-x-3`
+// in one class: the registrations once each, after the layers, and the
+// `properties` layer declared first and written last, behind upstream's
+// `@supports` test, with the translate axes at `0` and the chain at `initial`.
+test "renderDocument — `@property` blocks bring upstream's `properties` layer" {
+    val x = blockSheet("@property --tw-translate-x", "{syntax:\"*\";inherits:false;initial-value:0}");
+    val skew = blockSheet("@property --tw-skew-x", "{syntax:\"*\";inherits:false}");
+    val s = mergeSheet(mergeSheet(declSheet("--tw-translate-x:50%"), x), mergeSheet(skew, x));
+    val doc = renderDocument(barePayload("e_1", s), bareOptions());
+    assert doc == "<style>@layer properties;@layer theme, base, components, utilities;@layer utilities{.e_1{--tw-translate-x:50%}}"
+        + "@property --tw-translate-x{syntax:\"*\";inherits:false;initial-value:0}@property --tw-skew-x{syntax:\"*\";inherits:false}"
+        + "@layer properties{@supports ((-webkit-hyphens:none) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,::before,::after,::backdrop{--tw-translate-x:0;--tw-skew-x:initial}}}</style>";
+}
+
+test "renderDocument — no `@property` block, no `properties` layer" {
+    val doc = renderDocument(barePayload("e_1", declSheet("color:red")), bareOptions());
+    assert doc.indexOf("properties") == -1;
 }
