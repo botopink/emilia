@@ -15489,7 +15489,8 @@ fn f46AllLeaves() -> Token[] {
 // NO HEX, NO `rem`, and every leaf well-formed. The probe takes a STRING and
 // its control is a hand-built declaration that must fail it.
 fn f46CarriesNoLiteral(decl: string) -> bool {
-    return decl.indexOf("#") == -1 && decl.indexOf("rem") == -1
+    return decl.indexOf("#") == -1 && decl.indexOf("oklch(") == -1
+        && decl.indexOf("rgb(") == -1 && decl.indexOf("rem") == -1
         && decl.indexOf("px") == -1;
 }
 
@@ -15498,7 +15499,7 @@ test "front 46 — 161 leaves, every one well-formed, none resolving a length or
     assert decls.length == 161;
     assert decls.filter({ d -> d == "" || d.indexOf(":") == -1 }).length == 0;
     assert decls.filter({ d -> !f46CarriesNoLiteral(d) }).length == 0;
-    assert f46CarriesNoLiteral("accent-color:#4f46e5") == false;
+    assert f46CarriesNoLiteral("accent-color:oklch(51.1% 0.262 276.966)") == false;
     assert f46CarriesNoLiteral("scroll-margin-top:1rem") == false;
 }
 
