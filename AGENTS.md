@@ -302,6 +302,18 @@ private. `arbitrary.bp` cannot import `emilia.bp` (which imports it), so the
 `Token[]`-carrying helpers take the inner list already folded to a `Sheet`, and
 the rendering tests live in `emilia.bp` under the front's banner.
 
+Front 58 owns **container queries** — `container.bp`, the payload-free
+`Container { Inline, Normal, Size }` section and the TOP-LEVEL
+`ContainerNamed(name)`, `ContainerAt(size, inner)`, `ContainerAtNamed(size, name,
+inner)` under the `// ── front 58 — container queries ──` banner, four arms in
+`tokenToSheet`. The size is a theme KEY written only by `containerKey`; the
+query reads `--container-<key>` through `themeValue` (a container query cannot
+hold a `var()`), so narrowing `--container-md` moves only the `md` queries, and a
+size the theme does not define — or a key outside the thirteen — PANICS rather
+than emitting `@container (width >= )`. `ContainerNamed` is both halves of
+`@container/main` (type and name); every container name goes through front 57's
+`cssIdent` reject set.
+
 Front 44 owns **transitions and animation** — the `Transition` and `Animate`
 sections of `tokens.bp` and the two top-level variants `TransitionProperty` /
 `AnimateRaw`, and `transitionTokenToCss`, `animateTokenToSheet`,
@@ -586,7 +598,7 @@ emilia/
 │       │                    target commonJS · targets [commonJS, erlang] ·
 │       │                    files: root.bp · tokens.bp · theme.bp ·
 │       │                    spacing.bp · output.bp · preflight.bp ·
-│       │                    arbitrary.bp ·
+│       │                    arbitrary.bp · container.bp ·
 │       │                    emilia.bp · no dependencies
 │       └── src/
 │           ├── root.bp    ← `pub mod tokens; pub mod theme;
@@ -621,6 +633,12 @@ emilia/
 │           │                run-time reject sets (`refusesValue` …) and the five
 │           │                comptime validators (`cssValue`, `cssIdent`,
 │           │                `cssSelector`, `cssQuery`, `cssLength`)
+│           ├── container.bp ← front 58: `ContainerSize` + `containerKey` (the
+│           │                only place a size key is written), the thirteen
+│           │                `containerAt<Size>(inner)` builders, `containerNamed`,
+│           │                `containerName`, and `containerAtRule`, which reads
+│           │                `--container-*` from the theme and panics on a size
+│           │                it does not define
 │           ├── output.bp  ← front 56: the rule model (`Rule`, `Block`,
 │           │                `Sheet`, `Variant`), `nestVariant` /
 │           │                `markImportant`, the `\t`/`\n`/`\r` codec that
@@ -1022,6 +1040,17 @@ to the commonJS row and runs once.
   section head may repeat a section head, and renaming to dodge one costs a
   path and buys nothing.
 
+- **AN IMPORTED ENUM THAT SHARES A VARIANT NAME WITH `Token` CAPTURES
+  `Token.<Variant>(…)`.** Importing `ContainerSize` (whose `Sm`, `Md`, `Lg`, `Xl`,
+  `X2xl` are also top-level `Token` modifiers) into `emilia.bp` made every
+  `Token.Sm(inner)` in the module red with `type mismatch: expected Token, got
+  ContainerSize` — the fully QUALIFIED spelling resolved to the other enum. It
+  fails loudly, at the right line. `emilia.bp` therefore does not import
+  `ContainerSize`, and a consumer that imports both `Token` and `ContainerSize`
+  hits the same wall: write the size builders (`containerAtSm(inner)` …) and
+  keep `ContainerSize` out of a module that spells `Token.Sm(…)`. Reported to
+  botopink-lang with a three-file repro.
+
 - **`Self` IS A LANGUAGE KEYWORD, so a section cannot be named it.** `Flex.Self
   { Auto, … }` reds `this token cannot appear here — unexpected \`Self\`` at the
   declaration and again at every `case` arm that names it. Unlike the
@@ -1089,9 +1118,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **683/683** on
+  refuses) runs every module's in-file `test {}` blocks, **697/697** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 569 (`emilia.bp`) + 17 (`preflight.bp`) + 9 (`arbitrary.bp`). The figure below breaks down the 375
+  (`output.bp`) + 577 (`emilia.bp`) + 17 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
@@ -1468,6 +1497,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 47 — SVG and accessibility | DONE — steps 1–5. **11 leaves** in `Svg` and `A11y` plus `SvgFill`/`SvgStroke`/`SvgStrokeWidthRaw`; `sr-only`/`not-sr-only` are upstream's bodies (read 2026-09-26, `not-sr-only` leaves `border-width`, as upstream). +10 inline tests, **643** on both targets |
 | 1.0.10-beta front 55 — preflight | DONE — steps 1–5. `preflight.bp`: eleven `base`-layer rules over `§ 4`'s eight bullets (parity, not byte-equality with upstream), `border-style:solid` beside `border-width:0` as a decision, `preflight()` as a fragment; opt-in through `withBase` only. 17 inline tests, **661** on both targets |
 | 1.0.10-beta front 57 — escape hatches | DONE — steps 1–5. Six top-level `Arb*` variants, `arbitrary.bp` with the validating builders, the run-time reject sets re-checked at dispatch, and five comptime validators (their build failures verified against the compiler on 2026-09-26). +8 `emilia.bp` / +9 `arbitrary.bp` tests, **683** on both targets |
+| 1.0.10-beta front 58 — container queries | DONE — steps 1–5. `container.bp`, the `Container` markers and three top-level variants; the thirteen widths read from `--container-*`, an undefined one panics; nesting pinned in both orders. +8 `emilia.bp` / +6 `container.bp` tests, **697** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

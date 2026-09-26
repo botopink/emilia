@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.beta.22
 
+- **Container queries — `container.bp`** (1.0.10-beta front
+  `58-emilia-container-queries`). `.Container.{Inline,Normal,Size}`,
+  `containerName(name)` and the thirteen `containerAt<Size>(inner)` builders plus
+  `containerNamed`; widths come from the theme's `--container-*`, and an
+  undefined one panics. `emilia` 683 → 697 on commonJS and erlang.
+
 - **Arbitrary values — `arbitrary.bp`** (1.0.10-beta front
   `57-emilia-escape-hatches`). Six top-level variants (`Arb`, `ArbProp`,
   `ArbVariant`, `ArbAt`, `ArbMin`, `ArbMax`) built through validating builders;

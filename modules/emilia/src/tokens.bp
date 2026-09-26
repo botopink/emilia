@@ -299,6 +299,11 @@
 ////              that could close a rule or the `<style>` element is REFUSED
 ////              (build failure at comptime, `@panic` at run time), never
 ////              escaped
+////   Container — front 58: `container-type` markers Inline/Normal/Size; the
+////              TOP-LEVEL ContainerNamed(name) (type AND name),
+////              ContainerAt(size, inner) and ContainerAtNamed(size, name,
+////              inner), whose `@container (width >= …)` reads the theme's
+////              `--container-*` — an undefined size panics
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
 ////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
@@ -2884,4 +2889,19 @@ pub type Token {
     ArbMin(px: string, inner: Token[]),
     ArbMax(px: string, inner: Token[]),
     // ── end front 57 ─────────────────────────────────────────────────────────
+
+    // ── front 58 — container queries ─────────────────────────────────────────
+    //
+    // The payload-free markers are a section; everything carrying a payload is
+    // top-level and built through `container.bp` (`containerName`,
+    // `containerAtMd(inner)` …, `containerNamed(size, name, inner)`).
+    Container {
+        Inline,
+        Normal,
+        Size,
+    }
+    ContainerNamed(name: string),
+    ContainerAt(size: string, inner: Token[]),
+    ContainerAtNamed(size: string, name: string, inner: Token[]),
+    // ── end front 58 ─────────────────────────────────────────────────────────
 }

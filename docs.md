@@ -78,6 +78,27 @@ inherited link colour and decoration, block images, inherited fonts in form
 controls, and `content:""` on `::before`/`::after`. Parity with `§ 4`, not a
 byte copy of upstream's `preflight.css`.
 
+## Container queries — `§ 3.3`
+
+A parent becomes a container; a descendant asks about the container's width,
+not the viewport's:
+
+```bp
+import { containerName, containerAtMd, containerAtSm } from "emilia";
+
+val slot = emilia([.Container.Inline]);                  // container-type:inline-size
+val shell = emilia([containerName("main")]);             // + container-name:main
+val row: Token[] = [.Flex.Row];
+val card = emilia([.Flex.Col, containerAtMd(row)]);      // @container (width >= 28rem){…}
+```
+
+The thirteen builders `containerAt3xs` … `containerAt7xl` read `--container-*`
+from the theme (16rem … 80rem by default), so overriding `--container-md` moves
+every `md` query. `containerNamed(ContainerSize.Sm, "main", inner)` is `@sm/main:`
+— `@container main (width >= 24rem)`. A size the theme does not define panics.
+Do not import `ContainerSize` into a module that writes `Token.Sm(…)` (see the
+maintainer notes).
+
 ## Arbitrary values — the escape hatches
 
 When no token names the value, build one — every builder validates its payload:

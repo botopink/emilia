@@ -9,6 +9,8 @@ import {encodeSheet, decodeSheet, carriesSeparator} from "output";
 import {defaultOptions, withTheme, renderRule, renderDocument} from "output";
 import {arbValueToSheet, arbPropToSheet, arbVariantToSheet, arbAtToSheet, arbMinToSheet, arbMaxToSheet} from "arbitrary";
 import {arbValue, arbProp, arbSel, arbAt, arbMin, arbMax} from "arbitrary";
+import {containerMarkerToCss, containerNamedToSheet, containerAtToSheet} from "container";
+import {containerName, containerAtMd, containerAtSm} from "container";
 
 //// ═══ FRONT 56 · the host cells and the public entry points ═══════════════
 ////
@@ -272,6 +274,12 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         ArbMin(px, inner) -> arbMinToSheet(px, tokensToSheet(inner, th));
         ArbMax(px, inner) -> arbMaxToSheet(px, tokensToSheet(inner, th));
         // ── end front 57 ───────────────────────────────────────
+        // ── front 58 — container queries ───────────────────────
+        Container(_inner) -> declSheet(containerMarkerToCss(_inner));
+        ContainerNamed(name) -> containerNamedToSheet(name);
+        ContainerAt(size, inner) -> containerAtToSheet(size, "", tokensToSheet(inner, th), th);
+        ContainerAtNamed(size, name, inner) -> containerAtToSheet(size, name, tokensToSheet(inner, th), th);
+        // ── end front 58 ───────────────────────────────────────
         // ── front 34 — modifiers ─────────────────────────────────────────
         Sm(inner) -> nestVariant(tokensToSheet(inner, th), smVariant(th));
         Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th));
@@ -15878,6 +15886,82 @@ test "Arb — the class name is a literal, and both targets must agree" {
     assert emiliaWith(tokens, defaultTheme()) == "e_65bc49a6";
 }
 // ── end front 57 ─────────────────────────────────────────────────────────────
+
+// ── front 58 — container queries ─────────────────────────────────────────────
+//
+// The four `Container*` arms dispatch to `container.bp`; these are the
+// rendering tests, which need `tokensToSheet`.
+
+test "Container — the three `container-type` markers, each alone" {
+    val a: Token[] = [.Container.Inline];
+    val b: Token[] = [.Container.Normal];
+    val c: Token[] = [.Container.Size];
+    assert f57Doc(a).indexOf(".e_x{container-type:inline-size}") != -1;
+    assert f57Doc(b).indexOf(".e_x{container-type:normal}") != -1;
+    assert f57Doc(c).indexOf(".e_x{container-type:size}") != -1;
+}
+
+test "ContainerNamed — one rule, the type then the name" {
+    val tokens: Token[] = [containerName("main")];
+    assert f57Doc(tokens).indexOf(".e_x{container-type:inline-size;container-name:main}") != -1;
+}
+
+test "ContainerAt — `@md:` is a hoisted `@container (width >= 28rem)` rule" {
+    val inner: Token[] = [.Flex.Row];
+    val tokens: Token[] = [containerAtMd(inner)];
+    assert f57Doc(tokens) == "<style>@layer theme, base, components, utilities;@layer utilities{@container (width >= 28rem){.e_x{flex-direction:row}}}</style>";
+}
+
+test "ContainerAtNamed — `@sm/main:`, and a named and an unnamed query are two rules" {
+    val inner: Token[] = [.Text.Bold];
+    // `ContainerSize` is NOT imported here: an imported enum with an `Sm`
+    // variant makes `Token.Sm(…)` elsewhere in this module resolve to it
+    // (compiler finding, see AGENTS.md). `container.bp` tests the builder.
+    val named = Token.ContainerAtNamed(size: "sm", name: "main", inner: inner);
+    val tokens: Token[] = [named, containerAtSm(inner)];
+    val doc = f57Doc(tokens);
+    assert doc.indexOf("@container main (width >= 24rem){.e_x{font-weight:bold}}") != -1;
+    assert doc.indexOf("@container (width >= 24rem){.e_x{font-weight:bold}}") != -1;
+}
+
+// THE ORDER IS PINNED, BOTH WAYS: the outer modifier's at-rule is outermost.
+test "ContainerAt — nests with a breakpoint in both orders, and with a state" {
+    val inner: Token[] = [.Text.Bold];
+    val cq: Token[] = [containerAtSm(inner)];
+    val md: Token[] = [Token.Md(inner)];
+    assert f57Doc([Token.Md(cq)]).indexOf("@media (width >= 48rem){@container (width >= 24rem){.e_x{font-weight:bold}}}") != -1;
+    assert f57Doc([containerAtSm(md)]).indexOf("@container (width >= 24rem){@media (width >= 48rem){.e_x{font-weight:bold}}}") != -1;
+    assert f57Doc([Token.Hover(cq)]).indexOf("@container (width >= 24rem){.e_x:hover{font-weight:bold}}") != -1;
+}
+
+test "ContainerAt — wraps a front 57 arbitrary selector with no special case" {
+    val inner: Token[] = [.Text.Bold];
+    val arb: Token[] = [arbSel("&.is-open", inner)];
+    assert f57Doc([containerAtSm(arb)]).indexOf("@container (width >= 24rem){.e_x.is-open{font-weight:bold}}") != -1;
+}
+
+// THE PAIR: a container with no query does nothing and a query with no
+// container matches nothing — the parent and the child in one document.
+test "Container — the parent and the child land in one utilities layer" {
+    val drained = await flushWith(bareOptions());
+    assert drained.startsWith("<style>");
+    val parentTokens: Token[] = [.Container.Inline];
+    val childInner: Token[] = [.Flex.Row];
+    val childTokens: Token[] = [.Flex.Col, containerAtMd(childInner)];
+    val parent = emilia(parentTokens);
+    val child = emilia(childTokens);
+    val doc = await flushWith(bareOptions());
+    val body = doc.split("@layer utilities{").at(1) ?? "";
+    assert body.indexOf("." + parent + "{container-type:inline-size}") != -1;
+    assert body.indexOf("@container (width >= 28rem){." + child + "{flex-direction:row}}") != -1;
+}
+
+test "Container — the class name is a literal, and both targets must agree" {
+    val inner: Token[] = [.Flex.Row];
+    val tokens: Token[] = [.Container.Inline, containerAtMd(inner)];
+    assert emiliaWith(tokens, defaultTheme()) == "e_b31f6ed0";
+}
+// ── end front 58 ─────────────────────────────────────────────────────────────
 
 // ── front 56 · test helpers ───────────────────────────────────────────
 
