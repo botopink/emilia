@@ -1575,6 +1575,22 @@ val checkbox = emilia([accent(paletteVar("indigo", "600"))]);
   `accent(v)`, `caret(v)`, `scrollbarColor(thumb, track)` with
   `paletteVar(family, shade)`.
 
+### Svg and A11y — `§ 18`, `§ 19`
+
+| Token | Emits |
+| --- | --- |
+| `.Svg.Fill.Current` / `.None` | `fill:currentcolor` / `fill:none` |
+| `.Svg.Stroke.Current` / `.None` | `stroke:currentcolor` / `stroke:none` |
+| `.Svg.StrokeWidth.__0` / `__1` / `__2` | `stroke-width:N` (unitless) |
+| `fillColor(paletteVar("red", "500"))` | `fill:var(--color-red-500)` |
+| `strokeColor(v)` / `rawStrokeWidth("3")` | `stroke:<v>` / `stroke-width:3` |
+| `.A11y.SrOnly` | upstream's nine declarations (`position:absolute;width:1px;…;border-width:0`) |
+| `.A11y.NotSrOnly` | upstream's eight — every `sr-only` property but `border-width` |
+| `.A11y.ForcedColorAdjust.Auto` / `.None` | `forced-color-adjust:auto` / `none` |
+
+An icon-only button: the glyph is `[.Svg.Stroke.Current, .Svg.StrokeWidth.__2,
+.Svg.Fill.None]`, the label `[.A11y.SrOnly]`.
+
 ### Transform — `§ 16`
 
 Ninety-six leaves in one section over sixteen sub-sections: `Rotate` (with a

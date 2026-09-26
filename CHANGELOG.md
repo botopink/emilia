@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Svg` and `A11y` added — `§ 18`, `§ 19`** (1.0.10-beta front
+  `47-emilia-svg-accessibility`). 11 leaves plus `SvgFill` / `SvgStroke` /
+  `SvgStrokeWidthRaw` and their wrappers. `sr-only` / `not-sr-only` carry
+  upstream's bodies, read from `utilities.ts` because the reference prints none.
+  `emilia` 633 → 643 on commonJS and erlang.
+
 - **`Interact` added — `§ 17`** (1.0.10-beta front `46-emilia-interactivity`).
   161 leaves plus `InteractAccent` / `InteractCaret` / `InteractScrollbarColor`
   and the wrappers `accent` / `caret` / `scrollbarColor`, every colour a

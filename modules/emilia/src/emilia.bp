@@ -209,6 +209,13 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         InteractCaret(value) -> declSheet("caret-color:" + value);
         InteractScrollbarColor(thumb, track) -> declSheet("scrollbar-color:" + thumb + " " + track);
         // ── end front 46 ───────────────────────────────────────
+        // ── front 47 — svg and accessibility ───────────────────
+        Svg(_inner) -> declSheet(svgTokenToCss(_inner, th));
+        A11y(_inner) -> declSheet(a11yTokenToCss(_inner, th));
+        SvgFill(value) -> declSheet("fill:" + value);
+        SvgStroke(value) -> declSheet("stroke:" + value);
+        SvgStrokeWidthRaw(value) -> declSheet("stroke-width:" + value);
+        // ── end front 47 ───────────────────────────────────────
         // ── front 39 — backgrounds ─────────────────────────
         Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
         // ── end front 39 ─────────────────────────────
@@ -15508,6 +15515,197 @@ test "Interact — the class name is a literal, and both targets must agree" {
     assert emiliaWith(tokens, defaultTheme()) == "e_9988dbf";
 }
 // ── end front 46 ─────────────────────────────────────────────────────────────
+
+// ── front 47 — svg and accessibility ─────────────────────────────────────────
+//
+// FRONT 47 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the `Svg`
+// and `A11y` dispatchers, the three payload wrappers and the tests under the
+// same name.
+//
+// TWO VALUES ARE DERIVED, NOT TRANSCRIBED: `fill-current` / `stroke-current`
+// are `currentcolor`, the one CSS value the suffix `current` can abbreviate
+// (and upstream's own resolution of the colour `current`).
+//
+// THE `sr-only` GATE IS CLOSED. `§ 19.2` prints no CSS for either row, so the
+// two bodies below were read from upstream on 2026-09-26 —
+// https://github.com/tailwindlabs/tailwindcss/blob/main/packages/tailwindcss/src/utilities.ts
+// (`staticUtility('sr-only', …)` / `staticUtility('not-sr-only', …)`) — and
+// are pasted in upstream's declaration order. `not-sr-only` restores EIGHT of
+// the nine properties: upstream leaves `border-width` alone, and so does this
+// front, so a `NotSrOnly` over a bordered element keeps `sr-only`'s `0`.
+
+fn svgFillToCss(f: Token.Svg.Fill) -> string {
+    val out = case f {
+        Current -> "fill:currentcolor";
+        None -> "fill:none";
+    };
+    return out;
+}
+
+fn svgStrokeToCss(f: Token.Svg.Stroke) -> string {
+    val out = case f {
+        Current -> "stroke:currentcolor";
+        None -> "stroke:none";
+    };
+    return out;
+}
+
+fn svgStrokeWidthToCss(w: Token.Svg.StrokeWidth) -> string {
+    val out = case w {
+        __0 -> "stroke-width:0";
+        __1 -> "stroke-width:1";
+        __2 -> "stroke-width:2";
+    };
+    return out;
+}
+
+// `§ 18`. `th` is the contract `§ 4a` parameter; nothing here reads it.
+fn svgTokenToCss(t: Token.Svg, th: Theme) -> string {
+    val out = case t {
+        Fill(_inner) -> svgFillToCss(_inner);
+        Stroke(_inner) -> svgStrokeToCss(_inner);
+        StrokeWidth(_inner) -> svgStrokeWidthToCss(_inner);
+    };
+    return out;
+}
+
+fn srOnlyBody() -> string {
+    val decls: string[] = [
+        "position:absolute", "width:1px", "height:1px", "padding:0", "margin:-1px",
+        "overflow:hidden", "clip-path:inset(50%)", "white-space:nowrap", "border-width:0",
+    ];
+    return decls.join(";");
+}
+
+fn notSrOnlyBody() -> string {
+    val decls: string[] = [
+        "position:static", "width:auto", "height:auto", "padding:0", "margin:0",
+        "overflow:visible", "clip-path:none", "white-space:normal",
+    ];
+    return decls.join(";");
+}
+
+fn a11yForcedColorAdjustToCss(f: Token.A11y.ForcedColorAdjust) -> string {
+    val out = case f {
+        Auto -> "forced-color-adjust:auto";
+        None -> "forced-color-adjust:none";
+    };
+    return out;
+}
+
+// `§ 19`. `sr-only` is a `;`-joined declaration string on the element's OWN
+// class — it needs no selector outside it, so this stays the ordinary form.
+fn a11yTokenToCss(t: Token.A11y, th: Theme) -> string {
+    val out = case t {
+        SrOnly -> srOnlyBody();
+        NotSrOnly -> notSrOnlyBody();
+        ForcedColorAdjust(_inner) -> a11yForcedColorAdjustToCss(_inner);
+    };
+    return out;
+}
+
+// The wrappers a typed list needs; each colour takes a `paletteVar` result.
+pub fn fillColor(value: string) -> Token {
+    return Token.SvgFill(value: value);
+}
+
+pub fn strokeColor(value: string) -> Token {
+    return Token.SvgStroke(value: value);
+}
+
+pub fn rawStrokeWidth(value: string) -> Token {
+    return Token.SvgStrokeWidthRaw(value: value);
+}
+
+// ── front 47 · tests ─────────────────────────────────────────────────────────
+
+// `currentcolor` is DERIVED from the class suffix, not transcribed — the line
+// to doubt if upstream ever disagrees.
+test "Svg.Fill / Svg.Stroke — currentcolor and none" {
+    assert tokenDeclarations(.Svg.Fill.Current) == "fill:currentcolor";
+    assert tokenDeclarations(.Svg.Fill.None) == "fill:none";
+    assert tokenDeclarations(.Svg.Stroke.Current) == "stroke:currentcolor";
+    assert tokenDeclarations(.Svg.Stroke.None) == "stroke:none";
+}
+
+test "Svg.StrokeWidth — unitless, and zero is not none" {
+    assert tokenDeclarations(.Svg.StrokeWidth.__0) == "stroke-width:0";
+    assert tokenDeclarations(.Svg.StrokeWidth.__1) == "stroke-width:1";
+    assert tokenDeclarations(.Svg.StrokeWidth.__2) == "stroke-width:2";
+    assert tokenDeclarations(.Svg.StrokeWidth.__2).indexOf("px") == -1;
+    assert tokenDeclarations(.Svg.Stroke.None) == "stroke:none";
+}
+
+test "SvgFill / SvgStroke / SvgStrokeWidthRaw — construct and emit" {
+    val f = Token.SvgFill(value: paletteVar("red", "500"));
+    assert tokenDeclarations(f) == "fill:var(--color-red-500)";
+    val s = Token.SvgStroke(value: paletteVar("blue", "500"));
+    assert tokenDeclarations(s) == "stroke:var(--color-blue-500)";
+    val w = Token.SvgStrokeWidthRaw(value: "3");
+    assert tokenDeclarations(w) == "stroke-width:3";
+    assert tokenDeclarations(fillColor(paletteVar("emerald", "600"))) == "fill:var(--color-emerald-600)";
+    assert tokenDeclarations(strokeColor(paletteVar("slate", "900"))) == "stroke:var(--color-slate-900)";
+    assert tokenDeclarations(rawStrokeWidth("1.5")) == "stroke-width:1.5";
+}
+
+// The gated pair, asserted WHOLE — a later "tidy" of either body fails here.
+test "A11y.SrOnly / NotSrOnly — upstream's bodies, whole" {
+    assert tokenDeclarations(.A11y.SrOnly) == "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border-width:0";
+    assert tokenDeclarations(.A11y.NotSrOnly) == "position:static;width:auto;height:auto;padding:0;margin:0;overflow:visible;clip-path:none;white-space:normal";
+}
+
+// Side by side: `not-sr-only` names every property `sr-only` sets but the
+// last, `border-width`, which upstream does not restore.
+test "A11y.NotSrOnly — restores eight of sr-only's nine properties, as upstream" {
+    val setProps = srOnlyBody().split(";").map({ d -> d.split(":").at(0) ?? "" });
+    val undoneProps = notSrOnlyBody().split(";").map({ d -> d.split(":").at(0) ?? "" });
+    assert setProps.length == 9;
+    assert undoneProps.length == 8;
+    assert setProps.filter({ p -> p != "border-width" }).join(",") == undoneProps.join(",");
+}
+
+test "A11y.ForcedColorAdjust — the two rows of `§ 19.1`" {
+    assert tokenDeclarations(.A11y.ForcedColorAdjust.Auto) == "forced-color-adjust:auto";
+    assert tokenDeclarations(.A11y.ForcedColorAdjust.None) == "forced-color-adjust:none";
+}
+
+// The close button's glyph: three properties, list order kept.
+test "Svg — a stroked glyph composes in list order" {
+    val tokens: Token[] = [.Svg.Stroke.Current, .Svg.StrokeWidth.__2, .Svg.Fill.None];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
+    assert decls.join(";") == "stroke:currentcolor;stroke-width:2;fill:none";
+}
+
+test "SvgFill — a fill under Hover reaches front 34's variant" {
+    val inner: Token[] = [Token.SvgFill(value: paletteVar("red", "500"))];
+    val outer: Token[] = [Token.Hover(inner)];
+    val s = tokensToSheet(outer, defaultTheme());
+    assert declarationsOf(s).join(";") == "fill:var(--color-red-500)";
+    assert firstRuleOf(s).selector == "&:hover";
+}
+
+// NO HEX: every leaf and every palette payload, walked; the control is not a
+// hex either (the front's rule is that none appears in its tests).
+test "front 47 — 11 leaves and two palette payloads well-formed, no resolved colour" {
+    val leaves: Token[] = [
+        .Svg.Fill.Current, .Svg.Fill.None, .Svg.Stroke.Current, .Svg.Stroke.None,
+        .Svg.StrokeWidth.__0, .Svg.StrokeWidth.__1, .Svg.StrokeWidth.__2,
+        .A11y.SrOnly, .A11y.NotSrOnly, .A11y.ForcedColorAdjust.Auto,
+        .A11y.ForcedColorAdjust.None, Token.SvgFill(value: paletteVar("red", "500")),
+        Token.SvgStroke(value: paletteVar("blue", "500")),
+    ];
+    val decls = leaves.map({ t -> tokenDeclarations(t) });
+    assert decls.filter({ d -> d == "" || d.indexOf(":") == -1 }).length == 0;
+    assert decls.filter({ d -> d.indexOf("#") != -1 || d.indexOf("oklch(") != -1 || d.indexOf("rgb(") != -1 }).length == 0;
+    assert "fill:oklch(63.7% 0.237 25.331)".indexOf("oklch(") != -1;
+}
+
+test "Svg / A11y — the class name is a literal, and both targets must agree" {
+    val tokens: Token[] = [.Svg.Stroke.Current, .Svg.StrokeWidth.__2, .A11y.SrOnly];
+    assert emiliaWith(tokens, defaultTheme()) == "e_1666a8e9";
+}
+// ── end front 47 ─────────────────────────────────────────────────────────────
+
 
 
 // ── front 56 · test helpers ───────────────────────────────────────────

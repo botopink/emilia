@@ -443,6 +443,18 @@ entry** — the spec's `--tw-scroll-snap-strictness` default cannot be one
 upstream's initial value `proximity` as the fallback, and a `Snap.Strictness`
 token in the same class overrides it.
 
+Front 47 owns **SVG and accessibility** — the `Svg` and `A11y` sections of
+`tokens.bp` and the top-level `SvgFill` / `SvgStroke` / `SvgStrokeWidthRaw`, and
+`svgTokenToCss`, `a11yTokenToCss`, `srOnlyBody()` / `notSrOnlyBody()` and the
+wrappers `fillColor` / `strokeColor` / `rawStrokeWidth` in `emilia.bp`, fenced by
+the `// ── front 47 — svg and accessibility ──` banner in both files. **11
+leaves.** `fill-current`/`stroke-current` are `currentcolor`, DERIVED from the
+suffix (`§ 18` prints no value). **The `sr-only` gate is closed**: `§ 19.2`
+prints no CSS, so both bodies were read from upstream's `utilities.ts` on
+2026-09-26 and pasted in upstream's order; `not-sr-only` restores eight of the
+nine properties, because upstream leaves `border-width` alone. Colours carry
+front 33's `paletteVar`, never a hex.
+
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
 DSL); both forms need the two generic jhonstart hooks (`F0` second
@@ -1037,9 +1049,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **633/633** on
+  refuses) runs every module's in-file `test {}` blocks, **643/643** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 545 (`emilia.bp`). The figure below breaks down the 375
+  (`output.bp`) + 555 (`emilia.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
@@ -1413,6 +1425,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 42 — filters | DONE — steps 1–4. **108 leaves** over `§ 13` in `Filter` (50) and `BackdropFilter` (58; not `Backdrop`, which is front 34's modifier), plus `FilterRaw`/`BackdropRaw`. Every leaf but `Blur.None` is its `--tw-<family>` property plus one reader of every family with empty fallbacks (`filterChain()`), so filters compose; the spec's `var(--tw-filter)` theme entry is not expressible (`extendTheme` refuses `--tw-`) and would not compose if it were. `DropShadow.None` follows upstream; `filterEntries()` carries the `--blur-*`/`--drop-shadow-*` values. +29 inline tests, **598** on both targets |
 | 1.0.10-beta front 43 — tables | DONE — steps 1–4. **21 leaves** over `§ 14` in `Table` plus `TableSpacingRaw`; `border-spacing` is `spacing(n)`, the axes are the one- and two-value forms (no composition). +10 inline tests, **608** on both targets |
 | 1.0.10-beta front 46 — interactivity | DONE — steps 1–7. **161 leaves** over `§ 17` in `Interact` plus `InteractAccent`/`InteractCaret`/`InteractScrollbarColor` (payload = `paletteVar`); scroll offsets are `spacing(n)`; `Snap.Type` reads `--tw-scroll-snap-strictness` with `proximity` as its fallback. +25 inline tests, **633** on both targets |
+| 1.0.10-beta front 47 — SVG and accessibility | DONE — steps 1–5. **11 leaves** in `Svg` and `A11y` plus `SvgFill`/`SvgStroke`/`SvgStrokeWidthRaw`; `sr-only`/`not-sr-only` are upstream's bodies (read 2026-09-26, `not-sr-only` leaves `border-width`, as upstream). +10 inline tests, **643** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

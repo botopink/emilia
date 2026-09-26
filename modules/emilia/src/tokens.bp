@@ -284,6 +284,14 @@
 ////              PAIRING: a Snap.Type reads `--tw-scroll-snap-strictness` with
 ////              `proximity` as its fallback; a Snap.Strictness token writes it.
 ////              161 leaves
+////   Svg      — front 47: `§ 18` — Fill and Stroke { Current, None } and
+////              StrokeWidth { 0, 1, 2 } (unitless). `currentcolor` is DERIVED
+////              from the class suffix `current`, not transcribed: `§ 18` prints
+////              no value for it. Colours are the TOP-LEVEL SvgFill/SvgStroke,
+////              each carrying front 33's `paletteVar`, never a hex. 7 leaves
+////   A11y     — front 47: `§ 19` — SrOnly and NotSrOnly (upstream's bodies,
+////              read from `utilities.ts` because `§ 19.2` prints none) and
+////              ForcedColorAdjust { Auto, None }. 4 leaves
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
 ////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
@@ -2580,6 +2588,41 @@ pub type Token {
     InteractCaret(value: string),
     InteractScrollbarColor(thumb: string, track: string),
     // ── end front 46 ─────────────────────────────────────────────────────────
+
+    // ── front 47 — svg and accessibility ─────────────────────────────────────
+    //
+    // `§ 18` and `§ 19`. HEAD AUDIT: `Svg`, `Fill`, `Stroke`, `StrokeWidth`,
+    // `A11y`, `ForcedColorAdjust` repeat no top-level payload variant.
+    Svg {
+        Fill {
+            Current,
+            None,
+        }
+        Stroke {
+            Current,
+            None,
+        }
+        StrokeWidth {
+            0,
+            1,
+            2,
+        }
+    }
+    A11y {
+        SrOnly,
+        NotSrOnly,
+        ForcedColorAdjust {
+            Auto,
+            None,
+        }
+    }
+
+    // Payload-carrying variants are TOP-LEVEL; the colours carry front 33's
+    // `paletteVar(family, shade)`, never a hex.
+    SvgFill(value: string),
+    SvgStroke(value: string),
+    SvgStrokeWidthRaw(value: string),
+    // ── end front 47 ─────────────────────────────────────────────────────────
 
     // ── front 39 — backgrounds ──────────────────────────────────
     //
