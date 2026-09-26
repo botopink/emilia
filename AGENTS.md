@@ -887,7 +887,8 @@ emilia/
 │                        workspace-relative { "path":
 │                        "../../../jhonstart/modules/jhonstart" }): 4 in-file
 │                        `test {}` composing
-│                        three class names + a Hover/Md modifier
+│                        three class names + a Hover/Md modifier, green on
+│                        both targets
 └── scripts/
     ├── git-hooks/     ← the pre-commit gate (§ Local gate): `botopink test`
     │                    per `modules/*/` member, then `botopink build` per
