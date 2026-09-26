@@ -262,17 +262,17 @@
 ////              negative ones, because there is no spelling for a negative
 ////              numeric leaf. Scale/ScaleX/ScaleY are the same ten steps on
 ////              the one-value and the two-value `scale`. TranslateX/Y are the
-////              five rows of `§ 16.10`, each ONE declaration carrying the
-////              other axis as `var(--tw-translate-*, 0)`. SkewX/Y emit
-////              UPSTREAM's `transform:skewX(Ndeg)` and NOT `§ 16.6`'s
-////              `skew-x:` column, which is not a registered CSS property
-////              (checked against the upstream page 2026-09-21). Origin,
+////              five rows of `§ 16.10` in upstream v4's form: the axis's
+////              `--tw-translate-*` and `translate:var(--tw-translate-x)
+////              var(--tw-translate-y)`, registered with `@property`. SkewX/Y
+////              write `--tw-skew-*` and upstream's five-variable `transform`
+////              chain, NOT `§ 16.6`'s `skew-x:` column (not a CSS
+////              property); both families compose. Origin,
 ////              Style (`transform-3d` → `preserve-3d`), Backface,
 ////              Perspective (five `--perspective-*` references and the `none`
 ////              keyword), PerspectiveOrigin and Zoom are one-to-one with
-////              their subsections. Shorthand is `§ 16.7` VERBATIM AND INERT:
-////              its two composed rows read six `--tw-*` variables no token in
-////              emilia sets
+////              their subsections. Shorthand is upstream v4's: `none`, the
+////              skew chain (`Cpu`) and `translateZ(0)` + the chain (`Gpu`)
 ////   Interact — front 46: `§ 17` in one section — Cursor (36; `default`
 ////              is `Standard`), Appearance, FieldSizing, ColorScheme,
 ////              PointerEvents, Resize, Select, WillChange, Touch, Scroll
@@ -339,10 +339,8 @@
 ////                              reason `Alpha` is: a payload leaf nested in a
 ////                              section cannot be constructed by any spelling.
 ////                              The name keeps the path it would have had,
-////                              flattened. A leading-dot path followed by a
-////                              payload call does not carry the typed-array
-////                              context either, so a list spells them
-////                              `Token.EffectShadowRaw(value: v)` in full.
+////                              flattened; a typed list spells it
+////                              `.EffectShadowRaw(v)` or in full.
 ////   .TransitionProperty(value)  → front 44: upstream's `transition-[…]`
 ////   .AnimateRaw(value)          → front 44: upstream's `animate-[…]`. Top
 ////                              level for the same reason, and for one more:
@@ -2201,17 +2199,13 @@ pub type Token {
     // begin with a digit, and naming it after the value it emits reads better
     // than `X3d`.
     //
-    // TWO ROWS OF THE REFERENCE DO NOT SURVIVE THE UPSTREAM CHECK AND ONE
-    // DOES NOT SURVIVE CSS; all three are flagged at the arm that emits them in
-    // `emilia.bp` rather than here, so a reader hits the flag where the value
-    // is. In summary: `§ 16.6`'s `skew-x:`/`skew-y:` property column is not a
-    // registered CSS property and upstream prints `transform: skewX(…)`
-    // instead, so this front emits upstream's; `§ 16.10`'s `translate:` rows
-    // read a `--tw-translate-*` variable that NO namespace of front 54 can
-    // hold, so the reference is carried with a `var(…, 0)` fallback the way
-    // front 39 carries its gradient stops; and `§ 16.7`'s four `transform`
-    // rows read six `--tw-*` variables NO token in emilia sets, so they are
-    // transcribed verbatim and marked inert.
+    // THREE ROWS OF THE REFERENCE TAKE UPSTREAM v4's OUTPUT instead; all three
+    // are flagged at the arm that emits them in `emilia.bp`. In summary: a skew
+    // axis writes `--tw-skew-*` and the five-variable `transform` chain (the
+    // reference's `skew-x:` is not CSS); a translate axis writes
+    // `--tw-translate-*` and reads both, with upstream's `@property`
+    // registrations in its sheet; and `transform-cpu` / `-gpu` are the chain
+    // rows, not `§ 16.7`'s v3 values.
     Transform {
         Rotate {
             0,

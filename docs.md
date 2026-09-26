@@ -513,7 +513,7 @@ The three custom-property names are upstream's, checked against it:
 The **composition** is simpler than upstream's on purpose. Tailwind v4 threads
 four position variables through the list and gives `via-*` its own
 `--tw-gradient-via-stops`, and both rest on `@property` registration for their
-defaults. emilia emits no `@property` block, and colour-stop positions
+defaults. emilia registers no `@property` for them, and colour-stop positions
 (`from-10%`) are not tokens here, so copying that shape would emit a list that
 is invalid at computed-value time in every browser.
 
@@ -1728,7 +1728,7 @@ val lifted: Token[] = [
     .Transform.Scale.__110,
     .Transform.TranslateY.Full,
 ];
-// rotate:45deg;scale:1.1;translate:var(--tw-translate-x, 0) 100%
+// rotate:45deg;scale:1.1;--tw-translate-y:100%;translate:var(--tw-translate-x) var(--tw-translate-y)
 ```
 
 No `--tw-*` cascade is needed to compose them, which is why the pre-1.0.10
@@ -1762,43 +1762,45 @@ test rather than shipping a divergence.
 `scale:1 .5`. `ScaleX.__100` and `ScaleY.__100` are both `scale:1 1` — the one
 place two leaves of this section share a declaration, and it is `§ 16.5`'s own.
 
-#### Translate — one declaration, and the other axis as a fallback
+#### Translate — upstream v4's two variables
 
-`§ 16.10` writes `translate: 50% var(--tw-translate-y)`: a single declaration
-carrying the utility's own axis and a reference to the other one. emilia emits
-exactly that, with one addition:
+A one-axis token writes its axis into `--tw-translate-x` / `--tw-translate-y`
+and then reads both, exactly as upstream Tailwind v4 does; the both-axes
+`Translate` writes the two variables:
 
 | token | CSS |
 |---|---|
-| `.Transform.TranslateX.__0` | `translate:0 var(--tw-translate-y, 0)` |
-| `.Transform.TranslateX.Px` | `translate:1px var(--tw-translate-y, 0)` |
-| `.Transform.TranslateX.__1` | `translate:calc(var(--spacing) * 1) var(--tw-translate-y, 0)` |
-| `.Transform.TranslateX.Half` | `translate:50% var(--tw-translate-y, 0)` |
-| `.Transform.TranslateX.Full` | `translate:100% var(--tw-translate-y, 0)` |
-| `.Transform.TranslateY.Half` | `translate:var(--tw-translate-x, 0) 50%` |
+| `.Transform.TranslateX.__0` | `--tw-translate-x:0;translate:var(--tw-translate-x) var(--tw-translate-y)` |
+| `.Transform.TranslateX.Px` | `--tw-translate-x:1px;translate:var(--tw-translate-x) var(--tw-translate-y)` |
+| `.Transform.TranslateX.__1` | `--tw-translate-x:calc(var(--spacing) * 1);translate:…` |
+| `.Transform.TranslateX.Half` | `--tw-translate-x:50%;translate:…` |
+| `.Transform.TranslateX.Full` | `--tw-translate-x:100%;translate:…` |
+| `.Transform.TranslateY.Half` | `--tw-translate-y:50%;translate:…` |
+| `.Transform.Translate.Half` | `--tw-translate-x:50%;--tw-translate-y:50%;translate:…` |
 
-The `, 0` is the value upstream registers with `@property`. emilia emits no
-`@property` block and `--tw-` is in none of the theme's nineteen namespaces, so
-without it a lone `translate-x-4` would be invalid at computed-value time and
-move nothing. It is the same call front 39 made for the gradient stops.
+The axis a class does not set reads `0`: every translate class carries
+upstream's `@property` registrations (`@property --tw-translate-x{syntax:"*";
+inherits:false;initial-value:0}`, and `-y`, `-z`), written once per document
+after the layers, and the flush writes upstream's fallback for an engine
+without `@property` — `@layer properties;` declared before every other layer and
+`@layer properties{@supports (…){*,::before,::after,::backdrop{--tw-translate-x:0;…}}}`
+at the end. So `[.TranslateX.Half, .TranslateY.Half]` moves an element
+diagonally.
 
-**The two axes do not compose.** Two `translate:` declarations in one rule are
-two declarations of one property, so `[.TranslateX.Half, .TranslateY.Half]`
-moves an element 50% *down* and not diagonally. Use `rawTranslate("50% 50%")`
-for a diagonal.
-
-#### Skew — upstream's property, not the reference file's
+#### Skew — upstream v4's variable and chain
 
 `§ 16.6`'s "Propriedade CSS" column says `skew-x: 3deg`. That is not a
-registered CSS property and no browser applies it. The upstream page prints
-`transform: skewX(3deg)`, and that is what emilia emits:
+registered CSS property. Upstream writes the axis into a variable and a chain
+of five variables into `transform`, and so does emilia:
 
 ```bp
-val tokens: Token[] = [.Transform.SkewX.__3];   // transform:skewX(3deg)
+val tokens: Token[] = [.Transform.SkewX.__3];
+// --tw-skew-x:skewX(3deg);transform:var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)
 ```
 
-Both axes write `transform`, so unlike rotate/scale/translate **two skews in one
-rule do not compose** — the second wins. That is upstream's behaviour too.
+An unset variable is nothing (the empty fallback), so **two skews in one rule
+compose**. Each skew class registers the chain's five variables with
+`@property` (no initial value).
 
 #### Origin, style and backface
 
@@ -1829,23 +1831,18 @@ Unlike front 44's `--ease-*`, **none of these five values is provisional**:
 `§ 16.2` prints the variable *and* its length on every row.
 `.Transform.PerspectiveOrigin.{Center,Top,Bottom,Left,Right}` is `§ 16.3`.
 
-#### The `transform` shorthand is verbatim and inert
+#### The `transform` shorthand — upstream v4's rows
 
-`.Transform.Shorthand.None` is `transform:none` and works. `.Cpu` and `.Gpu`
-emit `§ 16.7`'s two composed values byte for byte:
+`.Transform.Shorthand.None` is `transform:none`. `.Cpu` (`transform` /
+`transform-cpu`) is the skew chain, and `.Gpu` puts `translateZ(0)` in front of
+it:
 
 ```
-transform:translate3d(var(--tw-translate-x), var(--tw-translate-y), 0) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))
+transform:translateZ(0) var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)
 ```
 
-**Those six variables are set by no token in emilia.** `rotate-*` writes
-`rotate`, `scale-*` writes `scale`, `translate-*` writes `translate` and
-`skew-*` writes a `transform` of its own — each the property the reference
-gives it. So the two composed rows declare a transform that resolves to nothing.
-They are shipped because byte-equality with the reference is the rule, and they
-are marked here so nobody reaches for `transform-gpu` expecting it to compose.
-Giving them fallbacks would be worse: `.Cpu` would then emit an identity
-transform that silently overwrites the `skewX` beside it.
+A `.Cpu` beside a `.SkewX.__3` therefore keeps the skew. `§ 16.7`'s
+`translate(…) rotate(…) scaleX(…)` rows are v3's and are not emitted.
 
 #### Arbitrary values — `rawRotate`, `rawTranslate`
 

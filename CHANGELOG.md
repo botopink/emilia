@@ -2,6 +2,16 @@
 
 ## Unreleased — v0.beta.22
 
+- **Translate and skew take upstream v4's form, and compose** (front 45,
+  measured against Tailwind 4.3.2's compiled output). A translate axis writes
+  `--tw-translate-<axis>` and `translate:var(--tw-translate-x)
+  var(--tw-translate-y)`; a skew axis writes `--tw-skew-<axis>` and the
+  five-variable `transform` chain; `transform-cpu` / `-gpu` are the chain rows.
+  The variables are registered as `@property` blocks and the flush writes
+  upstream's `properties` layer fallback (`output.bp`). The old rows (the other
+  axis as `var(--tw-translate-y, 0)`, `transform:skewX(…)`, `§ 16.7`'s v3 chain)
+  did not compose. `emilia` 724 → 728.
+
 - **`Transform.Translate` — both axes** (front 45, from the track-D audit):
   `.Transform.Translate.{0,Px,1,Half,Full}` is `translate:<v> <v>`. The
   sub-dispatchers of fronts 41 and 45 take `th: Theme` like every other front's.

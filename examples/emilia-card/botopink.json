@@ -5,11 +5,10 @@
   "src": "src/",
   "entry": "main.bp",
   "target": "commonJS",
-  "targets": ["commonJS"],
+  "targets": ["commonJS", "erlang"],
   "dependencies": {
     "jhonstart": {
-      "git": "https://github.com/botopink/jhonstart.git",
-      "branch": "feat"
+      "path": "../../../jhonstart/modules/jhonstart"
     },
     "emilia": {
       "workspace": true

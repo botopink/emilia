@@ -15,11 +15,12 @@
 //   - `rotate`, `scale` AND `translate` ARE INDEPENDENT PROPERTIES IN v4.
 //     Three tokens in one list are three declarations in one rule and none of
 //     them overwrites another — which is why the 1.0.8 draft's
-//     `transform:rotate(45deg) scale(1.1)` shape is superseded and why this
-//     front needs no `--tw-*` chain to compose.
-//   - `skew` IS THE EXCEPTION, and it is upstream's exception rather than this
-//     library's: both axes write `transform`, so two of them in one rule are
-//     two declarations of one property and the second wins.
+//     `transform:rotate(45deg) scale(1.1)` shape is superseded.
+//   - THE AXES COMPOSE THROUGH `--tw-*` VARIABLES, as upstream v4's do: a
+//     translate axis writes `--tw-translate-<axis>` and reads both, a skew axis
+//     writes `--tw-skew-<axis>` and the five-variable `transform` chain, so
+//     `translate-x` beside `translate-y` moves diagonally and two skews skew
+//     on both axes.
 //   - THE TWO DECIMAL CONVENTIONS ARE THE REFERENCE'S. `scale-50` is `.5` and
 //     `zoom-50` is `0.5`, four subsections apart in the same section. Both are
 //     copied; neither is remembered.
@@ -27,12 +28,9 @@
 //     references and the `none` keyword, so a project that redefines
 //     `--perspective-near` moves every rule that names it and not one byte of
 //     any rule body.
-//   - A TRANSLATE CARRIES THE OTHER AXIS AS A FALLBACK. `§ 16.10` writes
-//     `translate: 50% var(--tw-translate-y)` and upstream registers that
-//     variable's `0` with `@property`; emilia emits no `@property` block and
-//     `--tw-` is in none of front 54's nineteen namespaces, so the `0` is
-//     written into the reference — front 39's gradient-stop call, for front
-//     39's reason.
+//   - THE VARIABLES ARE REGISTERED. Each translate and skew class carries
+//     upstream's `@property` blocks (the translate axes at `0`), and the flush
+//     writes upstream's `properties` layer for an engine without `@property`.
 //
 // THIS FILE IS A CONSUMER PACKAGE, not a test inside the library: a consumer
 // re-emits its own copy of the enum classes, so a `case` that crossed the
@@ -141,16 +139,15 @@ pub fn theVerticalLadder() -> string {
 
 // ── `§ 16.6` · skew ──────────────────────────────────────────────────────────
 
-// UPSTREAM's PROPERTY, not the reference file's. `§ 16.6`'s column says
-// `skew-x: 3deg`, which is not a registered CSS property; the upstream page
-// prints `transform: skewX(3deg)` and that is what this emits.
+// UPSTREAM's FORM, not the reference file's. `§ 16.6`'s column says
+// `skew-x: 3deg`, which is not a registered CSS property; upstream v4 writes
+// `--tw-skew-x: skewX(3deg)` and the `transform` chain, and so does this.
 pub fn aSkewedPanel() -> string {
     val tokens: Token[] = [.Transform.SkewX.__3];
     return emilia(tokens);
 }
 
-// TWO SKEWS ARE TWO `transform` DECLARATIONS AND THE SECOND WINS. Unlike
-// rotate/scale/translate, the skew axes do not compose.
+// TWO SKEWS COMPOSE: each writes its own variable, and the chain reads both.
 pub fn twoSkewsInOneRule() -> string {
     val tokens: Token[] = [.Transform.SkewX.__3, .Transform.SkewY.__6];
     return emilia(tokens);
@@ -244,10 +241,8 @@ pub fn noTransform() -> string {
     return emilia(tokens);
 }
 
-// THE TWO COMPOSED ROWS ARE INERT, transcribed verbatim, and marked so at their
-// declaration in the library. They read six `--tw-*` variables that NO token in
-// emilia sets, because `rotate`, `scale`, `translate` and `skew` each write the
-// property the reference gives them instead.
+// `transform-gpu`: upstream v4's `translateZ(0)` in front of the chain the skew
+// leaves write.
 pub fn theGpuShorthand() -> string {
     val tokens: Token[] = [.Transform.Shorthand.Gpu];
     return emilia(tokens);
@@ -256,8 +251,7 @@ pub fn theGpuShorthand() -> string {
 // ── the escape hatches ───────────────────────────────────────────────────────
 
 // `rotate-[17deg]` IS IN THE REFERENCE — `§ 16.4`'s HTML example prints it. The
-// wrapper exists because a leading-dot path followed by a payload call does not
-// carry the typed-array context.
+// wrapper is the readable spelling of `.TransformRotateRaw("17deg")`.
 pub fn anArbitraryRotation() -> string {
     val tokens: Token[] = [rawRotate("17deg")];
     return emilia(tokens);
@@ -360,42 +354,51 @@ test "scale — the two axes, in one rule, swapped components would show" {
     assert doc.indexOf("." + cls + "{scale:.5 1;scale:1 1.5}") != -1;
 }
 
-// EVERY ROW CARRIES THE OTHER AXIS AS A REFERENCE WITH A FALLBACK. The
-// reference writes `translate: 50% var(--tw-translate-y)`; the `, 0` is the
-// value upstream registers with `@property` and emilia cannot, because `--tw-`
-// is in none of front 54's nineteen namespaces.
-test "translate — the five `x` rows, each one declaration with the `y` fallback" {
+fn composed() -> string {
+    return ";translate:var(--tw-translate-x) var(--tw-translate-y)";
+}
+
+// EVERY ROW WRITES ITS AXIS AND READS BOTH — upstream v4's form — and the
+// document registers the three variables once, with the `0` upstream gives them.
+test "translate — the five `x` rows, each writing `--tw-translate-x`" {
     val cls = theHorizontalLadder();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{translate:0 var(--tw-translate-y, 0);"
-        + "translate:1px var(--tw-translate-y, 0);"
-        + "translate:calc(var(--spacing) * 1) var(--tw-translate-y, 0);"
-        + "translate:50% var(--tw-translate-y, 0);"
-        + "translate:100% var(--tw-translate-y, 0)}") != -1;
+    assert doc.indexOf("." + cls + "{--tw-translate-x:0" + composed()
+        + ";--tw-translate-x:1px" + composed()
+        + ";--tw-translate-x:calc(var(--spacing) * 1)" + composed()
+        + ";--tw-translate-x:50%" + composed()
+        + ";--tw-translate-x:100%" + composed() + "}") != -1;
     // `translate-x-1` is front 54's spacing ladder and never a resolved `rem`
     assert doc.indexOf("rem") == -1;
+    assert doc.indexOf("@property --tw-translate-y{syntax:\"*\";inherits:false;initial-value:0}") != -1;
+    assert doc.indexOf("@layer properties{") != -1;
 }
 
-test "translate — the five `y` rows, the components the other way round" {
+test "translate — the five `y` rows, writing the other variable" {
     val cls = theVerticalLadder();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{translate:var(--tw-translate-x, 0) 0;"
-        + "translate:var(--tw-translate-x, 0) 1px;"
-        + "translate:var(--tw-translate-x, 0) calc(var(--spacing) * 1);"
-        + "translate:var(--tw-translate-x, 0) 50%;"
-        + "translate:var(--tw-translate-x, 0) 100%}") != -1;
+    assert doc.indexOf("." + cls + "{--tw-translate-y:0" + composed()
+        + ";--tw-translate-y:1px" + composed()
+        + ";--tw-translate-y:calc(var(--spacing) * 1)" + composed()
+        + ";--tw-translate-y:50%" + composed()
+        + ";--tw-translate-y:100%" + composed() + "}") != -1;
 }
 
-// UPSTREAM's PROPERTY, and the reference file's column asserted ABSENT — the
-// half that makes the divergence deliberate rather than a typo nobody noticed.
-test "skew — `transform:skewX(3deg)`, and never the reference file's `skew-x:`" {
+fn skewChain() -> string {
+    return "transform:var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)";
+}
+
+// UPSTREAM's FORM, and the reference file's column asserted ABSENT — the half
+// that makes the divergence deliberate rather than a typo nobody noticed.
+test "skew — `--tw-skew-x:skewX(3deg)` and the chain, and never the reference file's `skew-x:`" {
     val a = aSkewedPanel();
     val b = twoSkewsInOneRule();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{transform:skewX(3deg)}") != -1;
-    assert doc.indexOf("." + b + "{transform:skewX(3deg);transform:skewY(6deg)}") != -1;
-    assert doc.indexOf("skew-x:") == -1;
-    assert doc.indexOf("skew-y:") == -1;
+    assert doc.indexOf("." + a + "{--tw-skew-x:skewX(3deg);" + skewChain() + "}") != -1;
+    assert doc.indexOf("." + b + "{--tw-skew-x:skewX(3deg);" + skewChain()
+        + ";--tw-skew-y:skewY(6deg);" + skewChain() + "}") != -1;
+    assert doc.indexOf("{skew-x:") == -1;
+    assert doc.indexOf(";skew-y:") == -1;
 }
 
 test "transform-origin — the nine rows, and a corner is two keywords" {
@@ -468,23 +471,14 @@ test "zoom — the seven rows, with the leading zero the reference prints" {
     assert doc.indexOf("." + s + "{scale:0;scale:.5;") != -1;
 }
 
-// `§ 16.7` VERBATIM, AND INERT. The six variables the composed row reads are
-// set by no token in this library, and the example says so where a reader will
-// hit it rather than leaving it to be discovered in a browser.
-test "the shorthand — `§ 16.7` verbatim, and the chain it reads is written by nothing" {
+// UPSTREAM v4's `transform-gpu`: `translateZ(0)` and the chain a skew writes.
+test "the shorthand — `translateZ(0)` in front of the skew chain" {
     val g = theGpuShorthand();
     val n = noTransform();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + g + "{transform:translate3d(var(--tw-translate-x), "
-        + "var(--tw-translate-y), 0) rotate(var(--tw-rotate)) "
-        + "skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) "
-        + "scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}") != -1;
+    assert doc.indexOf("." + g + "{transform:translateZ(0) var(--tw-rotate-x,) var(--tw-rotate-y,) "
+        + "var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)}") != -1;
     assert doc.indexOf("." + n + "{transform:none}") != -1;
-    // nothing in this document DECLARES one of the six — every occurrence is
-    // inside a `var(`, which is a read and not a write
-    assert doc.indexOf("--tw-rotate:") == -1;
-    assert doc.indexOf("--tw-scale-x:") == -1;
-    assert doc.indexOf("--tw-skew-x:") == -1;
 }
 
 test "the escape hatches — the arbitrary rotation `§ 16.4` prints, and a centring translate" {
@@ -512,7 +506,7 @@ test "end to end — a card that lifts, grows and deepens its shadow on hover" {
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transition-duration:200ms}") != -1;
     assert doc.indexOf("@media (hover: hover){." + cls
-        + ":hover{translate:var(--tw-translate-x, 0) 1px;scale:1.05;"
+        + ":hover{--tw-translate-y:1px" + composed() + ";scale:1.05;"
         + "--tw-shadow:var(--shadow-lg);box-shadow:" + chain() + "}}") != -1;
 }
 
@@ -545,8 +539,8 @@ test "no token in this example resolves a length, and the v4 properties compose"
     assert doc.indexOf("var(--perspective-near)") != -1;
     assert doc.indexOf("calc(var(--spacing) * 1)") != -1;
     // the composition: three properties, three declarations, one rule
-    assert doc.indexOf("translate:var(--tw-translate-x, 0) 1px;scale:1.05") != -1;
-    // the only `1px` in the document is `translate-x-px`'s, which is the
+    assert doc.indexOf("--tw-translate-y:1px" + composed() + ";scale:1.05") != -1;
+    // the only `1px` in the document is `translate-*-px`'s, which is the
     // reference's own literal value and not a theme lookup
-    assert doc.indexOf("translate:1px var(--tw-translate-y, 0)") != -1;
+    assert doc.indexOf("--tw-translate-x:1px" + composed()) != -1;
 }
