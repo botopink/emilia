@@ -1592,11 +1592,9 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 48 — attributes | DONE (emilia half) — `attributes.bp` + the slot in `emilia.bp` (`className`/`styled`/`styledWith`/`cls`/`clsWith`, the ASCII gate), the shared fixture `e_39b87d03`, and jhonstart's `html_attrs.bp`. The rendered-markup round trip is the jhonstart-emilia bridge's (jhonstart front 30). +8 `emilia.bp` / +3 `attributes.bp` tests, **722** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
-Spec lives in
-[`tasks/v0.beta.20/specs/ecosystem.md`](../../tasks/v0.beta.20/specs/ecosystem.md);
-the V1 re-author follow-up rides on
-[`tasks/v0.beta.22/specs/05-ecosystem-and-snap-tail.md`](../../tasks/v0.beta.22/specs/05-ecosystem-and-snap-tail.md)
-F2's deferred half.
+The spec is the track README,
+[`specs/1.0.10-beta/05-emilia/README.md`](../../specs/1.0.10-beta/05-emilia/README.md), and its
+fronts.
 
 ## Local gate
 

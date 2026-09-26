@@ -85,7 +85,7 @@ lists collapse to one class across the document. `flush()` returns the
 
 The numeric leaves (`500`, `4`, …) live on the variant *name* at v0 —
 the nested-section form the spec authors (`.Color.Red.500`, `.Pad.X.4`)
-requires the [`enum-sections`](../../tasks/v0.beta.20/specs/frente-a.md)
+requires the [`enum-sections`](../botopink-lang/docs.md#sections-of-an-enum)
 language extension. v1 (`F1` in the spec phases) re-shapes the enum into
 sections; the `tokenToCss` dispatch + the registry/flush mechanism stay
 identical.
@@ -132,7 +132,7 @@ identical.
 
 The full intent, the comptime expansion model, and the jhonstart
 integration contract live in
-[`tasks/v0.beta.20/specs/ecosystem.md`](../../tasks/v0.beta.20/specs/ecosystem.md).
+[`specs/1.0.10-beta/05-emilia/README.md`](../../specs/1.0.10-beta/05-emilia/README.md).
 
 ## License
 
