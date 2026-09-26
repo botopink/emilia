@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.beta.22
 
+- **`preflight.bp` added — the reset of `§ 4`** (1.0.10-beta front
+  `55-emilia-preflight`). `preflightRules()` (eleven `base`-layer rules) and
+  `preflight()` (the same as a CSS fragment); opt-in through
+  `withBase(o, preflightRules())` only. `emilia` 644 → 661 on commonJS and
+  erlang.
+
 - **`Svg` and `A11y` added — `§ 18`, `§ 19`** (1.0.10-beta front
   `47-emilia-svg-accessibility`). 11 leaves plus `SvgFill` / `SvgStroke` /
   `SvgStrokeWidthRaw` and their wrappers. `sr-only` / `not-sr-only` carry

@@ -276,6 +276,16 @@ the bare `0` `§ 14.2` prints. `SpacingX`/`SpacingY` are the two-value forms of
 the one property, as the spec designs them, so an X and a Y token in one list do
 NOT compose (upstream composes them through `--tw-border-spacing-*`).
 
+Front 55 owns **preflight** — `preflight.bp` (`pub mod preflight;` in
+`root.bp`, `files` in `botopink.json`): `preflightRules()`, eleven `base`-layer
+rules with literal selectors covering the eight bullets of `§ 4`, and
+`preflight()`, the same rules as a plain CSS fragment for a static `reset.css`.
+It claims PARITY WITH `§ 4`, not byte-equality with upstream `preflight.css`.
+Rule 1 adds `border-style:solid` beside `border-width:0` — a DECISION, because a
+zero width over the browser's `border-style: none` leaves every `Border.W.*`
+inert. **The reset is opt-in and an argument only**: `defaultOptions()` carries
+`base: []`; `withBase(o, preflightRules())` turns it on.
+
 Front 44 owns **transitions and animation** — the `Transition` and `Animate`
 sections of `tokens.bp` and the two top-level variants `TransitionProperty` /
 `AnimateRaw`, and `transitionTokenToCss`, `animateTokenToSheet`,
@@ -559,7 +569,8 @@ emilia/
 │       ├── botopink.json  name emilia · src src/ · entry root.bp ·
 │       │                    target commonJS · targets [commonJS, erlang] ·
 │       │                    files: root.bp · tokens.bp · theme.bp ·
-│       │                    spacing.bp · emilia.bp · no dependencies
+│       │                    spacing.bp · output.bp · preflight.bp ·
+│       │                    emilia.bp · no dependencies
 │       └── src/
 │           ├── root.bp    ← `pub mod tokens; pub mod theme;
 │           │                pub mod spacing; pub default mod emilia;` (the
@@ -581,6 +592,12 @@ emilia/
 │           │                cannot spell `-0.5` (an i32 has no negative
 │           │                zero), which is why `Margin.*.Neg.Half` is
 │           │                `{1,2,3}` — front 54 owes a signed half step
+│           ├── preflight.bp ← front 55: `preflightRules()` — eleven
+│           │                `base`-layer rules with literal selectors
+│           │                covering `§ 4`'s eight bullets (parity, NOT
+│           │                byte-equality with upstream `preflight.css`) —
+│           │                and `preflight()`, the same as a CSS fragment.
+│           │                Opt-in only: `withBase(o, preflightRules())`
 │           ├── output.bp  ← front 56: the rule model (`Rule`, `Block`,
 │           │                `Sheet`, `Variant`), `nestVariant` /
 │           │                `markImportant`, the `\t`/`\n`/`\r` codec that
@@ -1049,9 +1066,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **644/644** on
+  refuses) runs every module's in-file `test {}` blocks, **661/661** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 556 (`emilia.bp`). The figure below breaks down the 375
+  (`output.bp`) + 556 (`emilia.bp`) + 17 (`preflight.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
@@ -1426,6 +1443,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 43 — tables | DONE — steps 1–4. **21 leaves** over `§ 14` in `Table` plus `TableSpacingRaw`; `border-spacing` is `spacing(n)`, the axes are the one- and two-value forms (no composition). +10 inline tests, **608** on both targets |
 | 1.0.10-beta front 46 — interactivity | DONE — steps 1–7. **161 leaves** over `§ 17` in `Interact` plus `InteractAccent`/`InteractCaret`/`InteractScrollbarColor` (payload = `paletteVar`); scroll offsets are `spacing(n)`; `Snap.Type` reads `--tw-scroll-snap-strictness` with `proximity` as its fallback. +25 inline tests, **633** on both targets |
 | 1.0.10-beta front 47 — SVG and accessibility | DONE — steps 1–5. **11 leaves** in `Svg` and `A11y` plus `SvgFill`/`SvgStroke`/`SvgStrokeWidthRaw`; `sr-only`/`not-sr-only` are upstream's bodies (read 2026-09-26, `not-sr-only` leaves `border-width`, as upstream). +10 inline tests, **643** on both targets |
+| 1.0.10-beta front 55 — preflight | DONE — steps 1–5. `preflight.bp`: eleven `base`-layer rules over `§ 4`'s eight bullets (parity, not byte-equality with upstream), `border-style:solid` beside `border-width:0` as a decision, `preflight()` as a fragment; opt-in through `withBase` only. 17 inline tests, **661** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

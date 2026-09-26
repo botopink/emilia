@@ -12,6 +12,7 @@
     "theme.bp",
     "spacing.bp",
     "output.bp",
+    "preflight.bp",
     "emilia.bp"
   ]
 }
