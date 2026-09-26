@@ -326,32 +326,41 @@ test "rotate — the five steps of `§ 16.4`, and the property is `rotate`" {
     assert doc.indexOf("transform:rotate(") == -1;
 }
 
-test "rotate — the negative half is a `Neg` sub-section, one `-` and no space" {
+test "rotate — the negative half is a `Neg` sub-section, upstream's `calc(Ndeg * -1)`" {
     val cls = everyNegativeRotation();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{rotate:-1deg;rotate:-12deg;rotate:-45deg;"
-        + "rotate:-90deg;rotate:-180deg}") != -1;
-    assert doc.indexOf("rotate: -") == -1;
+    assert doc.indexOf("." + cls + "{rotate:calc(1deg * -1);rotate:calc(12deg * -1);rotate:calc(45deg * -1);"
+        + "rotate:calc(90deg * -1);rotate:calc(180deg * -1)}") != -1;
+    assert doc.indexOf("rotate:-12deg") == -1;
     assert doc.indexOf("rotate:--") == -1;
 }
 
-// `scale-50` IS `.5` WITHOUT A LEADING ZERO and `scale-100` is `1` without a
-// trailing one. Both are the reference's spelling.
-test "scale — the ten steps, and neither a leading nor a trailing zero" {
-    val cls = theScaleLadder();
-    val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{scale:0;scale:.5;scale:.75;scale:.9;scale:.95;"
-        + "scale:1;scale:1.05;scale:1.1;scale:1.25;scale:1.5}") != -1;
-    assert doc.indexOf("scale:0.5") == -1;
-    // `scale-100` is `1` and not `1.0` — asserted against its NEIGHBOUR,
-    // because `scale:1.05` legitimately contains the string `scale:1.0`
-    assert doc.indexOf("scale:1;scale:1.05") != -1;
+fn scaled() -> string {
+    return ";scale:var(--tw-scale-x) var(--tw-scale-y)";
 }
 
-test "scale — the two axes, in one rule, swapped components would show" {
+fn scaleStep(v: string) -> string {
+    return "--tw-scale-x:" + v + ";--tw-scale-y:" + v + ";--tw-scale-z:" + v + scaled();
+}
+
+// UPSTREAM v4's SCALE: a percentage in `--tw-scale-{x,y,z}` and one reader.
+// The reference file's `scale:.5` is v3's shape and is absent.
+test "scale — the ten steps, each a percentage in the three variables" {
+    val cls = theScaleLadder();
+    val doc = await flushWith(bareOptions());
+    assert doc.indexOf("." + cls + "{" + scaleStep("0%") + ";" + scaleStep("50%") + ";"
+        + scaleStep("75%") + ";" + scaleStep("90%") + ";" + scaleStep("95%") + ";"
+        + scaleStep("100%") + ";" + scaleStep("105%") + ";" + scaleStep("110%") + ";"
+        + scaleStep("125%") + ";" + scaleStep("150%") + "}") != -1;
+    assert doc.indexOf("scale:.5") == -1;
+    assert doc.indexOf("@property --tw-scale-x{syntax:\"*\";inherits:false;initial-value:1}") != -1;
+}
+
+// EACH AXIS WRITES ITS OWN VARIABLE, so the two compose into one scale.
+test "scale — the two axes, in one rule, each writing its own variable" {
     val cls = theTwoAxes();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{scale:.5 1;scale:1 1.5}") != -1;
+    assert doc.indexOf("." + cls + "{--tw-scale-x:50%" + scaled() + ";--tw-scale-y:150%" + scaled() + "}") != -1;
 }
 
 fn composed() -> string {
@@ -366,7 +375,7 @@ test "translate — the five `x` rows, each writing `--tw-translate-x`" {
     assert doc.indexOf("." + cls + "{--tw-translate-x:0" + composed()
         + ";--tw-translate-x:1px" + composed()
         + ";--tw-translate-x:calc(var(--spacing) * 1)" + composed()
-        + ";--tw-translate-x:50%" + composed()
+        + ";--tw-translate-x:calc(1 / 2 * 100%)" + composed()
         + ";--tw-translate-x:100%" + composed() + "}") != -1;
     // `translate-x-1` is front 54's spacing ladder and never a resolved `rem`
     assert doc.indexOf("rem") == -1;
@@ -380,7 +389,7 @@ test "translate — the five `y` rows, writing the other variable" {
     assert doc.indexOf("." + cls + "{--tw-translate-y:0" + composed()
         + ";--tw-translate-y:1px" + composed()
         + ";--tw-translate-y:calc(var(--spacing) * 1)" + composed()
-        + ";--tw-translate-y:50%" + composed()
+        + ";--tw-translate-y:calc(1 / 2 * 100%)" + composed()
         + ";--tw-translate-y:100%" + composed() + "}") != -1;
 }
 
@@ -460,15 +469,15 @@ test "perspective — a project's own value moves the theme layer and not one ru
     assert doc.indexOf("42px") == -1;
 }
 
-// THE TWO DECIMAL CONVENTIONS, ASSERTED TOGETHER. `§ 16.5` writes the leading
-// zero off and `§ 16.11`, four subsections later, writes it on.
+// TWO CONVENTIONS, ASSERTED TOGETHER: a scale step is upstream's percentage,
+// and `§ 16.11`'s zoom keeps the reference's bare number with its leading zero.
 test "zoom — the seven rows, with the leading zero the reference prints" {
     val z = theZoomLadder();
     val s = theScaleLadder();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + z + "{zoom:0;zoom:0.5;zoom:0.75;zoom:1;zoom:1.25;"
         + "zoom:1.5;zoom:2}") != -1;
-    assert doc.indexOf("." + s + "{scale:0;scale:.5;") != -1;
+    assert doc.indexOf("." + s + "{--tw-scale-x:0%;") != -1;
 }
 
 // UPSTREAM v4's `transform-gpu`: `translateZ(0)` and the chain a skew writes.
@@ -506,7 +515,7 @@ test "end to end — a card that lifts, grows and deepens its shadow on hover" {
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transition-duration:200ms}") != -1;
     assert doc.indexOf("@media (hover: hover){." + cls
-        + ":hover{--tw-translate-y:1px" + composed() + ";scale:1.05;"
+        + ":hover{--tw-translate-y:1px" + composed() + ";" + scaleStep("105%") + ";"
         + "--tw-shadow:var(--shadow-lg);box-shadow:" + chain() + "}}") != -1;
 }
 
@@ -518,7 +527,7 @@ test "end to end — a chevron that flips 180° when its disclosure opens" {
     assert doc.indexOf("." + cls + "{transition-property:transform;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transition-duration:200ms;transform-origin:center}") != -1;
-    assert doc.indexOf(":is(:where(.group):open *)") != -1;
+    assert doc.indexOf(":is(:where(.group):is([open], :popover-open, :open) *)") != -1;
     assert doc.indexOf("rotate:180deg}") != -1;
 }
 
@@ -539,7 +548,7 @@ test "no token in this example resolves a length, and the v4 properties compose"
     assert doc.indexOf("var(--perspective-near)") != -1;
     assert doc.indexOf("calc(var(--spacing) * 1)") != -1;
     // the composition: three properties, three declarations, one rule
-    assert doc.indexOf("--tw-translate-y:1px" + composed() + ";scale:1.05") != -1;
+    assert doc.indexOf("--tw-translate-y:1px" + composed() + ";" + scaleStep("105%")) != -1;
     // the only `1px` in the document is `translate-*-px`'s, which is the
     // reference's own literal value and not a theme lookup
     assert doc.indexOf("--tw-translate-x:1px" + composed()) != -1;

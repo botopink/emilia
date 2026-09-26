@@ -51,7 +51,7 @@ Front 54 adds the **theme** and the **spacing ladder** (`theme.bp`,
 `spacing.bp`): `ThemeEntry`, `Theme`, `DarkMode`, `Ns`, `nsPrefix`,
 `allNamespaces`, `defaultTheme`, `emptyTheme`, `extendTheme`, `clearNamespace`,
 `namespace`, `themeValue`, `themeVar`, `themeCss`, `keyframeCss`, `darkAtRule`,
-`darkSelector`, `withDarkMode`, `spacing`, `spacingHalf` — see `docs.md`
+`darkSelector`, `withDarkMode`, `spacing`, `spacingHalf`, `spacingNegHalf` — see `docs.md`
 § The theme. Rewiring `tokenToCss` to `spacing()` and to the theme is fronts
 33–47's work. Front 35 took **six** of the seven drifted `rem` ladders front 54
 found in `emilia.bp` — `padScaleX/Y/All` and `marginScaleX/Y/All`; the seventh,
@@ -121,7 +121,7 @@ Front 36 owns the **layout section** — `Layout` in `tokens.bp` and
 the section's OWN leaves, so `.Layout.Flex` keeps its pre-36 spelling; everything
 else in `§ 5` is a sub-section beside them (`Position`, `Inset`, `Overflow`,
 `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`,
-`Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration`) — 776 leaves. Its rule is
+`Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration`) — 785 leaves. Its rule is
 front 35's rule: **no leaf resolves a length**. `Inset` answers front 54's
 `spacing(n)` / `spacingHalf(n)`, the same two functions `Pad` and `Margin`
 answer, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named
@@ -259,10 +259,10 @@ six `--tracking-*`, five `--leading-*` and the three family stacks. It does
 **not** restate `--text-*` — front 54's `defaultTheme()` already carries all
 thirteen sizes and all thirteen line-heights with `§ 21.3`'s values, and a
 second transcription of one table is how two tables drift. **The three
-`--font-*` family rows are PROVISIONAL**: the reference prints the reference
-FORM and no value for it, so they carry emilia's own pre-38 stacks and nothing
-upstream confirmed. `text-indent`'s `calc(var(--spacing) * N)` shape is the
-second provisional row — `§ 9.25` shows `indent-8` as HTML with no CSS.
+`--font-*` family rows are upstream's**: the reference prints the reference
+FORM and no value for it, so the stacks are copied from upstream v4's
+`theme.css` (4.3.2). `text-indent`'s `calc(var(--spacing) * N)` shape is
+confirmed against upstream's compiled `indent-8` (`§ 9.25` shows only HTML).
 
 Front 42 owns **filters** — the `Filter` and `BackdropFilter` sections of
 `tokens.bp` and the two top-level variants `FilterRaw` / `BackdropRaw`, and
@@ -405,16 +405,13 @@ transcription** — and says so where a reader will hit it.
 `transitionEntries() -> ThemeEntry[]` is this front's half of the theme, composed
 the way front 33's `paletteEntries()` and front 38's `typographyEntries()` are:
 three `--ease-*` entries, which `defaultTheme()` does NOT carry although it does
-carry the four `--animate-*`. **All three VALUES are PROVISIONAL**: `§ 15.4`
-prints the three NAMES (`transition-timing-function: var(--ease-in)`) and no
-value for any of them, and `§ 21` has no `--ease-*` table at all, so the
-cubic-beziers come from the 1.0.8-beta draft this front replaces. What is NOT
-provisional — and this half is the point: the three NAMES are the reference's
-verbatim, the NAMESPACE is front 54's `Ns.Ease`, and the SHAPE is one timing
-function. Replacing the values later moves nothing else, because every rule
-names the variable and never its value. The two arbitrary-value variants are
-provisional as a pair for front 41's reason (`§ 15` prints no arbitrary-value
-row anywhere); the property each sets is not.
+carry the four `--animate-*`. `§ 15.4` prints the three NAMES and no value;
+**the three VALUES are upstream's** `theme.css` (4.3.2), byte for byte. The
+NAMESPACE is front 54's `Ns.Ease`, and every rule names the variable, never its
+value. The two arbitrary-value variants were measured against upstream:
+`AnimateRaw` is `animation:<value>`, and `TransitionProperty` writes the
+property plus the timing and duration defaults through `transitionPreset`, as
+upstream's `transition-[…]` and the presets beside it do.
 
 **WHAT FRONT 45 INHERITED, AND WHAT IT MEASURED.** Front 45 (transforms) took
 all four of the things this front left it. The head audit ran: a `Transform`
@@ -475,15 +472,19 @@ wholesale. `skew` is the exception, and it is upstream's: both axes write
   are the chain above (`Cpu`) and `translateZ(0)` + the chain (`Gpu`), with no
   `@property`; a `Cpu` beside a `SkewX` keeps the skew.
 
-`scale-*` still writes `scale:<n>` / `scale:<n> 1` where upstream writes
-`--tw-scale-*` and `scale:var(--tw-scale-x) var(--tw-scale-y)` over percentages
-— recorded in the milestone's `status.md`, not changed by the transforms
-correction.
-
-**One collision is the reference's own and is pinned BY NAME**: `scale-x-100`
-and `scale-y-100` both mean identity on their axis, so both are `scale:1 1`.
-The distinctness walk asserts exactly two duplicates and that both are that
-string, so a second collision anywhere else still reds.
+- **`§ 16.5`'s scale rows are v3's too.** Upstream v4 writes a PERCENTAGE into
+  `--tw-scale-x/y/z` (`scale-50` all three, `scale-x-50` its own axis) and then
+  `scale:var(--tw-scale-x) var(--tw-scale-y)`, registering the three with
+  `@property` and the initial value `1` (`scaleProperties()`); the leaves emit
+  exactly that, so `[.ScaleX.50, .ScaleY.150]` composes, and the reference
+  file's `scale:.5` / `scale:.5 1` is asserted ABSENT. With each axis writing
+  its own variable, `scale-x-100` and `scale-y-100` no longer collide: the
+  distinctness walk asserts 101 distinct declarations.
+- **A negative rotation multiplies**, as every negative v4 utility does:
+  `-rotate-12` is `rotate:calc(12deg * -1)`.
+- **A fraction is `calc(N / D * 100%)`** (`fraction(n, d)`, front 35's), never a
+  rounded percentage: `translate-x-1/2` is `--tw-translate-x:calc(1 / 2 * 100%)`,
+  the same string `w-1/2` and `top-1/2` carry.
 
 **`transformEntries()` is this front's half of the theme** and — unlike front
 44's three `--ease-*` — **none of its five values is provisional**: `§ 16.2`
@@ -493,12 +494,10 @@ prints the variable AND its length in parentheses on every row. What
 deliberately absent: it is a CSS keyword and upstream has no
 `--perspective-none`.
 
-**Declared by interpolation and still to confirm upstream**: nine of the ten
-steps on each of `ScaleX` and `ScaleY` (`§ 16.5` enumerates `scale-x-50` and
-`scale-y-50` and states the shape), and four of the five `Rotate.Neg`
-magnitudes (`§ 16.4`'s HTML names `-rotate-12`; `1`, `45`, `90` and `180` mirror
-the positive table). **Confirmed against upstream while writing**: the five
-`translate-y-*` rows the reference file omits, and `§ 16.6`'s property.
+**Confirmed against upstream's compiled output** (4.3.2): every step on
+`ScaleX` and `ScaleY` (upstream's scale is functional over any integer), the
+five `Rotate.Neg` magnitudes, the five `translate-y-*` rows the reference file
+omits, and `§ 16.6`'s property.
 **Reference gaps left undeclared**: `rotate-x/y/z-*`, `translate-z-*` and
 `scale-z-*` — `§ 16` enumerates no 3-D axis variant. The both-axes `Translate`
 section the front's Definition of Done lists (and its Step 3 table does not)
@@ -663,14 +662,14 @@ emilia/
 │           │                emptyTheme / namespace / themeValue /
 │           │                themeVar operations
 │           ├── spacing.bp ← front 54: `spacing(n)` = `calc(var(--spacing)
-│           │                * n)` and `spacingHalf(n)`. emilia NEVER
+│           │                * n)`, `spacingHalf(n)` and `spacingNegHalf(n)`
+│           │                (`-0.5` is `spacingNegHalf(0)`; `spacingHalf`
+│           │                refuses a negative whole part). emilia NEVER
 │           │                resolves a spacing value. Front 35 deleted
 │           │                six of the seven `rem` ladders that were in
 │           │                `emilia.bp`; the seventh, `flexGapScale`, is
-│           │                `Flex.Gap`'s and is front 37's. `spacingHalf`
-│           │                cannot spell `-0.5` (an i32 has no negative
-│           │                zero), which is why `Margin.*.Neg.Half` is
-│           │                `{1,2,3}` — front 54 owes a signed half step
+│           │                `Flex.Gap`'s and is front 37's. Every
+│           │                `*.Neg.Half` is `{0,1,2,3}`
 │           ├── preflight.bp ← front 55: `preflightRules()` — eleven
 │           │                `base`-layer rules with literal selectors
 │           │                covering `§ 4`'s eight bullets (parity, NOT
@@ -921,14 +920,16 @@ to the commonJS row and runs once.
   `&:open, &:popover-open`; front 56's `checkVariantSelector` refuses it, and it
   is right to — a two-`&` template duplicates the rule it wraps, which is a
   stylesheet that is silently wrong in a browser days later. The fix is a
-  selector, not an escape hatch: the two states go inside one `:is()`
-  (`&:is(:open, :popover-open)`), which matches the same elements through one
-  `&`. Any future row spelled as a selector LIST takes the same treatment.
-  Separately and confirmed by the maintainer: **upstream v4 also carries the
-  legacy `[open]` attribute in that row** (`&:is([open], :popover-open,
-  :open)`), which the local reference's table omits — the next front to touch
-  the row with upstream in hand adds it, and the test pinning today's spelling
-  is what makes that show up as a change.
+  selector, not an escape hatch: the states go inside one `:is()` — upstream
+  v4's `&:is([open], :popover-open, :open)`, legacy `[open]` attribute first —
+  which matches the same elements through one `&`; `group-open:` carries the
+  same three. `rtl:` / `ltr:` are upstream v4.1's `&:where(:dir(rtl),
+  [dir="rtl"], [dir="rtl"] *)`, one leading `&`. A row upstream writes as a
+  selector LIST whose members cannot share one `&` — `marker:` (`& *::marker,
+  &::marker`, plus the two `::-webkit-details-marker`) and `selection:` — is a
+  LIST OF ONE-`&` VARIANTS (`markerVariants()`, `selectionVariants()`) that
+  `nestVariants` wraps once each, in upstream's order: several rules, never a
+  two-`&` template.
 - **`markImportant` is not a `Variant`, so `Important` is not a variant arm.**
   Its arm answers `markImportant(tokensToSheet(inner, th))` and it adds no
   selector and no at-rule; it also produces ONE RULE PER INNER TOKEN, so a test
@@ -1298,9 +1299,9 @@ to the commonJS row and runs once.
   are asserted not to trip it. The walk reads DECLARATIONS and not sheets,
   because the `@keyframes bounce` BODY legitimately carries a `cubic-bezier(`.
   Front 45's 41 cover the five positive rotations and the five negative ones
-  (with the `-` asserted single and unspaced), the v4 property asserted against
-  the v3 `transform:rotate(` form, the ten scale steps with `scale:.5` and
-  `scale:1` pinned against a leading and a trailing zero, the two axes in
+  (upstream's `calc(Ndeg * -1)`), the v4 property asserted against
+  the v3 `transform:rotate(` form, the ten scale steps as upstream's three
+  `--tw-scale-*` percentages and one reader, the two axes in
   adjacent lines AND the three ladders compared TO EACH OTHER rather than to a
   fourth list of literals, the five translate rows per axis asserted WHOLE with
   the `, 0` fallback, `translate-x-1` against `spacing(1)`'s OUTPUT, the two
@@ -1309,8 +1310,8 @@ to the commonJS row and runs once.
   hyphenated corner refused, the four `transform-style`/`backface` rows with the
   `transform-3d` → `preserve-3d` trap, the six perspectives as references with
   the prefix read from `nsPrefix(Ns.Perspective)`, the five perspective origins,
-  the seven zooms, `scale:.5` and `zoom:0.5` asserted in adjacent lines with the
-  reason, `§ 16.7`'s two composed rows verbatim plus the assertion that no leaf
+  the seven zooms, a scale percentage and `zoom:0.5` asserted in adjacent lines
+  with the reason, `§ 16.7`'s two composed rows verbatim plus the assertion that no leaf
   WRITES one of the six variables they read, both `*Raw` variants constructing
   and both wrappers, the five theme entries with the namespace and the class
   that does NOT move under a project override, three compositions and a
@@ -1432,9 +1433,9 @@ to the commonJS row and runs once.
 
 - `examples/emilia-transforms/` is the member `emilia-transforms` and is front
   45's worked example: the five rotations and the five negative ones a `Neg`
-  sub-section spells, the ten scale steps with `scale:1` asserted against its
-  neighbour `scale:1.05` rather than against a substring of it, the two-value
-  axes, the five translate rows per axis each writing its `--tw-translate-*`
+  sub-section spells (upstream's `calc(Ndeg * -1)`), the ten scale steps as
+  `--tw-scale-*` percentages with the `@property` registration, the two axes
+  composing, the five translate rows per axis each writing its `--tw-translate-*`
   and the composition (the `@property` blocks and the `properties` layer in the
   document), a skewed panel on upstream's `--tw-skew-x` and chain with `skew-x:`
   asserted absent, two skews writing both variables, the nine origins with the hyphenated corner refused, a
@@ -1574,14 +1575,14 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 56 — cascade and output | DONE — `output.bp` + the host-cell and public-entry half of `emilia.bp` + `examples/emilia-cascade/`; steps 1–8. `flushSheet` is gone, `drainRules` takes its place, and document assembly happens once in botopink. Fronts 33–47 adapt with `declSheet(…)`, front 34 writes the variant table, fronts 35/40 write `…TokenToSheet`, front 44 writes `blockSheet`, front 55 writes `withBase`, front 59 writes the components layer |
 | 1.0.10-beta front 34 — modifiers | DONE — the variant table in `tokens.bp` + `emilia.bp` under the front's banner; 83 modifiers; steps 1-7. One `Variant`-returning fn per name and no wrapping logic: front 56's `nestVariant` applies them |
 | 1.0.10-beta front 33 — colour palette | DONE — steps 1–5. `Token.Color` and `Token.Bg.Color` are the 26 x 11 grid + the five named colours; `colorTokenToCss`/`bgColorTokenToCss` emit `var(--color-<family>-<shade>)` through `paletteVar` over front 54's `themeVar`/`nsPrefix`, so no arm discards its shade and no literal ladder is left; `paletteEntries()` carries the 286 OKLCH values from upstream 4.3.2 for a consumer to compose; `Alpha(percent, inner)` is upstream's `/N` suffix. **All 286 cells are reachable since `1cd39b2`**: `.Color.Red.{100,500,700}` and `.Color.Gray.{100,500,700}` were declared and unreachable while the compiler's leading-dot resolver guessed between `Token` and `__Token__Border`, and botopink-lang `f01c508a` closed it; see § Maintainer rules. Fronts 39/40/41/47 consume `paletteVar(family, shade)` and `paletteEntries()` |
-| 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{1,2,3}`**: `spacingHalf(-0)` is `spacingHalf(0)`, so `-0.5` is unreachable until front 54 grows a signed half step. `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
-| 1.0.10-beta front 37 — flexbox, grid and gap | DONE — steps 1–5 + the worked example. `Flex` is the flex container AND the flex item (direction and wrap with the three reverse rows, the `Value` shorthand, `Grow`, `Shrink`, `Basis`, `Order`) plus the WHOLE alignment family of `§ 6.16`–`§ 6.24` — nine property groups, seven of which had no token at all; `Grid` is `§ 6.8`–`§ 6.14` (templates, spans, starts and ends to line 13, flow, implicit tracks); `Gap` is a TOP-LEVEL section because `gap` applies to grid as much as to flex. **356 leaves**, walked by one test, none of which resolves a length: `Flex.Basis` and all of `Gap` answer front 54's `spacing(n)`/`spacingHalf(n)` over front 35's scale, and everything else is a bare integer. `gridRepeat`/`gridFr` spell `repeat(N, minmax(0, 1fr))` and `minmax(0, 1fr)` once each. **The seventh `rem` ladder is deleted** — `flexGapScale` was `__4 -> "1rem"`, the one front 35 left because `Gap` is this front's, and `.Flex.Gap.N` now emits what `.Gap.All.N` emits, asserted side by side; `spacing.bp`'s docblock was corrected with it. **`AlignSelf` and the flat `PlaceContent`/`PlaceItems`/`PlaceSelf`**, not the spec's `.Flex.Self` / `.Flex.Place.Self`: `Self` is a language keyword and neither spelling parses (§ Maintainer rules). The alignment family stays under `Flex` although it applies to grid, because renaming `Items`/`Justify` is what the milestone forbids. `examples/emilia-grid/` is the showcase (13 tests). +27 inline tests in `modules/emilia`, which is **340** on commonJS and on erlang. **Reference gaps left undeclared**: `basis-*` fractions below thirds, and every arbitrary-value form (`grid-cols-[200px_1fr]`, `z-[999]`-style) — the escape-hatch front's. **Reference extents declared by interpolation and still to confirm upstream**: `grid-cols-7`…`11`, `col-span-3`…`12`, `col-start-2`…`13`, `order-3`…`12` |
+| 1.0.10-beta front 35 — spacing and sizing | DONE — steps 1–5: `padTokenToCss`/`marginTokenToCss` emit real CSS properties and every leaf answers front 54's `spacing(n)` (the six `rem` ladders deleted, `padding-x:`/`padding-y:`/`margin-y:` and `m-0.25`/`m-1`/`margin-auto` gone, each pinned); `Pad` and `Margin` carry nine directions over the 35-leaf scale, `Auto` on every margin direction and a `Neg` sub-section on each — 936 leaves, walked by one test. **`Neg.Half` is `{0,1,2,3}`** over front 54's `spacingNegHalf` (it was `{1,2,3}` while `spacingHalf(-0)` could not spell `-0.5`). `Token.Size` carries thirteen sub-sections over `§ 8.1`–`§ 8.7`, 566 leaves, and spells no `rem`: the named container widths are `var(--container-*)` through a `containerVar` over front 54's `nsPrefix`/`themeVar`, `MaxW.Screen.*` is `var(--breakpoint-*)`. `Token.Space` is `space-x-*`/`space-y-*` — the one dispatcher here answering a `Sheet`, under `siblingSelector()`; its child selector and the `--tw-space-*-reverse` names are a PROPOSAL, the local reference carrying no `space-*` row at all. `examples/emilia-spacing/` is the showcase (12 tests). 1640 leaves across the four sections; 202 → 233 inline tests in `modules/emilia`, green on commonJS and erlang |
+| 1.0.10-beta front 37 — flexbox, grid and gap | DONE — steps 1–5 + the worked example. `Flex` is the flex container AND the flex item (direction and wrap with the three reverse rows, the `Value` shorthand, `Grow`, `Shrink`, `Basis`, `Order`) plus the WHOLE alignment family of `§ 6.16`–`§ 6.24` — nine property groups, seven of which had no token at all; `Grid` is `§ 6.8`–`§ 6.14` (templates, spans, starts and ends to line 13, flow, implicit tracks); `Gap` is a TOP-LEVEL section because `gap` applies to grid as much as to flex. **356 leaves**, walked by one test, none of which resolves a length: `Flex.Basis` and all of `Gap` answer front 54's `spacing(n)`/`spacingHalf(n)` over front 35's scale, and everything else is a bare integer. `gridRepeat`/`gridFr` spell `repeat(N, minmax(0, 1fr))` and `minmax(0, 1fr)` once each. **The seventh `rem` ladder is deleted** — `flexGapScale` was `__4 -> "1rem"`, the one front 35 left because `Gap` is this front's, and `.Flex.Gap.N` now emits what `.Gap.All.N` emits, asserted side by side; `spacing.bp`'s docblock was corrected with it. **`AlignSelf` and the flat `PlaceContent`/`PlaceItems`/`PlaceSelf`**, not the spec's `.Flex.Self` / `.Flex.Place.Self`: `Self` is a language keyword and neither spelling parses (§ Maintainer rules). The alignment family stays under `Flex` although it applies to grid, because renaming `Items`/`Justify` is what the milestone forbids. `examples/emilia-grid/` is the showcase (13 tests). +27 inline tests in `modules/emilia`, which is **340** on commonJS and on erlang. **Reference gaps left undeclared**: `basis-*` fractions below thirds, and every arbitrary-value form (`grid-cols-[200px_1fr]`, `z-[999]`-style) — the escape-hatch front's. **Reference extents declared by interpolation, confirmed against upstream's compiled output**: `grid-cols-7`…`11`, `col-span-3`…`12`, `col-start-2`…`13`, `order-3`…`12` (functional over any integer upstream; the endpoints asserted byte for byte) |
 | 1.0.10-beta front 36 — layout | DONE — steps 1–6 + the worked example. `Layout` is the whole of `§ 5.1`–`§ 5.19` that is not an arbitrary-value form: the eleven display values as the section's own leaves (so `.Layout.Flex` is unchanged) plus fifteen sub-sections — `Position`, `Inset`, `Overflow`, `Overscroll`, `Visibility`, `Z`, `Isolation`, `Float`, `Clear`, `Object`, `Aspect`, `Columns`, `Break`, `Box`, `BoxDecoration` — **776 leaves**, none of which resolves a length. `Inset` carries front 35's nine directions over front 35's scale through front 54's `spacing(n)`/`spacingHalf(n)`, so `.Layout.Inset.T.4` and `.Pad.T.4` agree by construction; the named column widths read front 35's `containerVar`, so `.Layout.Columns.Md` and `.Size.MaxW.Md` are the same reference. `Z` is the one numeric family that is a bare integer. Three name-versus-value traps each have their own assertion (`invisible` → `visibility:hidden`, `float-start` → `float:inline-start`, `aspect-square` → `1 / 1` with spaces). `examples/emilia-layout/` is the showcase (12 tests). +30 inline tests in `modules/emilia`, which is **313** on commonJS and on erlang with front 34 merged in. **`Break` is FLAT** — `BreakAfter`/`BreakBefore`/`BreakInside`, not the spec's `Break { After, Before, Inside }`: a section head named like a top-level payload variant shadows that variant's payload projection, and front 34 carries `After`/`Before` (§ Maintainer rules). **Reference gaps left undeclared**: `columns-4`…`columns-12` (they resolve upstream through the bare-integer rule, not a theme key) and every arbitrary-value form (`aspect-[4/3]`, `z-[999]`) — the escape-hatch front's |
 | 1.0.10-beta front 39 — backgrounds | DONE — steps 1–4. Step 1: the seven keyword sub-sections of `Bg` (`Attachment`, `Clip`, `Origin`, `Pos`, `Repeat`, `Size`, `Image.None`), 29 leaves appended after front 33's `Bg.Color` block and the legacy leaves. `Pos` not `Position` (so `.Bg.Pos.*` reads apart from `.Layout.Position.*`), `Repeat.None` not `NoRepeat`, `Clip.Text` the one clip value that is not a `*-box`. The legacy `Bg` leaves are byte-identical and pinned; this front does NOT fold them into `background-color`. Step 2: `Gradient` is a TOP-LEVEL section (a stop sets a custom property, not `background-image`), `Gradient.To` the eight directions — the phrases spelled in one place, `to top right` and never `to top-right`. Steps 3–4: `From` / `Via` / `Stop` each carry front 33's whole grid (291 leaves each) through `paletteVar(family, shade)`, so a stop and a background reference ONE custom property; token ORDER is load-bearing (`Via`'s three-stop list beats `From`'s two-stop one, and `Stop` writes no list so it cannot overwrite `Via`'s). **The stop composition diverges from the spec after the upstream check the spec demanded** — upstream's position variables and `--tw-gradient-via-stops` rest on `@property` registration emilia does not emit, so the registered `#0000` default is written as a `var(…, transparent)` fallback instead. 910 leaves walked for a literal, a length and a class fragment, each walk with a control that fails. `examples/emilia-backgrounds/` is the showcase (12 tests). +35 inline tests in `modules/emilia`, which is **375** on commonJS and on erlang with front 37 merged in. **Reference gaps left undeclared**: colour-stop positions (`from-10%`), radial and conic gradients, gradient interpolation (`bg-linear-to-r/oklch`) and every arbitrary-value form (`bg-[url(…)]`, `bg-size-[…]`) — the escape-hatch front's |
 | 1.0.10-beta front 40 — borders, outlines, rings and divides | DONE — steps 1–6 + two worked examples. **1704 leaves** over the whole of `§ 11`. `Border.W` gains the fifth width and eight directional sub-sections (an AXIS is two declarations, a SIDE one, and `S`/`E` are `border-inline-*-width`); `Border.Style` is new; `Border.Color` goes from a two-family stub whose dispatcher DISCARDED THE SHADE (`border-color:red` for every cell) to front 33's full 26 x 11 grid through `paletteVar`; `Border.Rounded` goes from four literal `rem` leaves to a ten-leaf ladder of `var(--radius-*)` on the shorthand and on fourteen directional sub-sections. `Outline`, `Ring` and `Divide` are three new TOP-LEVEL sections — head-audited against the 84 payload variants, the fifteen section heads and the lexer's keyword table before a dispatcher was written, with no collision. **`Outline.Style.None` is the trap**: `outline:2px solid transparent;outline-offset:2px`, asserted BOTH for what it emits and for the `outline-style:none` it must never emit. `ringTokenToSheet` and `divideTokenToSheet` are the two `…ToSheet` dispatchers; `Divide` CALLS front 35's `siblingSelector()`, and the byte-identity test front 35 could not write (because `Divide` did not exist) is now in `emilia.bp` and in `examples/emilia-outline-ring/`. **Upstream VERIFIED while writing**: the divide child selector really is `& > :not(:last-child)`, the zero-then-width pair, the reverse custom properties, `--tw-ring-color`, `--tw-ring-inset`, and the v4 default ring width of **1px** (v3's was 3px), so `--tw-ring-shadow` is `0 0 0 Npx` and NOT the spec's v3-shaped `calc(…)` form. **Still unverified and recorded**: the composed `box-shadow` list, and the whole `ring-offset-*` family, which v4's documentation no longer carries — declared because the spec asks for it, not because it was confirmed. 1704 leaves walked for a literal, a class fragment and well-formedness, each walk with a control that fails, plus a colour-reference walk over all 1440 cells and a 288-way distinctness walk — the literal probe alone does NOT catch a discarded shade, which is this front's own historical defect. Three planted defects were watched redden and removed. **Blast radius outside the front**: `.Border.Rounded.Lg` was fronts 36/37/39's walk CONTROL and is no longer a literal, so all three now use `.Text.Size.Lg`; `examples/emilia-modifiers` pinned `border-color:red` and `examples/emilia-layout` pinned `border-radius:0.5rem`, both updated. `examples/emilia-borders/` (10 tests) and `examples/emilia-outline-ring/` (13 tests) are the showcases. +44 inline tests in `modules/emilia`, which is **419** on commonJS and on erlang. **Reference gaps left undeclared**: `outline-hidden`, and every arbitrary-value form — the escape-hatch front's |
 | 1.0.10-beta front 38 — typography | DONE — steps 1–6 + two worked examples. **437 leaves** over the whole of `§ 9` (397 `Text` + 34 `Font` + 6 `List`). `Text` gains five bare leaves (`Overline`, `NoUnderline`, `Start`, `End`, `Truncate`) and seventeen sub-sections; `Font` gains four weights and four sub-sections (Smoothing, Style, Stretch, Nums); `List` is a new TOP-LEVEL section, head-audited against the 84 payload variants before it was written. **Four compiling paths changed what they EMIT**: `.Text.Size.*` is the `var(--text-*)` PAIR with its `--text-*--line-height` where it was a literal `rem` with no leading at all (`§ 9.2`), `.Font.{Sans,Serif,Mono}` reference `var(--font-*)` where they spelled a family stack (`§ 9.1`), and `.Text.Underline`/`.Text.LineThrough` emit `text-decoration-line` where they emitted the `text-decoration` SHORTHAND (`§ 9.17`) — which is what lets a line compose with `Decoration.Style` instead of being overwritten. **`.Text.Bold` is untouched** and has an explicit regression test beside the three that changed. The size change **deleted the library's last resolved `rem`** and with it the walk CONTROL of fronts 36, 37, 39 and 40, all four of which now use a hand-built declaration; three pinned goldens (front 34's button, front 56's leaf and mixed-token flush) and three examples (`emilia-card`, `emilia-backgrounds`, `emilia-modifiers`) moved with it. No leaf resolves a size, a leading, a tracking, a colour or an indent: `Decoration.Color` is front 33's 26 x 11 grid through `paletteVar`, `Indent` is front 54's `spacing(n)`, and `Size`/`Tracking`/`Leading` are front 54's namespaces. `typographyEntries()` contributes nine `--font-weight-*`, six `--tracking-*`, five `--leading-*` and the three family stacks, and deliberately does NOT restate `--text-*` — front 54 already carries it with `§ 21.3`'s values. **PROVISIONAL and marked at the declaration**: the three `--font-*` family values (the reference prints the FORM and no value, so these are emilia's own pre-38 stacks) and `text-indent`'s `calc(var(--spacing) * N)` shape (`§ 9.25` shows `indent-8` as HTML with no CSS). 437 leaves walked for well-formedness, a resolved literal, a raw tracking/leading value and a class fragment, each probe with a control that fails AND — for the class-fragment probe — a control proving it does not fire on correct output. Two planted defects were watched redden and removed. `examples/emilia-typography/` (11 tests) and `examples/emilia-text-decoration/` (11 tests) are the showcases. +44 inline tests in `modules/emilia`, which is **463** on commonJS and on erlang. **Reference gaps left undeclared**: `font-feature-settings`, `list-image-[url(…)]`, `content-['Hello']` — the escape-hatch front's — plus the numeric `leading-3`…`10` ladder and the `8` step on decoration thickness and underline offset, which the 1.0.8 draft declared and `§ 9.11`/`§ 9.20`/`§ 9.21` do not print |
 | 1.0.10-beta front 41 — effects | DONE — steps 1–6 + the worked example. **102 leaves** over the whole of `§ 12`. This is the only front so far whose job was mostly to FIX SHIPPED OUTPUT: `shadowToCss` answered `box-shadow:sm`/`md`/`lg`/`xl` — the Tailwind CLASS SUFFIX where a CSS value belongs, which every browser discards — and the single assertion that touched it pinned the wrong string. The four leaf NAMES did not move, so no call site changed; the four values did. `Effect` gains `X2xs`/`Xs`/`X2xl`/`None`/`Inner` beside them, the `InsetShadow` and `TextShadow` sub-sections, and an `Opacity` scale widened from five steps to twenty-one. `Blend` (Mix + Bg, seventeen values each) and `Mask` (nine one-to-one sub-sections) are new TOP-LEVEL sections, head-audited against the 84 payload variants, the seventeen section heads and the lexer's keyword table before a dispatcher was written — **`Blend.Bg` and `Mask.Size` deliberately repeat the names of the top-level SECTIONS `Bg` and `Size`**, which is safe and was run against the real compiler on both targets rather than reasoned about; it is a head beside a top-level PAYLOAD variant that breaks a projection. No leaf resolves a shadow value: the three scales are `themeVar(...)` over front 54's `--shadow-*`, `--inset-shadow-*` and `--text-shadow-*`. **The one exception is `Shadow.Inner`**, which upstream prints as a literal and has no theme entry behind it — the front README's “no `rgb(` anywhere” bullet is wrong about it, and the walk asserts the exception from BOTH sides (every other leaf is `rgb(`-free AND `Inner` does carry one). **PROVISIONAL and marked at the arm that emits it**: six opacity steps (15/35/45/55/65/85), four `mask-position` keywords, four `mask-repeat` keywords, `mask-size:auto`, and the three arbitrary-value wrappers — `§ 12.3` prints fifteen opacity rows, `§ 12.6` twenty mask rows, and the reference prints no arbitrary-value form anywhere. **There is no `Ns.TextShadow`**: front 54's nineteen namespaces do not include `--text-shadow-`, so `textShadowVar` spells the prefix literally and a project's entries land under `--text-` (which does accept them — pinned by a test, with `--inset-shadow-*` as the control). 102 leaves walked for well-formedness, a bare scale step as a value and a class fragment, each probe with a control that fails AND a control proving it does not fire on correct output — `var(--shadow-sm)` CONTAINS `shadow-sm`, so the scale probe anchors on the colon. Three planted defects were watched redden and removed; the first reddened **eleven cells across three fronts**, front 56's smoke test and the new example included. `examples/emilia-effects/` (12 tests) is the showcase. +32 inline tests in `modules/emilia`, which is **495** on commonJS and on erlang. **A residual with front 40, recorded not patched**: front 40's banner says `Ring` composes with `Effect.Shadow` “once it sets `--tw-shadow`” — it does not, because `§ 12.1` prints `box-shadow: var(--shadow-md)` and nothing else, so `[.Ring.W.2, .Effect.Shadow.Md]` is two `box-shadow` declarations and the second wins; closing it needs a reference row, not a patch here. **Reference gaps left undeclared**: `shadow-<color>/<opacity>` — `§ 12.1` gives the class and the prose and NO property/value pair, so front 56's `Rule.declarations` makes the two-step protocol expressible but there is nothing byte-equal to emit |
-| 1.0.10-beta front 45 — transforms | DONE — steps 1–6 + the worked example. **96 leaves** over the whole of `§ 16` in one `Transform` section of sixteen sub-sections, plus the two top-level variants `TransformRotateRaw` / `TransformTranslateRaw`. The front rests on a v4 change: `rotate`, `scale` and `translate` are INDEPENDENT PROPERTIES, so three tokens are three declarations in one rule and no `--tw-*` chain is needed — the 1.0.8 draft's `transform:rotate(45deg)` shape is superseded wholesale. No leaf resolves a length: `translate-x-1` is front 54's `spacing(1)` and the five perspective keywords are `--perspective-*` references, with `TranslateX.Px`/`TranslateY.Px`'s `1px` the reference's own literal and the only exception, held out of the walk and asserted from the other side. **THREE ROWS OF `§ 16` TAKE UPSTREAM v4's OUTPUT** (see the front-45 notes above): a skew axis writes `--tw-skew-<axis>` and the five-variable `transform` chain, a translate axis writes `--tw-translate-<axis>` and `translate:var(--tw-translate-x) var(--tw-translate-y)`, each registering its variables as `@property` blocks with `output.bp`'s `properties` layer as the fallback — so both families compose — and `transform-cpu`/`-gpu` are upstream's chain rows. `transformEntries()` contributes the five `--perspective-*`, and **none of its values is provisional** — `§ 16.2` prints each one in parentheses. 94 leaves walked for well-formedness, a resolved length, a class fragment and the `deg` unit, each probe with a control that fails AND a control proving it does not fire on correct output, plus a 96-way distinctness walk pinning `§ 16.5`'s one legitimate collision (`scale-x-100` and `scale-y-100` are both `scale:1 1`) BY NAME. Four planted defects were watched redden and removed. `examples/emilia-transforms/` (18 tests) is the showcase. +41 inline tests in `modules/emilia`, which is **569** on commonJS and on erlang. **Declared by interpolation**: nine of ten steps on each of `ScaleX`/`ScaleY`, four of five `Rotate.Neg` magnitudes. **Reference gaps left undeclared**: `rotate-x/y/z-*`, `translate-z-*`, `scale-z-*` and a `Translate` both-axes section — `§ 16` enumerates none of them, and the spec's own Definition of Done lists a `Translate` section its Step 3 table does not contain |
+| 1.0.10-beta front 45 — transforms | DONE — steps 1–6 + the worked example. **96 leaves** over the whole of `§ 16` in one `Transform` section of sixteen sub-sections, plus the two top-level variants `TransformRotateRaw` / `TransformTranslateRaw`. The front rests on a v4 change: `rotate`, `scale` and `translate` are INDEPENDENT PROPERTIES, so three tokens are three declarations in one rule and no `--tw-*` chain is needed — the 1.0.8 draft's `transform:rotate(45deg)` shape is superseded wholesale. No leaf resolves a length: `translate-x-1` is front 54's `spacing(1)` and the five perspective keywords are `--perspective-*` references, with `TranslateX.Px`/`TranslateY.Px`'s `1px` the reference's own literal and the only exception, held out of the walk and asserted from the other side. **THREE ROWS OF `§ 16` TAKE UPSTREAM v4's OUTPUT** (see the front-45 notes above): a skew axis writes `--tw-skew-<axis>` and the five-variable `transform` chain, a translate axis writes `--tw-translate-<axis>` and `translate:var(--tw-translate-x) var(--tw-translate-y)`, each registering its variables as `@property` blocks with `output.bp`'s `properties` layer as the fallback — so both families compose — and `transform-cpu`/`-gpu` are upstream's chain rows. `transformEntries()` contributes the five `--perspective-*`, and **none of its values is provisional** — `§ 16.2` prints each one in parentheses. 94 leaves walked for well-formedness, a resolved length, a class fragment and the `deg` unit, each probe with a control that fails AND a control proving it does not fire on correct output, plus a distinctness walk (101 tokens, 101 distinct declarations since scale took upstream's per-axis variables). Four planted defects were watched redden and removed. `examples/emilia-transforms/` (18 tests) is the showcase. +41 inline tests in `modules/emilia`, which is **569** on commonJS and on erlang. **Declared by interpolation, since confirmed upstream**: nine of ten steps on each of `ScaleX`/`ScaleY`, four of five `Rotate.Neg` magnitudes — and the confirmation moved both families onto upstream's form (`--tw-scale-*` percentages, `calc(Ndeg * -1)`). **Reference gaps left undeclared**: `rotate-x/y/z-*`, `translate-z-*`, `scale-z-*` and a `Translate` both-axes section — `§ 16` enumerates none of them, and the spec's own Definition of Done lists a `Translate` section its Step 3 table does not contain |
 | 1.0.10-beta front 42 — filters | DONE — steps 1–4. **108 leaves** over `§ 13` in `Filter` (50) and `BackdropFilter` (58; not `Backdrop`, which is front 34's modifier), plus `FilterRaw`/`BackdropRaw`. Every leaf but `Blur.None` is its `--tw-<family>` property plus one reader of every family with empty fallbacks (`filterChain()`), so filters compose; the spec's `var(--tw-filter)` theme entry is not expressible (`extendTheme` refuses `--tw-`) and would not compose if it were. `DropShadow.None` follows upstream; `filterEntries()` carries the `--blur-*`/`--drop-shadow-*` values. +29 inline tests, **598** on both targets |
 | 1.0.10-beta front 43 — tables | DONE — steps 1–4. **21 leaves** over `§ 14` in `Table` plus `TableSpacingRaw`; `border-spacing` is `spacing(n)`, the axes are the one- and two-value forms (no composition). +10 inline tests, **608** on both targets |
 | 1.0.10-beta front 46 — interactivity | DONE — steps 1–7. **161 leaves** over `§ 17` in `Interact` plus `InteractAccent`/`InteractCaret`/`InteractScrollbarColor` (payload = `paletteVar`); scroll offsets are `spacing(n)`; `Snap.Type` reads `--tw-scroll-snap-strictness` with `proximity` as its fallback. +25 inline tests, **633** on both targets |
@@ -1591,7 +1592,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 58 — container queries | DONE — steps 1–5. `container.bp`, the `Container` markers and three top-level variants; the thirteen widths read from `--container-*`, an undefined one panics; nesting pinned in both orders. +8 `emilia.bp` / +6 `container.bp` tests, **697** on both targets |
 | 1.0.10-beta front 59 — custom utilities and variants | DONE — steps 1–5. `compose.bp`: bundles, `compose`, `hocus`/`selector`/`themeMidnight`, and `named()` in `@layer components` with its three refusals; the contract-4 hash re-asserted beside it. `named()` and the read-only `lookupRule` cell live in `emilia.bp` (a sibling cannot import it). 14 tests, **711** on both targets |
 | 1.0.10-beta front 48 — attributes | DONE (emilia half) — `attributes.bp` + the slot in `emilia.bp` (`className`/`styled`/`styledWith`/`cls`/`clsWith`, the ASCII gate), the shared fixture `e_39b87d03`, and jhonstart's `html_attrs.bp`. The rendered-markup round trip is the jhonstart-emilia bridge's (jhonstart front 30). +8 `emilia.bp` / +3 `attributes.bp` tests, **722** on both targets |
-| 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
+| 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. `spacingNegHalf(n)` is the signed half step (`-0.5` is `spacingNegHalf(0)`; `spacingHalf` refuses a negative whole part), and the unknown-prefix refusal is asserted by its message (`emilia.bp` "front 54 — an entry in no namespace aborts…"). Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 The spec is the track README,
 [`specs/1.0.10-beta/05-emilia/README.md`](../../specs/1.0.10-beta/05-emilia/README.md), and its

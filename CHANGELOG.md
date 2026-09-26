@@ -2,6 +2,34 @@
 
 ## Unreleased — v0.beta.22
 
+- **The open `05-emilia` rows, each measured against Tailwind 4.3.2's
+  compiled output.**
+  - `scale-*` writes upstream's `--tw-scale-{x,y,z}` percentages and
+    `scale:var(--tw-scale-x) var(--tw-scale-y)`, registered with `@property`
+    (initial `1`), so `ScaleX` and `ScaleY` compose; `scale:.5` /
+    `scale:.5 1` are gone.
+  - Every fraction is `calc(N / D * 100%)` through one `fraction(n, d)` —
+    `Size.*.Frac`, `Inset.*.Frac`, `Flex.Basis.Frac` and the `Half` translates
+    moved together, so the library keeps one convention.
+  - `open:` / `group-open:` carry the legacy `[open]` attribute
+    (`&:is([open], :popover-open, :open)`); `rtl:` / `ltr:` are v4.1's
+    `&:where(:dir(rtl), [dir="rtl"], [dir="rtl"] *)`; `marker:` and
+    `selection:` reach the element itself as well as its descendants — a list
+    of one-`&` variants (`markerVariants()`, `selectionVariants()`), wrapped
+    once each by `nestVariants`.
+  - `spacingNegHalf(n)` spells the negative half steps; every `*.Neg.Half`
+    gains `0` (`-mt-0.5`), and `spacingHalf` refuses a negative whole part.
+  - The front-54 refusal of an entry in no namespace is asserted by its
+    message rather than by the entry's absence.
+  - Unconfirmed columns confirmed: the four interpolated grid/order sets, the
+    `--ease-*` values, the `--font-*` stacks (now upstream's `theme.css`), the
+    nine mask leaves, `indent-*`. The confirmation moved `opacity-*` to
+    upstream's percentage (`opacity:60%`), negative rotations to
+    `calc(Ndeg * -1)`, `rawShadow` to `--tw-shadow` + the five-channel reader,
+    and `rawTransitionProperty` to the presets' three declarations.
+  - The `??`-with-a-dummy-record reads are `if (x == null)` guards; a test
+    helper that finds no rule panics instead of answering a blank `Rule`.
+
 - **Translate and skew take upstream v4's form, and compose** (front 45,
   measured against Tailwind 4.3.2's compiled output). A translate axis writes
   `--tw-translate-<axis>` and `translate:var(--tw-translate-x)

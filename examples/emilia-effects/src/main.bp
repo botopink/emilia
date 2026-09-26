@@ -104,8 +104,8 @@ pub fn projectTextShadow() -> string {
 
 // ── opacity ──────────────────────────────────────────────────────────────────
 
-// A LEADING ZERO, ALWAYS. `opacity:.6` is legal CSS and is not what the
-// reference prints.
+// Upstream v4's percentage: `opacity-60` is `opacity:60%`, where the reference
+// prints the v3 fraction `0.6`.
 pub fn translucentOverlay() -> string {
     val tokens: Token[] = [.Effect.Opacity.__60];
     return emilia(tokens);
@@ -293,13 +293,13 @@ test "text-shadow references the theme, and a project supplies the value" {
     assert doc.indexOf("0px 1px 0px") == -1;
 }
 
-test "opacity keeps its leading zero, and both ends of the scale are integers" {
+test "opacity is upstream's percentage, both ends of the scale included" {
     val a = translucentOverlay();
     val b = opacityEnds();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{opacity:0.6}") != -1;
-    assert doc.indexOf("opacity:.6") == -1;
-    assert doc.indexOf("." + b + "{opacity:0;opacity:1}") != -1;
+    assert doc.indexOf("." + a + "{opacity:60%}") != -1;
+    assert doc.indexOf("opacity:0.6") == -1;
+    assert doc.indexOf("." + b + "{opacity:0%;opacity:100%}") != -1;
 }
 
 test "the two blend families are two properties over the same values" {
@@ -333,7 +333,7 @@ test "an arbitrary value reaches its own top-level arm, through the wrapper" {
     val c = engravedLabel();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("mask-image:linear-gradient(to bottom, black 60%, transparent)") != -1;
-    assert doc.indexOf("." + b + "{box-shadow:0 0 0 1px rgb(0 0 0 / 0.08)}") != -1;
+    assert doc.indexOf("." + b + "{--tw-shadow:0 0 0 1px rgb(0 0 0 / 0.08);box-shadow:" + chain() + "}") != -1;
     assert doc.indexOf("." + c + "{text-shadow:0 1px 0 rgb(255 255 255 / 0.6)}") != -1;
     assert a != b;
 }
@@ -343,17 +343,17 @@ test "an arbitrary value reaches its own top-level arm, through the wrapper" {
 test "the wrapper and the qualified spelling produce the same class" {
     assert hairlineShadow() == hairlineShadowQualified();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("box-shadow:0 0 0 1px rgb(0 0 0 / 0.08)") != -1;
+    assert doc.indexOf("--tw-shadow:0 0 0 1px rgb(0 0 0 / 0.08)") != -1;
 }
 
 test "end to end — a photo card that lifts on hover" {
     val cls = photoCard();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls + "{--tw-shadow:var(--shadow-sm);box-shadow:" + chain() + ";"
-        + "mix-blend-mode:multiply;opacity:0.9}") != -1;
+        + "mix-blend-mode:multiply;opacity:90%}") != -1;
     // the hover half is front 34's wrapping around this front's declarations
     assert doc.indexOf("@media (hover: hover){." + cls
-        + ":hover{--tw-shadow:var(--shadow-xl);box-shadow:" + chain() + ";opacity:1}}") != -1;
+        + ":hover{--tw-shadow:var(--shadow-xl);box-shadow:" + chain() + ";opacity:100%}}") != -1;
 }
 
 test "end to end — the same card with a faded image edge" {

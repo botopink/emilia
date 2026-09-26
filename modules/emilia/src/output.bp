@@ -11,7 +11,7 @@
 ////
 //// A `Rule` replaces the declaration string. Its `selector` is a NESTING
 //// TEMPLATE carrying exactly one `&`, and `&` stands for the class, so every
-//// row of the variant reference is one template: `&:hover`, `[dir="rtl"] &`,
+//// row of the variant reference is one template: `&:hover`, `.dark &`,
 //// `:is(& > *)`, `&:is(:where(.group):hover *)`. A selector WITHOUT an `&` is
 //// a literal selector — that is how the theme's `:root` and front 55's reset
 //// are written — and a selector with two or more is refused. There is no
@@ -60,7 +60,7 @@ pub type Sheet(rules: Rule[], blocks: Block[])
 
 // A variant is an at-rule and a selector template, and the whole variant
 // reference fits in the two: `hover` is `("@media (hover: hover)", "&:hover")`,
-// `rtl` is `("", "[dir=\"rtl\"] &")`, `md` is `("@media (width >= 48rem)", "&")`,
+// `rtl` is `("", "&:where(:dir(rtl), [dir=\"rtl\"], [dir=\"rtl\"] *)")`, `md` is `("@media (width >= 48rem)", "&")`,
 // `group-hover` is `("", "&:is(:where(.group):hover *)")`. An empty `atRule`
 // means the variant is purely a selector.
 pub type Variant(atRule: string, selector: string)
@@ -476,10 +476,13 @@ fn mergeLast(acc: Placed[], last: Placed, p: Placed) -> Placed[] {
 }
 
 fn coalesceStep(acc: Placed[], p: Placed) -> Placed[] {
-    val last = acc.at(acc.length - 1) ?? p;
-    val mergeable = acc.length > 0 && last.className == p.className && sameContext(last.rule, p.rule);
-    val out = if (mergeable) mergeLast(acc, last, p) else acc.append(onePlaced(p.className, p.rule));
-    return out;
+    val last = acc.at(acc.length - 1);
+    if (last != null) {
+        if (last.className == p.className && sameContext(last.rule, p.rule)) {
+            return mergeLast(acc, last, p);
+        };
+    };
+    return acc.append(onePlaced(p.className, p.rule));
 }
 
 fn coalesce(ps: Placed[]) -> Placed[] {
@@ -603,9 +606,9 @@ pub fn renderDocument(raw: string, o: Options) -> string {
 // `--target commonJS` and on `--target erlang`.
 
 fn firstRule(s: Sheet) -> Rule {
-    val fallback = Rule(layer: "", atRules: noAtRules(), selector: "", declarations: "", important: false);
-    val out = s.rules.at(0) ?? fallback;
-    return out;
+    val r = s.rules.at(0);
+    if (r == null) { @panic("firstRule: the sheet has no rule"); };
+    return r;
 }
 
 test "declSheet — one utilities rule, no at-rules, the bare ampersand, not important" {
@@ -829,11 +832,11 @@ test "renderRule — a literal selector renders literally and ignores the prefix
 
 test "renderRule — a variant that puts the class in the middle of the selector" {
     val group = Variant(atRule: "", selector: "&:is(:where(.group):hover *)");
-    val rtl = Variant(atRule: "", selector: "[dir=\"rtl\"] &");
+    val trailing = Variant(atRule: "", selector: ".dark &");
     val g = nestVariant(declSheet("color:red"), group);
     assert renderRule("e_1", firstRule(g), defaultOptions()) == ".e_1:is(:where(.group):hover *){color:red}";
-    val r = nestVariant(declSheet("color:red"), rtl);
-    assert renderRule("e_1", firstRule(r), defaultOptions()) == "[dir=\"rtl\"] .e_1{color:red}";
+    val r = nestVariant(declSheet("color:red"), trailing);
+    assert renderRule("e_1", firstRule(r), defaultOptions()) == ".dark .e_1{color:red}";
 }
 
 // ── tests · renderDocument ───────────────────────────────────────────────────
