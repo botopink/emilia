@@ -228,6 +228,12 @@ fn animateEntries() -> ThemeEntry[] {
 // `@keyframes ` prefix is `nsPrefix(Ns.Keyframes)`, written once — and `value`
 // is the brace-balanced rule body, which is why these cannot live inside the
 // `:root` block with the rest.
+//
+// FRONT 44'S KEYFRAMES GATE, CLOSED BY READING UPSTREAM: the reference prints
+// the four `--animate-*` shorthands and no body. Read on 2026-09-26 from
+// https://github.com/tailwindlabs/tailwindcss/blob/main/packages/tailwindcss/theme.css
+// — the four bodies below are upstream's, whitespace removed, byte for byte
+// otherwise (including `cubic-bezier(0.8,0,1,1)`'s commas without spaces).
 fn keyframeEntries() -> ThemeEntry[] {
     val out: ThemeEntry[] = [
         ThemeEntry(name: "spin", value: "{to{transform:rotate(360deg)}}"),
