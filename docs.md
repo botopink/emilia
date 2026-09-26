@@ -1177,12 +1177,20 @@ because a numeric enum leaf is a run of digits.
 
 ### Ring — the box-shadow half of a focus ring
 
+**Every shadow and ring token writes ONE channel and the same reader**, upstream
+v4's five-channel `box-shadow`:
+`var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent), var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow, 0 0 transparent)`.
+So `[.Ring.W.2, .Effect.Shadow.Md]` draws both — and a lone ring draws at all:
+each channel falls back to a null shadow, where an unset channel would otherwise
+invalidate the whole declaration.
+
 ```bp
-.Ring.W.2                   // --tw-ring-shadow:0 0 0 2px;
-                            // box-shadow:var(--tw-ring-offset-shadow),
-                            //            var(--tw-ring-shadow), var(--tw-shadow)
+.Ring.W.2                   // --tw-ring-shadow:var(--tw-ring-inset, ) 0 0 0
+                            //   calc(2px + var(--tw-ring-offset-width, 0px))
+                            //   var(--tw-ring-color, currentcolor);
+                            // box-shadow:<the five-channel reader, below>
 .Ring.Color.Indigo.500      // --tw-ring-color:var(--color-indigo-500)
-.Ring.Offset.W.2            // --tw-ring-offset-width:2px
+.Ring.Offset.W.2            // --tw-ring-offset-width:2px;--tw-ring-offset-shadow:…
 .Ring.Offset.Color.White    // --tw-ring-offset-color:var(--color-white)
 .Ring.Inset                 // --tw-ring-inset:inset
 ```
@@ -1263,20 +1271,20 @@ pinned the wrong string. The four leaf **names** did not move, so nothing
 that compiled before stops compiling; what they emit is the fix.
 
 ```bp
-.Effect.Shadow.Sm          // box-shadow:var(--shadow-sm)   (was box-shadow:sm)
-.Effect.Shadow.Md          // box-shadow:var(--shadow-md)   (was box-shadow:md)
-.Effect.Shadow.Lg          // box-shadow:var(--shadow-lg)   (was box-shadow:lg)
-.Effect.Shadow.Xl          // box-shadow:var(--shadow-xl)   (was box-shadow:xl)
+.Effect.Shadow.Sm          // --tw-shadow:var(--shadow-sm);box-shadow:<reader>   (was box-shadow:sm)
+.Effect.Shadow.Md          // --tw-shadow:var(--shadow-md);box-shadow:<reader>   (was box-shadow:md)
+.Effect.Shadow.Lg          // --tw-shadow:var(--shadow-lg);box-shadow:<reader>   (was box-shadow:lg)
+.Effect.Shadow.Xl          // --tw-shadow:var(--shadow-xl);box-shadow:<reader>   (was box-shadow:xl)
 ```
 
 #### Shadows
 
 ```bp
-.Effect.Shadow.X2xs        // box-shadow:var(--shadow-2xs)
-.Effect.Shadow.Xs          // box-shadow:var(--shadow-xs)
-.Effect.Shadow.X2xl        // box-shadow:var(--shadow-2xl)
-.Effect.Shadow.None        // box-shadow:none
-.Effect.Shadow.Inner       // box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)
+.Effect.Shadow.X2xs        // --tw-shadow:var(--shadow-2xs);box-shadow:<reader>
+.Effect.Shadow.Xs          // --tw-shadow:var(--shadow-xs);box-shadow:<reader>
+.Effect.Shadow.X2xl        // --tw-shadow:var(--shadow-2xl);box-shadow:<reader>
+.Effect.Shadow.None        // --tw-shadow:0 0 transparent;box-shadow:<reader>
+.Effect.Shadow.Inner       // --tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);box-shadow:<reader>
 
 .Effect.InsetShadow.X2xs   // box-shadow:inset var(--inset-shadow-2xs)
 .Effect.InsetShadow.Xs     // box-shadow:inset var(--inset-shadow-xs)

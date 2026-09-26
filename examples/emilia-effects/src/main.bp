@@ -16,7 +16,7 @@
 //
 // THREE THINGS THIS FILE IS HERE TO SHOW, beyond the catalogue:
 //
-//   - the shadow scale is a THEME REFERENCE. `box-shadow:var(--shadow-md)` and
+//   - the shadow scale is a THEME REFERENCE. `--tw-shadow:var(--shadow-md)` and
 //     never the literal behind it, so a project that redefines `--shadow-md`
 //     moves every card in the application and not one byte of any rule body.
 //   - `inset` is part of the VALUE, on the `box-shadow` property. There is no
@@ -232,16 +232,24 @@ pub fn main() -> void {
 // THE DEFECT, from OUTSIDE the library. `box-shadow:md` is asserted absent by
 // name: it is the string the four leaves used to emit, and a consumer package
 // is where a cross-package `case` fall-through would have shown up.
+
+// The composed `box-shadow` every shadow and ring token writes beside its own
+// channel (emilia front 40/41: upstream's five channels, each with its null
+// shadow as a fallback), spelled once for this example's assertions.
+fn chain() -> string {
+    return "var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent), var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow, 0 0 transparent)";
+}
+
 test "the four pre-41 leaves emit theme references, and the class suffix is gone" {
     val cls = theFourThatShippedWrong();
     val doc = await flushWith(bareOptions());
     // FOUR TOKENS, ONE CLASS, ONE RULE BODY: the declarations join with `;`
     // in list order, which is why the class is a function of the ORDER too.
-    assert doc.indexOf("." + cls + "{box-shadow:var(--shadow-sm);"
-        + "box-shadow:var(--shadow-md);box-shadow:var(--shadow-lg);"
-        + "box-shadow:var(--shadow-xl)}") != -1;
-    assert doc.indexOf("box-shadow:var(--shadow-lg)") != -1;
-    assert doc.indexOf("box-shadow:var(--shadow-xl)") != -1;
+    assert doc.indexOf("." + cls + "{--tw-shadow:var(--shadow-sm);box-shadow:" + chain() + ";"
+        + "--tw-shadow:var(--shadow-md);box-shadow:" + chain() + ";--tw-shadow:var(--shadow-lg);box-shadow:" + chain() + ";"
+        + "--tw-shadow:var(--shadow-xl);box-shadow:" + chain() + "}") != -1;
+    assert doc.indexOf("--tw-shadow:var(--shadow-lg);box-shadow:" + chain()) != -1;
+    assert doc.indexOf("--tw-shadow:var(--shadow-xl);box-shadow:" + chain()) != -1;
     assert doc.indexOf("box-shadow:sm") == -1;
     assert doc.indexOf("box-shadow:md") == -1;
     assert doc.indexOf("box-shadow:lg") == -1;
@@ -253,18 +261,18 @@ test "the rest of the scale, the keyword and the one literal" {
     val b = noShadow();
     val c = innerShadow();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("box-shadow:var(--shadow-2xs)") != -1;
-    assert doc.indexOf("box-shadow:var(--shadow-xs)") != -1;
-    assert doc.indexOf("box-shadow:var(--shadow-2xl)") != -1;
-    assert doc.indexOf("." + b + "{box-shadow:none}") != -1;
-    assert doc.indexOf("." + c + "{box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)}") != -1;
+    assert doc.indexOf("--tw-shadow:var(--shadow-2xs);box-shadow:" + chain()) != -1;
+    assert doc.indexOf("--tw-shadow:var(--shadow-xs);box-shadow:" + chain()) != -1;
+    assert doc.indexOf("--tw-shadow:var(--shadow-2xl);box-shadow:" + chain()) != -1;
+    assert doc.indexOf("." + b + "{--tw-shadow:0 0 transparent;box-shadow:" + chain() + "}") != -1;
+    assert doc.indexOf("." + c + "{--tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);box-shadow:" + chain() + "}") != -1;
     assert a != b;
 }
 
 test "an inset shadow is the box-shadow property with `inset` leading the value" {
     val cls = insetShadows();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{box-shadow:inset var(--inset-shadow-sm)}") != -1;
+    assert doc.indexOf("." + cls + "{--tw-inset-shadow:inset var(--inset-shadow-sm);box-shadow:" + chain() + "}") != -1;
     // and never a longhand CSS does not have
     assert doc.indexOf("inset-box-shadow") == -1;
 }
@@ -341,17 +349,17 @@ test "the wrapper and the qualified spelling produce the same class" {
 test "end to end — a photo card that lifts on hover" {
     val cls = photoCard();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{box-shadow:var(--shadow-sm);"
+    assert doc.indexOf("." + cls + "{--tw-shadow:var(--shadow-sm);box-shadow:" + chain() + ";"
         + "mix-blend-mode:multiply;opacity:0.9}") != -1;
     // the hover half is front 34's wrapping around this front's declarations
     assert doc.indexOf("@media (hover: hover){." + cls
-        + ":hover{box-shadow:var(--shadow-xl);opacity:1}}") != -1;
+        + ":hover{--tw-shadow:var(--shadow-xl);box-shadow:" + chain() + ";opacity:1}}") != -1;
 }
 
 test "end to end — the same card with a faded image edge" {
     val cls = fadedPhotoCard();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{box-shadow:var(--shadow-md);"
+    assert doc.indexOf("." + cls + "{--tw-shadow:var(--shadow-md);box-shadow:" + chain() + ";"
         + "mask-repeat:no-repeat;"
         + "mask-image:linear-gradient(to bottom, black 70%, transparent)}") != -1;
 }

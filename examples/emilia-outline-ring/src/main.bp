@@ -143,6 +143,14 @@ pub fn segmentedList() -> string {
 
 // ── tests ────────────────────────────────────────────────────────────────────
 
+
+// The composed `box-shadow` every shadow and ring token writes beside its own
+// channel (emilia front 40/41: upstream's five channels, each with its null
+// shadow as a fallback), spelled once for this example's assertions.
+fn chain() -> string {
+    return "var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent), var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow, 0 0 transparent)";
+}
+
 test "the four outline properties, each with its own token" {
     val cls = outlineBasics();
     val doc = await flushWith(bareOptions());
@@ -170,9 +178,9 @@ test "outline-none is a transparent outline, never outline-style:none" {
 test "a ring is a custom property and a composed box-shadow" {
     val cls = ring();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{--tw-ring-shadow:0 0 0 2px;box-shadow:"
-        + "var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);"
-        + "--tw-ring-color:var(--color-blue-500)}") != -1;
+    assert doc.indexOf("." + cls + "{--tw-ring-shadow:var(--tw-ring-inset, ) 0 0 0 "
+        + "calc(2px + var(--tw-ring-offset-width, 0px)) var(--tw-ring-color, currentcolor);"
+        + "box-shadow:" + chain() + ";--tw-ring-color:var(--color-blue-500)}") != -1;
 }
 
 test "the ring offset is two custom properties, width and colour" {
@@ -199,7 +207,8 @@ test "a ring composes with a shadow, and swapping them is a different class" {
     val b = shadowAndRing();
     assert a != b;
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("var(--tw-shadow)") != -1;
+    assert doc.indexOf("var(--tw-shadow, 0 0 transparent)") != -1;
+    assert doc.indexOf("--tw-shadow:var(--shadow-") != -1;
     assert doc.indexOf("." + a) != -1;
     assert doc.indexOf("." + b) != -1;
 }

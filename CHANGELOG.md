@@ -2,6 +2,13 @@
 
 ## Unreleased — v0.beta.22
 
+- **Rings and shadows compose, and a lone ring renders** (fronts 40 and 41,
+  from the track-D audit). Every ring and shadow token writes one channel of
+  upstream v4's five-channel `box-shadow` reader, each channel with a null
+  shadow as its fallback. The old ring listed three channels with no fallback —
+  invalid at computed-value time unless all three were set — and `Effect.Shadow`
+  wrote `box-shadow` itself, so the two overwrote each other. `emilia` 722 → 723.
+
 - **The class slot — `attributes.bp`** (1.0.10-beta front
   `48-emilia-attributes`). `className` / `styled` / `styledWith` / `cls` /
   `clsWith` over one `Theme`, the static-first `mergeClass`, the ASCII gate, and

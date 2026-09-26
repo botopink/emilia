@@ -186,9 +186,18 @@ CALLS front 35's `siblingSelector()` rather than re-spelling
 `& > :not(:last-child)` — the test front 35 could not write, comparing the two
 families' selectors byte for byte, is now in `emilia.bp`.
 `ringTokenToSheet` needs several ordered declarations because a ring is a
-box-shadow: its `box-shadow` LISTS `var(--tw-shadow)` rather than writing a
-shadow of its own, so front 41's `Effect.Shadow` composes with it instead of
-being overwritten.
+box-shadow. **Since the audit pass, every ring and shadow token writes ONE
+CHANNEL and the same reader** — `boxShadowChain()`, upstream v4's five
+channels (`--tw-inset-shadow`, `--tw-inset-ring-shadow`,
+`--tw-ring-offset-shadow`, `--tw-ring-shadow`, `--tw-shadow`), each with the null
+shadow `0 0 transparent` as its fallback because emilia emits no `@property`.
+The pre-fix ring listed three channels with NO fallback, so a lone `Ring.W.2`
+was invalid at computed-value time and drew nothing, and `Effect.Shadow` wrote
+`box-shadow` itself, so a ring and a shadow in one class did not compose.
+Front 41's shadows now write `--tw-shadow` (`InsetShadow` writes
+`--tw-inset-shadow`), the ring width is upstream's `ringShadowValue` (inset flag,
+width grown by the offset, `currentcolor` default) and `Ring.Offset.W` writes
+the offset shadow beside its width.
 
 **What front 40 changed under other fronts.** `.Border.Color.<family>.<shade>`
 used to emit `border-color:red` — the shade was discarded — and now emits the
@@ -1189,9 +1198,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **722/722** on
+  refuses) runs every module's in-file `test {}` blocks, **723/723** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 600 (`emilia.bp`) + 14 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 2 (`compose.bp`) + 3 (`attributes.bp`). The figure below breaks down the 375
+  (`output.bp`) + 601 (`emilia.bp`) + 14 (`preflight.bp`) + 9 (`arbitrary.bp`) + 6 (`container.bp`) + 2 (`compose.bp`) + 3 (`attributes.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on

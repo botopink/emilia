@@ -8765,15 +8765,42 @@ fn ringTokenToSheet(t: Token.Ring, th: Theme) -> Sheet {
     return out;
 }
 
-// The composed shadow list, spelled ONCE. `--tw-shadow` is front 41's channel
-// and this front never writes it — which is what makes the two compose.
-fn ringShadowList() -> string {
-    return "var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)";
+// THE COMPOSED `box-shadow`, spelled ONCE for fronts 40 and 41 — upstream v4's
+// five channels (`utilities.ts`, `cssBoxShadowValue`, read 2026-09-26). Each
+// token writes ONE channel and this same reader, so a ring and a shadow in one
+// class compose instead of the last `box-shadow` winning. Upstream registers
+// every channel with `@property` and the initial `0 0 #0000`; emilia emits no
+// `@property` block, so each reference carries that null shadow as its
+// fallback (`transparent` rather than `#0000`, the same colour with no hex
+// literal) — WITHOUT it an unset channel makes the whole declaration invalid
+// at computed-value time, which is what the pre-fix `ringShadowList()` did:
+// a lone `Ring.W.2` rendered no ring at all.
+fn boxShadowChain() -> string {
+    val chans: string[] = [
+        "--tw-inset-shadow", "--tw-inset-ring-shadow", "--tw-ring-offset-shadow",
+        "--tw-ring-shadow", "--tw-shadow",
+    ];
+    return chans.map({ c -> cssVarOr(c, "0 0 transparent") }).join(", ");
 }
 
+// One channel and the reader: the shape every box-shadow token has.
+fn shadowChannel(channel: string, value: string) -> string {
+    return oneDecl(channel, value) + ";" + oneDecl("box-shadow", boxShadowChain());
+}
+
+// Upstream's `ringShadowValue`: the inset flag, the width grown by the offset,
+// the ring colour with `currentcolor` as its default.
 fn ringWidthDecls(w: string) -> string {
-    return oneDecl("--tw-ring-shadow", "0 0 0 " + w) + ";"
-        + oneDecl("box-shadow", ringShadowList());
+    return shadowChannel("--tw-ring-shadow", cssVarOr("--tw-ring-inset", "") + " 0 0 0 calc(" + w
+        + " + " + cssVarOr("--tw-ring-offset-width", "0px") + ") "
+        + cssVarOr("--tw-ring-color", "currentcolor"));
+}
+
+// Upstream's `ringOffsetShadowValue`, written beside the width it reads.
+fn ringOffsetDecls(w: string) -> string {
+    return oneDecl("--tw-ring-offset-width", w) + ";" + oneDecl("--tw-ring-offset-shadow",
+        cssVarOr("--tw-ring-inset", "") + " 0 0 0 var(--tw-ring-offset-width) "
+        + cssVarOr("--tw-ring-offset-color", themeVar(nsPrefix(Ns.Color) + "white")));
 }
 
 fn ringWidthValue(s: Token.Ring.W) -> string {
@@ -9064,7 +9091,7 @@ fn ringColorTaupeShade(s: Token.Ring.Color.Taupe) -> string {
 // recorded as unverified rather than quietly dropped.
 fn ringOffsetToCss(o: Token.Ring.Offset, th: Theme) -> string {
     val out = case o {
-        W(_inner) -> oneDecl("--tw-ring-offset-width", ringOffsetWidthValue(_inner));
+        W(_inner) -> ringOffsetDecls(ringOffsetWidthValue(_inner));
         Color(_inner) -> ringOffsetColorToCss(_inner, th);
     };
     return out;
@@ -10610,41 +10637,58 @@ test "end to end — a focus-visible outline ring is one modified rule" {
 
 test "Ring.W — the custom property AND the composed box-shadow" {
     val decl = tokenDeclarations(.Ring.W.2);
-    assert decl == "--tw-ring-shadow:0 0 0 2px;box-shadow:"
-        + "var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)";
+    assert decl == "--tw-ring-shadow:var(--tw-ring-inset, ) 0 0 0 calc(2px + var(--tw-ring-offset-width, 0px)) var(--tw-ring-color, currentcolor);box-shadow:"
+        + "var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent), "
+        + "var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), "
+        + "var(--tw-shadow, 0 0 transparent)";
     assert decl.indexOf("--tw-ring-shadow:") != -1;
     assert decl.indexOf("box-shadow:") != -1;
+}
+
+// EVERY CHANNEL CARRIES ITS NULL SHADOW. Without the fallback, an unset channel
+// makes the whole `box-shadow` invalid at computed-value time, and a lone ring
+// renders nothing — the pre-fix list read three channels with no fallback.
+test "the box-shadow reader — five channels, each with a fallback" {
+    val chain = boxShadowChain();
+    assert chain.split("var(").length == 6;
+    assert chain.split(", 0 0 transparent)").length == 6;
+    assert chain.indexOf("#") == -1;
 }
 
 // UPSTREAM V4'S DEFAULT RING IS 1px, NOT V3'S 3px. The README's reference-gap
 // table said to read this rather than remember it; it was read, and `.Ring.W.1`
 // is upstream's bare `ring`.
 test "Ring.W — the ladder, and the v4 default the README told us to verify" {
-    assert tokenDeclarations(.Ring.W.0).indexOf("--tw-ring-shadow:0 0 0 0px") != -1;
-    assert tokenDeclarations(.Ring.W.1).indexOf("--tw-ring-shadow:0 0 0 1px") != -1;
-    assert tokenDeclarations(.Ring.W.4).indexOf("--tw-ring-shadow:0 0 0 4px") != -1;
-    assert tokenDeclarations(.Ring.W.8).indexOf("--tw-ring-shadow:0 0 0 8px") != -1;
+    assert tokenDeclarations(.Ring.W.0).indexOf(" 0 0 0 calc(0px + ") != -1;
+    assert tokenDeclarations(.Ring.W.1).indexOf(" 0 0 0 calc(1px + ") != -1;
+    assert tokenDeclarations(.Ring.W.4).indexOf(" 0 0 0 calc(4px + ") != -1;
+    assert tokenDeclarations(.Ring.W.8).indexOf(" 0 0 0 calc(8px + ") != -1;
     assert tokenDeclarations(.Ring.W.1).indexOf("3px") == -1;
 }
 
 test "Ring.Inset and Ring.Offset — the inset flag and the two offset families" {
     assert tokenDeclarations(.Ring.Inset) == "--tw-ring-inset:inset";
-    assert tokenDeclarations(.Ring.Offset.W.2) == "--tw-ring-offset-width:2px";
+    assert tokenDeclarations(.Ring.Offset.W.2) == "--tw-ring-offset-width:2px;"
+        + "--tw-ring-offset-shadow:var(--tw-ring-inset, ) 0 0 0 var(--tw-ring-offset-width) "
+        + "var(--tw-ring-offset-color, var(--color-white))";
     assert tokenDeclarations(.Ring.Offset.Color.White)
         == "--tw-ring-offset-color:var(--color-white)";
 }
 
-// COMPOSITION, NOT CLOBBERING. The ring's `box-shadow` LISTS `var(--tw-shadow)`
+// COMPOSITION, NOT CLOBBERING. Every ring and shadow token writes ONE channel of
+// the shared `boxShadowChain()` reader; the pre-audit wording below predates it.
+// The ring's `box-shadow` LISTS `var(--tw-shadow)`
 // rather than writing a shadow of its own, so front 41's `Effect.Shadow` — once
 // it sets `--tw-shadow` — flows through the same declaration instead of being
 // overwritten by it. That is the whole reason `ringTokenToSheet` exists.
 test "Ring composes with Effect.Shadow rather than overwriting it" {
-    val decl = tokenDeclarations(.Ring.W.2);
-    assert decl.indexOf("var(--tw-shadow)") != -1;
-    assert decl.indexOf("var(--tw-ring-shadow)") != -1;
-    val shadow = tokenDeclarations(.Effect.Shadow.Md);
-    assert shadow.indexOf("box-shadow") != -1;
-    assert decl.indexOf(shadow) == -1;
+    val tokens: Token[] = [.Ring.W.2, .Effect.Shadow.Md];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme())).join(";").split(";");
+    assert decls.length == 4;
+    assert (decls.at(0) ?? "").startsWith("--tw-ring-shadow:");
+    assert (decls.at(2) ?? "") == "--tw-shadow:var(--shadow-md)";
+    assert (decls.at(1) ?? "") == "box-shadow:" + boxShadowChain();
+    assert (decls.at(3) ?? "x") == (decls.at(1) ?? "y");
 }
 
 // CONTRACT 4 — the class name is a pure function of the token list AND token
@@ -10809,10 +10853,12 @@ test "regression — no leaf of this front emits a Tailwind class fragment" {
 // A section contributes 288: the 26 x 11 grid plus `White` and `Black`, which
 // reference the theme too. `Transparent`, `Current` and `Inherit` are CSS-wide
 // keywords with no theme entry and are deliberately not references.
+// The five `Ring.Offset.W` leaves add five more: their offset shadow falls back
+// to `var(--color-white)`, upstream's `#fff` initial as a theme reference.
 test "regression — every colour cell of this front is a theme reference" {
     val leaves = front40Leaves();
     val cells = leaves.filter({ t -> firstDeclaration(t).indexOf("var(--color-") != -1 });
-    assert cells.length == 1440;
+    assert cells.length == 1445;
 }
 
 test "regression — a section's 288 colour cells are 288 DISTINCT declarations" {
@@ -10834,7 +10880,7 @@ test "regression — the other four colour sub-sections are distinct too" {
     assert outlineLeaves().filter({ t ->
         firstDeclaration(t).indexOf("var(--color-") != -1 }).length == 288;
     assert ringLeaves().filter({ t ->
-        firstDeclaration(t).indexOf("var(--color-") != -1 }).length == 576;
+        firstDeclaration(t).indexOf("var(--color-") != -1 }).length == 581;
     assert divideLeaves().filter({ t ->
         firstDeclaration(t).indexOf("var(--color-") != -1 }).length == 288;
 }
@@ -10973,31 +11019,32 @@ fn effectTokenToCss(t: Token.Effect, th: Theme) -> string {
 // `§ 12.1`. Seven scale steps through the theme, one keyword, one literal.
 fn shadowToCss(s: Token.Effect.Shadow) -> string {
     val out = case s {
-        X2xs -> "box-shadow:" + shadowVar("2xs");
-        Xs -> "box-shadow:" + shadowVar("xs");
-        Sm -> "box-shadow:" + shadowVar("sm");
-        Md -> "box-shadow:" + shadowVar("md");
-        Lg -> "box-shadow:" + shadowVar("lg");
-        Xl -> "box-shadow:" + shadowVar("xl");
-        X2xl -> "box-shadow:" + shadowVar("2xl");
-        None -> "box-shadow:none";
+        X2xs -> shadowChannel("--tw-shadow", shadowVar("2xs"));
+        Xs -> shadowChannel("--tw-shadow", shadowVar("xs"));
+        Sm -> shadowChannel("--tw-shadow", shadowVar("sm"));
+        Md -> shadowChannel("--tw-shadow", shadowVar("md"));
+        Lg -> shadowChannel("--tw-shadow", shadowVar("lg"));
+        Xl -> shadowChannel("--tw-shadow", shadowVar("xl"));
+        X2xl -> shadowChannel("--tw-shadow", shadowVar("2xl"));
+        // `shadow-none` empties ITS channel and keeps the others — a ring on
+        // the same element survives it — upstream's `0 0 #0000`.
+        None -> shadowChannel("--tw-shadow", "0 0 transparent");
         // The one literal in this front, and the reference prints it as one:
         // there is no `--shadow-inner` upstream. See the banner above.
-        Inner -> "box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)";
+        Inner -> shadowChannel("--tw-shadow", "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)");
     };
     return out;
 }
 
-// `§ 12.1`, the inset half. The property is `box-shadow` — NOT a separate
-// property — and the `inset` keyword is part of the VALUE, ahead of the
-// variable. `--inset-shadow-*` is a real namespace of front 54's `Ns`; the
-// stock theme does not carry its three entries, so they reach a project
-// through `extend`, the same way front 33's palette does.
+// `§ 12.1`, the inset half, on upstream's own channel `--tw-inset-shadow`, so
+// an inset shadow, an outer shadow and a ring are three layers of ONE
+// `box-shadow`. The `inset` keyword leads the value; `effectEntries()` carries
+// the three values without it.
 fn insetShadowToCss(s: Token.Effect.InsetShadow) -> string {
     val out = case s {
-        X2xs -> "box-shadow:inset " + insetShadowVar("2xs");
-        Xs -> "box-shadow:inset " + insetShadowVar("xs");
-        Sm -> "box-shadow:inset " + insetShadowVar("sm");
+        X2xs -> shadowChannel("--tw-inset-shadow", "inset " + insetShadowVar("2xs"));
+        Xs -> shadowChannel("--tw-inset-shadow", "inset " + insetShadowVar("xs"));
+        Sm -> shadowChannel("--tw-inset-shadow", "inset " + insetShadowVar("sm"));
     };
     return out;
 }
@@ -11301,7 +11348,7 @@ test "effectEntries — three inset shadows without their leading inset, five te
     val th = extendTheme(defaultTheme(), effectEntries());
     assert themeValue(th, "--inset-shadow-xs") == "0 1px 1px rgb(0 0 0 / 0.05)";
     assert themeValue(th, "--text-shadow-2xs") == "0px 1px 0px rgb(0 0 0 / 0.15)";
-    assert tokenDeclarations(.Effect.InsetShadow.Xs) == "box-shadow:inset var(--inset-shadow-xs)";
+    assert tokenDeclarations(.Effect.InsetShadow.Xs) == "--tw-inset-shadow:inset var(--inset-shadow-xs);box-shadow:" + boxShadowChain();
 }
 
 // ── front 41 · tests ─────────────────────────────────────────────────────────
@@ -11318,10 +11365,10 @@ test "effectEntries — three inset shadows without their leading inset, five te
 // the value it has now, and the value it must never have again — because the
 // second form is the one that reddens if a merge resurrects the old table.
 test "the defect — the four pre-41 shadow leaves emit a theme reference, never a class suffix" {
-    assert tokenDeclarations(.Effect.Shadow.Sm) == "box-shadow:var(--shadow-sm)";
-    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
-    assert tokenDeclarations(.Effect.Shadow.Lg) == "box-shadow:var(--shadow-lg)";
-    assert tokenDeclarations(.Effect.Shadow.Xl) == "box-shadow:var(--shadow-xl)";
+    assert tokenDeclarations(.Effect.Shadow.Sm) == "--tw-shadow:var(--shadow-sm);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Md) == "--tw-shadow:var(--shadow-md);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Lg) == "--tw-shadow:var(--shadow-lg);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Xl) == "--tw-shadow:var(--shadow-xl);box-shadow:" + boxShadowChain();
     assert tokenDeclarations(.Effect.Shadow.Sm) != "box-shadow:sm";
     assert tokenDeclarations(.Effect.Shadow.Md) != "box-shadow:md";
     assert tokenDeclarations(.Effect.Shadow.Lg) != "box-shadow:lg";
@@ -11343,28 +11390,28 @@ test "the scale resolves — through the theme, which is where the literal lives
     // and the reference the dispatcher emits NAMES that entry, so the two
     // halves meet: the declaration's variable is the theme's key.
     assert tokenDeclarations(.Effect.Shadow.Md)
-        == "box-shadow:" + themeVar("--shadow-md");
+        == "--tw-shadow:" + themeVar("--shadow-md") + ";box-shadow:" + boxShadowChain();
 }
 
 // ── `§ 12.1` · box-shadow ────────────────────────────────────────────────────
 
 test "Effect.Shadow — the seven scale steps are `--shadow-*` references" {
-    assert tokenDeclarations(.Effect.Shadow.X2xs) == "box-shadow:var(--shadow-2xs)";
-    assert tokenDeclarations(.Effect.Shadow.Xs) == "box-shadow:var(--shadow-xs)";
-    assert tokenDeclarations(.Effect.Shadow.Sm) == "box-shadow:var(--shadow-sm)";
-    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
-    assert tokenDeclarations(.Effect.Shadow.Lg) == "box-shadow:var(--shadow-lg)";
-    assert tokenDeclarations(.Effect.Shadow.Xl) == "box-shadow:var(--shadow-xl)";
-    assert tokenDeclarations(.Effect.Shadow.X2xl) == "box-shadow:var(--shadow-2xl)";
+    assert tokenDeclarations(.Effect.Shadow.X2xs) == "--tw-shadow:var(--shadow-2xs);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Xs) == "--tw-shadow:var(--shadow-xs);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Sm) == "--tw-shadow:var(--shadow-sm);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Md) == "--tw-shadow:var(--shadow-md);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Lg) == "--tw-shadow:var(--shadow-lg);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.Xl) == "--tw-shadow:var(--shadow-xl);box-shadow:" + boxShadowChain();
+    assert tokenDeclarations(.Effect.Shadow.X2xl) == "--tw-shadow:var(--shadow-2xl);box-shadow:" + boxShadowChain();
 }
 
 // The keyword and the one literal. `shadow-inner` has NO `--shadow-inner`
 // upstream — `§ 12.1` prints its value inline — so this is the single arm of
 // the front that resolves anything, and the walk below knows it by name.
 test "Effect.Shadow — None is a keyword and Inner is the reference's own literal" {
-    assert tokenDeclarations(.Effect.Shadow.None) == "box-shadow:none";
+    assert tokenDeclarations(.Effect.Shadow.None) == "--tw-shadow:0 0 transparent;box-shadow:" + boxShadowChain();
     assert tokenDeclarations(.Effect.Shadow.Inner)
-        == "box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)";
+        == "--tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);box-shadow:" + boxShadowChain();
 }
 
 // THE PROPERTY IS `box-shadow` AND `inset` IS PART OF THE VALUE. A
@@ -11372,11 +11419,11 @@ test "Effect.Shadow — None is a keyword and Inner is the reference's own liter
 // after the variable, would type-check and be silently ignored by a browser.
 test "Effect.InsetShadow — `inset` leads the value, on the box-shadow property" {
     assert tokenDeclarations(.Effect.InsetShadow.X2xs)
-        == "box-shadow:inset var(--inset-shadow-2xs)";
+        == "--tw-inset-shadow:inset var(--inset-shadow-2xs);box-shadow:" + boxShadowChain();
     assert tokenDeclarations(.Effect.InsetShadow.Xs)
-        == "box-shadow:inset var(--inset-shadow-xs)";
+        == "--tw-inset-shadow:inset var(--inset-shadow-xs);box-shadow:" + boxShadowChain();
     assert tokenDeclarations(.Effect.InsetShadow.Sm)
-        == "box-shadow:inset var(--inset-shadow-sm)";
+        == "--tw-inset-shadow:inset var(--inset-shadow-sm);box-shadow:" + boxShadowChain();
 }
 
 // ── `§ 12.2` · text-shadow ───────────────────────────────────────────────────
@@ -11616,7 +11663,7 @@ test "composition — three effects are three declarations, and swapping them is
     val a: Token[] = [.Effect.Shadow.Lg, .Blend.Mix.Multiply, .Effect.Opacity.__60];
     val b: Token[] = [.Effect.Opacity.__60, .Blend.Mix.Multiply, .Effect.Shadow.Lg];
     assert declarationsOf(tokensToSheet(a, defaultTheme())).join("|")
-        == "box-shadow:var(--shadow-lg)|mix-blend-mode:multiply|opacity:0.6";
+        == "--tw-shadow:var(--shadow-lg);box-shadow:" + boxShadowChain() + "|mix-blend-mode:multiply|opacity:0.6";
     assert emilia(a) != emilia(b);
 }
 
@@ -11626,7 +11673,7 @@ test "composition — three effects are three declarations, and swapping them is
 test "nesting — a shadow under Hover contributes its declaration to front 34's variant" {
     val inner: Token[] = [.Effect.Shadow.Lg];
     val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
-    assert r.declarations == "box-shadow:var(--shadow-lg)";
+    assert r.declarations == "--tw-shadow:var(--shadow-lg);box-shadow:" + boxShadowChain();
     assert r.selector != "&";
 }
 
@@ -11636,7 +11683,7 @@ test "nesting — a shadow under Hover contributes its declaration to front 34's
 // the two `djb2` implementations need to agree.
 test "determinism — a fixed effects list hashes to the same class on both targets" {
     val tokens: Token[] = [.Effect.Shadow.Md, .Blend.Mix.Multiply, .Mask.Size.Cover];
-    assert emiliaWith(tokens, defaultTheme()) == "e_28f39cf3";
+    assert emiliaWith(tokens, defaultTheme()) == "e_7f00d34b";
 }
 
 // ── the regression walks ─────────────────────────────────────────────────────
@@ -11778,7 +11825,7 @@ test "regression — exactly one leaf resolves a shadow value, and it is Shadow.
     val resolved = leaves.filter({ t -> f41CarriesNoResolvedShadow(firstDeclaration(t)) == false });
     assert resolved.length == 1;
     assert firstDeclaration(.Effect.Shadow.Inner)
-        == "box-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05)";
+        == "--tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);box-shadow:" + boxShadowChain();
     assert f41CarriesNoResolvedShadow(firstDeclaration(.Effect.Shadow.Inner)) == false;
 }
 
@@ -11787,8 +11834,15 @@ test "regression — exactly one leaf resolves a shadow value, and it is Shadow.
 // of the eighteen scale leaves reference the theme; the other three
 // (`Shadow.None`, `Shadow.Inner`, `TextShadow.None`) are a keyword and a
 // literal the reference itself prints.
+// The first declaration of a token's string — the channel a shadow writes,
+// before the shared `box-shadow` reader every shadow token repeats.
+fn f41Head(decl: string) -> string {
+    val out = decl.split(";").at(0) ?? "";
+    return out;
+}
+
 test "regression — every scale step is a distinct theme reference" {
-    val scale = effectLeaves().filter({ t -> firstDeclaration(t).indexOf("var(--") != -1 });
+    val scale = effectLeaves().filter({ t -> f41Head(firstDeclaration(t)).indexOf("var(--") != -1 });
     assert scale.length == 15;
     val decls = scale.map({ t -> firstDeclaration(t) });
     // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
@@ -13182,7 +13236,7 @@ test "the head audit — four leaves repeat a head elsewhere and none of them is
     assert firstDeclaration(.Transition.Transform).startsWith("transition-property:transform");
     // and the sections whose HEADS carry those names are untouched
     assert firstDeclaration(.Effect.Opacity.__50) == "opacity:0.5";
-    assert firstDeclaration(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
+    assert firstDeclaration(.Effect.Shadow.Md) == "--tw-shadow:var(--shadow-md);box-shadow:" + boxShadowChain();
     assert firstDeclaration(.Pad.All.__4) == "padding:calc(var(--spacing) * 4)";
 }
 
@@ -16457,8 +16511,8 @@ test "tokenToSheet — Border.Rounded.Full lowers to border-radius:9999px" {
 // FRONT 41 CHANGED WHAT THIS ROW EMITS. It pinned `box-shadow:md` — the
 // Tailwind class suffix where a CSS value belongs, which a browser discards —
 // and the leaf name did not move, so the smoke test moved with the value.
-test "tokenToSheet — Effect.Shadow.Md lowers to box-shadow:var(--shadow-md)" {
-    assert tokenDeclarations(.Effect.Shadow.Md) == "box-shadow:var(--shadow-md)";
+test "tokenToSheet — Effect.Shadow.Md lowers to the --tw-shadow channel and the reader" {
+    assert tokenDeclarations(.Effect.Shadow.Md) == "--tw-shadow:var(--shadow-md);box-shadow:" + boxShadowChain();
 }
 
 test "tokenToSheet — a section token is one utilities rule on the bare ampersand" {

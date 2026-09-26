@@ -315,6 +315,14 @@ pub fn main() -> void {
 // outside the library. Five tokens in one list are five declarations of ONE
 // property, so the last wins in a browser — what is being pinned here is the
 // mapping, one row at a time, which is what a catalogue rule is for.
+
+// The composed `box-shadow` every shadow and ring token writes beside its own
+// channel (emilia front 40/41: upstream's five channels, each with its null
+// shadow as a fallback), spelled once for this example's assertions.
+fn chain() -> string {
+    return "var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent), var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow, 0 0 transparent)";
+}
+
 test "rotate — the five steps of `§ 16.4`, and the property is `rotate`" {
     val cls = everyRotation();
     val doc = await flushWith(bareOptions());
@@ -497,7 +505,7 @@ test "end to end — a card that lifts, grows and deepens its shadow on hover" {
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls + "{background-color:var(--color-white);"
         + "border-radius:var(--radius-lg);"
-        + "box-shadow:var(--shadow-sm);"
+        + "--tw-shadow:var(--shadow-sm);box-shadow:" + chain() + ";"
         + "transition-property:color, background-color, border-color, "
         + "text-decoration-color, fill, stroke, opacity, box-shadow, transform, "
         + "filter, backdrop-filter;"
@@ -505,7 +513,7 @@ test "end to end — a card that lifts, grows and deepens its shadow on hover" {
         + "transition-duration:200ms}") != -1;
     assert doc.indexOf("@media (hover: hover){." + cls
         + ":hover{translate:var(--tw-translate-x, 0) 1px;scale:1.05;"
-        + "box-shadow:var(--shadow-lg)}}") != -1;
+        + "--tw-shadow:var(--shadow-lg);box-shadow:" + chain() + "}}") != -1;
 }
 
 // END TO END — the chevron. The rotation is this front's, the `.group` selector
