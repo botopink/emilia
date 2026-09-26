@@ -37,9 +37,25 @@ pub fn spacing(n: i32) -> string {
 // The half steps: `spacingHalf(0)` is `calc(var(--spacing) * 0.5)`,
 // `spacingHalf(1)` is `calc(var(--spacing) * 1.5)`. There is no zero special
 // case here — `p-0.5` is a real utility with a real multiplier.
+//
+// `n` is the WHOLE PART and is never negative: `spacingHalf(-0)` would be
+// `spacingHalf(0)` (an `i32` has no negative zero), so a signed whole part
+// cannot spell `-0.5`. The negative half steps are `spacingNegHalf`, and a
+// negative `n` here is refused rather than read as one of them.
 pub fn spacingHalf(n: i32) -> string {
+    if (n < 0) @panic("emilia spacing: spacingHalf(" + n.toString() + ") — the whole part of a half step is never negative; `-" + (0 - n).toString() + ".5` is spacingNegHalf(" + (0 - n).toString() + ")");
     val step = n.toString();
     return "calc(var(--spacing) * " + step + ".5)";
+}
+
+// The negative half steps, by the magnitude's whole part: `spacingNegHalf(0)`
+// is `calc(var(--spacing) * -0.5)` — the `-mt-0.5` row — and
+// `spacingNegHalf(1)` is `calc(var(--spacing) * -1.5)`. The sign is in the
+// name, so `-0.5` has a spelling.
+pub fn spacingNegHalf(n: i32) -> string {
+    if (n < 0) @panic("emilia spacing: spacingNegHalf(" + n.toString() + ") — pass the magnitude's whole part, never negative");
+    val step = n.toString();
+    return "calc(var(--spacing) * -" + step + ".5)";
 }
 
 // ── tests ────────────────────────────────────────────────────────────────────
@@ -75,8 +91,11 @@ test "spacingHalf — the four fractional steps of the ladder" {
     assert spacingHalf(3) == "calc(var(--spacing) * 3.5)";
 }
 
-test "spacingHalf — a negative half step" {
-    assert spacingHalf(-1) == "calc(var(--spacing) * -1.5)";
+test "spacingNegHalf — the negative half steps, -0.5 included" {
+    assert spacingNegHalf(0) == "calc(var(--spacing) * -0.5)";
+    assert spacingNegHalf(1) == "calc(var(--spacing) * -1.5)";
+    assert spacingNegHalf(3) == "calc(var(--spacing) * -3.5)";
+    assert spacingNegHalf(0) != spacingHalf(0);
 }
 
 test "spacing — the string is the same on every call, so class hashes are stable" {

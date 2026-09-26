@@ -73,10 +73,9 @@
 ////              Auto on EVERY direction — a VALUE on the ladder, so
 ////              `.Margin.X.Auto` is `margin-left:auto;margin-right:auto` —
 ////              and a Neg sub-section per direction, upstream's `-mt-4`.
-////              Neg carries no 0 and no Auto, and its Half is { 1, 2, 3 }:
-////              `spacingHalf(-0)` is `spacingHalf(0)`, so the -0.5 rung is the
-////              one front 54's ladder cannot spell and emilia will not spell a
-////              second `calc(var(--spacing) * …)` to reach it
+////              Neg carries no 0 and no Auto, and its Half is { 0, 1, 2, 3 }
+////              over front 54's `spacingNegHalf` — `.Margin.T.Neg.Half.0` is
+////              `-mt-0.5`, `calc(var(--spacing) * -0.5)`
 ////   Size     — front 35: thirteen sub-sections over §8.1-§8.7 — W, H, Both
 ////              (upstream's size-*, two properties from one leaf), MinW, MaxW,
 ////              MinH, MaxH and the six logical Inline/Block forms. Four kinds
@@ -400,7 +399,7 @@
 ////     .Active([Token])           active:          → &:active{…}
 ////     .Visited([Token])          visited:         → &:visited{…}
 ////     .Target([Token])           target:          → &:target{…}
-////     .Open([Token])             open:            → &:is(:open, :popover-open){…}
+////     .Open([Token])             open:            → &:is([open], :popover-open, :open){…}
 ////     .Inert([Token])            inert:           → &:is([inert], [inert] *){…}
 ////
 ////   form state
@@ -441,8 +440,9 @@
 ////     .FirstLine([Token])        first-line:      → &::first-line{…}
 ////     .Placeholder([Token])      placeholder:     → &::placeholder{…}
 ////     .File([Token])             file:            → &::file-selector-button{…}
-////     .Marker([Token])           marker:          → & ::marker{…}
-////     .Selection([Token])        selection:       → & ::selection{…}
+////     .Marker([Token])           marker:          → & *::marker, &::marker (+ the two
+////                                                   ::-webkit-details-marker rules)
+////     .Selection([Token])        selection:       → & *::selection, &::selection
 ////     .Backdrop([Token])         backdrop:        → &::backdrop{…}
 ////
 ////   parent state — the `.group` class is the consumer's, never emilia's
@@ -451,7 +451,7 @@
 ////     .GroupActive([Token])      group-active:    → &:is(:where(.group):active *){…}
 ////     .GroupVisited([Token])     group-visited:   → &:is(:where(.group):visited *){…}
 ////     .GroupDisabled([Token])    group-disabled:  → &:is(:where(.group):disabled *){…}
-////     .GroupOpen([Token])        group-open:      → &:is(:where(.group):open *){…}
+////     .GroupOpen([Token])        group-open:      → &:is(:where(.group):is([open], :popover-open, :open) *){…}
 ////
 ////   sibling state — the `.peer` class is the consumer's, never emilia's
 ////     .PeerHover([Token])        peer-hover:      → &:is(:where(.peer):hover ~ *){…}
@@ -464,8 +464,8 @@
 ////     .PeerPlaceholderShown([Token]) peer-placeholder-shown: → &:is(:where(.peer):placeholder-shown ~ *){…}
 ////
 ////   writing direction and descent
-////     .Rtl([Token])              rtl:             → [dir="rtl"] &{…}
-////     .Ltr([Token])              ltr:             → [dir="ltr"] &{…}
+////     .Rtl([Token])              rtl:             → &:where(:dir(rtl), [dir="rtl"], [dir="rtl"] *){…}
+////     .Ltr([Token])              ltr:             → &:where(:dir(ltr), [dir="ltr"], [dir="ltr"] *){…}
 ////     .Children([Token])         *:               → :is(& > *){…}
 ////     .Descendants([Token])      **:              → :is(& *){…}
 ////
@@ -829,7 +829,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         X {
@@ -842,7 +842,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         Y {
@@ -855,7 +855,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         T {
@@ -868,7 +868,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         R {
@@ -881,7 +881,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         B {
@@ -894,7 +894,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         L {
@@ -907,7 +907,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         S {
@@ -920,7 +920,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         E {
@@ -933,7 +933,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
     }
@@ -1052,7 +1052,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         Y {
@@ -1064,7 +1064,7 @@ pub type Token {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40,
                 44, 48, 52, 56, 60, 64, 72, 80, 96,
                 Px,
-                Half { 1, 2, 3 }
+                Half { 0, 1, 2, 3 }
             }
         }
         XReverse,
@@ -1109,7 +1109,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             X {
@@ -1124,7 +1124,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             Y {
@@ -1139,7 +1139,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             T {
@@ -1154,7 +1154,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             R {
@@ -1169,7 +1169,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             B {
@@ -1184,7 +1184,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             L {
@@ -1199,7 +1199,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             S {
@@ -1214,7 +1214,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
             E {
@@ -1229,7 +1229,7 @@ pub type Token {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36,
                     40, 44, 48, 52, 56, 60, 64, 72, 80, 96,
                     Px,
-                    Half { 1, 2, 3 }
+                    Half { 0, 1, 2, 3 }
                 }
             }
         }
@@ -1707,10 +1707,9 @@ pub type Token {
             Lg,
             None,
         }
-        // `§ 12.3` prints fifteen steps. The six PROVISIONAL ones — 15, 35,
-        // 45, 55, 65, 85 — are marked at the arms that emit them in
-        // `emilia.bp`; they are upstream's bare-integer `opacity-<number>`
-        // form and the reference carries no row for them.
+        // `§ 12.3` prints fifteen steps. The other six — 15, 35, 45, 55, 65,
+        // 85 — are confirmed against upstream v4's compiled `opacity-<n>`;
+        // every step emits upstream's `opacity:<n>%`.
         Opacity {
             0,
             5,
@@ -1781,9 +1780,9 @@ pub type Token {
     }
 
     // `§ 12.6`, nine properties and one section each. The twenty rows the
-    // reference prints are here; the PROVISIONAL leaves that complete three of
-    // the keyword ladders (`Position` beyond Center, `Repeat` beyond the two,
-    // `Size.Auto`) are marked at their arms in `emilia.bp`.
+    // reference prints are here, with the leaves that complete three of the
+    // keyword ladders (`Position` beyond Center, `Repeat` beyond the two,
+    // `Size.Auto`), confirmed against upstream's compiled output.
     Mask {
         Clip {
             Border,

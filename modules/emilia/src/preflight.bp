@@ -84,9 +84,9 @@ fn noTheme() -> Options {
 
 fn ruleFor(selector: string) -> string {
     val hits = preflightRules().filter({ r -> r.selector == selector });
-    val none = baseRule("", "");
-    val out = hits.at(0) ?? none;
-    return out.declarations;
+    val hit = hits.at(0);
+    if (hit == null) { @panic("ruleFor: preflight has no rule for `" + selector + "`"); };
+    return hit.declarations;
 }
 
 test "preflight — eleven rules, every one in the base layer with no at-rule" {

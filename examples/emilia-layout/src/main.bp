@@ -235,7 +235,7 @@ test "an axis inset is two declarations, because CSS has no `inset-x`" {
 test "the four shapes of an inset leaf — fraction, keyword, negative, half step" {
     val cls = emilia(insetShapes());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{top:50%;right:100%;bottom:auto;"
+    assert doc.indexOf("." + cls + "{top:calc(1 / 2 * 100%);right:100%;bottom:auto;"
         + "left:calc(var(--spacing) * -4);"
         + "inset-inline-start:calc(var(--spacing) * 0.5)}") != -1;
 }

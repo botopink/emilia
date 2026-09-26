@@ -227,18 +227,19 @@ test "the two ends of the link list are trimmed structurally, not by an index" {
     assert doc.indexOf("." + cls + ":last-child{margin-right:0}") != -1;
 }
 
-test "`marker` keeps the space the reference gives it — it is not `&::marker`" {
+test "`marker` reaches the element's own marker and its descendants', as upstream does" {
     val cls = navLink();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + " ::marker{color:var(--color-gray-500)}") != -1;
-    assert doc.indexOf("." + cls + "::marker") == -1;
+    assert doc.indexOf("." + cls + " *::marker{color:var(--color-gray-500)}") != -1;
+    assert doc.indexOf("." + cls + "::marker{color:var(--color-gray-500)}") != -1;
+    assert doc.indexOf("." + cls + " ::marker") == -1;
 }
 
 test "the input's four form states are four sibling rules of one class" {
     val cls = input();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls + "::placeholder{color:var(--color-gray-500)}") != -1;
-    assert doc.indexOf("." + cls + ":disabled{opacity:0.5}") != -1;
+    assert doc.indexOf("." + cls + ":disabled{opacity:50%}") != -1;
     // The palette reference and not `border-color:red`: front 40 rewrote
     // `Border.Color` onto front 33's grid, so the shade this token always
     // carried finally reaches the output. What this test pins is the SELECTOR,

@@ -200,7 +200,8 @@ The values are front 54's `defaultTheme()`, so a project that overrides
 Nine weights: `Thin Extralight Light Normal Medium Semibold Bold Extrabold
 Black`, `100` through `900`. The weights stay LITERAL — that is the form the
 reference prints — while the families are references, and the three stacks live
-in `typographyEntries()`.
+in `typographyEntries()`, copied from upstream v4's `theme.css` (the reference
+prints none).
 
 ```bp
 .Font.Smoothing.Antialiased // -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale
@@ -652,11 +653,9 @@ family of utilities with no alternative spelling:
 ```
 
 `Neg` carries no `0` and no `Auto` — a negative zero and a negative auto are not
-utilities — and its `Half` is `{ 1, 2, 3 }`, not `{ 0, 1, 2, 3 }`. The missing
-rung is `-0.5`: `spacingHalf` takes an `i32`, an `i32` has no negative zero, and
-emilia will not write a second `calc(var(--spacing) * …)` of its own to reach
-one value. Closing it is front 54's (a signed half step); until then `-mt-0.5`
-has no token, and no wrong token either.
+utilities — and its `Half` is `{ 0, 1, 2, 3 }`, answered by the theme's
+`spacingNegHalf`: `.Margin.T.Neg.Half.0` is `-mt-0.5`,
+`margin-top:calc(var(--spacing) * -0.5)`.
 
 ### Size
 
@@ -667,8 +666,8 @@ six logical forms `Inline`, `Block`, `MinInline`, `MaxInline`, `MinBlock`,
 ```bp
 .Size.W.64            // width:calc(var(--spacing) * 64)   — the spacing ladder again
 .Size.W.Px            // width:1px
-.Size.W.Frac.Half     // width:50%
-.Size.W.Frac.Third    // width:33.333333%
+.Size.W.Frac.Half     // width:calc(1 / 2 * 100%)
+.Size.W.Frac.Third    // width:calc(1 / 3 * 100%)
 .Size.W.Full          // width:100%
 .Size.W.Min           // width:min-content
 .Size.W.Auto          // width:auto
@@ -677,7 +676,9 @@ six logical forms `Inline`, `Block`, `MinInline`, `MaxInline`, `MinBlock`,
 `1/2` is neither an identifier nor a run of digits, so a fraction cannot be a
 leaf; `Frac` carries the eleven upstream fractions by name — `Half`, `Third`,
 `TwoThirds`, `Quarter`, `ThreeQuarters`, `Fifth`, `TwoFifths`, `ThreeFifths`,
-`FourFifths`, `Sixth`, `FiveSixths`.
+`FourFifths`, `Sixth`, `FiveSixths`. Each is upstream v4's `calc(N / D * 100%)`,
+spelled once by `fraction(n, d)`, and every `Frac` in the library — sizes,
+insets, flex bases, translates — reads it.
 
 **The viewport unit differs by axis** and the tests say so:
 
@@ -788,7 +789,7 @@ Everything else in `§ 5` is a **sub-section** beside those leaves.
 .Layout.Inset.T.4           // top:calc(var(--spacing) * 4)
 .Layout.Inset.T.Neg.4       // top:calc(var(--spacing) * -4)
 .Layout.Inset.T.Half.0      // top:calc(var(--spacing) * 0.5)
-.Layout.Inset.T.Frac.Half   // top:50%
+.Layout.Inset.T.Frac.Half   // top:calc(1 / 2 * 100%)
 .Layout.Inset.T.Full        // top:100%
 .Layout.Inset.T.Auto        // top:auto
 .Layout.Inset.S.0           // inset-inline-start:0
@@ -920,7 +921,7 @@ everything a box that already declares it can say next.
 .Flex.Basis.Px        // flex-basis:1px
 .Flex.Basis.Auto      // flex-basis:auto
 .Flex.Basis.Full      // flex-basis:100%
-.Flex.Basis.Frac.Third // flex-basis:33.333333%
+.Flex.Basis.Frac.Third // flex-basis:calc(1 / 3 * 100%)
 
 .Flex.Order.1         // order:1
 .Flex.Order.12        // order:12
@@ -935,7 +936,7 @@ sub-section of its own name.
 `Basis` is the only family here that is a **length**, and it is front 35's
 scale answering front 54's `spacing(n)` / `spacingHalf(n)` — `.Flex.Basis.4`
 and `.Pad.All.4` carry the same length text because they call the same
-function. Its fractions are front 35's percentages to the last decimal, and a
+function. Its fractions are front 35's `fraction(n, d)` strings, and a
 test compares `.Flex.Basis.Frac.Third` to `.Size.W.Frac.Third` rather than to a
 literal.
 
@@ -1324,13 +1325,13 @@ other side that the one is `Shadow.Inner`.
 
 #### Opacity
 
-Twenty-one steps, each with a **leading zero** — `opacity:0.6` and never
-`opacity:.6`, which is legal CSS and is not what the reference prints.
+Twenty-one steps, each upstream v4's **percentage** — `opacity:60%`, where the
+reference prints the v3 fraction `opacity:0.6`.
 
 ```bp
-.Effect.Opacity.__0        // opacity:0
-.Effect.Opacity.__60       // opacity:0.6
-.Effect.Opacity.__100      // opacity:1
+.Effect.Opacity.__0        // opacity:0%
+.Effect.Opacity.__60       // opacity:60%
+.Effect.Opacity.__100      // opacity:100%
 ```
 
 A numeric leaf is three spellings for one thing: bare digits in the
@@ -1338,9 +1339,8 @@ declaration, `.Effect.Opacity.60` in expression position, `__60` in a `case`
 pattern.
 
 `§ 12.3` prints fifteen steps. Six more — `15`, `35`, `45`, `55`, `65`, `85` —
-are declared and **marked provisional at the arm that emits them**: they are
-upstream's bare-integer `opacity-<number>` form, which the reference carries no
-row for.
+are declared and confirmed against upstream's compiled `opacity-<n>`, which the
+reference carries no row for.
 
 #### Blend modes
 
@@ -1387,7 +1387,7 @@ properties over the same two words.
 
 `§ 12.6` prints twenty rows. Nine more leaves — `Position.{Top,Bottom,Left,
 Right}`, `Repeat.{RepeatX,RepeatY,Round,Space}` and `Size.Auto` — complete the
-three keyword ladders and are **marked provisional at the arm that emits them**.
+three keyword ladders; each is confirmed against upstream v4's compiled output.
 
 #### Arbitrary values — `rawShadow`, `rawTextShadow`, `rawMaskImage`
 
@@ -1410,10 +1410,14 @@ call does not carry the typed-array context** — `[.EffectShadowRaw("…")]` do
 not parse. `Token.EffectShadowRaw(value: "…")` in full does, and so does a call
 to one of the wrappers; they produce the same token and the same class.
 
-These three are provisional as a group: the reference prints no
-arbitrary-value form anywhere. What is not provisional is the **property** each
-sets — `box-shadow`, `text-shadow` and `mask-image` are the properties the
-confirmed rows of the same families set.
+The reference prints no arbitrary-value form; each was measured against
+upstream v4. `rawShadow` is upstream's shape — the value goes into
+`--tw-shadow` and the rule writes the five-channel `box-shadow` reader, so it
+composes with a ring as `Effect.Shadow` does. `rawTextShadow` and
+`rawMaskImage` set upstream's property (`text-shadow`, `mask-image`) and stay
+**provisional** in one respect, marked at their arm: upstream rewrites a colour
+inside a text shadow through `--tw-text-shadow-color`, which a raw string does
+not.
 
 #### Nothing in `Effect`, `Blend` or `Mask` resolves a shadow
 
@@ -1563,7 +1567,7 @@ the output with the `200ms` after it. **List order is declaration order**, so
 the later one wins; reversing the two is a different class whose preset now
 overrides the override.
 
-#### `transitionEntries()` — three PROVISIONAL `--ease-*` values
+#### `transitionEntries()` — upstream's three `--ease-*` values
 
 `defaultTheme()` carries the four `--animate-*` entries and **no `--ease-*`**,
 so a project composes them:
@@ -1578,16 +1582,10 @@ val th = extendTheme(defaultTheme(), transitionEntries());
 | `--ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-**The three VALUES are provisional.** `§ 15.4` prints the three *names* — it
-writes `transition-timing-function: var(--ease-in)` — and prints no value for
-any of them; `§ 21`'s theme tables carry `--color-*`, `--text-*`, `--radius-*`
-and `--animate-*` and no `--ease-*` row at all. The cubic-beziers come from the
-1.0.8-beta draft this front replaces. What is **not** provisional: the three
-names are the reference's, verbatim; the namespace is front 54's `Ns.Ease`, so
-`extendTheme` accepts them and `clearNamespace(th, Ns.Ease)` drops exactly these
-three; and the shape is a single timing function. If a later front replaces the
-values, **nothing else moves** — not a leaf, not a declaration, not a class
-name — because every rule references the variable and never its value.
+`§ 15.4` prints the three *names* and no value; the cubic-beziers are
+upstream v4's `theme.css` (4.3.2), byte for byte. The namespace is front 54's
+`Ns.Ease`, so `extendTheme` accepts them and `clearNamespace(th, Ns.Ease)` drops
+exactly these three; every rule references the variable and never its value.
 
 #### Animate — a declaration and a block
 
@@ -1637,8 +1635,11 @@ call does not carry the typed-array context either.
 `rawAnimate` goes through `declSheet` and **not** through `animateTokenToSheet`:
 a custom animation names keyframes emilia does not own, so it hoists no block.
 
-Both are **PROVISIONAL as a pair** — `§ 15` prints no arbitrary-value row, here
-or anywhere. What is not provisional is the property each one sets.
+`§ 15` prints no arbitrary-value row; both were measured against upstream v4.
+`rawAnimate` is `animation:<value>`, as upstream's `animate-[…]`.
+`rawTransitionProperty` writes the property **and** the timing and duration
+defaults, as upstream's `transition-[…]` and every preset beside it do:
+`transition-property:width;transition-timing-function:var(--ease-out);transition-duration:150ms`.
 
 #### Nothing in `Transition` or `Animate` resolves a timing function
 
@@ -1728,11 +1729,15 @@ val lifted: Token[] = [
     .Transform.Scale.__110,
     .Transform.TranslateY.Full,
 ];
-// rotate:45deg;scale:1.1;--tw-translate-y:100%;translate:var(--tw-translate-x) var(--tw-translate-y)
+// rotate:45deg;
+// --tw-scale-x:110%;--tw-scale-y:110%;--tw-scale-z:110%;scale:var(--tw-scale-x) var(--tw-scale-y);
+// --tw-translate-y:100%;translate:var(--tw-translate-x) var(--tw-translate-y)
 ```
 
-No `--tw-*` cascade is needed to compose them, which is why the pre-1.0.10
-`transform:rotate(45deg) scale(1.1)` shape is gone.
+Three properties, so none overwrites another; the pre-1.0.10
+`transform:rotate(45deg) scale(1.1)` shape is gone. Scale and translate also
+write their axes into `--tw-*` variables, as upstream v4 does, so two axes of
+one family compose too.
 
 #### Rotate, and the negative half
 
@@ -1743,24 +1748,29 @@ No `--tw-*` cascade is needed to compose them, which is why the pre-1.0.10
 | `.Transform.Rotate.__45` | `rotate:45deg` |
 | `.Transform.Rotate.__90` | `rotate:90deg` |
 | `.Transform.Rotate.__180` | `rotate:180deg` |
-| `.Transform.Rotate.Neg.__12` | `rotate:-12deg` |
+| `.Transform.Rotate.Neg.__12` | `rotate:calc(12deg * -1)` |
 
 `Neg` is a sub-section and not a sign, because there is no spelling for a
 negative numeric leaf — front 35's `Margin.*.Neg` convention, third use. The
-five magnitudes are `1`, `12`, `45`, `90`, `180`.
+five magnitudes are `1`, `12`, `45`, `90`, `180`, and each negates the way
+upstream v4 does, by multiplying: `calc(Ndeg * -1)`.
 
-#### Scale, and the leading zero
+#### Scale — upstream v4's three variables
 
-`.Transform.Scale.__50` is `scale:.5` — **without** a leading zero, which is
-what `§ 16.5` prints. `.Transform.Zoom.__50` is `zoom:0.5` — **with** one,
-which is what `§ 16.11` prints four subsections later. Both are copied from the
-reference and asserted in adjacent lines, so a well-meaning normaliser fails a
-test rather than shipping a divergence.
+A step is a **percentage** written into `--tw-scale-x`, `--tw-scale-y` and
+`--tw-scale-z`, then read by one `scale:var(--tw-scale-x) var(--tw-scale-y)`;
+`ScaleX` / `ScaleY` write their own axis only, so the two compose:
 
-`ScaleX` and `ScaleY` carry the same ten steps on the two-value syntax:
-`.Transform.ScaleX.__50` is `scale:.5 1` and `.Transform.ScaleY.__50` is
-`scale:1 .5`. `ScaleX.__100` and `ScaleY.__100` are both `scale:1 1` — the one
-place two leaves of this section share a declaration, and it is `§ 16.5`'s own.
+```bp
+.Transform.Scale.__50    // --tw-scale-x:50%;--tw-scale-y:50%;--tw-scale-z:50%;scale:var(--tw-scale-x) var(--tw-scale-y)
+.Transform.ScaleX.__50   // --tw-scale-x:50%;scale:var(--tw-scale-x) var(--tw-scale-y)
+.Transform.ScaleY.__150  // --tw-scale-y:150%;scale:var(--tw-scale-x) var(--tw-scale-y)
+```
+
+The three variables are registered with `@property` (initial value `1`), so an
+axis nobody set reads as identity. The reference file's `scale:.5` /
+`scale:.5 1` is v3's shape. `.Transform.Zoom.__50` stays `zoom:0.5`, the
+reference's bare number.
 
 #### Translate — upstream v4's two variables
 
@@ -1827,7 +1837,7 @@ after the value. `.Transform.Backface.{Visible,Hidden}` is `§ 16.1`.
 val th = extendTheme(defaultTheme(), transformEntries());
 ```
 
-Unlike front 44's `--ease-*`, **none of these five values is provisional**:
+Like front 44's `--ease-*`, **none of these five values is provisional**:
 `§ 16.2` prints the variable *and* its length on every row.
 `.Transform.PerspectiveOrigin.{Center,Top,Bottom,Left,Right}` is `§ 16.3`.
 
@@ -1962,7 +1972,7 @@ moves the queries and the class hashes with it.
 | `active:` | `Token.Active(inner)` | `&:active{…}` |
 | `visited:` | `Token.Visited(inner)` | `&:visited{…}` |
 | `target:` | `Token.Target(inner)` | `&:target{…}` |
-| `open:` | `Token.Open(inner)` | `&:is(:open, :popover-open){…}` |
+| `open:` | `Token.Open(inner)` | `&:is([open], :popover-open, :open){…}` |
 | `inert:` | `Token.Inert(inner)` | `&:is([inert], [inert] *){…}` |
 
 **Form state**
@@ -2012,8 +2022,8 @@ moves the queries and the class hashes with it.
 | `first-line:` | `Token.FirstLine(inner)` | `&::first-line{…}` |
 | `placeholder:` | `Token.Placeholder(inner)` | `&::placeholder{…}` |
 | `file:` | `Token.File(inner)` | `&::file-selector-button{…}` |
-| `marker:` | `Token.Marker(inner)` | `& ::marker{…}` |
-| `selection:` | `Token.Selection(inner)` | `& ::selection{…}` |
+| `marker:` | `Token.Marker(inner)` | `& *::marker{…}`, `&::marker{…}`, and the same two for `::-webkit-details-marker` |
+| `selection:` | `Token.Selection(inner)` | `& *::selection{…}`, `&::selection{…}` |
 | `backdrop:` | `Token.Backdrop(inner)` | `&::backdrop{…}` |
 
 **Parent state — the `.group` class is the consumer's, never emilia's**
@@ -2025,7 +2035,7 @@ moves the queries and the class hashes with it.
 | `group-active:` | `Token.GroupActive(inner)` | `&:is(:where(.group):active *){…}` |
 | `group-visited:` | `Token.GroupVisited(inner)` | `&:is(:where(.group):visited *){…}` |
 | `group-disabled:` | `Token.GroupDisabled(inner)` | `&:is(:where(.group):disabled *){…}` |
-| `group-open:` | `Token.GroupOpen(inner)` | `&:is(:where(.group):open *){…}` |
+| `group-open:` | `Token.GroupOpen(inner)` | `&:is(:where(.group):is([open], :popover-open, :open) *){…}` |
 
 **Sibling state — the `.peer` class is the consumer's, never emilia's**
 
@@ -2044,8 +2054,8 @@ moves the queries and the class hashes with it.
 
 | upstream | emilia | CSS |
 | --- | --- | --- |
-| `rtl:` | `Token.Rtl(inner)` | `[dir="rtl"] &{…}` |
-| `ltr:` | `Token.Ltr(inner)` | `[dir="ltr"] &{…}` |
+| `rtl:` | `Token.Rtl(inner)` | `&:where(:dir(rtl), [dir="rtl"], [dir="rtl"] *){…}` |
+| `ltr:` | `Token.Ltr(inner)` | `&:where(:dir(ltr), [dir="ltr"], [dir="ltr"] *){…}` |
 | `*:` | `Token.Children(inner)` | `:is(& > *){…}` |
 | `**:` | `Token.Descendants(inner)` | `:is(& *){…}` |
 
@@ -2171,7 +2181,8 @@ extendTheme(defaultTheme(), [ThemeEntry(name: "--gutter", value: "1rem")]);
 | Function | What it answers |
 | --- | --- |
 | `spacing(n) -> string` | `calc(var(--spacing) * n)`; `spacing(0)` is `0` |
-| `spacingHalf(n) -> string` | `calc(var(--spacing) * n.5)` |
+| `spacingHalf(n) -> string` | `calc(var(--spacing) * n.5)`; `n` is never negative (a negative `n` aborts) |
+| `spacingNegHalf(n) -> string` | `calc(var(--spacing) * -n.5)`; `spacingNegHalf(0)` is the `-0.5` rung |
 
 emilia **never resolves a spacing value**. Every spacing utility is a multiplier
 of `var(--spacing)`, resolved by the browser, so the same token list renders
@@ -2184,11 +2195,15 @@ assert spacing(0) == "0";
 assert spacing(4) == "calc(var(--spacing) * 4)";
 assert spacing(-4) == "calc(var(--spacing) * -4)";
 assert spacingHalf(1) == "calc(var(--spacing) * 1.5)";
+assert spacingNegHalf(0) == "calc(var(--spacing) * -0.5)";
 ```
 
-Negative steps need no second function. `spacing` takes an `i32`, not an `f64`,
-so the emitted string never depends on a backend's float formatting; the
-fractional steps are a closed set that `spacingHalf` covers exactly.
+A negative whole step needs no second function (`spacing(-4)`). A negative HALF
+step does: `spacingHalf` takes the whole part as an `i32`, and an `i32` has no
+negative zero, so `-0.5` could not be spelled through it — the sign lives in
+`spacingNegHalf`'s name instead. `spacing` takes an `i32`, not an `f64`, so the
+emitted string never depends on a backend's float formatting; the fractional
+steps are a closed set that the two half functions cover exactly.
 
 ### Rendering a theme
 
@@ -2293,7 +2308,7 @@ field covers every variant there is, because each is a template with one `&`:
 
 ```bp
 Variant(atRule: "@media (hover: hover)", selector: "&:hover")     // hover
-Variant(atRule: "", selector: "[dir=\"rtl\"] &")                    // rtl
+Variant(atRule: "", selector: ".dark &")                            // a trailing `&`
 Variant(atRule: "@media (width >= 48rem)", selector: "&")         // md
 Variant(atRule: "", selector: "&:is(:where(.group):hover *)")     // group-hover
 ```

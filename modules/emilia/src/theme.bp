@@ -579,13 +579,12 @@ test "defaultTheme — every entry sits in a known namespace, and the order is s
 
 // ── tests · extend · override · clear · empty · read ─────────────────────────
 //
-// THE REFUSAL PATH IS NOT ASSERTED HERE. `extendTheme(th, [ThemeEntry(name:
-// "--gutter", value: "1rem")])` refuses the entry by aborting with a message
-// naming `--gutter`; an abort is not a value a test can read, so this file
-// records the case the way rakun records its decorator-placement cases — a
-// note here, and the case itself in the compiler's own suite. Asserting the
-// ABSENCE of the entry, as the front's acceptance list suggests, would assert
-// exactly the accept-and-ignore behaviour the refusal exists to forbid.
+// THE REFUSAL PATH IS ASSERTED IN `emilia.bp` ("front 54 — an entry in no
+// namespace aborts…"): `extendTheme(th, [ThemeEntry(name: "--gutter", value:
+// "1rem")])` aborts with a message naming `--gutter`, and the test reads that
+// message through `arbitrary`'s `panicMessage`, which this module cannot import
+// (05emilia-h). It asserts the REFUSAL, never the entry's absence — absence is
+// what accept-and-ignore would also produce.
 
 test "emptyTheme — zero entries, zero keyframes, and themeValue reads nothing" {
     val th = emptyTheme();
@@ -708,7 +707,8 @@ test "keyframeCss — four bodies, named, and every one brace-balanced" {
 }
 
 test "keyframeCss — front 56 writes a block without spelling the at-rule" {
-    val first = keyframeCss(defaultTheme()).at(0) ?? ThemeEntry(name: "", value: "");
+    val first = keyframeCss(defaultTheme()).at(0);
+    if (first == null) { assert false; return; };
     assert nsPrefix(Ns.Keyframes) + first.name + first.value == "@keyframes spin{to{transform:rotate(360deg)}}";
 }
 
