@@ -1055,14 +1055,12 @@ to the commonJS row and runs once.
   workaround in `output.bp`'s `wrapAtRules` (mapping the list twice) is no
   longer required and may be simplified by whichever front next touches it.
   Kept as the reason a per-target divergence is worth a cell rather than a note.
-- **`Array.lastIndexOf` does not lower on erlang.** `xs.lastIndexOf(x)` compiles
-  and runs on commonJS and reds the erlang build with `function lastIndexOf/2
-  undefined` — a HARD error, not a warning, so it cannot reach a green suite
-  unsuspected, but it is invisible until the second target is run. Front 40 hit
-  it in a duplicate check over 288 declarations; the replacement counts
-  occurrences (`decls.filter({ x -> x == d }).length > 1`). `indexOf`, `filter`,
-  `map`, `all` and `append` all lower on both. **Run `botopink test --target
-  erlang` before every commit**, not only at the end of a front.
+- **`Array.lastIndexOf` did not lower on erlang** (`function lastIndexOf/2
+  undefined` — a HARD error, invisible until the second target ran). It is
+  declared and lowered on every target now; the duplicate checks written around
+  it still count occurrences (`decls.filter({ x -> x == d }).length > 1`), which
+  is correct and may stay. **Run `botopink test --target erlang` before every
+  commit**, not only at the end of a front.
 - **A front that turns a LITERAL into a REFERENCE must grep for its own tokens
   in other fronts' CONTROLS.** A "no leaf resolves a length" walk is paired with
   a control asserting some real token DOES carry one, so the probe is known to
