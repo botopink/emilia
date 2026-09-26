@@ -133,21 +133,33 @@ pub fn flush() -> @Task<string> {
 // parallel for no gain — the arm is one line either way.
 fn tokenToSheet(t: Token, th: Theme) -> Sheet {
     val out = case t {
+        // ── front 33 — colour palette ──────────────────────────
+        Color(_inner) -> declSheet(colorTokenToCss(_inner, th));
+        Bg(_inner) -> declSheet(bgTokenToCss(_inner, th));
+        Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
+        // ── end front 33 ───────────────────────────────────────
+        // ── front 35 — spacing and sizing ──────────────────────
+        Pad(_inner) -> declSheet(padTokenToCss(_inner, th));
+        Margin(_inner) -> declSheet(marginTokenToCss(_inner, th));
+        Size(_inner) -> declSheet(sizeTokenToCss(_inner, th));
+        Space(_inner) -> spaceTokenToSheet(_inner, th);
+        // ── end front 35 ───────────────────────────────────────
+        // ── front 36 — layout ──────────────────────────────────
+        Layout(_inner) -> declSheet(layoutTokenToCss(_inner, th));
+        // ── end front 36 ───────────────────────────────────────
+        // ── front 37 — flexbox, grid and gap ───────────────────
+        Flex(_inner) -> declSheet(flexTokenToCss(_inner, th));
+        Grid(_inner) -> declSheet(gridTokenToCss(_inner, th));
+        Gap(_inner) -> declSheet(gapTokenToCss(_inner, th));
+        // ── end front 37 ───────────────────────────────────────
         // ── front 38 — typography ──────────────────────────────
         Text(_inner) -> declSheet(textTokenToCss(_inner, th));
         Font(_inner) -> declSheet(fontTokenToCss(_inner, th));
         List(_inner) -> declSheet(listTokenToCss(_inner, th));
         // ── end front 38 ───────────────────────────────────────
-        Color(_inner) -> declSheet(colorTokenToCss(_inner, th));
-        Bg(_inner) -> declSheet(bgTokenToCss(_inner, th));
-        Pad(_inner) -> declSheet(padTokenToCss(_inner, th));
-        Margin(_inner) -> declSheet(marginTokenToCss(_inner, th));
-        Size(_inner) -> declSheet(sizeTokenToCss(_inner, th));
-        Space(_inner) -> spaceTokenToSheet(_inner, th);
-        Layout(_inner) -> declSheet(layoutTokenToCss(_inner, th));
-        Flex(_inner) -> declSheet(flexTokenToCss(_inner, th));
-        Grid(_inner) -> declSheet(gridTokenToCss(_inner, th));
-        Gap(_inner) -> declSheet(gapTokenToCss(_inner, th));
+        // ── front 39 — backgrounds ─────────────────────────────
+        Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
+        // ── end front 39 ───────────────────────────────────────
         // ── front 40 — borders, outlines, rings and divides ────
         Border(_inner) -> declSheet(borderTokenToCss(_inner, th));
         Outline(_inner) -> declSheet(outlineTokenToCss(_inner, th));
@@ -216,10 +228,6 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         SvgStroke(value) -> declSheet("stroke:" + value);
         SvgStrokeWidthRaw(value) -> declSheet("stroke-width:" + value);
         // ── end front 47 ───────────────────────────────────────
-        // ── front 39 — backgrounds ─────────────────────────
-        Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
-        // ── end front 39 ─────────────────────────────
-        Alpha(percent, inner) -> alphaSheet(tokensToSheet(inner, th), percent);
         // ── front 34 — modifiers ─────────────────────────────────────────
         Sm(inner) -> nestVariant(tokensToSheet(inner, th), smVariant(th));
         Md(inner) -> nestVariant(tokensToSheet(inner, th), mdVariant(th));
