@@ -883,9 +883,11 @@ emilia/
 │   │                    180° when its disclosure opens. 18 in-file `test {}`,
 │   │                    green on both targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
-│                        target commonJS, `emilia` via { "workspace": true },
-│                        `jhonstart` still by { git, branch } until jhonstart
-│                        is a workspace too): 4 in-file `test {}` composing
+│                        targets commonJS and erlang, `emilia` via
+│                        { "workspace": true }, `jhonstart` by the
+│                        workspace-relative { "path":
+│                        "../../../jhonstart/modules/jhonstart" }): 4 in-file
+│                        `test {}` composing
 │                        three class names + a Hover/Md modifier
 └── scripts/
     ├── git-hooks/     ← the pre-commit gate (§ Local gate): `botopink test`
@@ -1636,8 +1638,9 @@ did not compile against botopink-lang `feat`, and its line came out once
 jhonstart's `fix/context` front landed (see § Test surface). It builds **and runs**
 again (`botopink run` prints the tree, the three `e_<hash>` class names and the
 `<style>` block); it depends on jhonstart, so CI checks jhonstart out
-beside emilia before the examples gate. Its builder calls pass `attrs`
-explicitly (`h1([…], [])`) — parameter defaults are not applied by the compiler
-yet (botopink-lang 1.0.4-beta 06 N1) — and its `main` is
+beside emilia before the examples gate (the dependency is the
+workspace-relative `{ "path": "../../../jhonstart/modules/jhonstart" }`). Its
+builder calls leave `attrs` to its declared default (`h1([…])` — a default
+travels with an imported function), and its `main` is
 `fn main() -> @Task<void>` so `flush()` can be awaited (the return is the effect,
 botopink decision 118).
