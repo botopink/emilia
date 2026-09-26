@@ -273,6 +273,17 @@
 ////              their subsections. Shorthand is `§ 16.7` VERBATIM AND INERT:
 ////              its two composed rows read six `--tw-*` variables no token in
 ////              emilia sets
+////   Interact — front 46: `§ 17` in one section — Cursor (36; `default`
+////              is `Standard`), Appearance, FieldSizing, ColorScheme,
+////              PointerEvents, Resize, Select, WillChange, Touch, Scroll
+////              (Behavior + fourteen offset families over `spacing(n)`),
+////              Scrollbar { Width, Gutter }, Snap { Align, Stop, Type,
+////              Strictness } and the nullary AccentAuto. The colours are the
+////              TOP-LEVEL InteractAccent/InteractCaret/InteractScrollbarColor,
+////              each carrying front 33's `paletteVar`, never a hex. SNAP
+////              PAIRING: a Snap.Type reads `--tw-scroll-snap-strictness` with
+////              `proximity` as its fallback; a Snap.Strictness token writes it.
+////              161 leaves
 ////   Gradient — front 39: a TOP-LEVEL section, not a sub-section of Bg — a
 ////              stop sets a custom property and not `background-image`, and a
 ////              stop path is four segments already. To { T, Tr, R, Br, B, Bl,
@@ -2313,6 +2324,262 @@ pub type Token {
     TransformRotateRaw(value: string),
     TransformTranslateRaw(value: string),
     // ── end front 45 ─────────────────────────────────────────────────────────
+
+    // ── front 46 — interactivity ─────────────────────────────────────────────
+    //
+    // `§ 17` in one section. HEAD AUDIT: every head below — `Interact`,
+    // `Cursor`, `Appearance`, `FieldSizing`, `ColorScheme`, `PointerEvents`,
+    // `Resize`, `Select`, `WillChange`, `Touch`, `Scroll`, `Behavior`, the
+    // fourteen offset heads, `Scrollbar`, `Width`, `Gutter`, `Snap`, `Align`,
+    // `Stop`, `Type`, `Strictness` — was checked against the top-level payload
+    // variants; none repeats one. `cursor-default` is `Cursor.Standard`
+    // because `Default(inner)` is a top-level modifier.
+    //
+    // COLOURS ARE TOP-LEVEL PAYLOAD VARIANTS CARRYING front 33's
+    // `paletteVar(family, shade)`, never a hex: `InteractAccent(value)`,
+    // `InteractCaret(value)`, `InteractScrollbarColor(thumb, track)`.
+    // `accent-auto` is the nullary leaf `Interact.AccentAuto` (decision 81).
+    //
+    // THE SNAP PAIRING: `Snap.Type.X` reads `--tw-scroll-snap-strictness` and
+    // `Snap.Strictness.Mandatory` writes it; a lone `Snap.Type` falls back to
+    // `proximity`, upstream's `@property` initial value, carried in the
+    // reference itself.
+    Interact {
+        AccentAuto,
+        Cursor {
+            Auto,
+            Standard,
+            Pointer,
+            Wait,
+            Text,
+            Move,
+            Help,
+            NotAllowed,
+            None,
+            ContextMenu,
+            Progress,
+            Cell,
+            Crosshair,
+            VerticalText,
+            Alias,
+            Copy,
+            NoDrop,
+            Grab,
+            Grabbing,
+            AllScroll,
+            ColResize,
+            RowResize,
+            NResize,
+            EResize,
+            SResize,
+            WResize,
+            NeResize,
+            NwResize,
+            SeResize,
+            SwResize,
+            EwResize,
+            NsResize,
+            NeswResize,
+            NwseResize,
+            ZoomIn,
+            ZoomOut,
+        }
+        Appearance {
+            None,
+            Auto,
+        }
+        FieldSizing {
+            Fixed,
+            Content,
+        }
+        ColorScheme {
+            Normal,
+            Light,
+            Dark,
+            LightDark,
+            OnlyDark,
+            OnlyLight,
+        }
+        PointerEvents {
+            None,
+            Auto,
+        }
+        Resize {
+            None,
+            Y,
+            X,
+            Both,
+        }
+        Select {
+            None,
+            Text,
+            All,
+            Auto,
+        }
+        WillChange {
+            Auto,
+            Scroll,
+            Contents,
+            Transform,
+        }
+        Touch {
+            Auto,
+            None,
+            PanX,
+            PanLeft,
+            PanRight,
+            PanY,
+            PanUp,
+            PanDown,
+            PinchZoom,
+            Manipulation,
+        }
+        Scroll {
+            Behavior {
+                Auto,
+                Smooth,
+            }
+            M {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Mx {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            My {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Mt {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Mr {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Mb {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Ml {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            P {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Px {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Py {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Pt {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Pr {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Pb {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+            Pl {
+                0,
+                1,
+                2,
+                4,
+                8,
+            }
+        }
+        Scrollbar {
+            Width {
+                Auto,
+                Thin,
+                None,
+            }
+            Gutter {
+                Auto,
+                Stable,
+                StableBothEdges,
+            }
+        }
+        Snap {
+            Align {
+                Start,
+                End,
+                Center,
+                None,
+            }
+            Stop {
+                Normal,
+                Always,
+            }
+            Type {
+                None,
+                X,
+                Y,
+                Both,
+            }
+            Strictness {
+                Mandatory,
+                Proximity,
+            }
+        }
+    }
+
+    // Colour-carrying variants are TOP-LEVEL, never section leaves; each field
+    // carries front 33's `paletteVar(family, shade)`.
+    InteractAccent(value: string),
+    InteractCaret(value: string),
+    InteractScrollbarColor(thumb: string, track: string),
+    // ── end front 46 ─────────────────────────────────────────────────────────
 
     // ── front 39 — backgrounds ──────────────────────────────────
     //

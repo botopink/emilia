@@ -2,6 +2,13 @@
 
 ## Unreleased — v0.beta.22
 
+- **`Interact` added — `§ 17`** (1.0.10-beta front `46-emilia-interactivity`).
+  161 leaves plus `InteractAccent` / `InteractCaret` / `InteractScrollbarColor`
+  and the wrappers `accent` / `caret` / `scrollbarColor`, every colour a
+  `paletteVar` reference and every scroll offset `spacing(n)`. `Snap.Type`
+  reads the strictness with `proximity` as its fallback, since `--tw-*` cannot
+  be a theme entry. `emilia` 608 → 633 on commonJS and erlang.
+
 - **`Table` added — `§ 14`** (1.0.10-beta front `43-emilia-tables`). 21 leaves
   over `border-collapse`, `table-layout`, `border-spacing` (front 54's
   `spacing(n)`, no resolved length) and `caption-side`, plus `TableSpacingRaw`

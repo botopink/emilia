@@ -428,6 +428,21 @@ head declared elsewhere (`Transition.All` beside `Pad.All`/`Gap.All`,
 leaf asserted beside them, rather than renamed to dodge a collision that does
 not exist.
 
+Front 46 owns **interactivity** — the `Interact` section of `tokens.bp` and the
+three top-level colour variants `InteractAccent` / `InteractCaret` /
+`InteractScrollbarColor`, and `interactTokenToCss` with its sub-dispatchers and
+the wrappers `accent` / `caret` / `scrollbarColor` in `emilia.bp`, fenced by the
+`// ── front 46 — interactivity ──` banner in both files. **161 leaves** over
+`§ 17`. No leaf resolves a length or a colour: the fourteen scroll-offset
+families answer `spacing(n)`, and the colour variants carry front 33's
+`paletteVar` in their `string` payload. `cursor-default` is `Cursor.Standard`
+(`Default(inner)` is a modifier); `accent-auto` is the nullary leaf
+`Interact.AccentAuto` (decision 81). **The snap strictness is not a theme
+entry** — the spec's `--tw-scroll-snap-strictness` default cannot be one
+(`extendTheme` refuses `--tw-`), so `Snap.Type` reads it through `cssVarOr` with
+upstream's initial value `proximity` as the fallback, and a `Snap.Strictness`
+token in the same class overrides it.
+
 The spec authors a richer surface (a `#[emilia(...)]` decorator on a
 builder call + a `[emilia]={...}` attribute inside the `html """…"""`
 DSL); both forms need the two generic jhonstart hooks (`F0` second
@@ -1022,9 +1037,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **608/608** on
+  refuses) runs every module's in-file `test {}` blocks, **633/633** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 520 (`emilia.bp`). The figure below breaks down the 375
+  (`output.bp`) + 545 (`emilia.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
@@ -1397,6 +1412,7 @@ to the commonJS row and runs once.
 | 1.0.10-beta front 45 — transforms | DONE — steps 1–6 + the worked example. **96 leaves** over the whole of `§ 16` in one `Transform` section of sixteen sub-sections, plus the two top-level variants `TransformRotateRaw` / `TransformTranslateRaw`. The front rests on a v4 change: `rotate`, `scale` and `translate` are INDEPENDENT PROPERTIES, so three tokens are three declarations in one rule and no `--tw-*` chain is needed — the 1.0.8 draft's `transform:rotate(45deg)` shape is superseded wholesale. No leaf resolves a length: `translate-x-1` is front 54's `spacing(1)` and the five perspective keywords are `--perspective-*` references, with `TranslateX.Px`/`TranslateY.Px`'s `1px` the reference's own literal and the only exception, held out of the walk and asserted from the other side. **THREE ROWS OF `§ 16` DID NOT SURVIVE.** `§ 16.6`'s `skew-x:`/`skew-y:` property column is not a registered CSS property and the upstream page (checked 2026-09-21, which the front README demanded) prints `transform: skewX(<n>deg)` — so the twelve leaves emit upstream's and the reference file's spelling is asserted ABSENT. `§ 16.10`'s rows are ONE declaration reading the other axis's variable, which is what BOTH the reference file and upstream print and is NOT the spec's two-declaration `--tw-translate-x:…` writer; the variable's `@property` default cannot be a theme entry because `--tw-` is in none of `Ns`'s nineteen prefixes and `extendTheme` panics, so front 39's `cssVarOr` carries it as `var(--tw-translate-y, 0)` — and **the two axes therefore do not compose**, asserted in the direction that is true rather than the spec's. `§ 16.7`'s four rows are transcribed VERBATIM AND MARKED INERT: they read six `--tw-*` variables no token in emilia sets, and fallbacks would be worse than the flag. `transformEntries()` contributes the five `--perspective-*`, and **none of its values is provisional** — `§ 16.2` prints each one in parentheses. 94 leaves walked for well-formedness, a resolved length, a class fragment and the `deg` unit, each probe with a control that fails AND a control proving it does not fire on correct output, plus a 96-way distinctness walk pinning `§ 16.5`'s one legitimate collision (`scale-x-100` and `scale-y-100` are both `scale:1 1`) BY NAME. Four planted defects were watched redden and removed. `examples/emilia-transforms/` (18 tests) is the showcase. +41 inline tests in `modules/emilia`, which is **569** on commonJS and on erlang. **Declared by interpolation**: nine of ten steps on each of `ScaleX`/`ScaleY`, four of five `Rotate.Neg` magnitudes. **Reference gaps left undeclared**: `rotate-x/y/z-*`, `translate-z-*`, `scale-z-*` and a `Translate` both-axes section — `§ 16` enumerates none of them, and the spec's own Definition of Done lists a `Translate` section its Step 3 table does not contain |
 | 1.0.10-beta front 42 — filters | DONE — steps 1–4. **108 leaves** over `§ 13` in `Filter` (50) and `BackdropFilter` (58; not `Backdrop`, which is front 34's modifier), plus `FilterRaw`/`BackdropRaw`. Every leaf but `Blur.None` is its `--tw-<family>` property plus one reader of every family with empty fallbacks (`filterChain()`), so filters compose; the spec's `var(--tw-filter)` theme entry is not expressible (`extendTheme` refuses `--tw-`) and would not compose if it were. `DropShadow.None` follows upstream; `filterEntries()` carries the `--blur-*`/`--drop-shadow-*` values. +29 inline tests, **598** on both targets |
 | 1.0.10-beta front 43 — tables | DONE — steps 1–4. **21 leaves** over `§ 14` in `Table` plus `TableSpacingRaw`; `border-spacing` is `spacing(n)`, the axes are the one- and two-value forms (no composition). +10 inline tests, **608** on both targets |
+| 1.0.10-beta front 46 — interactivity | DONE — steps 1–7. **161 leaves** over `§ 17` in `Interact` plus `InteractAccent`/`InteractCaret`/`InteractScrollbarColor` (payload = `paletteVar`); scroll offsets are `spacing(n)`; `Snap.Type` reads `--tw-scroll-snap-strictness` with `proximity` as its fallback. +25 inline tests, **633** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 Spec lives in

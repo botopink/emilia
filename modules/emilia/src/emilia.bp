@@ -201,6 +201,14 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
         TransformRotateRaw(value) -> declSheet("rotate:" + value);
         TransformTranslateRaw(value) -> declSheet("translate:" + value);
         // ── end front 45 ───────────────────────────────────────
+        // ── front 46 — interactivity ───────────────────────────
+        Interact(_inner) -> declSheet(interactTokenToCss(_inner, th));
+        // The three colour variants are SIBLINGS of `Interact`, destructured
+        // by their DECLARED FIELD NAMES.
+        InteractAccent(value) -> declSheet("accent-color:" + value);
+        InteractCaret(value) -> declSheet("caret-color:" + value);
+        InteractScrollbarColor(thumb, track) -> declSheet("scrollbar-color:" + thumb + " " + track);
+        // ── end front 46 ───────────────────────────────────────
         // ── front 39 — backgrounds ─────────────────────────
         Gradient(_inner) -> declSheet(gradientTokenToCss(_inner, th));
         // ── end front 39 ─────────────────────────────
@@ -14595,6 +14603,911 @@ test "end to end — a lifting card and a flipping chevron in one document" {
 }
 
 // ── end front 45 ─────────────────────────────────────────────────────────────
+
+// ── front 46 — interactivity ─────────────────────────────────────────────────
+//
+// FRONT 46 OWNS EVERYTHING BETWEEN THIS BANNER AND ITS CLOSING ONE: the
+// `Interact` dispatcher and its sub-dispatchers, the three colour wrappers and
+// the tests under the same name.
+//
+// NO LEAF RESOLVES A LENGTH OR A COLOUR. The fourteen scroll-offset families
+// answer front 54's `spacing(n)`; the three colour variants carry front 33's
+// `paletteVar` in their payload, so `accent-indigo-500` and `bg-indigo-500`
+// read one theme entry.
+//
+// THREE CLASS NAMES LIE ABOUT THEIR VALUE and each is asserted on its own:
+// `resize-y` is `vertical`, `resize-x` is `horizontal`, `will-change-scroll`
+// is `scroll-position`.
+//
+// THE SNAP STRICTNESS IS NOT A THEME ENTRY. The spec has front 54 carry a
+// `--tw-scroll-snap-strictness` default; `extendTheme` refuses `--tw-` (the
+// wall fronts 42 and 45 met) and a `:root` value would be the wrong mechanism
+// anyway. Upstream registers `proximity` as the variable's initial value, so
+// the reader carries it as front 39's `cssVarOr` fallback:
+// `scroll-snap-type:x var(--tw-scroll-snap-strictness, proximity)`. A lone
+// `Snap.Type.X` renders; a `Snap.Strictness` token in the same rule wins.
+
+fn interactCursorToCss(v: Token.Interact.Cursor) -> string {
+    val out = case v {
+        Auto -> "cursor:auto";
+        Standard -> "cursor:default";
+        Pointer -> "cursor:pointer";
+        Wait -> "cursor:wait";
+        Text -> "cursor:text";
+        Move -> "cursor:move";
+        Help -> "cursor:help";
+        NotAllowed -> "cursor:not-allowed";
+        None -> "cursor:none";
+        ContextMenu -> "cursor:context-menu";
+        Progress -> "cursor:progress";
+        Cell -> "cursor:cell";
+        Crosshair -> "cursor:crosshair";
+        VerticalText -> "cursor:vertical-text";
+        Alias -> "cursor:alias";
+        Copy -> "cursor:copy";
+        NoDrop -> "cursor:no-drop";
+        Grab -> "cursor:grab";
+        Grabbing -> "cursor:grabbing";
+        AllScroll -> "cursor:all-scroll";
+        ColResize -> "cursor:col-resize";
+        RowResize -> "cursor:row-resize";
+        NResize -> "cursor:n-resize";
+        EResize -> "cursor:e-resize";
+        SResize -> "cursor:s-resize";
+        WResize -> "cursor:w-resize";
+        NeResize -> "cursor:ne-resize";
+        NwResize -> "cursor:nw-resize";
+        SeResize -> "cursor:se-resize";
+        SwResize -> "cursor:sw-resize";
+        EwResize -> "cursor:ew-resize";
+        NsResize -> "cursor:ns-resize";
+        NeswResize -> "cursor:nesw-resize";
+        NwseResize -> "cursor:nwse-resize";
+        ZoomIn -> "cursor:zoom-in";
+        ZoomOut -> "cursor:zoom-out";
+    };
+    return out;
+}
+
+fn interactAppearanceToCss(v: Token.Interact.Appearance) -> string {
+    val out = case v {
+        None -> "appearance:none";
+        Auto -> "appearance:auto";
+    };
+    return out;
+}
+
+fn interactFieldSizingToCss(v: Token.Interact.FieldSizing) -> string {
+    val out = case v {
+        Fixed -> "field-sizing:fixed";
+        Content -> "field-sizing:content";
+    };
+    return out;
+}
+
+fn interactColorSchemeToCss(v: Token.Interact.ColorScheme) -> string {
+    val out = case v {
+        Normal -> "color-scheme:normal";
+        Light -> "color-scheme:light";
+        Dark -> "color-scheme:dark";
+        LightDark -> "color-scheme:light dark";
+        OnlyDark -> "color-scheme:only dark";
+        OnlyLight -> "color-scheme:only light";
+    };
+    return out;
+}
+
+fn interactPointerEventsToCss(v: Token.Interact.PointerEvents) -> string {
+    val out = case v {
+        None -> "pointer-events:none";
+        Auto -> "pointer-events:auto";
+    };
+    return out;
+}
+
+fn interactResizeToCss(v: Token.Interact.Resize) -> string {
+    val out = case v {
+        None -> "resize:none";
+        Y -> "resize:vertical";
+        X -> "resize:horizontal";
+        Both -> "resize:both";
+    };
+    return out;
+}
+
+fn interactSelectToCss(v: Token.Interact.Select) -> string {
+    val out = case v {
+        None -> "user-select:none";
+        Text -> "user-select:text";
+        All -> "user-select:all";
+        Auto -> "user-select:auto";
+    };
+    return out;
+}
+
+fn interactWillChangeToCss(v: Token.Interact.WillChange) -> string {
+    val out = case v {
+        Auto -> "will-change:auto";
+        Scroll -> "will-change:scroll-position";
+        Contents -> "will-change:contents";
+        Transform -> "will-change:transform";
+    };
+    return out;
+}
+
+fn interactTouchToCss(v: Token.Interact.Touch) -> string {
+    val out = case v {
+        Auto -> "touch-action:auto";
+        None -> "touch-action:none";
+        PanX -> "touch-action:pan-x";
+        PanLeft -> "touch-action:pan-left";
+        PanRight -> "touch-action:pan-right";
+        PanY -> "touch-action:pan-y";
+        PanUp -> "touch-action:pan-up";
+        PanDown -> "touch-action:pan-down";
+        PinchZoom -> "touch-action:pinch-zoom";
+        Manipulation -> "touch-action:manipulation";
+    };
+    return out;
+}
+
+fn interactScrollBehaviorToCss(v: Token.Interact.Scroll.Behavior) -> string {
+    val out = case v {
+        Auto -> "scroll-behavior:auto";
+        Smooth -> "scroll-behavior:smooth";
+    };
+    return out;
+}
+
+fn interactScrollMValue(v: Token.Interact.Scroll.M) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollMxValue(v: Token.Interact.Scroll.Mx) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollMyValue(v: Token.Interact.Scroll.My) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollMtValue(v: Token.Interact.Scroll.Mt) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollMrValue(v: Token.Interact.Scroll.Mr) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollMbValue(v: Token.Interact.Scroll.Mb) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollMlValue(v: Token.Interact.Scroll.Ml) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollPValue(v: Token.Interact.Scroll.P) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollPxValue(v: Token.Interact.Scroll.Px) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollPyValue(v: Token.Interact.Scroll.Py) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollPtValue(v: Token.Interact.Scroll.Pt) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollPrValue(v: Token.Interact.Scroll.Pr) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollPbValue(v: Token.Interact.Scroll.Pb) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+fn interactScrollPlValue(v: Token.Interact.Scroll.Pl) -> string {
+    val out = case v {
+        __0 -> spacing(0);
+        __1 -> spacing(1);
+        __2 -> spacing(2);
+        __4 -> spacing(4);
+        __8 -> spacing(8);
+    };
+    return out;
+}
+
+// One property per side, `;`-joined — `scroll-mx-4` is left THEN right.
+fn interactOffsetDecl(props: string[], value: string) -> string {
+    return props.map({ p -> oneDecl(p, value) }).join(";");
+}
+
+fn interactScrollToCss(s: Token.Interact.Scroll) -> string {
+    val out = case s {
+        Behavior(_inner) -> interactScrollBehaviorToCss(_inner);
+        M(_inner) -> interactOffsetDecl(["scroll-margin"], interactScrollMValue(_inner));
+        Mx(_inner) -> interactOffsetDecl(["scroll-margin-left", "scroll-margin-right"], interactScrollMxValue(_inner));
+        My(_inner) -> interactOffsetDecl(["scroll-margin-top", "scroll-margin-bottom"], interactScrollMyValue(_inner));
+        Mt(_inner) -> interactOffsetDecl(["scroll-margin-top"], interactScrollMtValue(_inner));
+        Mr(_inner) -> interactOffsetDecl(["scroll-margin-right"], interactScrollMrValue(_inner));
+        Mb(_inner) -> interactOffsetDecl(["scroll-margin-bottom"], interactScrollMbValue(_inner));
+        Ml(_inner) -> interactOffsetDecl(["scroll-margin-left"], interactScrollMlValue(_inner));
+        P(_inner) -> interactOffsetDecl(["scroll-padding"], interactScrollPValue(_inner));
+        Px(_inner) -> interactOffsetDecl(["scroll-padding-left", "scroll-padding-right"], interactScrollPxValue(_inner));
+        Py(_inner) -> interactOffsetDecl(["scroll-padding-top", "scroll-padding-bottom"], interactScrollPyValue(_inner));
+        Pt(_inner) -> interactOffsetDecl(["scroll-padding-top"], interactScrollPtValue(_inner));
+        Pr(_inner) -> interactOffsetDecl(["scroll-padding-right"], interactScrollPrValue(_inner));
+        Pb(_inner) -> interactOffsetDecl(["scroll-padding-bottom"], interactScrollPbValue(_inner));
+        Pl(_inner) -> interactOffsetDecl(["scroll-padding-left"], interactScrollPlValue(_inner));
+    };
+    return out;
+}
+
+fn interactScrollbarWidthToCss(v: Token.Interact.Scrollbar.Width) -> string {
+    val out = case v {
+        Auto -> "scrollbar-width:auto";
+        Thin -> "scrollbar-width:thin";
+        None -> "scrollbar-width:none";
+    };
+    return out;
+}
+
+fn interactScrollbarGutterToCss(v: Token.Interact.Scrollbar.Gutter) -> string {
+    val out = case v {
+        Auto -> "scrollbar-gutter:auto";
+        Stable -> "scrollbar-gutter:stable";
+        StableBothEdges -> "scrollbar-gutter:stable both-edges";
+    };
+    return out;
+}
+
+fn interactScrollbarToCss(s: Token.Interact.Scrollbar) -> string {
+    val out = case s {
+        Width(_inner) -> interactScrollbarWidthToCss(_inner);
+        Gutter(_inner) -> interactScrollbarGutterToCss(_inner);
+    };
+    return out;
+}
+
+fn interactSnapAlignToCss(v: Token.Interact.Snap.Align) -> string {
+    val out = case v {
+        Start -> "scroll-snap-align:start";
+        End -> "scroll-snap-align:end";
+        Center -> "scroll-snap-align:center";
+        None -> "scroll-snap-align:none";
+    };
+    return out;
+}
+
+fn interactSnapStopToCss(v: Token.Interact.Snap.Stop) -> string {
+    val out = case v {
+        Normal -> "scroll-snap-stop:normal";
+        Always -> "scroll-snap-stop:always";
+    };
+    return out;
+}
+
+fn snapStrictnessVar() -> string {
+    return "--tw-scroll-snap-strictness";
+}
+
+fn interactSnapTypeToCss(v: Token.Interact.Snap.Type) -> string {
+    val strict = cssVarOr(snapStrictnessVar(), "proximity");
+    val out = case v {
+        None -> "scroll-snap-type:none";
+        X -> "scroll-snap-type:x " + strict;
+        Y -> "scroll-snap-type:y " + strict;
+        Both -> "scroll-snap-type:both " + strict;
+    };
+    return out;
+}
+
+fn interactSnapStrictnessToCss(v: Token.Interact.Snap.Strictness) -> string {
+    val out = case v {
+        Mandatory -> oneDecl(snapStrictnessVar(), "mandatory");
+        Proximity -> oneDecl(snapStrictnessVar(), "proximity");
+    };
+    return out;
+}
+
+fn interactSnapToCss(s: Token.Interact.Snap) -> string {
+    val out = case s {
+        Align(_inner) -> interactSnapAlignToCss(_inner);
+        Stop(_inner) -> interactSnapStopToCss(_inner);
+        Type(_inner) -> interactSnapTypeToCss(_inner);
+        Strictness(_inner) -> interactSnapStrictnessToCss(_inner);
+    };
+    return out;
+}
+
+// `§ 17`. `th` is the contract `§ 4a` parameter; nothing here reads it.
+fn interactTokenToCss(t: Token.Interact, th: Theme) -> string {
+    val out = case t {
+        AccentAuto -> "accent-color:auto";
+        Cursor(_inner) -> interactCursorToCss(_inner);
+        Appearance(_inner) -> interactAppearanceToCss(_inner);
+        FieldSizing(_inner) -> interactFieldSizingToCss(_inner);
+        ColorScheme(_inner) -> interactColorSchemeToCss(_inner);
+        PointerEvents(_inner) -> interactPointerEventsToCss(_inner);
+        Resize(_inner) -> interactResizeToCss(_inner);
+        Select(_inner) -> interactSelectToCss(_inner);
+        WillChange(_inner) -> interactWillChangeToCss(_inner);
+        Touch(_inner) -> interactTouchToCss(_inner);
+        Scroll(_inner) -> interactScrollToCss(_inner);
+        Scrollbar(_inner) -> interactScrollbarToCss(_inner);
+        Snap(_inner) -> interactSnapToCss(_inner);
+    };
+    return out;
+}
+
+// The wrappers a typed list needs: a leading-dot path followed by a payload
+// call does not carry the array's context. Each takes a `paletteVar` result.
+pub fn accent(value: string) -> Token {
+    return Token.InteractAccent(value: value);
+}
+
+pub fn caret(value: string) -> Token {
+    return Token.InteractCaret(value: value);
+}
+
+pub fn scrollbarColor(thumb: string, track: string) -> Token {
+    return Token.InteractScrollbarColor(thumb: thumb, track: track);
+}
+
+// ── front 46 · tests ─────────────────────────────────────────────────────────
+
+test "Interact.Cursor — the thirty-six rows of `§ 17.5`" {
+    assert tokenDeclarations(.Interact.Cursor.Auto) == "cursor:auto";
+    assert tokenDeclarations(.Interact.Cursor.Standard) == "cursor:default";
+    assert tokenDeclarations(.Interact.Cursor.Pointer) == "cursor:pointer";
+    assert tokenDeclarations(.Interact.Cursor.Wait) == "cursor:wait";
+    assert tokenDeclarations(.Interact.Cursor.Text) == "cursor:text";
+    assert tokenDeclarations(.Interact.Cursor.Move) == "cursor:move";
+    assert tokenDeclarations(.Interact.Cursor.Help) == "cursor:help";
+    assert tokenDeclarations(.Interact.Cursor.NotAllowed) == "cursor:not-allowed";
+    assert tokenDeclarations(.Interact.Cursor.None) == "cursor:none";
+    assert tokenDeclarations(.Interact.Cursor.ContextMenu) == "cursor:context-menu";
+    assert tokenDeclarations(.Interact.Cursor.Progress) == "cursor:progress";
+    assert tokenDeclarations(.Interact.Cursor.Cell) == "cursor:cell";
+    assert tokenDeclarations(.Interact.Cursor.Crosshair) == "cursor:crosshair";
+    assert tokenDeclarations(.Interact.Cursor.VerticalText) == "cursor:vertical-text";
+    assert tokenDeclarations(.Interact.Cursor.Alias) == "cursor:alias";
+    assert tokenDeclarations(.Interact.Cursor.Copy) == "cursor:copy";
+    assert tokenDeclarations(.Interact.Cursor.NoDrop) == "cursor:no-drop";
+    assert tokenDeclarations(.Interact.Cursor.Grab) == "cursor:grab";
+    assert tokenDeclarations(.Interact.Cursor.Grabbing) == "cursor:grabbing";
+    assert tokenDeclarations(.Interact.Cursor.AllScroll) == "cursor:all-scroll";
+    assert tokenDeclarations(.Interact.Cursor.ColResize) == "cursor:col-resize";
+    assert tokenDeclarations(.Interact.Cursor.RowResize) == "cursor:row-resize";
+    assert tokenDeclarations(.Interact.Cursor.NResize) == "cursor:n-resize";
+    assert tokenDeclarations(.Interact.Cursor.EResize) == "cursor:e-resize";
+    assert tokenDeclarations(.Interact.Cursor.SResize) == "cursor:s-resize";
+    assert tokenDeclarations(.Interact.Cursor.WResize) == "cursor:w-resize";
+    assert tokenDeclarations(.Interact.Cursor.NeResize) == "cursor:ne-resize";
+    assert tokenDeclarations(.Interact.Cursor.NwResize) == "cursor:nw-resize";
+    assert tokenDeclarations(.Interact.Cursor.SeResize) == "cursor:se-resize";
+    assert tokenDeclarations(.Interact.Cursor.SwResize) == "cursor:sw-resize";
+    assert tokenDeclarations(.Interact.Cursor.EwResize) == "cursor:ew-resize";
+    assert tokenDeclarations(.Interact.Cursor.NsResize) == "cursor:ns-resize";
+    assert tokenDeclarations(.Interact.Cursor.NeswResize) == "cursor:nesw-resize";
+    assert tokenDeclarations(.Interact.Cursor.NwseResize) == "cursor:nwse-resize";
+    assert tokenDeclarations(.Interact.Cursor.ZoomIn) == "cursor:zoom-in";
+    assert tokenDeclarations(.Interact.Cursor.ZoomOut) == "cursor:zoom-out";
+}
+
+test "Interact.Appearance — every row, `appearance`" {
+    assert tokenDeclarations(.Interact.Appearance.None) == "appearance:none";
+    assert tokenDeclarations(.Interact.Appearance.Auto) == "appearance:auto";
+}
+
+test "Interact.FieldSizing — every row, `field-sizing`" {
+    assert tokenDeclarations(.Interact.FieldSizing.Fixed) == "field-sizing:fixed";
+    assert tokenDeclarations(.Interact.FieldSizing.Content) == "field-sizing:content";
+}
+
+test "Interact.ColorScheme — every row, `color-scheme`" {
+    assert tokenDeclarations(.Interact.ColorScheme.Normal) == "color-scheme:normal";
+    assert tokenDeclarations(.Interact.ColorScheme.Light) == "color-scheme:light";
+    assert tokenDeclarations(.Interact.ColorScheme.Dark) == "color-scheme:dark";
+    assert tokenDeclarations(.Interact.ColorScheme.LightDark) == "color-scheme:light dark";
+    assert tokenDeclarations(.Interact.ColorScheme.OnlyDark) == "color-scheme:only dark";
+    assert tokenDeclarations(.Interact.ColorScheme.OnlyLight) == "color-scheme:only light";
+}
+
+test "Interact.PointerEvents — every row, `pointer-events`" {
+    assert tokenDeclarations(.Interact.PointerEvents.None) == "pointer-events:none";
+    assert tokenDeclarations(.Interact.PointerEvents.Auto) == "pointer-events:auto";
+}
+
+test "Interact.Resize — every row, `resize`" {
+    assert tokenDeclarations(.Interact.Resize.None) == "resize:none";
+    assert tokenDeclarations(.Interact.Resize.Y) == "resize:vertical";
+    assert tokenDeclarations(.Interact.Resize.X) == "resize:horizontal";
+    assert tokenDeclarations(.Interact.Resize.Both) == "resize:both";
+}
+
+test "Interact.Select — every row, `user-select`" {
+    assert tokenDeclarations(.Interact.Select.None) == "user-select:none";
+    assert tokenDeclarations(.Interact.Select.Text) == "user-select:text";
+    assert tokenDeclarations(.Interact.Select.All) == "user-select:all";
+    assert tokenDeclarations(.Interact.Select.Auto) == "user-select:auto";
+}
+
+test "Interact.WillChange — every row, `will-change`" {
+    assert tokenDeclarations(.Interact.WillChange.Auto) == "will-change:auto";
+    assert tokenDeclarations(.Interact.WillChange.Scroll) == "will-change:scroll-position";
+    assert tokenDeclarations(.Interact.WillChange.Contents) == "will-change:contents";
+    assert tokenDeclarations(.Interact.WillChange.Transform) == "will-change:transform";
+}
+
+test "Interact.Touch — every row, `touch-action`" {
+    assert tokenDeclarations(.Interact.Touch.Auto) == "touch-action:auto";
+    assert tokenDeclarations(.Interact.Touch.None) == "touch-action:none";
+    assert tokenDeclarations(.Interact.Touch.PanX) == "touch-action:pan-x";
+    assert tokenDeclarations(.Interact.Touch.PanLeft) == "touch-action:pan-left";
+    assert tokenDeclarations(.Interact.Touch.PanRight) == "touch-action:pan-right";
+    assert tokenDeclarations(.Interact.Touch.PanY) == "touch-action:pan-y";
+    assert tokenDeclarations(.Interact.Touch.PanUp) == "touch-action:pan-up";
+    assert tokenDeclarations(.Interact.Touch.PanDown) == "touch-action:pan-down";
+    assert tokenDeclarations(.Interact.Touch.PinchZoom) == "touch-action:pinch-zoom";
+    assert tokenDeclarations(.Interact.Touch.Manipulation) == "touch-action:manipulation";
+}
+
+// THE CLASS NAME LIES, three times, in three adjacent lines.
+test "Interact — the three class names that do not match their values" {
+    assert tokenDeclarations(.Interact.Resize.Y) == "resize:vertical";
+    assert tokenDeclarations(.Interact.Resize.X) == "resize:horizontal";
+    assert tokenDeclarations(.Interact.WillChange.Scroll) == "will-change:scroll-position";
+}
+
+test "Interact.AccentAuto — the nullary leaf of decision 81" {
+    assert tokenDeclarations(.Interact.AccentAuto) == "accent-color:auto";
+}
+
+test "Interact.Scroll.Behavior — auto and smooth" {
+    assert tokenDeclarations(.Interact.Scroll.Behavior.Auto) == "scroll-behavior:auto";
+    assert tokenDeclarations(.Interact.Scroll.Behavior.Smooth) == "scroll-behavior:smooth";
+}
+
+test "Interact.Scroll — the fourteen offset families over five steps" {
+    assert tokenDeclarations(.Interact.Scroll.M.__0) == "scroll-margin:0";
+    assert tokenDeclarations(.Interact.Scroll.M.__1) == "scroll-margin:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.M.__2) == "scroll-margin:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.M.__4) == "scroll-margin:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.M.__8) == "scroll-margin:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Mx.__0) == "scroll-margin-left:0;scroll-margin-right:0";
+    assert tokenDeclarations(.Interact.Scroll.Mx.__1) == "scroll-margin-left:calc(var(--spacing) * 1);scroll-margin-right:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Mx.__2) == "scroll-margin-left:calc(var(--spacing) * 2);scroll-margin-right:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Mx.__4) == "scroll-margin-left:calc(var(--spacing) * 4);scroll-margin-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Mx.__8) == "scroll-margin-left:calc(var(--spacing) * 8);scroll-margin-right:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.My.__0) == "scroll-margin-top:0;scroll-margin-bottom:0";
+    assert tokenDeclarations(.Interact.Scroll.My.__1) == "scroll-margin-top:calc(var(--spacing) * 1);scroll-margin-bottom:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.My.__2) == "scroll-margin-top:calc(var(--spacing) * 2);scroll-margin-bottom:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.My.__4) == "scroll-margin-top:calc(var(--spacing) * 4);scroll-margin-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.My.__8) == "scroll-margin-top:calc(var(--spacing) * 8);scroll-margin-bottom:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Mt.__0) == "scroll-margin-top:0";
+    assert tokenDeclarations(.Interact.Scroll.Mt.__1) == "scroll-margin-top:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Mt.__2) == "scroll-margin-top:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Mt.__4) == "scroll-margin-top:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Mt.__8) == "scroll-margin-top:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Mr.__0) == "scroll-margin-right:0";
+    assert tokenDeclarations(.Interact.Scroll.Mr.__1) == "scroll-margin-right:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Mr.__2) == "scroll-margin-right:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Mr.__4) == "scroll-margin-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Mr.__8) == "scroll-margin-right:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Mb.__0) == "scroll-margin-bottom:0";
+    assert tokenDeclarations(.Interact.Scroll.Mb.__1) == "scroll-margin-bottom:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Mb.__2) == "scroll-margin-bottom:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Mb.__4) == "scroll-margin-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Mb.__8) == "scroll-margin-bottom:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Ml.__0) == "scroll-margin-left:0";
+    assert tokenDeclarations(.Interact.Scroll.Ml.__1) == "scroll-margin-left:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Ml.__2) == "scroll-margin-left:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Ml.__4) == "scroll-margin-left:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Ml.__8) == "scroll-margin-left:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.P.__0) == "scroll-padding:0";
+    assert tokenDeclarations(.Interact.Scroll.P.__1) == "scroll-padding:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.P.__2) == "scroll-padding:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.P.__4) == "scroll-padding:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.P.__8) == "scroll-padding:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Px.__0) == "scroll-padding-left:0;scroll-padding-right:0";
+    assert tokenDeclarations(.Interact.Scroll.Px.__1) == "scroll-padding-left:calc(var(--spacing) * 1);scroll-padding-right:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Px.__2) == "scroll-padding-left:calc(var(--spacing) * 2);scroll-padding-right:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Px.__4) == "scroll-padding-left:calc(var(--spacing) * 4);scroll-padding-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Px.__8) == "scroll-padding-left:calc(var(--spacing) * 8);scroll-padding-right:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Py.__0) == "scroll-padding-top:0;scroll-padding-bottom:0";
+    assert tokenDeclarations(.Interact.Scroll.Py.__1) == "scroll-padding-top:calc(var(--spacing) * 1);scroll-padding-bottom:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Py.__2) == "scroll-padding-top:calc(var(--spacing) * 2);scroll-padding-bottom:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Py.__4) == "scroll-padding-top:calc(var(--spacing) * 4);scroll-padding-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Py.__8) == "scroll-padding-top:calc(var(--spacing) * 8);scroll-padding-bottom:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Pt.__0) == "scroll-padding-top:0";
+    assert tokenDeclarations(.Interact.Scroll.Pt.__1) == "scroll-padding-top:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Pt.__2) == "scroll-padding-top:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Pt.__4) == "scroll-padding-top:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Pt.__8) == "scroll-padding-top:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Pr.__0) == "scroll-padding-right:0";
+    assert tokenDeclarations(.Interact.Scroll.Pr.__1) == "scroll-padding-right:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Pr.__2) == "scroll-padding-right:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Pr.__4) == "scroll-padding-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Pr.__8) == "scroll-padding-right:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Pb.__0) == "scroll-padding-bottom:0";
+    assert tokenDeclarations(.Interact.Scroll.Pb.__1) == "scroll-padding-bottom:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Pb.__2) == "scroll-padding-bottom:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Pb.__4) == "scroll-padding-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Pb.__8) == "scroll-padding-bottom:calc(var(--spacing) * 8)";
+    assert tokenDeclarations(.Interact.Scroll.Pl.__0) == "scroll-padding-left:0";
+    assert tokenDeclarations(.Interact.Scroll.Pl.__1) == "scroll-padding-left:calc(var(--spacing) * 1)";
+    assert tokenDeclarations(.Interact.Scroll.Pl.__2) == "scroll-padding-left:calc(var(--spacing) * 2)";
+    assert tokenDeclarations(.Interact.Scroll.Pl.__4) == "scroll-padding-left:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Pl.__8) == "scroll-padding-left:calc(var(--spacing) * 8)";
+}
+
+// The zero steps are a bare `0`, and the axis pairs keep their order.
+test "Interact.Scroll — bare zero, left before right, top before bottom" {
+    assert tokenDeclarations(.Interact.Scroll.M.__0) == "scroll-margin:0";
+    assert tokenDeclarations(.Interact.Scroll.P.__0) == "scroll-padding:0";
+    assert tokenDeclarations(.Interact.Scroll.Mx.__4) == "scroll-margin-left:calc(var(--spacing) * 4);scroll-margin-right:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.My.__4) == "scroll-margin-top:calc(var(--spacing) * 4);scroll-margin-bottom:calc(var(--spacing) * 4)";
+    assert tokenDeclarations(.Interact.Scroll.Mt.__4) == "scroll-margin-top:" + spacing(4);
+}
+
+test "Interact.Scrollbar.Width — every row, `scrollbar-width`" {
+    assert tokenDeclarations(.Interact.Scrollbar.Width.Auto) == "scrollbar-width:auto";
+    assert tokenDeclarations(.Interact.Scrollbar.Width.Thin) == "scrollbar-width:thin";
+    assert tokenDeclarations(.Interact.Scrollbar.Width.None) == "scrollbar-width:none";
+}
+
+test "Interact.Scrollbar.Gutter — every row, `scrollbar-gutter`" {
+    assert tokenDeclarations(.Interact.Scrollbar.Gutter.Auto) == "scrollbar-gutter:auto";
+    assert tokenDeclarations(.Interact.Scrollbar.Gutter.Stable) == "scrollbar-gutter:stable";
+    assert tokenDeclarations(.Interact.Scrollbar.Gutter.StableBothEdges) == "scrollbar-gutter:stable both-edges";
+}
+
+test "Interact.Snap — align and stop" {
+    assert tokenDeclarations(.Interact.Snap.Align.Start) == "scroll-snap-align:start";
+    assert tokenDeclarations(.Interact.Snap.Align.End) == "scroll-snap-align:end";
+    assert tokenDeclarations(.Interact.Snap.Align.Center) == "scroll-snap-align:center";
+    assert tokenDeclarations(.Interact.Snap.Align.None) == "scroll-snap-align:none";
+    assert tokenDeclarations(.Interact.Snap.Stop.Normal) == "scroll-snap-stop:normal";
+    assert tokenDeclarations(.Interact.Snap.Stop.Always) == "scroll-snap-stop:always";
+}
+
+// `snap-none` and `snap-align-none`: two properties, one word apart.
+test "Interact.Snap — snap-none and snap-align-none are different properties" {
+    assert tokenDeclarations(.Interact.Snap.Type.None) == "scroll-snap-type:none";
+    assert tokenDeclarations(.Interact.Snap.Align.None) == "scroll-snap-align:none";
+}
+
+test "Interact.Snap.Type — each axis reads the strictness, proximity by default" {
+    assert tokenDeclarations(.Interact.Snap.Type.X) == "scroll-snap-type:x var(--tw-scroll-snap-strictness, proximity)";
+    assert tokenDeclarations(.Interact.Snap.Type.Y) == "scroll-snap-type:y var(--tw-scroll-snap-strictness, proximity)";
+    assert tokenDeclarations(.Interact.Snap.Type.Both) == "scroll-snap-type:both var(--tw-scroll-snap-strictness, proximity)";
+    assert tokenDeclarations(.Interact.Snap.Strictness.Mandatory) == "--tw-scroll-snap-strictness:mandatory";
+    assert tokenDeclarations(.Interact.Snap.Strictness.Proximity) == "--tw-scroll-snap-strictness:proximity";
+}
+
+// THE PAIRING: the variable written and read in one class.
+test "Interact.Snap — an axis and a strictness in one list, both declared" {
+    val tokens: Token[] = [.Interact.Snap.Type.X, .Interact.Snap.Strictness.Mandatory];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
+    assert decls.length == 2;
+    assert (decls.at(0) ?? "") == "scroll-snap-type:x var(--tw-scroll-snap-strictness, proximity)";
+    assert (decls.at(1) ?? "") == "--tw-scroll-snap-strictness:mandatory";
+}
+
+// THE COLOUR VARIANTS CONSTRUCT, and carry the palette reference.
+test "InteractAccent / InteractCaret / InteractScrollbarColor — construct and emit" {
+    val a = Token.InteractAccent(value: paletteVar("indigo", "600"));
+    assert tokenDeclarations(a) == "accent-color:var(--color-indigo-600)";
+    val c = Token.InteractCaret(value: paletteVar("red", "500"));
+    assert tokenDeclarations(c) == "caret-color:var(--color-red-500)";
+    val s = Token.InteractScrollbarColor(thumb: paletteVar("red", "500"), track: paletteVar("gray", "200"));
+    assert tokenDeclarations(s) == "scrollbar-color:var(--color-red-500) var(--color-gray-200)";
+    assert tokenDeclarations(accent(paletteVar("teal", "400"))) == "accent-color:var(--color-teal-400)";
+    assert tokenDeclarations(caret(paletteVar("blue", "700"))) == "caret-color:var(--color-blue-700)";
+    assert tokenDeclarations(scrollbarColor(paletteVar("zinc", "400"), paletteVar("zinc", "100"))) == "scrollbar-color:var(--color-zinc-400) var(--color-zinc-100)";
+}
+
+// The accent and the background of one palette entry read ONE variable.
+test "InteractAccent — the same theme entry as Bg.Color" {
+    val a = tokenDeclarations(Token.InteractAccent(value: paletteVar("indigo", "500")));
+    val b = tokenDeclarations(.Bg.Color.Indigo.__500);
+    assert (a.split(":").at(1) ?? "x") == (b.split(":").at(1) ?? "y");
+}
+
+test "Interact — a grabbing cursor under Hover reaches front 34's variant" {
+    val inner: Token[] = [.Interact.Cursor.Grabbing];
+    val outer: Token[] = [Token.Hover(inner)];
+    val s = tokensToSheet(outer, defaultTheme());
+    assert declarationsOf(s).join(";") == "cursor:grabbing";
+    assert firstRuleOf(s).selector == "&:hover";
+}
+
+fn f46AllLeaves() -> Token[] {
+    val leaves: Token[] = [
+        .Interact.AccentAuto,
+        .Interact.Cursor.Auto,
+        .Interact.Cursor.Standard,
+        .Interact.Cursor.Pointer,
+        .Interact.Cursor.Wait,
+        .Interact.Cursor.Text,
+        .Interact.Cursor.Move,
+        .Interact.Cursor.Help,
+        .Interact.Cursor.NotAllowed,
+        .Interact.Cursor.None,
+        .Interact.Cursor.ContextMenu,
+        .Interact.Cursor.Progress,
+        .Interact.Cursor.Cell,
+        .Interact.Cursor.Crosshair,
+        .Interact.Cursor.VerticalText,
+        .Interact.Cursor.Alias,
+        .Interact.Cursor.Copy,
+        .Interact.Cursor.NoDrop,
+        .Interact.Cursor.Grab,
+        .Interact.Cursor.Grabbing,
+        .Interact.Cursor.AllScroll,
+        .Interact.Cursor.ColResize,
+        .Interact.Cursor.RowResize,
+        .Interact.Cursor.NResize,
+        .Interact.Cursor.EResize,
+        .Interact.Cursor.SResize,
+        .Interact.Cursor.WResize,
+        .Interact.Cursor.NeResize,
+        .Interact.Cursor.NwResize,
+        .Interact.Cursor.SeResize,
+        .Interact.Cursor.SwResize,
+        .Interact.Cursor.EwResize,
+        .Interact.Cursor.NsResize,
+        .Interact.Cursor.NeswResize,
+        .Interact.Cursor.NwseResize,
+        .Interact.Cursor.ZoomIn,
+        .Interact.Cursor.ZoomOut,
+        .Interact.Appearance.None,
+        .Interact.Appearance.Auto,
+        .Interact.FieldSizing.Fixed,
+        .Interact.FieldSizing.Content,
+        .Interact.ColorScheme.Normal,
+        .Interact.ColorScheme.Light,
+        .Interact.ColorScheme.Dark,
+        .Interact.ColorScheme.LightDark,
+        .Interact.ColorScheme.OnlyDark,
+        .Interact.ColorScheme.OnlyLight,
+        .Interact.PointerEvents.None,
+        .Interact.PointerEvents.Auto,
+        .Interact.Resize.None,
+        .Interact.Resize.Y,
+        .Interact.Resize.X,
+        .Interact.Resize.Both,
+        .Interact.Select.None,
+        .Interact.Select.Text,
+        .Interact.Select.All,
+        .Interact.Select.Auto,
+        .Interact.WillChange.Auto,
+        .Interact.WillChange.Scroll,
+        .Interact.WillChange.Contents,
+        .Interact.WillChange.Transform,
+        .Interact.Touch.Auto,
+        .Interact.Touch.None,
+        .Interact.Touch.PanX,
+        .Interact.Touch.PanLeft,
+        .Interact.Touch.PanRight,
+        .Interact.Touch.PanY,
+        .Interact.Touch.PanUp,
+        .Interact.Touch.PanDown,
+        .Interact.Touch.PinchZoom,
+        .Interact.Touch.Manipulation,
+        .Interact.Scroll.Behavior.Auto,
+        .Interact.Scroll.Behavior.Smooth,
+        .Interact.Scroll.M.__0,
+        .Interact.Scroll.M.__1,
+        .Interact.Scroll.M.__2,
+        .Interact.Scroll.M.__4,
+        .Interact.Scroll.M.__8,
+        .Interact.Scroll.Mx.__0,
+        .Interact.Scroll.Mx.__1,
+        .Interact.Scroll.Mx.__2,
+        .Interact.Scroll.Mx.__4,
+        .Interact.Scroll.Mx.__8,
+        .Interact.Scroll.My.__0,
+        .Interact.Scroll.My.__1,
+        .Interact.Scroll.My.__2,
+        .Interact.Scroll.My.__4,
+        .Interact.Scroll.My.__8,
+        .Interact.Scroll.Mt.__0,
+        .Interact.Scroll.Mt.__1,
+        .Interact.Scroll.Mt.__2,
+        .Interact.Scroll.Mt.__4,
+        .Interact.Scroll.Mt.__8,
+        .Interact.Scroll.Mr.__0,
+        .Interact.Scroll.Mr.__1,
+        .Interact.Scroll.Mr.__2,
+        .Interact.Scroll.Mr.__4,
+        .Interact.Scroll.Mr.__8,
+        .Interact.Scroll.Mb.__0,
+        .Interact.Scroll.Mb.__1,
+        .Interact.Scroll.Mb.__2,
+        .Interact.Scroll.Mb.__4,
+        .Interact.Scroll.Mb.__8,
+        .Interact.Scroll.Ml.__0,
+        .Interact.Scroll.Ml.__1,
+        .Interact.Scroll.Ml.__2,
+        .Interact.Scroll.Ml.__4,
+        .Interact.Scroll.Ml.__8,
+        .Interact.Scroll.P.__0,
+        .Interact.Scroll.P.__1,
+        .Interact.Scroll.P.__2,
+        .Interact.Scroll.P.__4,
+        .Interact.Scroll.P.__8,
+        .Interact.Scroll.Px.__0,
+        .Interact.Scroll.Px.__1,
+        .Interact.Scroll.Px.__2,
+        .Interact.Scroll.Px.__4,
+        .Interact.Scroll.Px.__8,
+        .Interact.Scroll.Py.__0,
+        .Interact.Scroll.Py.__1,
+        .Interact.Scroll.Py.__2,
+        .Interact.Scroll.Py.__4,
+        .Interact.Scroll.Py.__8,
+        .Interact.Scroll.Pt.__0,
+        .Interact.Scroll.Pt.__1,
+        .Interact.Scroll.Pt.__2,
+        .Interact.Scroll.Pt.__4,
+        .Interact.Scroll.Pt.__8,
+        .Interact.Scroll.Pr.__0,
+        .Interact.Scroll.Pr.__1,
+        .Interact.Scroll.Pr.__2,
+        .Interact.Scroll.Pr.__4,
+        .Interact.Scroll.Pr.__8,
+        .Interact.Scroll.Pb.__0,
+        .Interact.Scroll.Pb.__1,
+        .Interact.Scroll.Pb.__2,
+        .Interact.Scroll.Pb.__4,
+        .Interact.Scroll.Pb.__8,
+        .Interact.Scroll.Pl.__0,
+        .Interact.Scroll.Pl.__1,
+        .Interact.Scroll.Pl.__2,
+        .Interact.Scroll.Pl.__4,
+        .Interact.Scroll.Pl.__8,
+        .Interact.Scrollbar.Width.Auto,
+        .Interact.Scrollbar.Width.Thin,
+        .Interact.Scrollbar.Width.None,
+        .Interact.Scrollbar.Gutter.Auto,
+        .Interact.Scrollbar.Gutter.Stable,
+        .Interact.Scrollbar.Gutter.StableBothEdges,
+        .Interact.Snap.Align.Start,
+        .Interact.Snap.Align.End,
+        .Interact.Snap.Align.Center,
+        .Interact.Snap.Align.None,
+        .Interact.Snap.Stop.Normal,
+        .Interact.Snap.Stop.Always,
+        .Interact.Snap.Type.None,
+        .Interact.Snap.Type.X,
+        .Interact.Snap.Type.Y,
+        .Interact.Snap.Type.Both,
+        .Interact.Snap.Strictness.Mandatory,
+        .Interact.Snap.Strictness.Proximity,
+    ];
+    return leaves;
+}
+
+// NO HEX, NO `rem`, and every leaf well-formed. The probe takes a STRING and
+// its control is a hand-built declaration that must fail it.
+fn f46CarriesNoLiteral(decl: string) -> bool {
+    return decl.indexOf("#") == -1 && decl.indexOf("rem") == -1
+        && decl.indexOf("px") == -1;
+}
+
+test "front 46 — 161 leaves, every one well-formed, none resolving a length or a colour" {
+    val decls = f46AllLeaves().map({ t -> tokenDeclarations(t) });
+    assert decls.length == 161;
+    assert decls.filter({ d -> d == "" || d.indexOf(":") == -1 }).length == 0;
+    assert decls.filter({ d -> !f46CarriesNoLiteral(d) }).length == 0;
+    assert f46CarriesNoLiteral("accent-color:#4f46e5") == false;
+    assert f46CarriesNoLiteral("scroll-margin-top:1rem") == false;
+}
+
+test "Interact — the class name is a literal, and both targets must agree" {
+    val tokens: Token[] = [.Interact.Cursor.Grab, .Interact.Select.None, .Interact.Snap.Type.X];
+    assert emiliaWith(tokens, defaultTheme()) == "e_9988dbf";
+}
+// ── end front 46 ─────────────────────────────────────────────────────────────
+
 
 // ── front 56 · test helpers ───────────────────────────────────────────
 
