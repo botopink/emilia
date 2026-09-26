@@ -112,7 +112,8 @@ fn btn() -> Token[] {
     return out;
 }
 
-val danger = emilia(btn().append([.Bg.Color.Red.__500]));   // @apply
+val red: Token[] = [.Bg.Color.Red.__500];
+val danger = emilia(btn().append(red));                     // @apply
 val all = emilia(compose([btn(), scrollbarHidden()]));
 val bold: Token[] = [.Text.Bold];
 val link = emilia(hocus(bold));                            // :hover and :focus
