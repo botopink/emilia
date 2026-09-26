@@ -11019,16 +11019,16 @@ fn textShadowVar(name: string) -> string {
 
 fn effectTokenToCss(t: Token.Effect, th: Theme) -> string {
     val out = case t {
-        Shadow(_inner) -> shadowToCss(_inner);
-        InsetShadow(_inner) -> insetShadowToCss(_inner);
-        TextShadow(_inner) -> textShadowToCss(_inner);
-        Opacity(_inner) -> opacityToCss(_inner);
+        Shadow(_inner) -> shadowToCss(_inner, th);
+        InsetShadow(_inner) -> insetShadowToCss(_inner, th);
+        TextShadow(_inner) -> textShadowToCss(_inner, th);
+        Opacity(_inner) -> opacityToCss(_inner, th);
     };
     return out;
 }
 
 // `§ 12.1`. Seven scale steps through the theme, one keyword, one literal.
-fn shadowToCss(s: Token.Effect.Shadow) -> string {
+fn shadowToCss(s: Token.Effect.Shadow, th: Theme) -> string {
     val out = case s {
         X2xs -> shadowChannel("--tw-shadow", shadowVar("2xs"));
         Xs -> shadowChannel("--tw-shadow", shadowVar("xs"));
@@ -11051,7 +11051,7 @@ fn shadowToCss(s: Token.Effect.Shadow) -> string {
 // an inset shadow, an outer shadow and a ring are three layers of ONE
 // `box-shadow`. The `inset` keyword leads the value; `effectEntries()` carries
 // the three values without it.
-fn insetShadowToCss(s: Token.Effect.InsetShadow) -> string {
+fn insetShadowToCss(s: Token.Effect.InsetShadow, th: Theme) -> string {
     val out = case s {
         X2xs -> shadowChannel("--tw-inset-shadow", "inset " + insetShadowVar("2xs"));
         Xs -> shadowChannel("--tw-inset-shadow", "inset " + insetShadowVar("xs"));
@@ -11062,7 +11062,7 @@ fn insetShadowToCss(s: Token.Effect.InsetShadow) -> string {
 
 // `§ 12.2`. Five scale steps and a keyword; `None` is `none` and not a theme
 // lookup, because there is no `--text-shadow-none`.
-fn textShadowToCss(s: Token.Effect.TextShadow) -> string {
+fn textShadowToCss(s: Token.Effect.TextShadow, th: Theme) -> string {
     val out = case s {
         X2xs -> "text-shadow:" + textShadowVar("2xs");
         Xs -> "text-shadow:" + textShadowVar("xs");
@@ -11086,7 +11086,7 @@ fn textShadowToCss(s: Token.Effect.TextShadow) -> string {
 // same shape the fifteen confirmed rows use, and one arm spells it the same
 // way as the next — so if the six are ever dropped, nothing about the other
 // fifteen moves.
-fn opacityToCss(o: Token.Effect.Opacity) -> string {
+fn opacityToCss(o: Token.Effect.Opacity, th: Theme) -> string {
     val out = case o {
         __0 -> "opacity:0";
         __5 -> "opacity:0.05";
@@ -11123,13 +11123,13 @@ fn opacityToCss(o: Token.Effect.Opacity) -> string {
 // value, so a typo in one and not the other is a red and not a drift.
 fn blendTokenToCss(t: Token.Blend, th: Theme) -> string {
     val out = case t {
-        Mix(_inner) -> "mix-blend-mode:" + blendMixValue(_inner);
-        Bg(_inner) -> "background-blend-mode:" + blendBgValue(_inner);
+        Mix(_inner) -> "mix-blend-mode:" + blendMixValue(_inner, th);
+        Bg(_inner) -> "background-blend-mode:" + blendBgValue(_inner, th);
     };
     return out;
 }
 
-fn blendMixValue(m: Token.Blend.Mix) -> string {
+fn blendMixValue(m: Token.Blend.Mix, th: Theme) -> string {
     val out = case m {
         Normal -> "normal";
         Multiply -> "multiply";
@@ -11152,7 +11152,7 @@ fn blendMixValue(m: Token.Blend.Mix) -> string {
     return out;
 }
 
-fn blendBgValue(b: Token.Blend.Bg) -> string {
+fn blendBgValue(b: Token.Blend.Bg, th: Theme) -> string {
     val out = case b {
         Normal -> "normal";
         Multiply -> "multiply";
@@ -11187,20 +11187,20 @@ fn blendBgValue(b: Token.Blend.Bg) -> string {
 // the defect this whole front exists to repair one section up.
 fn maskTokenToCss(t: Token.Mask, th: Theme) -> string {
     val out = case t {
-        Clip(_inner) -> maskClipToCss(_inner);
-        Composite(_inner) -> maskCompositeToCss(_inner);
-        Image(_inner) -> maskImageToCss(_inner);
-        Mode(_inner) -> maskModeToCss(_inner);
-        Origin(_inner) -> maskOriginToCss(_inner);
-        Position(_inner) -> maskPositionToCss(_inner);
-        Repeat(_inner) -> maskRepeatToCss(_inner);
-        Size(_inner) -> maskSizeToCss(_inner);
-        Type(_inner) -> maskTypeToCss(_inner);
+        Clip(_inner) -> maskClipToCss(_inner, th);
+        Composite(_inner) -> maskCompositeToCss(_inner, th);
+        Image(_inner) -> maskImageToCss(_inner, th);
+        Mode(_inner) -> maskModeToCss(_inner, th);
+        Origin(_inner) -> maskOriginToCss(_inner, th);
+        Position(_inner) -> maskPositionToCss(_inner, th);
+        Repeat(_inner) -> maskRepeatToCss(_inner, th);
+        Size(_inner) -> maskSizeToCss(_inner, th);
+        Type(_inner) -> maskTypeToCss(_inner, th);
     };
     return out;
 }
 
-fn maskClipToCss(c: Token.Mask.Clip) -> string {
+fn maskClipToCss(c: Token.Mask.Clip, th: Theme) -> string {
     val out = case c {
         Border -> "mask-clip:border-box";
         Padding -> "mask-clip:padding-box";
@@ -11209,7 +11209,7 @@ fn maskClipToCss(c: Token.Mask.Clip) -> string {
     return out;
 }
 
-fn maskCompositeToCss(c: Token.Mask.Composite) -> string {
+fn maskCompositeToCss(c: Token.Mask.Composite, th: Theme) -> string {
     val out = case c {
         Add -> "mask-composite:add";
         Subtract -> "mask-composite:subtract";
@@ -11221,14 +11221,14 @@ fn maskCompositeToCss(c: Token.Mask.Composite) -> string {
 
 // One leaf. `§ 12.6` prints `mask-image-none` and nothing else; every other
 // mask image upstream is an arbitrary value, which is `MaskImageRaw` below.
-fn maskImageToCss(i: Token.Mask.Image) -> string {
+fn maskImageToCss(i: Token.Mask.Image, th: Theme) -> string {
     val out = case i {
         None -> "mask-image:none";
     };
     return out;
 }
 
-fn maskModeToCss(m: Token.Mask.Mode) -> string {
+fn maskModeToCss(m: Token.Mask.Mode, th: Theme) -> string {
     val out = case m {
         Alpha -> "mask-mode:alpha";
         Luminance -> "mask-mode:luminance";
@@ -11236,7 +11236,7 @@ fn maskModeToCss(m: Token.Mask.Mode) -> string {
     return out;
 }
 
-fn maskOriginToCss(o: Token.Mask.Origin) -> string {
+fn maskOriginToCss(o: Token.Mask.Origin, th: Theme) -> string {
     val out = case o {
         Border -> "mask-origin:border-box";
         Padding -> "mask-origin:padding-box";
@@ -11251,7 +11251,7 @@ fn maskOriginToCss(o: Token.Mask.Origin) -> string {
 // `background-position` grammar, in which all five are plain keywords — so the
 // four are the same kind of value as the one the reference confirms, not a
 // different shape.
-fn maskPositionToCss(p: Token.Mask.Position) -> string {
+fn maskPositionToCss(p: Token.Mask.Position, th: Theme) -> string {
     val out = case p {
         Center -> "mask-position:center";
         Top -> "mask-position:top";          // PROVISIONAL — no row in `§ 12.6`
@@ -11264,7 +11264,7 @@ fn maskPositionToCss(p: Token.Mask.Position) -> string {
 
 // FOUR ARMS ARE PROVISIONAL, for the same reason and with the same caveat:
 // `§ 12.6` prints `mask-repeat-no-repeat` and `mask-repeat-repeat` only.
-fn maskRepeatToCss(r: Token.Mask.Repeat) -> string {
+fn maskRepeatToCss(r: Token.Mask.Repeat, th: Theme) -> string {
     val out = case r {
         NoRepeat -> "mask-repeat:no-repeat";
         Repeat -> "mask-repeat:repeat";
@@ -11277,7 +11277,7 @@ fn maskRepeatToCss(r: Token.Mask.Repeat) -> string {
 }
 
 // ONE ARM IS PROVISIONAL: `§ 12.6` prints cover and contain only.
-fn maskSizeToCss(s: Token.Mask.Size) -> string {
+fn maskSizeToCss(s: Token.Mask.Size, th: Theme) -> string {
     val out = case s {
         Auto -> "mask-size:auto";            // PROVISIONAL — no row in `§ 12.6`
         Cover -> "mask-size:cover";
@@ -11289,7 +11289,7 @@ fn maskSizeToCss(s: Token.Mask.Size) -> string {
 // `mask-type` is a PROPERTY OF THE MASK ELEMENT, not of the masked one — the
 // only member of this family that is. The two values look like `mask-mode`'s
 // and are a different property; both are declared.
-fn maskTypeToCss(t: Token.Mask.Type) -> string {
+fn maskTypeToCss(t: Token.Mask.Type, th: Theme) -> string {
     val out = case t {
         Alpha -> "mask-type:alpha";
         Luminance -> "mask-type:luminance";
@@ -13791,7 +13791,7 @@ fn transformRotateDecl(value: string) -> string {
     return "rotate:" + value + "deg";
 }
 
-fn transformRotateToCss(r: Token.Transform.Rotate) -> string {
+fn transformRotateToCss(r: Token.Transform.Rotate, th: Theme) -> string {
     val out = case r {
         __0 -> transformRotateDecl("0");
         __1 -> transformRotateDecl("1");
@@ -13836,7 +13836,7 @@ fn transformRotateNegToCss(r: Token.Transform.Rotate.Neg) -> string {
 // (`scale-x-50`, `scale-y-50`), stating the two-value `scale` shape with the
 // other axis pinned at `1`. The nine other steps per axis are declared BY
 // INTERPOLATION over that shape and are recorded as such in `AGENTS.md`.
-fn transformScaleValue(s: Token.Transform.Scale) -> string {
+fn transformScaleValue(s: Token.Transform.Scale, th: Theme) -> string {
     val out = case s {
         __0 -> "0";
         __50 -> ".5";
@@ -13852,7 +13852,7 @@ fn transformScaleValue(s: Token.Transform.Scale) -> string {
     return out;
 }
 
-fn transformScaleXValue(s: Token.Transform.ScaleX) -> string {
+fn transformScaleXValue(s: Token.Transform.ScaleX, th: Theme) -> string {
     val out = case s {
         __0 -> "0";
         __50 -> ".5";
@@ -13868,7 +13868,7 @@ fn transformScaleXValue(s: Token.Transform.ScaleX) -> string {
     return out;
 }
 
-fn transformScaleYValue(s: Token.Transform.ScaleY) -> string {
+fn transformScaleYValue(s: Token.Transform.ScaleY, th: Theme) -> string {
     val out = case s {
         __0 -> "0";
         __50 -> ".5";
@@ -13901,7 +13901,7 @@ fn transformTranslateYDecl(value: string) -> string {
 // — the reference's own literal, not a theme lookup — front 54's `spacing(1)`,
 // and the two percentages. `spacing(0)` answers the bare `0` the reference
 // prints, so this front spells neither a `0` nor a `rem`.
-fn transformTranslateXValue(t: Token.Transform.TranslateX) -> string {
+fn transformTranslateXValue(t: Token.Transform.TranslateX, th: Theme) -> string {
     val out = case t {
         __0 -> spacing(0);
         Px -> "1px";
@@ -13912,7 +13912,7 @@ fn transformTranslateXValue(t: Token.Transform.TranslateX) -> string {
     return out;
 }
 
-fn transformTranslateYValue(t: Token.Transform.TranslateY) -> string {
+fn transformTranslateYValue(t: Token.Transform.TranslateY, th: Theme) -> string {
     val out = case t {
         __0 -> spacing(0);
         Px -> "1px";
@@ -13941,7 +13941,7 @@ fn transformSkewYDecl(value: string) -> string {
     return "transform:skewY(" + value + "deg)";
 }
 
-fn transformSkewXToCss(s: Token.Transform.SkewX) -> string {
+fn transformSkewXToCss(s: Token.Transform.SkewX, th: Theme) -> string {
     val out = case s {
         __0 -> transformSkewXDecl("0");
         __1 -> transformSkewXDecl("1");
@@ -13953,7 +13953,7 @@ fn transformSkewXToCss(s: Token.Transform.SkewX) -> string {
     return out;
 }
 
-fn transformSkewYToCss(s: Token.Transform.SkewY) -> string {
+fn transformSkewYToCss(s: Token.Transform.SkewY, th: Theme) -> string {
     val out = case s {
         __0 -> transformSkewYDecl("0");
         __1 -> transformSkewYDecl("1");
@@ -13969,7 +13969,7 @@ fn transformSkewYToCss(s: Token.Transform.SkewY) -> string {
 //
 // A corner is TWO KEYWORDS SEPARATED BY A SPACE — `top right`, never
 // `top-right` — the same trap front 39's eight gradient directions carry.
-fn transformOriginToCss(o: Token.Transform.Origin) -> string {
+fn transformOriginToCss(o: Token.Transform.Origin, th: Theme) -> string {
     val out = case o {
         Center -> "transform-origin:center";
         Top -> "transform-origin:top";
@@ -13990,7 +13990,7 @@ fn transformOriginToCss(o: Token.Transform.Origin) -> string {
 // `transform-3d` emits `preserve-3d`. Front 44's `transition-discrete` →
 // `allow-discrete` is the same shape and gets the same treatment — a test of
 // its own, because that is the row that gets written from memory and wrong.
-fn transformStyleToCss(s: Token.Transform.Style) -> string {
+fn transformStyleToCss(s: Token.Transform.Style, th: Theme) -> string {
     val out = case s {
         Flat -> "transform-style:flat";
         Preserve3d -> "transform-style:preserve-3d";
@@ -13998,7 +13998,7 @@ fn transformStyleToCss(s: Token.Transform.Style) -> string {
     return out;
 }
 
-fn transformBackfaceToCss(b: Token.Transform.Backface) -> string {
+fn transformBackfaceToCss(b: Token.Transform.Backface, th: Theme) -> string {
     val out = case b {
         Visible -> "backface-visibility:visible";
         Hidden -> "backface-visibility:hidden";
@@ -14014,7 +14014,7 @@ fn transformBackfaceToCss(b: Token.Transform.Backface) -> string {
 // five values in parentheses beside the variable; printing the value is not
 // printing a declaration, and contract `§ 4a` refuses a dispatcher that
 // resolves a theme variable.
-fn transformPerspectiveToCss(p: Token.Transform.Perspective) -> string {
+fn transformPerspectiveToCss(p: Token.Transform.Perspective, th: Theme) -> string {
     val out = case p {
         None -> "perspective:none";
         Dramatic -> "perspective:" + perspectiveVar("dramatic");
@@ -14026,7 +14026,7 @@ fn transformPerspectiveToCss(p: Token.Transform.Perspective) -> string {
     return out;
 }
 
-fn transformPerspectiveOriginToCss(p: Token.Transform.PerspectiveOrigin) -> string {
+fn transformPerspectiveOriginToCss(p: Token.Transform.PerspectiveOrigin, th: Theme) -> string {
     val out = case p {
         Center -> "perspective-origin:center";
         Top -> "perspective-origin:top";
@@ -14043,7 +14043,7 @@ fn transformPerspectiveOriginToCss(p: Token.Transform.PerspectiveOrigin) -> stri
 // `scale-50`'s `.5` WITHOUT one. Both are the reference's; neither is a typo;
 // the two are asserted in adjacent lines below so that the next person to
 // "normalise" one of them fails a test instead of shipping a divergence.
-fn transformZoomToCss(z: Token.Transform.Zoom) -> string {
+fn transformZoomToCss(z: Token.Transform.Zoom, th: Theme) -> string {
     val out = case z {
         __0 -> "zoom:0";
         __50 -> "zoom:0.5";
@@ -14070,7 +14070,7 @@ fn transformChainTail() -> string {
         + ") scaleY(" + cssVar("--tw-scale-y") + ")";
 }
 
-fn transformShorthandToCss(s: Token.Transform.Shorthand) -> string {
+fn transformShorthandToCss(s: Token.Transform.Shorthand, th: Theme) -> string {
     val out = case s {
         None -> "transform:none";
         Cpu -> "transform:translate(" + cssVar(twTranslateX()) + ", "
@@ -14085,21 +14085,21 @@ fn transformShorthandToCss(s: Token.Transform.Shorthand) -> string {
 // it, because `themeVar` builds a REFERENCE and never resolves one.
 fn transformTokenToCss(t: Token.Transform, th: Theme) -> string {
     val out = case t {
-        Rotate(_inner) -> transformRotateToCss(_inner);
-        Scale(_inner) -> "scale:" + transformScaleValue(_inner);
-        ScaleX(_inner) -> "scale:" + transformScaleXValue(_inner) + " 1";
-        ScaleY(_inner) -> "scale:1 " + transformScaleYValue(_inner);
-        TranslateX(_inner) -> transformTranslateXDecl(transformTranslateXValue(_inner));
-        TranslateY(_inner) -> transformTranslateYDecl(transformTranslateYValue(_inner));
-        SkewX(_inner) -> transformSkewXToCss(_inner);
-        SkewY(_inner) -> transformSkewYToCss(_inner);
-        Origin(_inner) -> transformOriginToCss(_inner);
-        Style(_inner) -> transformStyleToCss(_inner);
-        Backface(_inner) -> transformBackfaceToCss(_inner);
-        Perspective(_inner) -> transformPerspectiveToCss(_inner);
-        PerspectiveOrigin(_inner) -> transformPerspectiveOriginToCss(_inner);
-        Zoom(_inner) -> transformZoomToCss(_inner);
-        Shorthand(_inner) -> transformShorthandToCss(_inner);
+        Rotate(_inner) -> transformRotateToCss(_inner, th);
+        Scale(_inner) -> "scale:" + transformScaleValue(_inner, th);
+        ScaleX(_inner) -> "scale:" + transformScaleXValue(_inner, th) + " 1";
+        ScaleY(_inner) -> "scale:1 " + transformScaleYValue(_inner, th);
+        TranslateX(_inner) -> transformTranslateXDecl(transformTranslateXValue(_inner, th));
+        TranslateY(_inner) -> transformTranslateYDecl(transformTranslateYValue(_inner, th));
+        SkewX(_inner) -> transformSkewXToCss(_inner, th);
+        SkewY(_inner) -> transformSkewYToCss(_inner, th);
+        Origin(_inner) -> transformOriginToCss(_inner, th);
+        Style(_inner) -> transformStyleToCss(_inner, th);
+        Backface(_inner) -> transformBackfaceToCss(_inner, th);
+        Perspective(_inner) -> transformPerspectiveToCss(_inner, th);
+        PerspectiveOrigin(_inner) -> transformPerspectiveOriginToCss(_inner, th);
+        Zoom(_inner) -> transformZoomToCss(_inner, th);
+        Shorthand(_inner) -> transformShorthandToCss(_inner, th);
     };
     return out;
 }
