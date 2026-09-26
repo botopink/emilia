@@ -14,11 +14,11 @@
 //// type level but the symbol is `undefined` at runtime (cross-module
 //// external lowering doesn't yet route through the bare-import binding —
 //// the std-lib pattern uses QUALIFIED calls `env.read(…)` after `import {
-//// env } from "std"`, and that path is module-level, not sibling-bare).
+//// io.env } from "std"`, and that path is module-level, not sibling-bare).
 //// Folding the host-cell externals into `emilia.bp` removes the seam
 //// without changing the public surface; restoring the 3-module split is
 //// a follow-up once `import { sibling-fn };` reaches parity with the
-//// `import { env } from "std";` codepath. Recorded in
+//// `import { io.env } from "std";` codepath. Recorded in
 //// `tasks/v0.beta.20/specs/ecosystem.md` Phases F0 closeout.
 ////
 //// Declared `pub default mod emilia` so the package's bare-handle binding

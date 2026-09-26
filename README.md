@@ -125,7 +125,7 @@ identical.
   `stylesheet` / `emilia`) type-checks but `import { register }` from a
   sibling module resolves at type level only — the runtime symbol is
   undefined. Restoring the split is gated on cross-module-external
-  binding parity with the `import { env } from "std"` path.
+  binding parity with the `import { io.env } from "std"` path.
 - **erlang/beam Stylesheet port** — same `register`/`flush` contract,
   swap the `Map` for `persistent_term` or an Agent. Pairs with the
   rakun erlang server port in v0.beta.21.
