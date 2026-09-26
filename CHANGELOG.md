@@ -2,6 +2,17 @@
 
 ## Unreleased — v0.beta.22
 
+- **`fullTheme()`, `fullOptions()` and `styleRule()`** (1.0.10-beta front
+  `56-emilia-cascade-and-output`, decision 80). `flush()` now renders under
+  `fullTheme()` — `defaultTheme()` extended by the palette, typography,
+  effect, filter, transition and transform entries — so no `var(--…)` a token
+  emits is left undefined; a test reads every theme reference out of a flushed
+  document and fails on one the theme does not define. Front 41 gains the
+  `effectEntries()` it never shipped (`--inset-shadow-*` without upstream's
+  leading `inset`, which `InsetShadow` writes itself; `--text-shadow-*`).
+  `styleRule(tokens, th)` is `emiliaWith` without the registration. The codec
+  separator check now walks every front's leaf list. `emilia` 661 → 666.
+
 - **`preflight.bp` added — the reset of `§ 4`** (1.0.10-beta front
   `55-emilia-preflight`). `preflightRules()` (eleven `base`-layer rules) and
   `preflight()` (the same as a CSS fragment); opt-in through

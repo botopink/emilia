@@ -148,6 +148,7 @@ test "preflight — border-style:solid precedes every utilities body" {
 
 test "preflight — Border.W.1 lands after the zero-width solid base rule" {
     val drained = await flushWith(noTheme());
+    assert drained.startsWith("<style>");
     val tokens: Token[] = [.Border.W.__1];
     val cls = emiliaWith(tokens, emptyTheme());
     val doc = await flushWith(withBase(noTheme(), preflightRules()));
@@ -159,6 +160,7 @@ test "preflight — Border.W.1 lands after the zero-width solid base rule" {
 // The difference the reset makes, recorded rather than assumed.
 test "preflight — without it, the same class carries no border-style at all" {
     val drained = await flushWith(noTheme());
+    assert drained.startsWith("<style>");
     val tokens: Token[] = [.Border.W.__1];
     val cls = emiliaWith(tokens, emptyTheme());
     val doc = await flushWith(noTheme());
@@ -170,6 +172,7 @@ test "preflight — without it, the same class carries no border-style at all" {
 
 test "preflight — ::before,::after{content:\"\"} precedes the utilities" {
     val drained = await flushWith(noTheme());
+    assert drained.startsWith("<style>");
     val inner: Token[] = [.Text.Content.Empty];
     val tokens: Token[] = [Token.Before(inner)];
     val cls = emiliaWith(tokens, emptyTheme());

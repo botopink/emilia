@@ -84,10 +84,43 @@ declare fn hashHex(s: string) -> string;
 // Walk a `Token[]` under a theme → encode the `Sheet` it produces → register
 // it under its content hash → return the assigned class name.
 pub fn emiliaWith(tokens: Token[], th: Theme) -> string {
+    val rule = styleRule(tokens, th);
+    register(rule._0, rule._1);
+    return rule._0;
+}
+
+// The PURE half of `emiliaWith`: the class name and the encoded sheet it names,
+// with no host cell touched. onze front 68 calls it at build time to fill its
+// `styleMap` (decision 116 rule 7); `emiliaWith` is this, then `register`.
+pub fn styleRule(tokens: Token[], th: Theme) -> #(string, string) {
     val payload = encodeSheet(tokensToSheet(tokens, th));
-    val name = "e_" + hashHex(payload);
-    register(name, payload);
-    return name;
+    return #("e_" + hashHex(payload), payload);
+}
+
+// DECISION 80: the theme every contributing front's entries compose into, in
+// front-number order — front 54's `defaultTheme()` extended by one line per
+// front, each under its own banner's function. A front that contributes theme
+// entries adds ONE line here. `defaultTheme()` itself stays front 54's and
+// palette-free.
+//
+// `defaultOptions()` CANNOT CARRY IT, although the decision says so: it lives
+// in `output.bp`, and `output.bp` cannot import this module (this module
+// imports it — the cycle would not resolve). So the carrier is
+// `fullOptions()` below, and `flush()` renders with it; `defaultOptions()`
+// stays the theme-only baseline a test composes from.
+pub fn fullTheme() -> Theme {
+    val th = extendTheme(defaultTheme(), paletteEntries());       // front 33
+    val t38 = extendTheme(th, typographyEntries());                // front 38
+    val t41 = extendTheme(t38, effectEntries());                   // front 41
+    val t42 = extendTheme(t41, filterEntries());                   // front 42
+    val t44 = extendTheme(t42, transitionEntries());               // front 44
+    val t45 = extendTheme(t44, transformEntries());                // front 45
+    return t45;
+}
+
+// `defaultOptions()` under `fullTheme()` — what `flush()` renders with.
+pub fn fullOptions() -> Options {
+    return withTheme(defaultOptions(), fullTheme());
 }
 
 // The single public emilia call, on the stock theme. The signature is the one
@@ -110,10 +143,11 @@ pub fn flushWith(o: Options) -> @Task<string> {
     return renderDocument(raw, o);
 }
 
-// The stock render: emilia's default theme, no reset, no prefix, cascade
-// layers on. The signature is the one it had before front 56.
+// The stock render: `fullTheme()` (decision 80 — every front's entries, so
+// no `var(--…)` a token emits is left undefined), no reset, no prefix,
+// cascade layers on. The signature is the one it had before front 56.
 pub fn flush() -> @Task<string> {
-    return await flushWith(defaultOptions());
+    return await flushWith(fullOptions());
 }
 
 // ── the shared dispatcher ───────────────────────────────────────────
@@ -11137,6 +11171,39 @@ pub fn rawMaskImage(value: string) -> Token {
     return Token.MaskImageRaw(value: value);
 }
 
+// ── front 41 · the theme entries ─────────────────────────────────────────────
+//
+// The three `--inset-shadow-*` and five `--text-shadow-*` values, which the
+// reference names and never prints; transcribed from upstream's `theme.css`
+// for decision 80's `fullTheme()`. ONE DELIBERATE DIFFERENCE: upstream's
+// `--inset-shadow-*` values START with `inset`, and `InsetShadow` emits
+// `box-shadow:inset var(--inset-shadow-*)` — the reference's own form — so the
+// upstream value would render `inset inset …`, which is not CSS. The entries
+// here drop that leading keyword; the rendered shadow is upstream's.
+pub fn effectEntries() -> ThemeEntry[] {
+    val out: ThemeEntry[] = [
+        ThemeEntry(name: "--inset-shadow-2xs", value: "0 1px rgb(0 0 0 / 0.05)"),
+        ThemeEntry(name: "--inset-shadow-xs", value: "0 1px 1px rgb(0 0 0 / 0.05)"),
+        ThemeEntry(name: "--inset-shadow-sm", value: "0 2px 4px rgb(0 0 0 / 0.05)"),
+        ThemeEntry(name: "--text-shadow-2xs", value: "0px 1px 0px rgb(0 0 0 / 0.15)"),
+        ThemeEntry(name: "--text-shadow-xs", value: "0px 1px 1px rgb(0 0 0 / 0.2)"),
+        ThemeEntry(name: "--text-shadow-sm", value: "0px 1px 0px rgb(0 0 0 / 0.075), 0px 1px 1px rgb(0 0 0 / 0.075), 0px 2px 2px rgb(0 0 0 / 0.075)"),
+        ThemeEntry(name: "--text-shadow-md", value: "0px 1px 1px rgb(0 0 0 / 0.1), 0px 1px 2px rgb(0 0 0 / 0.1), 0px 2px 4px rgb(0 0 0 / 0.1)"),
+        ThemeEntry(name: "--text-shadow-lg", value: "0px 1px 2px rgb(0 0 0 / 0.1), 0px 3px 2px rgb(0 0 0 / 0.1), 0px 4px 8px rgb(0 0 0 / 0.1)"),
+    ];
+    return out;
+}
+
+test "effectEntries — three inset shadows without their leading inset, five text shadows" {
+    val es = effectEntries();
+    assert es.length == 8;
+    assert es.filter({ e -> e.value.startsWith("inset") }).length == 0;
+    val th = extendTheme(defaultTheme(), effectEntries());
+    assert themeValue(th, "--inset-shadow-xs") == "0 1px 1px rgb(0 0 0 / 0.05)";
+    assert themeValue(th, "--text-shadow-2xs") == "0px 1px 0px rgb(0 0 0 / 0.15)";
+    assert tokenDeclarations(.Effect.InsetShadow.Xs) == "box-shadow:inset var(--inset-shadow-xs)";
+}
+
 // ── front 41 · tests ─────────────────────────────────────────────────────────
 //
 // Every row of `§ 12` is asserted individually: a reference row and a test
@@ -15749,6 +15816,73 @@ fn tokenDeclarations(t: Token) -> string {
     return declarationsOf(tokenToSheet(t, defaultTheme())).join(";");
 }
 
+// ── tests · styleRule and fullTheme ───────────────────────────────────────
+
+test "styleRule — the class emiliaWith returns, and no registration" {
+    val drained = await flush();
+    assert drained.startsWith("<style>");
+    val tokens: Token[] = [.Pad.All.__4, .Color.Red.__500, Token.Hover([.Text.Bold])];
+    val pure = styleRule(tokens, defaultTheme());
+    val after = await flush();
+    assert after.indexOf("@layer utilities") == -1;
+    assert pure._0 == emiliaWith(tokens, defaultTheme());
+    assert pure._0.startsWith("e_");
+    assert pure._1 == encodeSheet(tokensToSheet(tokens, defaultTheme()));
+    val cleared = await flush();
+    assert cleared.startsWith("<style>");
+}
+
+// Every theme variable a token emits, read out of a rendered document: the
+// name after each `var(`, up to its `)` or `,`. `--tw-*` names are excluded —
+// they are per-element channels a SIBLING token sets, never theme entries.
+fn f56ThemeRefs(doc: string) -> string[] {
+    val names = doc.split("var(").drop(1).map({ c -> (c.split(")").at(0) ?? "").split(",").at(0) ?? "" });
+    return names.filter({ n -> n.startsWith("--") && !n.startsWith("--tw-") });
+}
+
+fn f56EveryThemedFamily() -> Token[] {
+    val inner: Token[] = [.Bg.Color.Slate.__900];
+    val out: Token[] = [
+        .Color.Red.__500, .Bg.Color.Indigo.__500, .Pad.All.__4, .Size.MaxW.Md,
+        .Text.Size.Lg, .Text.Tracking.Tight, .Text.Leading.Relaxed, .Font.Sans,
+        .Font.Weight.Bold, .Border.Rounded.Lg, .Border.Color.Red.__500,
+        .Effect.Shadow.Md, .Effect.InsetShadow.Xs, .Effect.TextShadow.Sm,
+        .Filter.Blur.Sm, .Filter.DropShadow.Md, .BackdropFilter.Blur.Md,
+        .Transition.Ease.InOut, .Animate.Spin, .Transform.Perspective.Near,
+        .Gradient.From.Indigo.__500, Token.Md(inner),
+    ];
+    return out;
+}
+
+// DECISION 80: an undefined `var(--…)` is a FAILING TEST here, never a silent
+// CSS no-op. The control is the same document under the palette-free
+// `defaultTheme()`, which must leave references undefined — so the probe is
+// known to fire.
+test "fullTheme — every theme variable a themed token emits is defined" {
+    val drained = await flush();
+    assert drained.startsWith("<style>");
+    val cls = emilia(f56EveryThemedFamily());
+    val doc = await flush();
+    val refs = f56ThemeRefs(doc);
+    assert refs.length > 20;
+    val th = fullTheme();
+    assert refs.filter({ n -> themeValue(th, n) == "" }).length == 0;
+    assert refs.filter({ n -> themeValue(defaultTheme(), n) == "" }).length > 0;
+    assert doc.indexOf("--color-red-500:") != -1;
+}
+
+test "fullTheme — defaultTheme first, then one extendTheme per front" {
+    val th = fullTheme();
+    assert themeValue(th, "--spacing") == "0.25rem";
+    assert themeValue(th, "--color-red-500") != "";
+    assert themeValue(th, "--font-weight-bold") == "700";
+    assert themeValue(th, "--blur-sm") == "8px";
+    assert themeValue(th, "--ease-in") != "";
+    assert themeValue(th, "--perspective-near") == "300px";
+    assert themeValue(th, "--text-shadow-sm") != "";
+    assert themeValue(defaultTheme(), "--color-red-500") == "";
+}
+
 // ── tests · the leaf dispatchers ────────────────────────────────────────
 // V1 enum-section dispatch smoke, unchanged in substance by front 56: a
 // section sub-dispatcher still answers a declaration string, and these pin
@@ -15800,7 +15934,7 @@ test "tokenToSheet — a section token is one utilities rule on the bare ampersa
 // `"@media(min-width:768px){…}"`, both of which the table contradicts; front 56
 // owns the break.
 
-test "Hover — the `hover` row is `@media (hover: hover) { &:hover }`, not a bare :hover" {
+test "Hover — `§ 3.2`'s `hover` row is `@media (hover: hover) { &:hover }`, not a bare :hover" {
     val inner: Token[] = [.Color.Black];
     val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
     assert r.selector == "&:hover";
@@ -15808,7 +15942,7 @@ test "Hover — the `hover` row is `@media (hover: hover) { &:hover }`, not a ba
     assert r.declarations == "color:var(--color-black)";
 }
 
-test "Focus and Active — the `focus` and `active` rows are selector-only" {
+test "Focus and Active — `§ 3.2`'s `focus` and `active` rows are selector-only" {
     val inner: Token[] = [.Text.Bold];
     val f = firstRuleOf(tokenToSheet(Token.Focus(inner), defaultTheme()));
     assert f.selector == "&:focus";
@@ -15818,7 +15952,7 @@ test "Focus and Active — the `focus` and `active` rows are selector-only" {
     assert a.atRules.length == 0;
 }
 
-test "Md, Lg and Xl — the breakpoint rows are `@media (width >= <n>rem)`, read from the theme" {
+test "Md, Lg and Xl — `§ 3.2`'s breakpoint rows are `@media (width >= <n>rem)`, read from the theme" {
     val inner: Token[] = [.Text.Bold];
     assert firstRuleOf(tokenToSheet(Token.Md(inner), defaultTheme())).atRules.join("|") == "@media (width >= 48rem)";
     assert firstRuleOf(tokenToSheet(Token.Lg(inner), defaultTheme())).atRules.join("|") == "@media (width >= 64rem)";
@@ -15833,7 +15967,7 @@ test "tokensToSheet — a multi-token list is one rule per token, in order" {
     assert declarationsOf(s).join(";") == "font-weight:bold;color:var(--color-black)";
 }
 
-test "nested modifiers — the outer modifier is outermost, in both halves" {
+test "nested modifiers — `§ 3.2`'s `md` and `hover` rows, the outer one outermost in both halves" {
     val deepest: Token[] = [.Text.Bold];
     val mid: Token[] = [Token.Md(deepest)];
     val r = firstRuleOf(tokenToSheet(Token.Hover(mid), defaultTheme()));
@@ -15881,6 +16015,30 @@ test "codec — no declaration any dispatcher produces carries a codec separator
     assert declarationsOf(s).any({ d -> carriesSeparator(d) }) == false;
     assert s.rules.any({ r -> carriesSeparator(r.selector) }) == false;
     assert s.rules.any({ r -> carriesSeparator(r.atRules.join("")) }) == false;
+}
+
+// THE CODEC'S ASSUMPTION, CHECKED OVER EVERY FRONT'S LEAF WALK rather than a
+// sample: no declaration, selector or at-rule any dispatcher produces carries
+// `\n`, `\t` or `\r`. A front that lands a walk adds its list here.
+fn f56EveryWalkedLeaf() -> Token[] {
+    return everyModifier().append(everySpacingToken()).append(everySizeToken())
+        .append(layoutLeaves()).append(front37Leaves()).append(front38Leaves())
+        .append(backgroundLeaves()).append(front40Leaves()).append(front41Leaves())
+        .append(f42AllLeaves()).append(f43AllLeaves()).append(front44Leaves())
+        .append(front45Leaves()).append(f46AllLeaves());
+}
+
+fn f56SheetCarriesSeparator(s: Sheet) -> bool {
+    return s.rules.any({ r -> carriesSeparator(r.declarations) || carriesSeparator(r.selector)
+        || carriesSeparator(r.atRules.join("")) });
+}
+
+test "codec — every walked leaf of fronts 34-46 carries no codec separator" {
+    val all = f56EveryWalkedLeaf();
+    assert all.length > 5000;
+    val bad = all.filter({ t -> f56SheetCarriesSeparator(tokenToSheet(t, defaultTheme())) });
+    assert bad.length == 0;
+    assert f56SheetCarriesSeparator(declSheet("color:red\n")) == true;
 }
 
 test "codec — a full dispatcher sheet round-trips through the cell encoding" {
@@ -15976,7 +16134,7 @@ test "two emilia sites with the same token list collapse to one class" {
 // shorthand for that shape lands, callers wrap the call in a fn or use
 // the typed `val` intermediate. Tracked as part of `enum-sections` tail.
 
-test "a modifier is a SIBLING rule now, not a block nested inside the class" {
+test "a modifier is a SIBLING rule now (`§ 3.2`'s `hover` row), not a block nested inside the class" {
     val inner: Token[] = [.Bg.White, .Text.Bold];
     val tokens: Token[] = [.Bg.Black, Token.Hover(inner)];
     val cls = emilia(tokens);
@@ -16049,7 +16207,7 @@ test "conflict — reordering an unrelated token moves no other rule" {
     assert styles.indexOf("." + clsA) < styles.indexOf("." + clsB);
 }
 
-test "conflict — a variant of a rule follows the rule it varies" {
+test "conflict — a variant of a rule (`§ 3.2`'s `hover` row) follows the rule it varies" {
     val inner: Token[] = [.Layout.Grid];
     val tokens: Token[] = [Token.Md(inner), .Layout.Flex];
     val cls = emilia(tokens);

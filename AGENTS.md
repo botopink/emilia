@@ -79,6 +79,8 @@ and 35 consume, so it is stated here in one line each:
 | `encodeSheet(s)` / `decodeSheet(raw)` / `carriesSeparator(s)` | the codec that carries a `Sheet` through a string-keyed host cell, and the check its assumption rests on |
 | `Options(theme, base, prefix, important, layers)` + `defaultOptions()` + the five `with…` | the build-level knobs; `withBase` is how front 55 turns preflight on |
 | `renderRule(className, r, o)` / `renderDocument(raw, o)` | one rule; the whole `<style>` document |
+| `styleRule(tokens, th)` (in `emilia.bp`) | the pure half of `emiliaWith`: `#(className, encodedSheet)`, no host cell touched — onze front 68's build-time `styleMap` |
+| `fullTheme()` / `fullOptions()` (in `emilia.bp`) | decision 80: `defaultTheme()` extended by every contributing front's entries, one line per front; `flush()` renders with `fullOptions()`. `defaultOptions()` cannot carry it — `output.bp` cannot import `emilia.bp` |
 
 **Fronts 33–47 never see `Rule`, `Sheet` or `Variant`.** A section dispatcher
 keeps returning a declaration string and the shared `case` in `emilia.bp`
@@ -1066,9 +1068,9 @@ to the commonJS row and runs once.
 ## Test surface
 
 - `botopink test` inside `modules/emilia/` (never at the root — the umbrella
-  refuses) runs every module's in-file `test {}` blocks, **661/661** on
+  refuses) runs every module's in-file `test {}` blocks, **666/666** on
   commonJS and on erlang: 6 (`spacing.bp`) + 37 (`theme.bp`) + 45
-  (`output.bp`) + 556 (`emilia.bp`) + 17 (`preflight.bp`). The figure below breaks down the 375
+  (`output.bp`) + 561 (`emilia.bp`) + 17 (`preflight.bp`). The figure below breaks down the 375
   `emilia.bp` carried before fronts 41, 42, 44 and 45; front 41 added 32, front
   42 adds 29, front 44 adds 33 and front 45 adds 41. **Quote the SUM, never the last line** —
   `botopink test` prints one summary PER MODULE, so the figure the run ends on
