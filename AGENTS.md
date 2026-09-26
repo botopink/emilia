@@ -883,10 +883,12 @@ emilia/
 │   │                    180° when its disclosure opens. 18 in-file `test {}`,
 │   │                    green on both targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
-│                        target commonJS, `emilia` via { "workspace": true },
+│                        target commonJS · targets [commonJS, erlang],
+│                        `emilia` via { "workspace": true },
 │                        `jhonstart` still by { git, branch } until jhonstart
-│                        is a workspace too): 4 in-file `test {}` composing
-│                        three class names + a Hover/Md modifier
+│                        is a workspace too; 4 in-file `test {}` composing
+│                        three class names + a Hover/Md modifier, green on
+│                        both targets)
 └── scripts/
     ├── git-hooks/     ← the pre-commit gate (§ Local gate): `botopink test`
     │                    per `modules/*/` member, then `botopink build` per
