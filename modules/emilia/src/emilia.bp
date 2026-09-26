@@ -3221,8 +3221,8 @@ test "regression — every decoration colour cell is a reference, and all 286 di
     val cells = leaves.filter({ t -> tokenDeclarations(t).indexOf("text-decoration-color:var(--color-") != -1 });
     assert cells.length == 288;
     val decls = cells.map({ t -> tokenDeclarations(t) });
-    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
-    // rather than looked up backwards (§ Maintainer rules). A discarded shade
+    // Duplicates are counted rather than looked up backwards (§ Maintainer
+    // rules, `Array.lastIndexOf`). A discarded shade
     // is what this catches — the literal probe alone does not.
     val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
     assert dupes.length == 0;
@@ -10877,10 +10877,9 @@ test "regression — a section's 288 colour cells are 288 DISTINCT declarations"
     val cells = leaves.filter({ t -> firstDeclaration(t).indexOf("var(--color-") != -1 });
     assert cells.length == 288;
     val decls = cells.map({ t -> firstDeclaration(t) });
-    // `Array.lastIndexOf` does NOT lower on erlang (`function lastIndexOf/2
-    // undefined`), so the duplicate check counts occurrences instead — the
-    // per-target divergence § Maintainer rules warns about, caught by running
-    // both backends rather than one.
+    // The duplicate check counts occurrences — written when `Array.lastIndexOf`
+    // did not lower on erlang (§ Maintainer rules), the per-target divergence
+    // caught by running both backends rather than one.
     val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
     assert dupes.length == 0;
 }
@@ -11852,8 +11851,8 @@ test "regression — every scale step is a distinct theme reference" {
     val scale = effectLeaves().filter({ t -> f41Head(firstDeclaration(t)).indexOf("var(--") != -1 });
     assert scale.length == 15;
     val decls = scale.map({ t -> firstDeclaration(t) });
-    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
-    // rather than searched — front 40's rule, followed here.
+    // Duplicates are counted rather than searched — front 40's rule, followed
+    // here (§ Maintainer rules, `Array.lastIndexOf`).
     val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
     assert dupes.length == 0;
 }
@@ -13617,8 +13616,8 @@ test "regression — the four animations are four distinct references and four d
     val named = animateLeaves().filter({ t -> firstDeclaration(t).indexOf("var(--") != -1 });
     assert named.length == 4;
     val decls = named.map({ t -> firstDeclaration(t) });
-    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
-    // rather than searched — front 40's rule, followed here.
+    // Duplicates are counted rather than searched — front 40's rule, followed
+    // here (§ Maintainer rules, `Array.lastIndexOf`).
     assert decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 }).length == 0;
     val heads = named.map({ t -> f44BlockHeaders(t) });
     assert heads.filter({ h -> heads.filter({ x -> x == h }).length > 1 }).length == 0;
@@ -14811,8 +14810,8 @@ test "regression — the 101 leaves emit 100 distinct declarations, and the pair
     val all = front45Leaves().append(px);
     assert all.length == 101;
     val decls = all.map({ t -> tokenDeclarations(t) });
-    // `Array.lastIndexOf` does not lower on erlang, so duplicates are counted
-    // rather than searched — front 40's rule, followed here.
+    // Duplicates are counted rather than searched — front 40's rule, followed
+    // here (§ Maintainer rules, `Array.lastIndexOf`).
     val dupes = decls.filter({ d -> decls.filter({ x -> x == d }).length > 1 });
     assert dupes.length == 2;
     assert dupes.all({ d -> d == "scale:1 1" });
