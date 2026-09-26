@@ -626,6 +626,12 @@ pub type Token {
     }
     // ── end front 38 ─────────────────────────────────────────────────────────
 
+    // ── front 33 — colour palette ────────────────────────────────────────────
+    //
+    // `Color` is the 26 x 11 grid plus the named colours and the `Hex` escape;
+    // `Bg.Color` below is the same grid on `background-color` (`Bg`'s other
+    // sub-sections are front 39's), and the top-level `Alpha` wrapper — the
+    // `/N` opacity suffix — closes this front's surface after front 39's block.
     Color {
         Red     { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
         Orange  { 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950 }
@@ -2740,7 +2746,9 @@ pub type Token {
     }
     // ── end front 39 ────────────────────────────────────────
 
+    // front 33 — the `/N` opacity wrapper (see the banner above `Color`).
     Alpha(percent: i32, inner: Token[]),
+    // ── end front 33 ─────────────────────────────────────────────────────────
 
     // ── front 34 — modifiers ─────────────────────────────────────────────────
     //
