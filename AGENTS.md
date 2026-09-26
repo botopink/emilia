@@ -162,7 +162,7 @@ and the whole scale consumes it. `Pad`/`Margin`/`Size` are ordinary
 `…TokenToCss` dispatchers adapted by `declSheet`; `Space` is the one dispatcher
 here that answers a `Sheet`, because `space-y-*` declares on the element's
 CHILDREN and so needs a selector outside the class. That selector is
-**`pub fn siblingSelector()`** — `& > :not(:last-child)` — and **front 40 must
+**`pub fn siblingSelector()`** — `:where(& > :not(:last-child))`, upstream's zero-specificity form since the audit pass — and **front 40 must
 call it rather than re-spell it**: `divide-*` separates the same children the
 same way, and two fronts writing the same selector by hand are two fronts that
 will eventually write it differently.
@@ -183,7 +183,7 @@ front 54's `--radius-*` ladder and the only place the front spells one.
 they are the only two this front adds. `divideTokenToSheet` needs a selector
 outside the class because `divide-*` declares on the element's CHILDREN, and it
 CALLS front 35's `siblingSelector()` rather than re-spelling
-`& > :not(:last-child)` — the test front 35 could not write, comparing the two
+`:where(& > :not(:last-child))` — the test front 35 could not write, comparing the two
 families' selectors byte for byte, is now in `emilia.bp`.
 `ringTokenToSheet` needs several ordered declarations because a ring is a
 box-shadow. **Since the audit pass, every ring and shadow token writes ONE
@@ -212,6 +212,13 @@ CONTROL: fronts 36, 37 and 39 all asserted `.Border.Rounded.Lg` DOES carry a
 that makes a literal into a reference must grep for its own tokens in other
 fronts' controls** — the README said no existing assertion covered `Sm`, `Md`
 or `Lg`, and three did.
+
+**`space-*` and `divide-*` are upstream's reverse-aware pair** (verified against
+`utilities.ts` on 2026-09-26, decisions-pending 05emilia-g): `reversePair(flag,
+start, end, v)` resets the axis flag to `0` and writes the START side times the
+flag and the END side times one minus it, so `Space.XReverse` /
+`Divide.XReverse` move the gap instead of setting a variable nothing read — which
+is what the pre-audit end-only form did.
 
 **One convention is deliberately not uniform.** `.Border.W.0` emits
 `border-width:0` and not `0px`, because the front's acceptance says the four

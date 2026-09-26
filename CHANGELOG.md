@@ -2,6 +2,12 @@
 
 ## Unreleased — v0.beta.22
 
+- **`space-*` and `divide-*` take upstream's form** (fronts 35 and 40, from the
+  track-D audit). The child selector is `:where(& > :not(:last-child))` (no added
+  specificity) and both sides of the gap are written through the reverse flag,
+  so `XReverse` / `YReverse` finally move it; `emilia-spacing` and
+  `emilia-outline-ring` updated.
+
 - **Rings and shadows compose, and a lone ring renders** (fronts 40 and 41,
   from the track-D audit). Every ring and shadow token writes one channel of
   upstream v4's five-channel `box-shadow` reader, each channel with a null

@@ -4360,7 +4360,19 @@ fn sizeMaxBlockToCss(s: Token.Size.MaxBlock, th: Theme) -> string {
 // follows the writing direction. `--tw-space-x-reverse` is an upstream-internal
 // custom property name and is unverified; nothing in emilia reads it yet.
 pub fn siblingSelector() -> string {
-    return "& > :not(:last-child)";
+    return ":where(& > :not(:last-child))";
+}
+
+// UPSTREAM'S REVERSE-AWARE PAIR, spelled once for `space-*` and `divide-*`
+// (`utilities.ts`, read 2026-09-26): the axis's reverse flag reset to 0, then
+// the START side times the flag and the END side times one minus it — so
+// `Space.XReverse` / `Divide.XReverse` (the flag at 1) move the gap to the
+// other side instead of setting a variable nothing reads. A zero value is the
+// bare `0` on both sides, as upstream's `space-*` special-cases it.
+fn reversePair(flag: string, startProp: string, endProp: string, v: string) -> string {
+    val start = if (v == "0") "0" else "calc(" + v + " * var(" + flag + "))";
+    val end = if (v == "0") "0" else "calc(" + v + " * calc(1 - var(" + flag + ")))";
+    return oneDecl(flag, "0") + ";" + oneDecl(startProp, start) + ";" + oneDecl(endProp, end);
 }
 
 // A rule that declares on the CHILDREN of the class, not on the class. Front
@@ -4382,8 +4394,8 @@ fn childSheet(decls: string) -> Sheet {
 
 fn spaceTokenToSheet(t: Token.Space, th: Theme) -> Sheet {
     val out = case t {
-        X(_inner) -> childSheet(oneDecl("margin-inline-end", spaceScaleX(_inner, th)));
-        Y(_inner) -> childSheet(oneDecl("margin-block-end", spaceScaleY(_inner, th)));
+        X(_inner) -> childSheet(reversePair("--tw-space-x-reverse", "margin-inline-start", "margin-inline-end", spaceScaleX(_inner, th)));
+        Y(_inner) -> childSheet(reversePair("--tw-space-y-reverse", "margin-block-start", "margin-block-end", spaceScaleY(_inner, th)));
         XReverse -> childSheet(oneDecl("--tw-space-x-reverse", "1"));
         YReverse -> childSheet(oneDecl("--tw-space-y-reverse", "1"));
     };
@@ -5082,31 +5094,38 @@ fn spaceRule(t: Token) -> Rule {
 
 test "Space — the declaration is on the CHILDREN, under the sibling selector" {
     val r = spaceRule(.Space.Y.4);
-    assert r.selector == "& > :not(:last-child)";
-    assert r.declarations == "margin-block-end:calc(var(--spacing) * 4)";
+    assert r.selector == ":where(& > :not(:last-child))";
+    assert r.declarations == "--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))";
     assert r.layer == "utilities";
     assert r.atRules.length == 0;
     assert r.important == false;
 }
 
-test "Space — the X axis is the inline end, the Y axis the block end" {
-    assert spaceRule(.Space.X.4).declarations == "margin-inline-end:calc(var(--spacing) * 4)";
-    assert spaceRule(.Space.Y.4).declarations == "margin-block-end:calc(var(--spacing) * 4)";
-    assert spaceRule(.Space.X.0).declarations == "margin-inline-end:0";
-    assert spaceRule(.Space.X.Px).declarations == "margin-inline-end:1px";
-    assert spaceRule(.Space.Y.Half.1).declarations == "margin-block-end:calc(var(--spacing) * 1.5)";
+// UPSTREAM'S REVERSE-AWARE PAIR (verified against `utilities.ts` 2026-09-26):
+// the flag reset to 0, the start side times the flag, the end side times one
+// minus it — so with no reverse token the gap is on the END, as before, and
+// `XReverse` moves it to the start.
+test "Space — the X axis is the inline pair, the Y axis the block pair" {
+    assert spaceRule(.Space.X.4).declarations == "--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing) * 4) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-x-reverse)))";
+    assert spaceRule(.Space.Y.4).declarations == "--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))";
+    assert spaceRule(.Space.X.0).declarations == "--tw-space-x-reverse:0;margin-inline-start:0;margin-inline-end:0";
+    assert spaceRule(.Space.X.Px).declarations == "--tw-space-x-reverse:0;margin-inline-start:calc(1px * var(--tw-space-x-reverse));margin-inline-end:calc(1px * calc(1 - var(--tw-space-x-reverse)))";
+    assert spaceRule(.Space.Y.Half.1).declarations == "--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 1.5) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 1.5) * calc(1 - var(--tw-space-y-reverse)))";
 }
 
 test "Space — a negative child margin, the pull-up form" {
-    assert spaceRule(.Space.X.Neg.2).declarations == "margin-inline-end:calc(var(--spacing) * -2)";
-    assert spaceRule(.Space.Y.Neg.4).declarations == "margin-block-end:calc(var(--spacing) * -4)";
-    assert spaceRule(.Space.Y.Neg.Px).declarations == "margin-block-end:-1px";
+    assert spaceRule(.Space.X.Neg.2).declarations == "--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing) * -2) * var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing) * -2) * calc(1 - var(--tw-space-x-reverse)))";
+    assert spaceRule(.Space.Y.Neg.4).declarations == "--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * -4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * -4) * calc(1 - var(--tw-space-y-reverse)))";
+    assert spaceRule(.Space.Y.Neg.Px).declarations == "--tw-space-y-reverse:0;margin-block-start:calc(-1px * var(--tw-space-y-reverse));margin-block-end:calc(-1px * calc(1 - var(--tw-space-y-reverse)))";
 }
 
 test "Space — the two reverse tokens set the upstream custom property" {
     assert spaceRule(.Space.XReverse).declarations == "--tw-space-x-reverse:1";
     assert spaceRule(.Space.YReverse).declarations == "--tw-space-y-reverse:1";
-    assert spaceRule(.Space.XReverse).selector == "& > :not(:last-child)";
+    assert spaceRule(.Space.XReverse).selector == ":where(& > :not(:last-child))";
+    val tokens: Token[] = [.Space.X.4, .Space.XReverse];
+    val decls = declarationsOf(tokensToSheet(tokens, defaultTheme()));
+    assert (decls.at(1) ?? "") == "--tw-space-x-reverse:1";
 }
 
 // The selector is a nesting template, so it carries EXACTLY ONE `&` — with
@@ -5117,7 +5136,7 @@ test "Space — the two reverse tokens set the upstream custom property" {
 // visible the day it is written.
 test "Space — the sibling selector is one template, with exactly one ampersand" {
     val sel = siblingSelector();
-    assert sel == "& > :not(:last-child)";
+    assert sel == ":where(& > :not(:last-child))";
     assert sel.split("&").length - 1 == 1;
     assert spaceRule(.Space.X.4).selector == sel;
     assert spaceRule(.Space.YReverse).selector == sel;
@@ -5126,8 +5145,8 @@ test "Space — the sibling selector is one template, with exactly one ampersand
 test "Space — a modifier wraps the child selector, it does not replace it" {
     val inner: Token[] = [.Space.Y.4];
     val r = firstRuleOf(tokenToSheet(Token.Hover(inner), defaultTheme()));
-    assert r.selector == "&:hover > :not(:last-child)";
-    assert r.declarations == "margin-block-end:calc(var(--spacing) * 4)";
+    assert r.selector == ":where(&:hover > :not(:last-child))";
+    assert r.declarations == "--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))";
 }
 
 // A `Space` token and a plain declaration in ONE token list are two rules of
@@ -5140,8 +5159,8 @@ test "Space — composing with a Pad token in one list gives two rules, in order
     val cls = emilia(tokens);
     val styles = await flushWith(bareOptions());
     assert styles == "<style>@layer theme, base, components, utilities;@layer utilities{."
-        + cls + "{padding:calc(var(--spacing) * 4)}."
-        + cls + " > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}}</style>";
+        + cls + "{padding:calc(var(--spacing) * 4)}"
+        + ":where(." + cls + " > :not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))}}</style>";
 }
 
 // ── tests · end to end ───────────────────────────────────────────────────────
@@ -5183,7 +5202,7 @@ test "end to end — a stacked thread spaces its children and pulls one back up"
     val pulledCls = emilia(pulled);
     val styles = await flushWith(bareOptions());
     assert styles.indexOf("." + stackCls + "{padding:calc(var(--spacing) * 6)}") != -1;
-    assert styles.indexOf("." + stackCls + " > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}") != -1;
+    assert styles.indexOf(":where(." + stackCls + " > :not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))}") != -1;
     assert styles.indexOf("." + pulledCls + "{margin-top:calc(var(--spacing) * -2)}") != -1;
 }
 
@@ -9392,9 +9411,9 @@ fn ringOffsetColorTaupeShade(s: Token.Ring.Offset.Color.Taupe) -> string {
 // selector and the pair were VERIFIED against upstream v4 while writing this.
 fn divideTokenToSheet(t: Token.Divide, th: Theme) -> Sheet {
     val out = case t {
-        X(_inner) -> childSheet(dividePair("border-inline-start-width",
+        X(_inner) -> childSheet(reversePair("--tw-divide-x-reverse", "border-inline-start-width",
             "border-inline-end-width", divideXValue(_inner)));
-        Y(_inner) -> childSheet(dividePair("border-top-width",
+        Y(_inner) -> childSheet(reversePair("--tw-divide-y-reverse", "border-top-width",
             "border-bottom-width", divideYValue(_inner)));
         Color(_inner) -> childSheet(divideColorToCss(_inner, th));
         Style(_inner) -> childSheet(divideStyleToCss(_inner));
@@ -9406,10 +9425,6 @@ fn divideTokenToSheet(t: Token.Divide, th: Theme) -> Sheet {
 
 // The leading edge is zeroed and the trailing edge carries the width, so a
 // run of children shows exactly one rule between each pair.
-fn dividePair(zeroProp: string, widthProp: string, w: string) -> string {
-    return oneDecl(zeroProp, "0px") + ";" + oneDecl(widthProp, w);
-}
-
 fn divideXValue(s: Token.Divide.X) -> string {
     val out = case s {
         __0 -> "0px";
@@ -10709,19 +10724,15 @@ test "contract 4 — swapping Ring and Effect.Shadow changes the class" {
 
 // ── divide ───────────────────────────────────────────────────────────────────
 
-test "Divide.Y — a rule on the CHILDREN, zero-then-width" {
-    assert firstDeclaration(.Divide.Y.2)
-        == "border-top-width:0px;border-bottom-width:2px";
-    assert firstDeclaration(.Divide.Y.1)
-        == "border-top-width:0px;border-bottom-width:1px";
-    assert tokenSelector(.Divide.Y.2) == "& > :not(:last-child)";
+test "Divide.Y — a rule on the CHILDREN, upstream's reverse-aware pair" {
+    assert firstDeclaration(.Divide.Y.2) == "--tw-divide-y-reverse:0;border-top-width:calc(2px * var(--tw-divide-y-reverse));border-bottom-width:calc(2px * calc(1 - var(--tw-divide-y-reverse)))";
+    assert firstDeclaration(.Divide.Y.1) == "--tw-divide-y-reverse:0;border-top-width:calc(1px * var(--tw-divide-y-reverse));border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)))";
+    assert tokenSelector(.Divide.Y.2) == ":where(& > :not(:last-child))";
 }
 
 test "Divide.X — the logical pair, as upstream emits it" {
-    assert firstDeclaration(.Divide.X.2)
-        == "border-inline-start-width:0px;border-inline-end-width:2px";
-    assert firstDeclaration(.Divide.X.1)
-        == "border-inline-start-width:0px;border-inline-end-width:1px";
+    assert firstDeclaration(.Divide.X.2) == "--tw-divide-x-reverse:0;border-inline-start-width:calc(2px * var(--tw-divide-x-reverse));border-inline-end-width:calc(2px * calc(1 - var(--tw-divide-x-reverse)))";
+    assert firstDeclaration(.Divide.X.1) == "--tw-divide-x-reverse:0;border-inline-start-width:calc(1px * var(--tw-divide-x-reverse));border-inline-end-width:calc(1px * calc(1 - var(--tw-divide-x-reverse)))";
 }
 
 test "Divide.Color, Divide.Style and the two reverse flags" {
@@ -10769,7 +10780,7 @@ test "Divide and front 35's Space emit BYTE-IDENTICAL child selectors" {
 
 test "the child selector is a one-`&` template and is spelled in ONE place" {
     val sel = siblingSelector();
-    assert sel == "& > :not(:last-child)";
+    assert sel == ":where(& > :not(:last-child))";
     assert sel.split("&").length == 2;
 }
 
@@ -10791,8 +10802,8 @@ test "end to end — a divided list is a rule on the children of the class" {
     val doc = await flushWith(bareOptions());
     // ONE child rule, not three: the width and the colour share a selector, so
     // the renderer merges them into a single rule on the same children.
-    assert doc.indexOf("." + cls + " > :not(:last-child){"
-        + "border-top-width:0px;border-bottom-width:1px;"
+    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){"
+        + "--tw-divide-y-reverse:0;border-top-width:calc(1px * var(--tw-divide-y-reverse));border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));"
         + "border-color:var(--color-gray-200)}") != -1;
     // and the class itself declares NOTHING — every declaration is on a child.
     assert doc.indexOf("." + cls + "{") == -1;

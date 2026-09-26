@@ -723,26 +723,31 @@ selector:
 val cls = emilia([.Pad.All.4, .Space.Y.4]);
 await flush();
 // .e_1f2{padding:calc(var(--spacing) * 4)}
-// .e_1f2 > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}
+// :where(.e_1f2 > :not(:last-child)){--tw-space-y-reverse:0;
+//   margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
+//   margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))}
 ```
 
-Two rules of one class, because they do not describe the same elements. `X` is
-`margin-inline-end`, `Y` is `margin-block-end` — the logical pair, for the same
-reason `Pad.S`/`Pad.E` exist. The scale is the one `Pad` and `Margin` use,
-`Neg` included, and `.Space.XReverse` / `.Space.YReverse` set upstream's
-`--tw-space-x-reverse` / `--tw-space-y-reverse`.
+Two rules of one class, because they do not describe the same elements. This is
+upstream v4's form (verified against `utilities.ts`): the child selector is
+wrapped in `:where()` so it adds no specificity, and the gap is split between
+the logical START and END margins through the reverse flag — `0` by default, so
+the gap sits at the end, and `.Space.XReverse` / `.Space.YReverse` (the flag at
+`1`) move it to the start. The scale is the one `Pad` and `Margin` use, `Neg`
+included; a zero step is a bare `0` on both sides.
 
 The selector is a nesting template carrying exactly one `&`, so a modifier
 wraps it rather than replacing it:
 
 ```bp
 Token.Hover([.Space.Y.4])
-// &:hover > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}
+// :where(&:hover > :not(:last-child)){--tw-space-y-reverse:0;…}
 ```
 
 **Recorded, not hidden:** `space-x-*` is absent from the local Tailwind
-reference entirely, so the child selector and the property are this front's
-proposal rather than a transcription, and the `--tw-space-*-reverse` names are
+reference entirely, so the child selector and the properties were read from
+upstream's `utilities.ts` (2026-09-26) rather than transcribed, and the
+`--tw-space-*-reverse` names are
 upstream-internal and unverified. Both are pinned by a test, so changing them
 is a visible change.
 
@@ -1214,15 +1219,14 @@ output. Token order is class identity, so swapping the two is a different class
 ### Divide — borders between children
 
 ```bp
-.Divide.Y.1                 // & > :not(:last-child) {
-                            //   border-top-width:0px;border-bottom-width:1px }
-.Divide.X.2                 // & > :not(:last-child) {
-                            //   border-inline-start-width:0px;
-                            //   border-inline-end-width:2px }
-.Divide.Color.Slate.200     // & > :not(:last-child) {
+.Divide.Y.1                 // :where(& > :not(:last-child)) { --tw-divide-y-reverse:0;
+                            //   border-top-width:calc(1px * var(--tw-divide-y-reverse));
+                            //   border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse))) }
+.Divide.X.2                 // the same on border-inline-start-width / -end-width
+.Divide.Color.Slate.200     // :where(& > :not(:last-child)) {
                             //   border-color:var(--color-slate-200) }
-.Divide.Style.Dashed        // & > :not(:last-child) { border-style:dashed }
-.Divide.XReverse            // & > :not(:last-child) { --tw-divide-x-reverse:1 }
+.Divide.Style.Dashed        // :where(& > :not(:last-child)) { border-style:dashed }
+.Divide.XReverse            // :where(& > :not(:last-child)) { --tw-divide-x-reverse:1 }
 ```
 
 `divide-*` declares on the element's **children**, not on the element — a
@@ -1231,8 +1235,8 @@ border on every child but the last — so the class body itself is **empty**:
 ```bp
 val list: Token[] = [.Divide.Y.1, .Divide.Color.Gray.200];
 emilia(list);
-// .e_x > :not(:last-child){border-top-width:0px;border-bottom-width:1px;
-//                          border-color:var(--color-gray-200)}
+// :where(.e_x > :not(:last-child)){--tw-divide-y-reverse:0;border-top-width:…;
+//                                   border-bottom-width:…;border-color:var(--color-gray-200)}
 ```
 
 A width, a colour and a style all target the **same** selector, so they merge

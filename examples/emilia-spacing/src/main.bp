@@ -231,7 +231,7 @@ test "the thread spaces its CHILDREN, which is a second rule and a second select
     val cls = commentThread();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls + "{padding:calc(var(--spacing) * 6);max-width:var(--container-2xl)}") != -1;
-    assert doc.indexOf("." + cls + " > :not(:last-child){margin-block-end:calc(var(--spacing) * 4)}") != -1;
+    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)))}") != -1;
 }
 
 test "the pulled reply is a negative margin, the one form with no alternative" {

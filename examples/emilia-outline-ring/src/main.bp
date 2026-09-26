@@ -218,8 +218,8 @@ test "a ring composes with a shadow, and swapping them is a different class" {
 test "a divided list declares on its children, not on itself" {
     val cls = dividedRows();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + " > :not(:last-child){"
-        + "border-top-width:0px;border-bottom-width:1px;"
+    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){"
+        + "--tw-divide-y-reverse:0;border-top-width:calc(1px * var(--tw-divide-y-reverse));border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));"
         + "border-color:var(--color-gray-200)}") != -1;
     assert doc.indexOf("." + cls + "{") == -1;
 }
@@ -227,8 +227,8 @@ test "a divided list declares on its children, not on itself" {
 test "divide-x is the logical pair, and a style joins the same child rule" {
     val cls = dividedColumns();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + " > :not(:last-child){"
-        + "border-inline-start-width:0px;border-inline-end-width:2px;"
+    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){"
+        + "--tw-divide-x-reverse:0;border-inline-start-width:calc(2px * var(--tw-divide-x-reverse));border-inline-end-width:calc(2px * calc(1 - var(--tw-divide-x-reverse)));"
         + "border-style:dashed}") != -1;
 }
 
@@ -252,8 +252,8 @@ test "end to end — a segmented list borders itself and divides its rows" {
     assert doc.indexOf("." + cls + "{border-width:1px;"
         + "border-color:var(--color-slate-200);"
         + "border-radius:var(--radius-lg)}") != -1;
-    assert doc.indexOf("." + cls + " > :not(:last-child){"
-        + "border-top-width:0px;border-bottom-width:1px;"
+    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){"
+        + "--tw-divide-y-reverse:0;border-top-width:calc(1px * var(--tw-divide-y-reverse));border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));"
         + "border-color:var(--color-slate-200)}") != -1;
 }
 
@@ -267,8 +267,8 @@ test "divide and space use the same child selector, seen from outside" {
     val dCls = emilia(d);
     val sCls = emilia(s);
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + dCls + " > :not(:last-child){") != -1;
-    assert doc.indexOf("." + sCls + " > :not(:last-child){") != -1;
+    assert doc.indexOf(":where(." + dCls + " > :not(:last-child)){") != -1;
+    assert doc.indexOf(":where(." + sCls + " > :not(:last-child)){") != -1;
 }
 
 test "no token in this example resolves a colour or a length" {
