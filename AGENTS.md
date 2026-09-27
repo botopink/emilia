@@ -889,10 +889,12 @@ emilia/
 │                        three class names + a Hover/Md modifier, green on
 │                        both targets
 └── scripts/
-    ├── git-hooks/     ← the pre-commit gate (§ Local gate): `botopink test`
-    │                    per `modules/*/` member, then `botopink build` per
-    │                    example
-    └── known-broken-examples.txt ← the examples allowed to fail
+    └── git-hooks/     ← the pre-commit gate (§ Local gate): staged files
+                         (no snapshot candidate, no conflict marker), then
+                         `botopink test` per `modules/*/` member, then
+                         `botopink build` per example (no list of examples
+                         allowed to fail), then `refusals/*/` (none today);
+                         the runner is jhonstart's byte for byte
 ```
 
 `modules/emilia-test/` is the `<lib>-test` member front 95 created empty; it
@@ -1450,11 +1452,11 @@ to the commonJS row and runs once.
   tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.600`, …), the
   flush one rewritten by front 56 to the layered document and the hoisted
   modifier. It
-  **builds again**: jhonstart's `fix/context` front landed on its `feat`, so the
+  **builds**: jhonstart's `fix/context` front landed on its `feat`, so the
   `hooks.bp:109 use-without-context-effect` red that used to stop the build
-  inside **jhonstart** (never inside emilia) is gone, and the example's line was
-  deleted from `scripts/known-broken-examples.txt` — the list refuses to rot, so
-  a listed example that builds fails the gate just as a red one does.
+  inside **jhonstart** (never inside emilia) is gone. It is gated like every
+  other example: an example that does not build fails the commit, and no list
+  names one allowed to fail (gate-i of 1.0.11-beta `00-gate`).
 
 - `examples/emilia-modifiers/` is the member `emilia-modifiers` and is front
   34's worked example: a navigation bar that is stacked and dark-surfaced on a
@@ -1608,36 +1610,42 @@ the same gate. Install it once per clone:
 git config core.hooksPath scripts/git-hooks
 ```
 
-`core.hooksPath` is per clone and applies to every worktree of it. The
-gate checks staged files for conflict markers, then — because the root
-`botopink.json` is a workspace — runs `botopink test` **inside every
-`modules/*/` that holds a `botopink.json`**, each on its own manifest
-target (`erl` and `node` on `PATH`); a red member fails the gate and names
-the re-run command. (A root manifest without `"workspaces"` keeps the old
-single `botopink test` over `src/` + `test/`.) So a source file that does not
-parse — e.g. one carrying markdown escapes like `#\[@External\.node(` —
-still fails the commit. The compiler binary is located via (in order)
-`$BOTOPINK_BIN`, the nearest ancestor
-`repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If none
-resolve, the gate prints a yellow warning and exits 0 — CI runs the full
-suite and catches any regression there. Never commit with `--no-verify`;
-fix the red instead.
+`core.hooksPath` is per clone and applies to every worktree of it (a
+submodule checkout inside a worktree of the meta repository may lack it —
+set it there too). The gate first refuses a staged snapshot candidate
+(`*.snap.new` / `*.snap.md.new` — a candidate is compared with the spec's
+literal and recorded by renaming it, never committed; `.gitignore` lists
+both suffixes and the hook refuses one that `git add -f` got past that) and
+a staged conflict marker, then — because the root `botopink.json` is a
+workspace — runs `botopink test` **inside every `modules/*/` that holds a
+`botopink.json`**, each on its own manifest target (`erl` and `node` on
+`PATH`); a red member fails the gate and names the re-run command. (A root
+manifest without `"workspaces"` keeps the old single `botopink test` over
+`src/` + `test/`.) So a source file that does not parse — e.g. one carrying
+markdown escapes like `#\[@External\.node(` — still fails the commit. The
+compiler binary is located via (in order) `$BOTOPINK_BIN`, the nearest
+ancestor `repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If
+none resolve, the gate **fails** (`requireBotopink`: exit 1, the message
+names the way out — `zig build install` in a botopink-lang checkout, or
+`BOTOPINK_BIN`); fail beats warn (gate-i of 1.0.11-beta `00-gate`), so a
+commit is never gated by nothing. Never commit with `--no-verify`; fix the
+red instead.
 
 After `botopink test`, the gate builds every `examples/*/` that has a
 `botopink.json` (`runExamplesGate`, each with its own manifest target,
-into a throwaway `--out`); CI runs the same function once per workflow.
-`scripts/known-broken-examples.txt` lists the examples allowed to fail —
-`examples/<name>  <reason>` per line — and cannot rot: a listed example
-that builds, or a listed path that no longer exists, fails the gate too.
-When a fix makes an example build, delete its line in the same commit. The list may be absent,
-empty or hold only `#` comments — each means no example is allowed to fail.
-The list is empty today: `examples/emilia-card` was listed while jhonstart `feat`
-did not compile against botopink-lang `feat`, and its line came out once
-jhonstart's `fix/context` front landed (see § Test surface). It builds **and runs**
-again (`botopink run` prints the tree, the three `e_<hash>` class names and the
-`<style>` block); it depends on jhonstart, so CI checks jhonstart out
-beside emilia before the examples gate (the dependency is the
-workspace-relative `{ "path": "../../../jhonstart/modules/jhonstart" }`). Its
+into a throwaway `--out`); CI runs the same function on every matrix row.
+An example that does not build fails the gate; there is no list of examples
+allowed to fail — a skip list is a tolerated red (gate-i). A last stage,
+`runRefusalsGate`, checks every `refusals/*/` case (a project that must be
+refused with the message of its `expect.txt`); emilia has no `refusals/`
+directory, so the stage is empty. `scripts/git-hooks/lib/runner-standalone.sh`
+is jhonstart's file byte for byte (front 101 of 1.0.11-beta `00-gate`), so the
+five libraries' guard clauses are identical and 113 can diff them.
+`examples/emilia-card` builds **and runs** (`botopink run` prints the tree,
+the three `e_<hash>` class names and the `<style>` block); it depends on
+jhonstart, so CI checks jhonstart out beside emilia before the examples gate
+(the dependency is the workspace-relative
+`{ "path": "../../../jhonstart/modules/jhonstart" }`). Its
 builder calls leave `attrs` to its declared default (`h1([…])` — a default
 travels with an imported function), and its `main` is
 `fn main() -> @Task<void>` so `flush()` can be awaited (the return is the effect,

@@ -1,3 +1,0 @@
-# Examples allowed to fail the examples gate — one `examples/<name>  <reason>` per line.
-# The list cannot rot: a listed example that builds, or a listed path that no longer
-# exists, fails the gate. Delete the line in the same commit as the fix.
