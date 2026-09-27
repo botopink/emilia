@@ -905,15 +905,19 @@ stands on std's `asserts` and `snapshots`, re-exports nothing from std, and
 `.d.bp` files are NOT in the module tree (memory:
 `project_libs_module_migration_done`); emilia has none today.
 
-`.github/workflows/test.yml` — CI: `zig build test-libs -- --lib emilia
---target <t>` for `{commonJS, erlang}` on ubuntu and macos, plus `commonJS`
-on windows (`escript` ships cleanly only on linux + macos), against
-botopink-lang `vars.BOTOPINK_LANG_REF` (default `feat`). Both rows are hard
-cells — no `allow_fail`. Under the workspace, `--lib emilia` restricts the
-runner to the **core member** (the umbrella has no row); without `--lib` the
-runner discovers every member — one row each, the example as an application.
-The examples stage reads each example's own manifest target, so it is pinned
-to the commonJS row and runs once.
+`.github/workflows/test.yml` — CI: the matrix is the manifests' target set
+(gate-j of 1.0.11-beta `00-gate`): `{commonJS, erlang}` on ubuntu and macos,
+plus `commonJS` on windows (`escript` ships cleanly only on linux + macos),
+against botopink-lang `vars.BOTOPINK_LANG_REF` (default `feat`). Every row is
+hard — no `allow_fail`, no `continue-on-error`. Each row runs
+`botopink-lib-test --target <t>` from the botopink-lang checkout with no
+`--lib` (`--lib emilia` would select the core member alone; the runner has
+no workspace selector), so every member and every example of the workspace
+is a row — 17 at the 1.0.11-beta open: `modules/{emilia,emilia-test}` and
+the fifteen `examples/*` — with the compiler's `libs/std` and the jhonstart
+checkout (the `emilia-card` dependency, placed under
+`botopink-lang/repository/jhonstart`) riding along. The examples gate
+(`runExamplesGate`) then runs on every row.
 
 ## Maintainer rules
 

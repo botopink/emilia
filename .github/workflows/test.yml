@@ -1,16 +1,29 @@
 # Per-platform CI for emilia.
 #
-# emilia is a CSS-in-bp library for jhonstart; its host cells carry an erlang
-# form, so it ships on `commonJS` and on `erlang` (the workspace `targets`).
-# Bootstrap: check out this lib + botopink-lang, place this lib under
-# `botopink-lang/repository/emilia/`, run `zig build test-libs -- --lib
-# emilia --target <matrix.target>`.
+# The matrix is the manifests' target set (1.0.11-beta 00-gate, gate-j): the
+# workspace `botopink.json` declares `["commonJS", "erlang"]` and every member
+# inherits it (the two modules and the fifteen examples all run on both), so
+# the rows are `commonJS` and `erlang` on linux and macos, plus `commonJS` on
+# windows (`escript` ships cleanly only on linux + macos). Every row is hard —
+# no `allow_fail`, no `continue-on-error`.
 #
-# The repository root is a WORKSPACE (decision 75 of 1.0.10-beta): it compiles
-# nothing and has no runner row. `--lib emilia` resolves to the core member
-# `modules/emilia/`, whose `targets` this matrix mirrors; the example
-# `examples/emilia-card/` is the member `emilia-card` and is covered by the
-# examples stage below, not by a matrix row.
+# Bootstrap: check out this lib + botopink-lang, place this lib under
+# `botopink-lang/repository/emilia/`, build the compiler, run
+# `botopink-lib-test --target <matrix.target>` from the botopink-lang checkout.
+# The runner discovers every project the checkout holds — this workspace's
+# members (`modules/*`, `examples/*`, one row each by manifest name; the
+# umbrella has no row, decision 75), the compiler's own `libs/std` and the
+# jhonstart checkout `examples/emilia-card` needs — and runs `botopink test`
+# in each on the row's target. `--lib` takes one name (`--lib emilia` is the
+# core member alone), so the whole workspace is one call without it: no
+# hand-written member loop, and `std` and jhonstart's members ride along
+# because the runner has no workspace selector.
+#
+# Then the examples gate (runExamplesGate, the pre-commit hook's stage) builds
+# every `examples/*/` with its own manifest target, on every row, and the
+# refusals gate checks every `refusals/*/` case (none today) — the hook's
+# stages, in CI. The hook runner is jhonstart's byte for byte (front 101), so
+# the five libraries' guard clauses read the same (113 verifies).
 name: test
 
 on:
@@ -33,20 +46,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The `erlang` axis is a hard cell: `botopink test --target erlang`
-        # passes the whole suite (17/17, measured 2026-09-18) since the
-        # stylesheet host cells grew an @External.Erlang form. windows-2022
-        # commonJS now runs the source step under `shell: bash` (ci-tail W1),
-        # so the PowerShell `${LIB_NAME}` expansion gap is closed and the row
-        # carries `allow_fail: false`.
         include:
-          - { runner: ubuntu-22.04, target: commonJS, allow_fail: false }
-          - { runner: ubuntu-22.04, target: erlang,   allow_fail: false }
-          - { runner: macos-14,     target: commonJS, allow_fail: false }
-          - { runner: macos-14,     target: erlang,   allow_fail: false }
-          - { runner: windows-2022, target: commonJS, allow_fail: false }
+          - { runner: ubuntu-22.04, target: commonJS }
+          - { runner: ubuntu-22.04, target: erlang }
+          - { runner: macos-14,     target: commonJS }
+          - { runner: macos-14,     target: erlang }
+          - { runner: windows-2022, target: commonJS }
     runs-on: ${{ matrix.runner }}
-    continue-on-error: ${{ matrix.allow_fail }}
     steps:
       - name: Checkout this lib
         uses: actions/checkout@v5
@@ -70,6 +76,18 @@ jobs:
             rm -rf "botopink-lang/repository/${LIB_NAME}"
             cp -R self "botopink-lang/repository/${LIB_NAME}"
           fi
+
+      # examples/emilia-card depends on jhonstart by the workspace-relative
+      # { "path": "../../../jhonstart/modules/jhonstart" }, which resolves to
+      # botopink-lang/repository/jhonstart, so check it out there (jhonstart's
+      # own CI checks emilia out the same way for `jhonstart-emilia`). The
+      # runner then discovers jhonstart's members too; they are rows of this run.
+      - name: Checkout jhonstart (examples dependency)
+        uses: actions/checkout@v5
+        with:
+          repository: botopink/jhonstart
+          ref: feat
+          path: botopink-lang/repository/jhonstart
 
       - name: Install erlang (linux)
         if: matrix.runner == 'ubuntu-22.04' && matrix.target == 'erlang'
@@ -114,37 +132,29 @@ jobs:
         working-directory: botopink-lang
         run: zig build install
 
-      - name: zig build test-libs --lib emilia --target ${{ matrix.target }} (source)
+      # Every member and every example of the workspace, one row each, on this
+      # row's target (the runner reads each manifest's `targets`).
+      - name: botopink-lib-test --target ${{ matrix.target }} (source)
         if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
         working-directory: botopink-lang
         shell: bash
-        run: zig build test-libs -- --lib "${LIB_NAME}" --target "${{ matrix.target }}"
+        run: zig-out/bin/botopink-lib-test --bin zig-out/bin/botopink --target "${{ matrix.target }}"
 
-      - name: botopink-lib-test --lib emilia --target ${{ matrix.target }} (fast path)
+      - name: botopink-lib-test --target ${{ matrix.target }} (fast path)
         if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH == 'true' }}
         working-directory: botopink-lang
         shell: bash
-        run: botopink-lib-test --lib "${LIB_NAME}" --target "${{ matrix.target }}"
+        run: botopink-lib-test --target "${{ matrix.target }}"
 
-      # Every examples/*/ with a botopink.json builds (runExamplesGate, the same
-      # stage as the pre-commit hook); scripts/known-broken-examples.txt lists
-      # the ones allowed to fail (none today). Each example uses its own manifest
-      # target, so this runs once, not per target.
-      # examples/emilia-card depends on jhonstart by the workspace-relative
-      # { "path": "../../../jhonstart/modules/jhonstart" }, which resolves to
-      # botopink-lang/repository/jhonstart, so check it out there.
-      - name: Checkout jhonstart (examples dependency)
-        uses: actions/checkout@v5
-        with:
-          repository: botopink/jhonstart
-          ref: feat
-          path: botopink-lang/repository/jhonstart
-
-      - name: Examples build
-        if: matrix.target == 'commonJS'
+      # Every examples/*/ with a botopink.json builds (runExamplesGate) and
+      # every refusals/*/ case is refused (runRefusalsGate; emilia has no
+      # refusals/ today, so the stage is empty) — the pre-commit hook's stages,
+      # on every row: no row is "the one that checks examples".
+      - name: Examples build and refusals
         working-directory: botopink-lang/repository/${{ env.LIB_NAME }}
         shell: bash
         run: |
           source scripts/git-hooks/lib/runner-standalone.sh
-          bin=$(locateBotopink) || { echo "botopink binary not found"; exit 1; }
+          bin=$(requireBotopink)
           runExamplesGate "$bin"
+          runRefusalsGate "$bin"
