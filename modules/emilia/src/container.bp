@@ -23,10 +23,10 @@
 //// helpers take the inner list already folded to a `Sheet`: folding is
 //// `emilia.bp`'s, and that module imports this one.
 
-import {Token} from "tokens";
-import {Theme, Ns, nsPrefix, themeValue, clearNamespace, defaultTheme, extendTheme, ThemeEntry, DarkMode} from "theme";
-import {Sheet, Variant, Rule, Block, declSheet, nestVariant} from "output";
-import {refusesIdent} from "arbitrary";
+import {tokens.Token};
+import {theme.Theme, theme.Ns, theme.nsPrefix, theme.themeValue, theme.clearNamespace, theme.defaultTheme, theme.extendTheme, theme.ThemeEntry, theme.DarkMode};
+import {output.Sheet, output.Variant, output.Rule, output.Block, output.declSheet, output.nestVariant};
+import {arbitrary.refusesIdent};
 
 pub type ContainerSize { X3xs, X2xs, Xs, Sm, Md, Lg, Xl, X2xl, X3xl, X4xl, X5xl, X6xl, X7xl }
 

@@ -1,20 +1,20 @@
-import {Token} from "tokens";
-import {Theme, ThemeEntry, DarkMode, defaultTheme, emptyTheme, extendTheme, themeValue} from "theme";
-import {darkAtRule, darkSelector, withDarkMode} from "theme";
-import {Ns, nsPrefix, themeVar, namespace, keyframeCss} from "theme";
-import {spacing, spacingHalf, spacingNegHalf} from "spacing";
-import {Rule, Block, Sheet, Variant, Options} from "output";
-import {emptySheet, declSheet, blockSheet, mergeSheet, declarationsOf, nestVariant, markImportant} from "output";
-import {encodeSheet, decodeSheet, carriesSeparator} from "output";
-import {defaultOptions, withTheme, withBase, renderRule, renderDocument} from "output";
-import {arbValueToSheet, arbPropToSheet, arbVariantToSheet, arbAtToSheet, arbMinToSheet, arbMaxToSheet} from "arbitrary";
-import {arbValue, arbProp, arbSel, arbAt, arbMin, arbMax} from "arbitrary";
-import {containerMarkerToCss, containerNamedToSheet, containerAtToSheet} from "container";
-import {containerName, containerAtMd, containerAtSm} from "container";
-import {scrollbarHidden, compose, hocus, selector as customVariant, themeMidnight} from "compose";
-import {preflightRules} from "preflight";
-import {refusesIdent, panicMessage} from "arbitrary";
-import {mergeClass, nonAsciiIn} from "attributes";
+import {tokens.Token};
+import {theme.Theme, theme.ThemeEntry, theme.DarkMode, theme.defaultTheme, theme.emptyTheme, theme.extendTheme, theme.themeValue};
+import {theme.darkAtRule, theme.darkSelector, theme.withDarkMode};
+import {theme.Ns, theme.nsPrefix, theme.themeVar, theme.namespace, theme.keyframeCss};
+import {spacing.spacing, spacing.spacingHalf, spacing.spacingNegHalf};
+import {output.Rule, output.Block, output.Sheet, output.Variant, output.Options};
+import {output.emptySheet, output.declSheet, output.blockSheet, output.mergeSheet, output.declarationsOf, output.nestVariant, output.markImportant};
+import {output.encodeSheet, output.decodeSheet, output.carriesSeparator};
+import {output.defaultOptions, output.withTheme, output.withBase, output.renderRule, output.renderDocument};
+import {arbitrary.arbValueToSheet, arbitrary.arbPropToSheet, arbitrary.arbVariantToSheet, arbitrary.arbAtToSheet, arbitrary.arbMinToSheet, arbitrary.arbMaxToSheet};
+import {arbitrary.arbValue, arbitrary.arbProp, arbitrary.arbSel, arbitrary.arbAt, arbitrary.arbMin, arbitrary.arbMax};
+import {container.containerMarkerToCss, container.containerNamedToSheet, container.containerAtToSheet};
+import {container.containerName, container.containerAtMd, container.containerAtSm};
+import {compose.scrollbarHidden, compose.compose, compose.hocus, compose.selector as customVariant, compose.themeMidnight};
+import {preflight.preflightRules};
+import {arbitrary.refusesIdent, arbitrary.panicMessage};
+import {attributes.mergeClass, attributes.nonAsciiIn};
 
 //// ═══ FRONT 56 · the host cells and the public entry points ═══════════════
 ////

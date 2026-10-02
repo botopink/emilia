@@ -36,8 +36,8 @@
 //// helpers take the inner list ALREADY FOLDED to a `Sheet`, because folding it
 //// is `emilia.bp`'s `tokensToSheet` and that module imports this one.
 
-import {Token} from "tokens";
-import {Sheet, Variant, declSheet, nestVariant} from "output";
+import {tokens.Token};
+import {output.Sheet, output.Variant, output.declSheet, output.nestVariant};
 
 // ── the five reject sets, as run-time predicates ─────────────────────────────
 //
