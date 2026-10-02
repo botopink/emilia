@@ -28,9 +28,9 @@
 //// arm, and has no compile-time block. `named()` itself is in `emilia.bp`
 //// (see step 4 below).
 
-import {Token} from "tokens";
-import {Variant} from "output";
-import {arbValue, arbSel, arbAt} from "arbitrary";
+import {tokens.Token};
+import {output.Variant};
+import {arbitrary.arbValue, arbitrary.arbSel, arbitrary.arbAt};
 
 // ── step 1 · a bundle is a function (`§ 20.4`'s `@utility scrollbar-hidden`) ─
 

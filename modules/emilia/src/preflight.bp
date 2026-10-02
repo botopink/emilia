@@ -26,9 +26,9 @@
 //// front 55 banner: a sibling module that imports `from "emilia"` compiles
 //// alone and does NOT resolve when emilia is a dependency (§ Maintainer rules).
 
-import {Rule, Options, defaultOptions, renderRule} from "output";
-import {withBase, withTheme, renderDocument, encodeSheet, declSheet} from "output";
-import {Theme, ThemeEntry, DarkMode, emptyTheme} from "theme";
+import {output.Rule, output.Options, output.defaultOptions, output.renderRule};
+import {output.withBase, output.withTheme, output.renderDocument, output.encodeSheet, output.declSheet};
+import {theme.Theme, theme.ThemeEntry, theme.DarkMode, theme.emptyTheme};
 
 fn baseRule(selector: string, declarations: string) -> Rule {
     val none: string[] = [];

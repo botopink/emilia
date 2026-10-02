@@ -722,7 +722,7 @@ emilia/
 │                            `#\[@External\.<target>(…)]` host cells
 │                            (`register`, `flushSheet`) + the 17 inline
 │                            tests. It imports `Token` as
-│                            `import { Token } from "tokens";` — naming the
+│                            `import {tokens.Token};` — naming the
 │                            sibling module is **required**, see "Gotchas"
 ├── examples/
 │   ├── emilia-borders/ ← member `emilia-borders` (an application: entry
@@ -1214,8 +1214,9 @@ here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
   `{Theme, ThemeEntry, DarkMode, defaultTheme, extendTheme}` plus
   `{Rule, Block, Sheet, Options}`. Copy it rather than rediscover it.
 
-- **A sibling-module import always names its module** — `import { Token } from
-  "tokens";`, never the bare `import { Token };`. Both type-check, but commonJS
+- **A sibling-module import always names its module** — by its path inside the
+  braces, `import {tokens.Token};` (decision 206: `from` names a package, never
+  a module of emilia), never the bare `import { Token };`. Both type-check, but commonJS
   lowers the bare form to `require("../module")`: a path that resolves while
   emilia is compiled on its own and not when it is a dependency, which is how
   `examples/emilia-card` came to build and then die with `Cannot find module

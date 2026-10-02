@@ -33,7 +33,7 @@
 //// a `…TokenToSheet(t, th) -> Sheet` instead and says so in its own README.
 //// Two shapes, one line each in the shared `case`.
 
-import {Theme, ThemeEntry, DarkMode, Ns, nsPrefix, defaultTheme, emptyTheme, themeCss, keyframeCss} from "theme";
+import {theme.Theme, theme.ThemeEntry, theme.DarkMode, theme.Ns, theme.nsPrefix, theme.defaultTheme, theme.emptyTheme, theme.themeCss, theme.keyframeCss};
 
 // ── the model ────────────────────────────────────────────────────────────────
 
