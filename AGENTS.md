@@ -890,11 +890,14 @@ emilia/
 │                        both targets
 └── scripts/
     └── git-hooks/     ← the pre-commit gate (§ Local gate): staged files
-                         (no snapshot candidate, no conflict marker), then
-                         `botopink test` per `modules/*/` member, then
-                         `botopink build` per example (no list of examples
-                         allowed to fail), then `refusals/*/` (none today);
-                         the runner is jhonstart's byte for byte
+                         (no snapshot candidate, no conflict marker), the
+                         compiler (absent → refused), then `botopink test`
+                         in every workspace member on every target its
+                         manifest declares, then `botopink build` of every
+                         example on every declared target (no list of
+                         examples allowed to fail), then `refusals/*/`
+                         (none today); the runner is one text in the five
+                         library repositories
 ```
 
 `modules/emilia-test/` is the `<lib>-test` member front 95 created empty; it
@@ -905,19 +908,27 @@ stands on std's `asserts` and `snapshots`, re-exports nothing from std, and
 `.d.bp` files are NOT in the module tree (memory:
 `project_libs_module_migration_done`); emilia has none today.
 
-`.github/workflows/test.yml` — CI: the matrix is the manifests' target set
-(gate-j of 1.0.11-beta `00-gate`): `{commonJS, erlang}` on ubuntu and macos,
-plus `commonJS` on windows (`escript` ships cleanly only on linux + macos),
-against botopink-lang `vars.BOTOPINK_LANG_REF` (default `feat`). Every row is
-hard — no `allow_fail`, no `continue-on-error`. Each row runs
-`botopink-lib-test --target <t>` from the botopink-lang checkout with no
-`--lib` (`--lib emilia` would select the core member alone; the runner has
-no workspace selector), so every member and every example of the workspace
-is a row — 17 at the 1.0.11-beta open: `modules/{emilia,emilia-test}` and
-the fifteen `examples/*` — with the compiler's `libs/std` and the jhonstart
-checkout (the `emilia-card` dependency, placed under
-`botopink-lang/repository/jhonstart`) riding along. The examples gate
-(`runExamplesGate`) then runs on every row.
+`.github/workflows/test.yml` — CI: the rows are the manifests' target set
+(gate-j of 1.0.11-beta `00-gate`) on the runners the compiler is gated on:
+`{ubuntu-24.04, macos-14} × {commonJS, erlang}`, against botopink-lang
+`vars.BOTOPINK_LANG_REF` (default `feat`). Every row is hard — no
+`allow_fail`, no `continue-on-error`. No `beam` row (`botopink test` cannot
+run beam) and no windows row (gate-f: botopink-lang's own workflow has none,
+so a row here would measure the compiler's windows port; it returns with the
+compiler's). `ubuntu-24.04`, not 22.04: the compiler links against a pinned
+glibc 2.38 and imports `arc4random_buf` (GLIBC_2.36), which ubuntu-22.04's
+glibc 2.35 cannot load. Erlang/OTP 28 **and** Node 20 are installed on every
+row — `zig build install` runs `erlc` and comptime evaluation spawns `erl`
+whatever the row's target. Each row is one `botopink-lib-test --bin
+"$BOTOPINK_BIN" --target <t> --strict` from a scratch directory with
+`BOTOPINK_LIB_ROOTS` naming this repository, so the runner discovers this
+workspace's 17 members — `modules/{emilia,emilia-test}` and the fifteen
+`examples/*`, one row each — and nothing else: the jhonstart checkout (the
+`emilia-card` dependency, placed under `botopink-lang/repository/jhonstart`)
+and the compiler's `libs/std` are dependencies, not rows (run from inside the
+checkout they would be). The hook's other stages then run from the hook's own
+runner on every row: `runRepositoryStagesGate` (no `repository-stages.sh`
+here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
 
 ## Maintainer rules
 
@@ -1616,35 +1627,60 @@ git config core.hooksPath scripts/git-hooks
 
 `core.hooksPath` is per clone and applies to every worktree of it (a
 submodule checkout inside a worktree of the meta repository may lack it —
-set it there too). The gate first refuses a staged snapshot candidate
-(`*.snap.new` / `*.snap.md.new` — a candidate is compared with the spec's
-literal and recorded by renaming it, never committed; `.gitignore` lists
-both suffixes and the hook refuses one that `git add -f` got past that) and
-a staged conflict marker, then — because the root `botopink.json` is a
-workspace — runs `botopink test` **inside every `modules/*/` that holds a
-`botopink.json`**, each on its own manifest target (`erl` and `node` on
-`PATH`); a red member fails the gate and names the re-run command. (A root
-manifest without `"workspaces"` keeps the old single `botopink test` over
-`src/` + `test/`.) So a source file that does not parse — e.g. one carrying
-markdown escapes like `#\[@External\.node(` — still fails the commit. The
-compiler binary is located via (in order) `$BOTOPINK_BIN`, the nearest
-ancestor `repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If
-none resolve, the gate **fails** (`requireBotopink`: exit 1, the message
-names the way out — `zig build install` in a botopink-lang checkout, or
-`BOTOPINK_BIN`); fail beats warn (gate-i of 1.0.11-beta `00-gate`), so a
-commit is never gated by nothing. Never commit with `--no-verify`; fix the
-red instead.
+set it there too). The gate's stages, in order — each one a refusal (decision
+67: fail beats warn), none with a flag, variable or list that turns it off:
 
-After `botopink test`, the gate builds every `examples/*/` that has a
-`botopink.json` (`runExamplesGate`, each with its own manifest target,
-into a throwaway `--out`); CI runs the same function on every matrix row.
-An example that does not build fails the gate; there is no list of examples
-allowed to fail — a skip list is a tolerated red (gate-i). A last stage,
-`runRefusalsGate`, checks every `refusals/*/` case (a project that must be
-refused with the message of its `expect.txt`); emilia has no `refusals/`
-directory, so the stage is empty. `scripts/git-hooks/lib/runner-standalone.sh`
-is jhonstart's file byte for byte (front 101 of 1.0.11-beta `00-gate`), so the
-five libraries' guard clauses are identical and 113 can diff them.
+1. **staged files** — no snapshot candidate (`*.snap.new` / `*.snap.md.new` —
+   a candidate is compared with the spec's literal and recorded by renaming
+   it, never committed; `.gitignore` lists both suffixes and the hook refuses
+   one that `git add -f` got past that) and no conflict marker;
+2. **the compiler** — `$BOTOPINK_BIN` when it is set (a value that is not an
+   executable is a refusal, never a reason to pick another compiler), else the
+   enclosing checkout's `repository/botopink-lang/zig-out/bin/botopink` (the
+   walk stops at the first ancestor that holds `repository/botopink-lang/`, so
+   a nested worktree never borrows another checkout's binary), else a
+   botopink-lang checkout's own `zig-out`, else `$PATH`. None → the gate
+   **fails** (`requireBotopink`: exit 1, the message names the way out —
+   `zig build install` in a botopink-lang checkout, or `BOTOPINK_BIN`); fail
+   beats warn (gate-i of 1.0.11-beta `00-gate`), so a commit is never gated by
+   nothing. The path is exported as `BOTOPINK_BIN`;
+3. **repository stages** — `scripts/git-hooks/repository-stages.sh`, when a
+   repository tracks one. emilia has none;
+4. **tests** — `botopink test --target <t>` **inside every workspace member**
+   (every directory the root manifest's `workspaces` patterns expand to:
+   `modules/{emilia,emilia-test}` and the fifteen `examples/*`) on **every
+   target its manifest declares** — the member's `targets`, else the
+   workspace's `["commonJS", "erlang"]`: 34 cells (`erl` and `node` on
+   `PATH`). So a source file that does not parse — e.g. one carrying markdown
+   escapes like `#\[@External\.node(` — fails the commit on both targets.
+   Before 1.0.11-beta `00-gate` the hook ran a bare `botopink test` in
+   `modules/*` only — each manifest's default `target`, so no erlang cell and
+   no example's tests. (A root manifest without `"workspaces"` is one member:
+   the package itself.)
+5. **examples** — `botopink build --target <t>` of every `examples/*/` on every
+   declared target, into a throwaway `--out` (`runExamplesGate`): 30 builds.
+   An example that does not build fails the gate; there is no list of
+   examples allowed to fail — a skip list is a tolerated red (gate-i);
+6. **refusals** — every `refusals/*/` case (a project that must be refused
+   with the message of its `expect.txt`), when the directory exists
+   (`runRefusalsGate`). emilia has no `refusals/` directory.
+
+Stages 1–3 stop the gate at the first red. Stages 4–6 all run: every red cell
+is listed with the tail of its output and a re-run line, and the gate fails at
+the end — one run tells every red. Measured 2026-10-01 with the compiler
+built from botopink-lang `29cfffc8`: 34/34 cells, 30/30 builds, exit 0 (4012 s
+on a machine four other suites were loading; minutes on an idle one). Never commit with
+`--no-verify`; fix the red instead.
+
+`scripts/git-hooks/pre-commit` and `scripts/git-hooks/lib/runner-standalone.sh`
+are one text in the five library repositories (emilia, erika, jhonstart, onze,
+rakun): the meta repository's `hook-integrity` workflow compares the bytes
+(its check 4), so a change to either lands in all five together. What only
+one repository checks lives in that repository's
+`scripts/git-hooks/repository-stages.sh`, which the runner runs in a child
+process — it can add a red, it cannot remove or skip a shared stage (its exit
+status is all the runner reads).
+
 `examples/emilia-card` builds **and runs** (`botopink run` prints the tree,
 the three `e_<hash>` class names and the `<style>` block); it depends on
 jhonstart, so CI checks jhonstart out beside emilia before the examples gate
