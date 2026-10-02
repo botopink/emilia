@@ -1657,6 +1657,12 @@ set it there too). The gate's stages, in order — each one a refusal (decision
    `modules/*` only — each manifest's default `target`, so no erlang cell and
    no example's tests. (A root manifest without `"workspaces"` is one member:
    the package itself.)
+   the cells run side by side on the runner's pool (`gatePool`: one per CPU,
+   bounded by `MemAvailable / 768 MiB`, a cell started only while the runnable
+   threads are at most the CPUs), and the report is printed in plan order once
+   every cell has finished — the lines the one-at-a-time hook printed, cell for
+   cell; stage 5's builds run the same way (1.0.11-beta front 115: emilia's
+   serial hook measured ~4 000 s);
 5. **examples** — `botopink build --target <t>` of every `examples/*/` on every
    declared target, into a throwaway `--out` (`runExamplesGate`): 30 builds.
    An example that does not build fails the gate; there is no list of
