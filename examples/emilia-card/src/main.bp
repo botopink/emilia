@@ -1,110 +1,95 @@
-// emilia-card — a small jhonstart page styled via emilia's `Token` enum.
+// emilia-card — one card's three token lists, and the stylesheet they make.
 //
-// V0 surface (this example): `emilia(...)` is called as an ordinary fn
-// whose return is the class NAME (a `string`); the spec's
-// `#[emilia(...)] div([])` decorator form and the `[emilia]={…}` html DSL
-// attribute form need the two generic jhonstart hooks (F0 second half,
-// deferred — both depend on compiler features outside this lib).
+// A card is three style sites: the container, the heading and the body. Each is
+// a `Token[]`, and `emilia(tokens)` answers the class NAME the site would carry
+// (a `string`, content-derived: `e_<hash>`). The rule itself is registered on
+// the per-render stylesheet, and `flush()` drains it into one layered
+// `<style>` document. This example prints both halves — the three class names
+// and the flushed document — and asserts them. It uses emilia only: putting the
+// class names on markup is the job of whichever library renders the markup.
 //
-// What this example DOES prove end-to-end:
-//   - Mixed token lists lower to flat CSS declarations joined with `;`.
-//   - Modifier variants (`.Hover([...])`, `.Md([...])`) compose pseudo /
-//     media wrappers around their inner tokens.
-//   - Identical token lists on two sites collapse to ONE class name
-//     (content-derived `e_<hash>`).
-//   - `flush()` returns a `<style>...</style>` document and clears
-//     the per-render registry.
+// What it shows end to end, from a CONSUMER package (a consumer re-emits its
+// own copy of the enum classes, so a `case` that crossed the package boundary
+// used to fall through every arm — § Maintainer rules):
 //
-// Front 56 changed WHAT that document looks like. A modifier is no longer a
-// block nested inside the class body: it is a SIBLING rule, hoisted out with
-// its own selector and its own at-rule, inside the `utilities` cascade layer,
-// under a document that opens with `@layer theme, base, components,
-// utilities;` and a `:root` block carrying the theme.
+//   - a token list lowers to one rule of `;`-joined declarations, each one a
+//     theme reference (`var(--color-red-600)`, `var(--text-lg)`), never a
+//     resolved literal;
+//   - a modifier (`Token.Hover([…])`, `Token.Md([…])`) is a SIBLING rule,
+//     hoisted out of the class body with the selector and the at-rule its
+//     variant gives it, inside the `utilities` cascade layer;
+//   - identical token lists collapse to ONE class name;
+//   - `flush()` returns the document — `@layer theme, base, components,
+//     utilities;`, the theme's `:root` block, the rules — and clears the
+//     per-render registry, so a second `flush()` holds no rule.
 //
-// Composition mirrors the SSR contract from the spec ("Render output"):
-//   `renderToString(page) + flush()` — markup first, then the
-//   `<style>` block. Here we just smoke-test that both pieces produce
-//   the expected golden strings.
+// Upstream: https://tailwindcss.com/docs/styling-with-utility-classes ·
+// /hover-focus-and-other-states · /responsive-design
 
-// `emilia` is the bare entry point; `flush` is the per-render serializer
-// (the SSR caller pairs it with `renderToString`). The `import emilia from
-// "emilia"` package-handle form binds the handle but doesn't lower the bare
-// fn call yet — recorded follow-up; the `{emilia, flush}` named imports
-// reach both today.
+import {emilia, flush, Token} from "emilia";
 
-import { emilia, flush, Token } from "emilia";
-import { div, p, h1, renderToString } from "jhonstart";
-
-// A card: outer container + heading + body, all styled via emilia tokens.
-// The class names returned by `emilia(...)` are stable hashes — call sites
-// using identical token lists share one class (`cardBg` below).
-//
-// V1 enum-section path access: `.Pad.All.__4`, `.Color.Red.600`, etc.
-// Numeric leaves are pure digits in the chain (`.600`) — the `__600`
-// spelling is the `case`-pattern one and also reads in expression
-// position.
-//
-// The shades here are 600 and NOT 500, which is what this example carried
-// before front 33 widened the palette. `.Color.Red.500` and
-// `.Color.Gray.500` are declared and unreachable: the compiler's
-// leading-dot section resolver picks between `Token` and the synthesised
-// `__Token__Border` by hash order, and `Token.Border.Color` (front 40's
-// stub) carries Red and Gray at 100/500/700 too. See the BLOCKED note in
-// `emilia.bp` under the front 33 banner.
+// The container: padding from the `--spacing` multiplier, a white surface and
+// black text.
 val cardTokens: Token[] = [
     .Pad.All.__4,
     .Bg.White,
     .Color.Black,
 ];
-val cardBg = emilia(cardTokens);
 
+// The heading: the type scale's `3xl` (font-size and its paired line-height),
+// bold, and a shade of the palette.
 val titleTokens: Token[] = [
     .Text.Size.X3xl,
     .Text.Bold,
     .Color.Red.600,
 ];
-val titleStyle = emilia(titleTokens);
 
+// The body: base size and a neutral shade, plus two modifiers — a hover colour
+// and a larger size from the `md` breakpoint up.
 val hoverInner: Token[] = [.Color.Red.600];
+
 val mdInner: Token[] = [.Text.Size.Lg];
+
 val bodyTokens: Token[] = [
     .Text.Size.Base,
     .Color.Gray.600,
     Token.Hover(hoverInner),
     Token.Md(mdInner),
 ];
-val bodyStyle = emilia(bodyTokens);
 
-// The element tree. Builders take `Children`; V0's `Element` has no
-// attribute slot, so the class names produced above are not yet
-// inlined into the rendered HTML — they live in the `<style>` block.
-// Once jhonstart grows an attribute carrier + the
-// annotation-on-builder hook, the spec form (`#[emilia([…])] div([…])`)
-// will write the class into the rendered tag.
-val page = div([
-    h1([]),
-    p([]),
-]);
+val cardClass = emilia(cardTokens);
 
-// Pretty-print the test summary (`@print` is the test-runner ergonomic).
+val titleClass = emilia(titleTokens);
+
+val bodyClass = emilia(bodyTokens);
+
+// `botopink run` prints the three class names, one per line, then the
+// flushed `<style>` document.
 fn main() -> @Task<void> {
-    @print(renderToString(page));
-    @print(cardBg);
-    @print(titleStyle);
-    @print(bodyStyle);
+    @print(cardClass);
+    @print(titleClass);
+    @print(bodyClass);
     @print(await flush());
 }
 
-// ── tests — the smoke contract ──────────────────────────────────────────────
+// ── tests ───────────────────────────────────────────────────────────────────
+//
+// The class names and the utilities layer are pinned as literals: the hash is
+// content-derived and target-independent, so commonJS and erlang answer the
+// same bytes.
 
-test "page renders to the expected jhonstart tree" {
-    assert renderToString(page) == "<div><h1></h1><p></p></div>";
-}
+val utilitiesLayer = "@layer utilities{"
+    + ".e_486b0b4f{padding:calc(var(--spacing) * 4);background:#ffffff;color:var(--color-black)}"
+    + ".e_b63a108{font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:bold;color:var(--color-red-600)}"
+    + ".e_74f3ae56{font-size:var(--text-base);line-height:var(--text-base--line-height);color:var(--color-gray-600)}"
+    + "@media (hover: hover){.e_74f3ae56:hover{color:var(--color-red-600)}}"
+    + "@media (width >= 48rem){.e_74f3ae56{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}"
+    + "}";
 
-test "all three style sites produce `e_<hash>`-shaped class names" {
-    assert cardBg.startsWith("e_");
-    assert titleStyle.startsWith("e_");
-    assert bodyStyle.startsWith("e_");
+test "the three style sites answer their content-derived class names" {
+    assert cardClass == "e_486b0b4f";
+    assert titleClass == "e_b63a108";
+    assert bodyClass == "e_74f3ae56";
 }
 
 test "identical token lists collapse to the same class name" {
@@ -113,43 +98,26 @@ test "identical token lists collapse to the same class name" {
         .Bg.White,
         .Color.Black,
     ];
-    val cardBg2 = emilia(cardTokens2);
-    assert cardBg2 == cardBg;
+    assert emilia(cardTokens2) == cardClass;
 }
 
-test "flush returns a layered `<style>...</style>` document with the registered rules" {
+test "flush returns the layered `<style>` document with the three rules" {
     val styles = await flush();
-    assert styles.startsWith("<style>@layer theme, base, components, utilities;@layer theme{:root{");
+    assert styles.startsWith(
+        "<style>@layer theme, base, components, utilities;@layer theme{:root{--spacing:0.25rem;",
+    );
+    assert styles.indexOf(utilitiesLayer + "@keyframes spin{") != -1;
     assert styles.endsWith("</style>");
-    // Three distinct classes were registered above (cardBg, titleStyle,
-    // bodyStyle) PLUS one re-registration in the previous test — the Map
-    // dedup keeps just the three unique entries.
-    assert styles.indexOf(cardBg) != -1;
-    assert styles.indexOf(titleStyle) != -1;
-    assert styles.indexOf(bodyStyle) != -1;
-    // Modifier composition is a SIBLING rule now, hoisted out of the class
-    // body with the selector and the at-rule the variant reference gives it —
-    // `@media (hover: hover) { &:hover }` for hover, `@media (width >= 48rem)`
-    // for the `md` breakpoint, read from the theme's `--breakpoint-md`.
-    // Front 33 landed the palette: `.Color.Red.600` lowers to the theme
-    // reference `var(--color-red-600)`, not to the CSS keyword `red` the V1
-    // stub emitted for every shade of the family.
-    assert styles.indexOf("@media (hover: hover){." + bodyStyle + ":hover{color:var(--color-red-600)}}") != -1;
-    // Front 38 landed the type scale: a size token emits the `--text-*` PAIR
-    // — the font-size AND the line-height upstream pairs with it — where it
-    // used to resolve a literal `rem` and drop the leading entirely.
-    assert styles.indexOf("@media (width >= 48rem){." + bodyStyle + "{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}") != -1;
-    // `.Text.Size.X3xl` and `.Text.Size.Base` open the two class bodies below.
-    // They used to be missing from them: a commonJS codegen defect lowered a
-    // `case` arm whose variant name was unique in the program to an
-    // `instanceof` test, and a consumer package re-emits its own copy of the
-    // enum classes, so a value built in `emilia-card` was never `instanceof`
-    // the class `emilia` matched against and the whole `case` answered
-    // `undefined`. Only `Sm`/`Lg`/`Xl` came through, because their names repeat
-    // elsewhere in `Token` and that made the same compiler lower those arms to
-    // a `tag` comparison. The fix landed in botopink-lang — a uniquely-named
-    // variant compares the `tag` string too — so both sizes reach the CSS and
-    // the two assertions below are ordinary goldens with nothing pinned.
-    assert styles.indexOf("." + bodyStyle + "{font-size:var(--text-base);line-height:var(--text-base--line-height);color:var(--color-gray-600)}") != -1;
-    assert styles.indexOf("." + titleStyle + "{font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:bold;color:var(--color-red-600)}") != -1;
+}
+
+test "a second flush holds no rule — the first one cleared the registry" {
+    val again = emilia(bodyTokens);
+    val first = await flush();
+    assert first.indexOf("@media (hover: hover){." + again + ":hover{") != -1;
+    val second = await flush();
+    assert second.indexOf("@layer utilities{") == -1;
+    assert second.indexOf("." + cardClass + "{") == -1;
+    assert second.indexOf("." + titleClass + "{") == -1;
+    assert second.indexOf("." + bodyClass + "{") == -1;
+    assert second.endsWith("</style>");
 }

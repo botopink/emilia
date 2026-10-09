@@ -102,9 +102,11 @@ identical.
   blocks; modifiers nest (`Md(Hover(...))` composes both wrappers).
 - **F4** `flush()` per-render semantics — registered classes serialise
   into a `<style>` block, the cell clears, the next `flush()` is fresh.
-- **F5** runnable [`examples/emilia-card/`](examples/emilia-card/) — a
-  small jhonstart page composed with three emilia class names, plus a
-  modifier in the body style.
+- **F5** runnable [`examples/emilia-card/`](examples/emilia-card/) — one
+  card's three token lists, printing the three class names `emilia(…)`
+  answers and the document `flush()` drains (emilia only, decision 114).
+  Every example carries a `README.md` naming the Tailwind section it
+  mirrors and the fronts it exercises.
 
 ## Deferred (v0.beta.21+)
 

@@ -16,9 +16,8 @@
 # the compiler's own workflow gates the 22.04 floor, this row runs on 24.04.
 #
 # Bootstrap: check out this lib + botopink-lang, place this lib under
-# `botopink-lang/repository/emilia/`
-# and the sibling libraries its members depend on by `path` next to it
-# (`jhonstart`), build the compiler,
+# `botopink-lang/repository/emilia/` (no member depends on another library —
+# decision 114 — so no sibling library is checked out), build the compiler,
 # then one `botopink-lib-test --target <row> --strict` call per row, from a
 # scratch directory with `BOTOPINK_LIB_ROOTS` naming this repository: the runner
 # discovers every member the workspace declares (decision 75: the umbrella is
@@ -86,17 +85,6 @@ jobs:
             rm -rf "botopink-lang/repository/${LIB_NAME}"
             cp -R self "botopink-lang/repository/${LIB_NAME}"
           fi
-
-      # The members' `path` dependencies are workspace-relative
-      # (`../../../<lib>/modules/<member>`), which resolves to
-      # botopink-lang/repository/<lib>. They are dependencies of this
-      # library's cells, never rows of this run.
-      - name: Checkout jhonstart (dependency — examples/emilia-card depends on jhonstart)
-        uses: actions/checkout@v5
-        with:
-          repository: botopink/jhonstart
-          ref: feat
-          path: botopink-lang/repository/jhonstart
 
       # Both hosts on every row. Building the compiler runs `erlc` (the
       # resident comptime modules are compiled at build time and embedded),

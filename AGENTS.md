@@ -882,12 +882,12 @@ emilia/
 │   │                    green on both targets)
 │   └── emilia-card/   ← member `emilia-card` (an application: entry main.bp,
 │                        targets commonJS and erlang, `emilia` via
-│                        { "workspace": true }, `jhonstart` by the
-│                        workspace-relative { "path":
-│                        "../../../jhonstart/modules/jhonstart" }): 4 in-file
-│                        `test {}` composing
-│                        three class names + a Hover/Md modifier, green on
-│                        both targets
+│                        { "workspace": true } and nothing else — decision
+│                        114): prints the three class names `emilia(…)`
+│                        answers for one card's token lists (one with a
+│                        Hover/Md modifier) and the flushed document; 4
+│                        in-file `test {}` pinning both, green on both
+│                        targets
 └── scripts/
     └── git-hooks/     ← the pre-commit gate (§ Local gate): staged files
                          (no snapshot candidate, no conflict marker), the
@@ -923,10 +923,11 @@ whatever the row's target. Each row is one `botopink-lib-test --bin
 "$BOTOPINK_BIN" --target <t> --strict` from a scratch directory with
 `BOTOPINK_LIB_ROOTS` naming this repository, so the runner discovers this
 workspace's 17 members — `modules/{emilia,emilia-test}` and the fifteen
-`examples/*`, one row each — and nothing else: the jhonstart checkout (the
-`emilia-card` dependency, placed under `botopink-lang/repository/jhonstart`)
-and the compiler's `libs/std` are dependencies, not rows (run from inside the
-checkout they would be). The hook's other stages then run from the hook's own
+`examples/*`, one row each — and nothing else: the compiler's `libs/std` is a
+dependency, not a row (run from inside the checkout it would be). No other
+library is checked out: every member depends on `emilia` (or nothing) only
+(decision 114; the jhonstart checkout `emilia-card` needed went with 1.0.12-beta
+`00-gate/114` step 8). The hook's other stages then run from the hook's own
 runner on every row: `runRepositoryStagesGate` (no `repository-stages.sh`
 here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
 
@@ -1464,15 +1465,19 @@ here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
   the three v4 properties really are three declarations in one rule. 18 in-file
   tests, green on commonJS and on erlang; it builds.
 
-- `examples/emilia-card/` is the member `emilia-card` and carries 4 in-file
-  tests on V1 enum-section paths (`.Pad.All.__4`, `.Color.Red.600`, …), the
-  flush one rewritten by front 56 to the layered document and the hoisted
-  modifier. It
-  **builds**: jhonstart's `fix/context` front landed on its `feat`, so the
-  `hooks.bp:109 use-without-context-effect` red that used to stop the build
-  inside **jhonstart** (never inside emilia) is gone. It is gated like every
-  other example: an example that does not build fails the commit, and no list
-  names one allowed to fail (gate-i of 1.0.11-beta `00-gate`).
+- `examples/emilia-card/` is the member `emilia-card` and depends on `emilia`
+  only (decision 114; 1.0.12-beta `06-emilia/33` step 2 dropped its jhonstart
+  page). It carries 4 in-file tests: the three class names as literals
+  (`e_486b0b4f`, `e_b63a108`, `e_74f3ae56` — the same bytes on both targets),
+  the repeat collapse, the flushed document's utilities layer as one literal
+  (the hoisted `Hover` and `Md` rules included), and a second `flush()` holding
+  no rule. It is gated like every other example: an example that does not
+  build fails the commit, and no list names one allowed to fail (gate-i of
+  1.0.11-beta `00-gate`).
+
+- Every `examples/*/` carries a `README.md`: the Tailwind section it mirrors
+  (with the upstream pages), the fronts it exercises, its test count and how
+  to run it.
 
 - `examples/emilia-modifiers/` is the member `emilia-modifiers` and is front
   34's worked example: a navigation bar that is stacked and dark-surfaced on a
@@ -1688,12 +1693,8 @@ one repository checks lives in that repository's
 process — it can add a red, it cannot remove or skip a shared stage (its exit
 status is all the runner reads).
 
-`examples/emilia-card` builds **and runs** (`botopink run` prints the tree,
-the three `e_<hash>` class names and the `<style>` block); it depends on
-jhonstart, so CI checks jhonstart out beside emilia before the examples gate
-(the dependency is the workspace-relative
-`{ "path": "../../../jhonstart/modules/jhonstart" }`). Its
-builder calls leave `attrs` to its declared default (`h1([…])` — a default
-travels with an imported function), and its `main` is
+`examples/emilia-card` builds **and runs** (`botopink run` prints the three
+`e_<hash>` class names and the `<style>` block — its `README.md` shows the
+output); it depends on `emilia` only. Its `main` is
 `fn main() -> @Task<void>` so `flush()` can be awaited (the return is the effect,
 botopink decision 118).
