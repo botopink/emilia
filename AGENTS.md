@@ -599,8 +599,10 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
 - **Not a compiler change.** No new `#[@…]` annotation in the core, no
   AST node, no codegen hook. The entire DSL is `pub fn` + `case` +
   `#[@External.<targert>(...)]` — already shipped primitives.
-- **Not a runtime CSS engine.** No selector parsing and no preprocessor
-  pipeline. Since front 56 a modifier is **not** a nested block: it is a
+- **Not a CSS processor.** emilia reads no author CSS: author CSS is the
+  `css` library's, components are `styled`'s (decision 338), and emilia is
+  the layer of typed tokens over them. No preprocessor pipeline. Since front
+  56 a modifier is **not** a nested block: it is a
   `Variant` — an at-rule and a selector template with one `&` — and a
   modified token becomes a **sibling rule** hoisted out of the class
   body. Variants nest (`Md(Hover(...))`), and the outer one is outermost
