@@ -1,7 +1,7 @@
 //// emilia/attributes — front 48: the class-name contract and the merge.
 ////
 //// THE CONTRACT (`contracts.md § 4`, word for word where they overlap): **a
-//// jhonstart element's emilia class is `e_<hex>`, where `<hex>` is the
+//// consumer's element's emilia class is `e_<hex>`, where `<hex>` is the
 //// lowercase hexadecimal djb2-33 fold (seed 5381, masked to 32 bits) of
 //// `encodeSheet(tokensToSheet(tokens, theme))`, and `tokens` is the element's
 //// token list in author order. Nothing else enters the hash. When a static
@@ -27,13 +27,9 @@
 //// rules). This module holds the two pure pieces — the merge and the ASCII
 //// check — and imports nothing.
 ////
-//// THE `[class]={…}` HOLE MAY NOT CONTAIN A SPACE: jhonstart's DSL splits a
-//// tag body on `" "` before it parses attributes (`html.bp:109`), so
-//// `[class]={cls(tokens, th)}` — a space after the comma — is lexed as two
-//// attributes and fails with no line number. Bind the class first:
-////
-////     val card = cls(cardTokens(), th);
-////     val page = html """<div [class]={card}><p>hi</p></div>""";
+//// THE CLASS-NAME VALUE IS A PLAIN STRING: `e_<hex>`, or `<static>`, one
+//// space and `e_<hex>` after the merge. A consumer places it as an element's
+//// `class` attribute value as is; emilia spells no template surface.
 
 // The merge, spelled once. `mergeClass("", b)` is `b`; `mergeClass(a, "")` is
 // `a`; otherwise `a + " " + b`. No de-duplication, no sorting, no trimming of
@@ -57,7 +53,9 @@ fn printableAscii() -> string {
 // very payload this check exists to stop. The allowed set is ASCII, so
 // splitting IT is safe on both targets.
 pub fn nonAsciiIn(body: string) -> string {
-    return printableAscii().split("").fold(body, { acc, c -> acc.split(c).join("") });
+    return printableAscii()
+        .split("")
+        .fold(body, { acc, c -> acc.split(c).join("") });
 }
 
 // ── front 48 · tests (the pure half; the slot's are in `emilia.bp`) ──────────

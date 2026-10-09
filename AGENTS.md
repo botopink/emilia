@@ -607,8 +607,9 @@ Both hooks are **emilia-agnostic** — jhonstart owns the mechanism.
   in the selector and in the at-rule list alike.
 - **commonJS and erlang.** The `Stylesheet` host cell is a JS `Map` on
   commonJS and an ordered `[{Name, Body}]` list in the process dictionary on
-  erlang (same `register`/`flush` contract); `hashHex` folds the same djb2 on
-  both, so class names agree for ASCII bodies. `botopink test --target erlang`
+  erlang (same `register`/`flush` contract); the class id is std's
+  `hash.contentHash` (the djb2 fold over code points, unpadded lowercase hex)
+  on both, so class names agree. `botopink test --target erlang`
   runs the suite, and it is the gate that catches a per-target divergence — see
   `Array.lastIndexOf` under § Maintainer rules. beam/wasm are not ported.
 
@@ -648,7 +649,8 @@ emilia/
 │       │                    spacing.bp · output.bp · preflight.bp ·
 │       │                    arbitrary.bp · container.bp · compose.bp ·
 │       │                    attributes.bp ·
-│       │                    emilia.bp · no dependencies
+│       │                    emilia.bp · no dependencies (std is implicit:
+│       │                    `emilia.bp` imports `{hash}` for the class id)
 │       └── src/
 │           ├── root.bp    ← `pub mod tokens; pub mod theme;
 │           │                pub mod spacing; pub default mod emilia;` (the
@@ -953,7 +955,7 @@ here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
   selector and no at-rule; it also produces ONE RULE PER INNER TOKEN, so a test
   over two tokens reads two rules rather than one rule of two declarations.
 - **camelCase** all method/fn names (`tokenToCss`, `flushSheet`,
-  `hashHex` — never `token_to_css` — memory:
+  `styleRule` — never `token_to_css` — memory:
   `feedback_camelcase_naming`).
 - **A payload leaf NESTED INSIDE A SECTION cannot be constructed.**
   `Token.Color.Hex("#abc")` reds `'Hex' is not declared in any behavior
@@ -1044,8 +1046,8 @@ here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
   `String.prototype.charCodeAt = function(index) { return
   ((this.valueOf().charCodeAt(index) ?? -1) | 0); }`, which called the patch it
   had just installed. One `s.slice(…)` anywhere in a module therefore made every
-  `.charCodeAt(…)` in the PROGRAM blow the stack — `hashHex`'s host template
-  does, so every non-empty class body did. **The ban on `String.slice` in this
+  `.charCodeAt(…)` in the PROGRAM blow the stack — emilia's former hash template
+  did, so every non-empty class body did. **The ban on `String.slice` in this
   library is lifted**: botopink-lang's prelude now calls `codePointAt`, which
   also fixed a second defect the first was hiding (the `?? -1` was dead, since
   native `charCodeAt` answers `NaN`, so commonJS answered `0` out of range where
