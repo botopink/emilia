@@ -10312,11 +10312,8 @@ test "inset — the keyword and fraction leaves of `§ 5.17`" {
         == "top:calc(2 / 3 * 100%)";
     // front 35's `Size.*.Frac` and this are ONE convention: the same fraction
     // is the same string on both families
-    assert tokenDeclarations(.Layout.Inset.T.Frac.Half)
-        .split(":")
-        .at(1)
-        .unwrapOr("")
-        == tokenDeclarations(.Size.W.Frac.Half).split(":").at(1).unwrapOr("");
+    assert tokenDeclarations(.Layout.Inset.T.Frac.Half).split(":").at(1) ?? ""
+        == tokenDeclarations(.Size.W.Frac.Half).split(":").at(1) ?? "";
     assert tokenDeclarations(.Layout.Inset.T.Px) == "top:1px";
 }
 
@@ -22927,7 +22924,7 @@ test "Transform.Scale — the three ladders agree step for step" {
     ];
     val c = ";scale:var(--tw-scale-x) var(--tw-scale-y)";
     val steps = unaxed.map(
-        { t -> tokenDeclarations(t).split(";").at(0).unwrapOr("").split(":").at(1).unwrapOr("") },
+        { t -> (tokenDeclarations(t).split(";").at(0) ?? "").split(":").at(1) ?? "" },
     );
     val fromX = xs.map({ t -> tokenDeclarations(t) });
     val fromY = ys.map({ t -> tokenDeclarations(t) });
