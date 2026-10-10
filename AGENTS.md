@@ -110,7 +110,9 @@ the one flag: five breakpoints and their five `max-` mirrors (all ten read the
 theme's `--breakpoint-*`, so an override moves the query AND the class hash),
 `Dark` and eight other media features, nine interaction states, sixteen form
 states, nine structural positions plus the indexed `Nth`/`NthLast`, nine
-pseudo-elements, six `Group*` and eight `Peer*`, `Rtl`/`Ltr`/`Children`/
+pseudo-elements, six `Group*` and eight `Peer*` (plus `GroupNamed(name, inner)` /
+`PeerNamed(name, inner)`, decision 401: they name the group / peer of the state
+tokens in `inner`, `.group\/name`), `Rtl`/`Ltr`/`Children`/
 `Descendants`, and `Important` (decision 81), which is `markImportant` rather
 than a `Variant`. `Dark` consumes front 54's `darkAtRule`/`darkSelector` and
 never learns which `DarkMode` strategy is in force: `Media` puts the whole

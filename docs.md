@@ -1786,6 +1786,15 @@ and then reads both, exactly as upstream Tailwind v4 does; the both-axes
 | `.Transform.TranslateX.Half` | `--tw-translate-x:50%;translate:…` |
 | `.Transform.TranslateX.Full` | `--tw-translate-x:100%;translate:…` |
 | `.Transform.TranslateY.Half` | `--tw-translate-y:50%;translate:…` |
+| `.Transform.TranslateY.Neg.__2` | `--tw-translate-y:calc(var(--spacing) * -2);translate:…` |
+| `.Transform.TranslateX.Neg.Px` | `--tw-translate-x:-1px;translate:…` |
+| `.Transform.TranslateX.Neg.Half` | `--tw-translate-x:calc(calc(1 / 2 * 100%) * -1);translate:…` |
+| `.Transform.TranslateX.Neg.Full` | `--tw-translate-x:-100%;translate:…` |
+
+`Neg` is a sub-section (`Px`, `1`, `2`, `Half`, `Full`), not a sign: a numeric
+leaf has no sign (decision 314), the same shape as `Rotate.Neg` and
+`Margin.*.Neg`. The values are Tailwind 4.3.2's for `-translate-x-px`,
+`-translate-y-2`, `-translate-x-1/2` and `-translate-y-full`.
 | `.Transform.Translate.Half` | `--tw-translate-x:50%;--tw-translate-y:50%;translate:…` |
 
 The axis a class does not set reads `0`: every translate class carries
@@ -2064,6 +2073,24 @@ moves the queries and the class hashes with it.
 | upstream | emilia | CSS |
 | --- | --- | --- |
 | `…!` | `Token.Important(inner)` | `!important` on every declaration it wraps |
+
+**Named groups and peers — `group/card`, `peer/field`**
+
+`Token.GroupNamed(name, inner)` and `Token.PeerNamed(name, inner)` name the
+`.group` / `.peer` class of the unnamed state tokens in `inner`; every state
+above is available named, and any other token in `inner` is folded unchanged.
+
+```bp
+// group-hover/card:underline
+.GroupNamed("card", [.GroupHover([.Text.Underline])])
+// → &:is(:where(.group\/card):hover *){text-decoration-line:underline}
+// peer-checked/foo:underline
+.PeerNamed("foo", [.PeerChecked([.Text.Underline])])
+// → &:is(:where(.peer\/foo):checked ~ *){…}
+```
+
+The consumer's markup carries `class="group/card"` / `class="peer/foo"`. A name
+may contain only letters, digits, `-` and `_`; anything else is a panic.
 
 `.group` and `.peer` are classes the **consumer's markup** carries: emilia
 emits the selector that reads them and never the class itself.
@@ -2400,6 +2427,27 @@ None of the three characters can appear in a rendered declaration. That is an
 assumption, so it is **checked** and not assumed: `carriesSeparator(s)` is an
 ordinary value, and the suite walks the dispatcher output and the theme's own
 strings through it.
+
+## Deviations
+
+Where emilia does not render a Tailwind 4.3.2 feature as a token (decision 401);
+the escape hatch is `arbSel` (see "Arbitrary values").
+
+- **Named `has` / `not` / ARIA / data-attribute / `in` variants** have no named
+  tokens; write the selector with `arbSel`:
+
+  ```bp
+  // has-[img]:p-4
+  arbSel("&:has(img)", [.Pad.All.4])
+  // not-[.on]:p-4 · aria-[sort=ascending]:p-4 · data-[active]:p-4 · in-[.card]:p-4
+  arbSel("&:not(.on)", [.Pad.All.4])
+  arbSel("&[aria-sort=ascending]", [.Pad.All.4])
+  arbSel("&[data-active]", [.Pad.All.4])
+  arbSel(":where(.card) &", [.Pad.All.4])
+  ```
+
+- **`@theme inline` is not supported.** Every theme reference renders
+  `var(--x)`; there is no render mode that resolves the value into each site.
 
 ## What's coming (v0.beta.21+)
 

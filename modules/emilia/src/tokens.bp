@@ -2191,8 +2191,10 @@ pub type Token {
     // negative numeric leaf: `Rotate { -12 }` does not parse. `-rotate-12` is
     // `.Transform.Rotate.Neg.__12`, read as "rotate, negative, twelve". Front
     // 35's `Margin.*.Neg` and front 40's `Ring.Offset.Neg` are the same
-    // convention; this front is the third to need it and the language gap is
-    // recorded rather than worked around.
+    // convention, and it is the DECIDED form (decision 314: a numeric enum
+    // leaf has no sign), not a language gap. `TranslateX.Neg` and
+    // `TranslateY.Neg` (decision 401) are the fourth and fifth: `-translate-y-2`
+    // is `.Transform.TranslateY.Neg.__2`.
     //
     // `Style.Preserve3d` IS THE LEAF NAME FOR `transform-3d` — a leaf cannot
     // begin with a digit, and naming it after the value it emits reads better
@@ -2262,6 +2264,13 @@ pub type Token {
             1,
             Half,
             Full,
+            Neg {
+                Px,
+                1,
+                2,
+                Half,
+                Full,
+            }
         }
         TranslateY {
             0,
@@ -2269,6 +2278,13 @@ pub type Token {
             1,
             Half,
             Full,
+            Neg {
+                Px,
+                1,
+                2,
+                Half,
+                Full,
+            }
         }
         Translate {
             0,
@@ -2865,6 +2881,13 @@ pub type Token {
     PeerRequired(inner: Token[]),
     PeerDisabled(inner: Token[]),
     PeerPlaceholderShown(inner: Token[]),
+    //
+    // named groups and peers (decision 401) — `group/card`, `peer/field`. The
+    // payload is the list of unnamed group / peer state tokens whose `.group` /
+    // `.peer` it names: `GroupNamed("card", [.GroupHover(…)])` is
+    // `group-hover/card:`. Every unnamed state is thereby available named.
+    GroupNamed(name: string, inner: Token[]),
+    PeerNamed(name: string, inner: Token[]),
     //
     // writing direction and descent
     Rtl(inner: Token[]),

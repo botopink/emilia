@@ -585,6 +585,16 @@ fn tokenToSheet(t: Token, th: Theme) -> Sheet {
             tokensToSheet(inner, th),
             peerPlaceholderShownVariant(),
         );
+        GroupNamed(name, inner) -> namedParentSheet(
+            groupClassOf(name),
+            inner,
+            th,
+        );
+        PeerNamed(name, inner) -> namedParentSheet(
+            peerClassOf(name),
+            inner,
+            th,
+        );
         Rtl(inner) -> nestVariant(tokensToSheet(inner, th), rtlVariant());
         Ltr(inner) -> nestVariant(tokensToSheet(inner, th), ltrVariant());
         Children(inner) -> nestVariant(
@@ -748,6 +758,159 @@ fn groupVariant(state: string) -> Variant {
 // The same, for the sibling form. `.peer` is the consumer's too.
 fn peerVariant(state: string) -> Variant {
     return selectorVariant("&:is(:where(.peer)" + state + " ~ *)");
+}
+
+// ── named groups and peers (decision 401) ────────────────────────────────
+//
+// `group/card` and `peer/field`: the marker class carries the name after an
+// escaped slash, `.group\/card`, and every state keeps the unnamed form's
+// selector around it — upstream 4.3.2 writes `&:is(:where(.group\/card):hover *)`.
+// `GroupNamed(name, inner)` names the `.group` of each unnamed group state
+// token in `inner` (`GroupHover`, `GroupFocus`, …); `PeerNamed` the `.peer` of
+// each peer state token. Any other token in `inner` is folded unchanged, and a
+// state token of the other family is left unnamed.
+
+fn checkParentName(kind: string, name: string) -> string {
+    if (refusesIdent(name))
+        @panic(
+            "emilia "
+                + kind
+                + ": a name may contain only letters, digits, - and _: '"
+                + name
+                + "'",
+        );
+    return name;
+}
+
+pub fn groupClassOf(name: string) -> string {
+    return ".group\\/" + checkParentName("group", name);
+}
+
+pub fn peerClassOf(name: string) -> string {
+    return ".peer\\/" + checkParentName("peer", name);
+}
+
+fn groupStateVariant(cls: string, state: string) -> Variant {
+    return selectorVariant("&:is(:where(" + cls + ")" + state + " *)");
+}
+
+fn peerStateVariant(cls: string, state: string) -> Variant {
+    return selectorVariant("&:is(:where(" + cls + ")" + state + " ~ *)");
+}
+
+// One token of a named parent's `inner`. `cls` is `.group\/name` or
+// `.peer\/name`; a token of the family it names is rebuilt around it.
+fn namedParentToken(cls: string, t: Token, th: Theme) -> Sheet {
+    val isGroup = cls.startsWith(".group");
+    val out = case t {
+        GroupHover(inner) -> if (isGroup)
+            nestVariant(
+                tokensToSheet(inner, th),
+                groupStateVariant(cls, ":hover"),
+            )
+        else
+            tokenToSheet(t, th);
+        GroupFocus(inner) -> if (isGroup)
+            nestVariant(
+                tokensToSheet(inner, th),
+                groupStateVariant(cls, ":focus"),
+            )
+        else
+            tokenToSheet(t, th);
+        GroupActive(inner) -> if (isGroup)
+            nestVariant(
+                tokensToSheet(inner, th),
+                groupStateVariant(cls, ":active"),
+            )
+        else
+            tokenToSheet(t, th);
+        GroupVisited(inner) -> if (isGroup)
+            nestVariant(
+                tokensToSheet(inner, th),
+                groupStateVariant(cls, ":visited"),
+            )
+        else
+            tokenToSheet(t, th);
+        GroupDisabled(inner) -> if (isGroup)
+            nestVariant(
+                tokensToSheet(inner, th),
+                groupStateVariant(cls, ":disabled"),
+            )
+        else
+            tokenToSheet(t, th);
+        GroupOpen(inner) -> if (isGroup)
+            nestVariant(
+                tokensToSheet(inner, th),
+                groupStateVariant(cls, ":is([open], :popover-open, :open)"),
+            )
+        else
+            tokenToSheet(t, th);
+        PeerHover(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":hover"),
+            );
+        PeerFocus(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":focus"),
+            );
+        PeerActive(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":active"),
+            );
+        PeerChecked(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":checked"),
+            );
+        PeerInvalid(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":invalid"),
+            );
+        PeerRequired(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":required"),
+            );
+        PeerDisabled(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":disabled"),
+            );
+        PeerPlaceholderShown(inner) -> if (isGroup)
+            tokenToSheet(t, th)
+        else
+            nestVariant(
+                tokensToSheet(inner, th),
+                peerStateVariant(cls, ":placeholder-shown"),
+            );
+        _ -> tokenToSheet(t, th);
+    };
+    return out;
+}
+
+fn namedParentSheet(cls: string, inner: Token[], th: Theme) -> Sheet {
+    return inner.fold(
+        emptySheet(),
+        { acc, t -> mergeSheet(acc, namedParentToken(cls, t, th)) },
+    );
 }
 
 // A row upstream writes as a selector LIST: the inner sheet wrapped once per
@@ -1541,6 +1704,78 @@ test "sibling state (`peer-*`) — the CSS each row renders around one declarati
         == ".x:is(:where(.peer):disabled ~ *){font-weight:bold}";
     assert modifierCss(Token.PeerPlaceholderShown(inner))
         == ".x:is(:where(.peer):placeholder-shown ~ *){font-weight:bold}";
+}
+
+// Decision 401 · MEASURED AGAINST TAILWIND 4.3.2: `group-hover/card:underline`
+// compiles to `.group-hover\\/card\\:underline { &:is(:where(.group\\/card):hover *)
+// { … } }` (4.3.2 also wraps hover in `@media (hover: hover)`; the unnamed
+// `GroupHover` here does not, and the named form keeps the unnamed form's
+// shape), and `peer-checked/foo:underline` to
+// `&:is(:where(.peer\\/foo):checked ~ *)`.
+test "named groups — `group-<state>/card`, the unnamed selector with the name on the class" {
+    val inner = boldInner();
+    val hover: Token[] = [Token.GroupHover(inner)];
+    assert modifierCss(Token.GroupNamed("card", hover))
+        == ".x:is(:where(.group\\/card):hover *){font-weight:bold}";
+    val open: Token[] = [Token.GroupOpen(inner)];
+    assert modifierCss(Token.GroupNamed("card", open))
+        == ".x:is(:where(.group\\/card):is([open], :popover-open, :open) *){font-weight:bold}";
+    val every: Token[] = [
+        Token.GroupFocus(inner),
+        Token.GroupActive(inner),
+        Token.GroupVisited(inner),
+        Token.GroupDisabled(inner),
+    ];
+    val css = modifierCssAll(Token.GroupNamed("a-b_1", every));
+    assert css.indexOf(":where(.group\\/a-b_1):focus *") != -1;
+    assert css.indexOf(":where(.group\\/a-b_1):active *") != -1;
+    assert css.indexOf(":where(.group\\/a-b_1):visited *") != -1;
+    assert css.indexOf(":where(.group\\/a-b_1):disabled *") != -1;
+    assert css.indexOf(":where(.group)") == -1;
+}
+
+test "named peers — `peer-<state>/field`, the unnamed selector with the name on the class" {
+    val inner = boldInner();
+    val checked: Token[] = [Token.PeerChecked(inner)];
+    assert modifierCss(Token.PeerNamed("foo", checked))
+        == ".x:is(:where(.peer\\/foo):checked ~ *){font-weight:bold}";
+    val every: Token[] = [
+        Token.PeerHover(inner),
+        Token.PeerFocus(inner),
+        Token.PeerActive(inner),
+        Token.PeerInvalid(inner),
+        Token.PeerRequired(inner),
+        Token.PeerDisabled(inner),
+        Token.PeerPlaceholderShown(inner),
+    ];
+    val css = modifierCssAll(Token.PeerNamed("foo", every));
+    assert css.indexOf(":where(.peer\\/foo):hover ~ *") != -1;
+    assert css.indexOf(":where(.peer\\/foo):focus ~ *") != -1;
+    assert css.indexOf(":where(.peer\\/foo):active ~ *") != -1;
+    assert css.indexOf(":where(.peer\\/foo):invalid ~ *") != -1;
+    assert css.indexOf(":where(.peer\\/foo):required ~ *") != -1;
+    assert css.indexOf(":where(.peer\\/foo):disabled ~ *") != -1;
+    assert css.indexOf(":where(.peer\\/foo):placeholder-shown ~ *") != -1;
+    assert css.indexOf(":where(.peer)") == -1;
+}
+
+test "named groups and peers — the other family and other tokens pass through, a bad name panics" {
+    val inner = boldInner();
+    val mixed: Token[] = [Token.PeerHover(inner), Token.Hover(inner)];
+    val css = modifierCssAll(Token.GroupNamed("card", mixed));
+    assert css.indexOf(":where(.peer):hover ~ *") != -1;
+    assert css.indexOf(".x:hover{font-weight:bold}") != -1;
+    val none: Token[] = [];
+    val m = panicMessage({ ->
+        val t = groupClassOf("a}b");
+        0;
+    });
+    assert m.indexOf("group: a name may contain") != -1;
+    val p = panicMessage({ ->
+        val t = peerClassOf("");
+        0;
+    });
+    assert p.indexOf("peer: a name may contain") != -1;
 }
 
 test "writing direction and descent — the two halves of every Variant in the family" {
@@ -22408,6 +22643,22 @@ fn transformTranslateXValue(
         __1 -> spacing(1);
         Half -> fraction(1, 2);
         Full -> "100%";
+        Neg(_inner) -> transformTranslateXNegValue(_inner);
+    };
+    return out;
+}
+
+// The negative half (decision 401; 314's `Neg`), upstream 4.3.2's values:
+// `-translate-x-2` is `calc(var(--spacing) * -2)`, `-translate-x-px` is `-1px`,
+// `-translate-x-1/2` is `calc(calc(1 / 2 * 100%) * -1)` and
+// `-translate-x-full` is `-100%`.
+fn transformTranslateXNegValue(t: Token.Transform.TranslateX.Neg) -> string {
+    val out = case t {
+        Px -> "-1px";
+        __1 -> spacing(-1);
+        __2 -> spacing(-2);
+        Half -> "calc(" + fraction(1, 2) + " * -1)";
+        Full -> "-100%";
     };
     return out;
 }
@@ -22422,6 +22673,22 @@ fn transformTranslateYValue(
         __1 -> spacing(1);
         Half -> fraction(1, 2);
         Full -> "100%";
+        Neg(_inner) -> transformTranslateYNegValue(_inner);
+    };
+    return out;
+}
+
+// The negative half (decision 401; 314's `Neg`), upstream 4.3.2's values:
+// `-translate-y-2` is `calc(var(--spacing) * -2)`, `-translate-y-px` is `-1px`,
+// `-translate-y-1/2` is `calc(calc(1 / 2 * 100%) * -1)` and
+// `-translate-y-full` is `-100%`.
+fn transformTranslateYNegValue(t: Token.Transform.TranslateY.Neg) -> string {
+    val out = case t {
+        Px -> "-1px";
+        __1 -> spacing(-1);
+        __2 -> spacing(-2);
+        Half -> "calc(" + fraction(1, 2) + " * -1)";
+        Full -> "-100%";
     };
     return out;
 }
@@ -22966,6 +23233,36 @@ test "Transform.TranslateY — the same five rows on the other axis" {
         == "--tw-translate-y:calc(1 / 2 * 100%)" + c;
     assert tokenDeclarations(.Transform.TranslateY.Full)
         == "--tw-translate-y:100%" + c;
+}
+
+// Decision 401 · MEASURED AGAINST TAILWIND 4.3.2 (`compile().build()` of
+// `-translate-y-2 -translate-x-2 -translate-x-px -translate-y-1/2
+// -translate-x-full -translate-y-full -translate-x-1`): each utility is
+// `--tw-translate-<axis>: <value>; translate: var(--tw-translate-x)
+// var(--tw-translate-y)` with the values below.
+test "Transform.TranslateX.Neg / TranslateY.Neg — 4.3.2's negative values" {
+    val c = ";translate:var(--tw-translate-x) var(--tw-translate-y)";
+    assert tokenDeclarations(.Transform.TranslateY.Neg.__2)
+        == "--tw-translate-y:calc(var(--spacing) * -2)" + c;
+    assert tokenDeclarations(.Transform.TranslateX.Neg.__2)
+        == "--tw-translate-x:calc(var(--spacing) * -2)" + c;
+    assert tokenDeclarations(.Transform.TranslateX.Neg.__1)
+        == "--tw-translate-x:calc(var(--spacing) * -1)" + c;
+    assert tokenDeclarations(.Transform.TranslateX.Neg.Px)
+        == "--tw-translate-x:-1px" + c;
+    assert tokenDeclarations(.Transform.TranslateY.Neg.Half)
+        == "--tw-translate-y:calc(calc(1 / 2 * 100%) * -1)" + c;
+    assert tokenDeclarations(.Transform.TranslateX.Neg.Full)
+        == "--tw-translate-x:-100%" + c;
+    assert tokenDeclarations(.Transform.TranslateY.Neg.Full)
+        == "--tw-translate-y:-100%" + c;
+}
+
+test "Transform.TranslateY.Neg — the sheet carries the three `@property` blocks" {
+    val one: Token[] = [.Transform.TranslateY.Neg.__2];
+    val blocks = tokensToSheet(one, defaultTheme()).blocks;
+    assert blocks.map({ b -> b.header }).join("|")
+        == "@property --tw-translate-x|@property --tw-translate-y|@property --tw-translate-z";
 }
 
 // `translate-x-1` IS `spacing(1)` AND NEVER A `rem`. Asserted against front
