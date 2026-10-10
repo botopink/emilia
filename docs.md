@@ -2080,9 +2080,10 @@ under all three dark-mode strategies.
 
 - `emilia(tokens: Token[]) -> string`
   - Maps each token through `tokenToSheet`, merges the sheets in list order,
-    encodes the result, content-hashes the encoding, registers
-    `(e_<hash>, payload)` on the per-render `Stylesheet`, returns the class
-    name.
+    names the class `e_` + `hash.contentHash` of the result's rules as
+    the document writes them (`classRules`, the class written `\u{1}`),
+    registers `(e_<hash>, payload)` on the per-render `Stylesheet`, returns
+    the class name.
 - `emiliaWith(tokens: Token[], th: Theme) -> string`
   - The same, under an explicit theme. `emilia(tokens)` is
     `emiliaWith(tokens, defaultTheme())`. The theme is an input: a `Md`
@@ -2389,8 +2390,11 @@ is layered.
 
 A host cell stores one string per class, and a `Sheet` is a record tree, so
 `encodeSheet`/`decodeSheet` carry it through: records joined by `"\n"` and tagged
-`R`/`B`, fields by `"\t"`, the `atRules` list by `"\r"`. The encoding is also what
-gets hashed, so a class name is a pure function of its sheet.
+`R`/`B`, fields by `"\t"`, the `atRules` list by `"\r"`. The encoding is what the cell
+stores; it is not what is hashed — a class name is `e_` + `hash.contentHash` of
+`classRules(sheet)`, the sheet's rules as the document writes them with the class written
+`\u{1}` (the text `styled` hashes for a component, decision 367), so a class name is still a
+pure function of its sheet.
 
 None of the three characters can appear in a rendered declaration. That is an
 assumption, so it is **checked** and not assumed: `carriesSeparator(s)` is an

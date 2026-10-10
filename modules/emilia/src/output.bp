@@ -430,8 +430,13 @@ fn renderDeclarations(decls: string, important: bool) -> string {
 // selector carries no `&` is literal: the class name — and therefore the
 // prefix — never reaches it.
 pub fn renderRule(className: string, r: Rule, o: Options) -> string {
-    val selector = substituteAmp(r.selector, "." + o.prefix + className);
-    val decls = renderDeclarations(r.declarations, r.important || o.important);
+    return ruleText("." + o.prefix + className, r, o.important);
+}
+
+// One rule with `classSelector` standing for its `&`.
+fn ruleText(classSelector: string, r: Rule, important: bool) -> string {
+    val selector = substituteAmp(r.selector, classSelector);
+    val decls = renderDeclarations(r.declarations, r.important || important);
     return wrapAtRules(r.atRules, selector + "{" + decls + "}");
 }
 
@@ -561,6 +566,31 @@ fn coalesceStep(acc: Placed[], p: Placed) -> Placed[] {
 fn coalesce(ps: Placed[]) -> Placed[] {
     val seed: Placed[] = [];
     return ps.fold(seed, { acc, p -> coalesceStep(acc, p) });
+}
+
+// ── the class's rules: what its name hashes (decision 367) ───────────────────
+//
+// The class is `"e_" + hash.contentHash(classRules(sheet))` (`contracts.md`
+// § 4): the class's rules as the document writes them — layer by layer in
+// `layerNames()` order, the plain rules before the conditioned ones, runs of
+// one context folded — with `classMark()` written where the class goes. That
+// is the text `styled` hashes for a component (its reader writes the class
+// `\u{1}` while it hashes), so emilia and `styled` name a class by one rule.
+// No option enters it: a `prefix` renames the rendered class, never its hash,
+// and `important` is the rule's own flag only.
+fn classMark() -> string {
+    return "\u{1}";
+}
+
+pub fn classRules(s: Sheet) -> string {
+    val placed = s.rules.map({ r -> Placed(className: classMark(), rule: r) });
+    return layerNames()
+        .map({ n ->
+            coalesce(orderedClassRules(placedOfLayer(placed, n), classMark()))
+                .map({ p -> ruleText(classMark(), p.rule, false) })
+                .join("");
+        })
+        .join("");
 }
 
 // What a layer carries besides the registered rules: the theme's
@@ -1014,6 +1044,48 @@ fn barePayload(className: string, s: Sheet) -> string {
 // the test registered and not about the stock theme's hundred variables.
 fn bareOptions() -> Options {
     return withTheme(defaultOptions(), emptyTheme());
+}
+
+test "classRules — the class's rules, the class written \\u{1}, in document order" {
+    val plain = Rule(
+        layer: "utilities",
+        atRules: noAtRules(),
+        selector: "&",
+        declarations: "padding:1px",
+        important: false,
+    );
+    val hover = Rule(
+        layer: "utilities",
+        atRules: ["@media (hover: hover)"],
+        selector: "&:hover",
+        declarations: "color:red",
+        important: false,
+    );
+    val focus = Rule(
+        layer: "utilities",
+        atRules: noAtRules(),
+        selector: "&:focus",
+        declarations: "color:blue",
+        important: false,
+    );
+    val more = Rule(
+        layer: "utilities",
+        atRules: noAtRules(),
+        selector: "&",
+        declarations: "margin:0",
+        important: true,
+    );
+    val s = Sheet(
+        rules: [hover, plain, focus, more],
+        blocks: emptySheet().blocks,
+    );
+    assert classRules(s)
+        == "\u{1}{padding:1px}\u{1}:focus{color:blue}\u{1}{margin:0!important}@media (hover: hover){\u{1}:hover{color:red}}";
+    val doc = renderDocument(barePayload("e_1", s), bareOptions());
+    assert doc
+        == "<style>@layer theme, base, components, utilities;@layer utilities{"
+            + classRules(s).split("\u{1}").join(".e_1")
+            + "}</style>";
 }
 
 test "renderDocument — the layer statement comes first when layers are on" {

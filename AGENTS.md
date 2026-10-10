@@ -14,8 +14,10 @@ Three named imports from `from "emilia"`:
 
 1. **`emilia(tokens: Token[]) -> string`** — the entry point. Walks
    the token list at runtime (v0 — no comptime expansion yet), maps
-   each variant to a `Sheet`, encodes the sheet, hashes the encoding
-   into a stable class name, registers the `(name, payload)` pair on the
+   each variant to a `Sheet`, names the class `e_` + std's `contentHash`
+   of the sheet's rules as the document writes them (`output.bp`
+   `classRules`, the class written `\u{1}` — `styled`'s class rule,
+   decision 367), registers the `(name, encoded sheet)` pair on the
    per-render `Stylesheet`, returns the class name. Front 56 added
    **`emiliaWith(tokens, th)`**, the same under an explicit theme;
    `emilia(tokens)` is `emiliaWith(tokens, defaultTheme())`.
@@ -79,7 +81,8 @@ and 35 consume, so it is stated here in one line each:
 | `encodeSheet(s)` / `decodeSheet(raw)` / `carriesSeparator(s)` | the codec that carries a `Sheet` through a string-keyed host cell, and the check its assumption rests on |
 | `Options(theme, base, prefix, important, layers)` + `defaultOptions()` + the five `with…` | the build-level knobs; `withBase` is how front 55 turns preflight on |
 | `renderRule(className, r, o)` / `renderDocument(raw, o)` | one rule; the whole `<style>` document |
-| `styleRule(tokens, th)` (in `emilia.bp`) | the pure half of `emiliaWith`: `#(className, encodedSheet)`, no host cell touched — onze front 68's build-time `styleMap` |
+| `classRules(s)` | the class's rules as the document writes them (layer order, plain before conditioned, runs folded), the class written `\u{1}` — what the class name hashes (decision 367, `contracts.md` § 4); no option enters it |
+| `styleRule(tokens, th)` (in `emilia.bp`) | the pure half of `emiliaWith`: `#("e_" + contentHash(classRules(sheet)), encodedSheet)`, no host cell touched — onze front 68's build-time `styleMap` |
 | `fullTheme()` / `fullOptions()` (in `emilia.bp`) | decision 80: `defaultTheme()` extended by every contributing front's entries, one line per front; `flush()` renders with `fullOptions()`. `defaultOptions()` cannot carry it — `output.bp` cannot import `emilia.bp` |
 
 **Fronts 33–47 never see `Rule`, `Sheet` or `Variant`.** A section dispatcher
@@ -354,7 +357,7 @@ hash a sheet, and a sibling cannot import `emilia.bp`, so the spec's
 `html_hook.bp` is not a file — its two functions are `cls`/`clsWith` there. The
 class is `emiliaWith(tokens, th)` refused first when its body is not ASCII
 (the JS and erlang hashes diverge above U+FFFF). The shared fixture
-`class: attributes — the shared fixture` asserts `e_39b87d03` for `cardTokens()`
+`class: attributes — the shared fixture` asserts `e_f51c2501` for `cardTokens()`
 under `defaultTheme()` on both rows; the jhonstart-emilia bridge (jhonstart front
 30) and onze front 68 must assert the same literal. jhonstart's half is
 `modules/jhonstart/src/html_attrs.bp` (`classAttr`, `withAttrs`, `attrValue`),
@@ -1472,7 +1475,7 @@ here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
 - `examples/emilia-card/` is the member `emilia-card` and depends on `emilia`
   only (decision 114; 1.0.12-beta `06-emilia/33` step 2 dropped its jhonstart
   page). It carries 4 in-file tests: the three class names as literals
-  (`e_486b0b4f`, `e_b63a108`, `e_74f3ae56` — the same bytes on both targets),
+  (`e_13df5d57`, `e_41222bb0`, `e_bcdc3f6a` — the same bytes on both targets),
   the repeat collapse, the flushed document's utilities layer as one literal
   (the hoisted `Hover` and `Md` rules included), and a second `flush()` holding
   no rule. It is gated like every other example: an example that does not
@@ -1616,7 +1619,7 @@ here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
 | 1.0.10-beta front 57 — escape hatches | DONE — steps 1–5. Six top-level `Arb*` variants, `arbitrary.bp` with the validating builders, the run-time reject sets re-checked at dispatch, and five comptime validators (their build failures verified against the compiler on 2026-09-26). +8 `emilia.bp` / +9 `arbitrary.bp` tests, **683** on both targets |
 | 1.0.10-beta front 58 — container queries | DONE — steps 1–5. `container.bp`, the `Container` markers and three top-level variants; the thirteen widths read from `--container-*`, an undefined one panics; nesting pinned in both orders. +8 `emilia.bp` / +6 `container.bp` tests, **697** on both targets |
 | 1.0.10-beta front 59 — custom utilities and variants | DONE — steps 1–5. `compose.bp`: bundles, `compose`, `hocus`/`selector`/`themeMidnight`, and `named()` in `@layer components` with its three refusals; the contract-4 hash re-asserted beside it. `named()` and the read-only `lookupRule` cell live in `emilia.bp` (a sibling cannot import it). 14 tests, **711** on both targets |
-| 1.0.10-beta front 48 — attributes | DONE (emilia half) — `attributes.bp` + the slot in `emilia.bp` (`className`/`styled`/`styledWith`/`cls`/`clsWith`, the ASCII gate), the shared fixture `e_39b87d03`, and jhonstart's `html_attrs.bp`. The rendered-markup round trip is the jhonstart-emilia bridge's (jhonstart front 30). +8 `emilia.bp` / +3 `attributes.bp` tests, **722** on both targets |
+| 1.0.10-beta front 48 — attributes | DONE (emilia half) — `attributes.bp` + the slot in `emilia.bp` (`className`/`styled`/`styledWith`/`cls`/`clsWith`, the ASCII gate), the shared fixture (`e_39b87d03` then; `e_f51c2501` since 1.0.12-beta `06-emilia/34` step 5, decision 367), and jhonstart's `html_attrs.bp`. The rendered-markup round trip is the jhonstart-emilia bridge's (jhonstart front 30). +8 `emilia.bp` / +3 `attributes.bp` tests, **722** on both targets |
 | 1.0.10-beta front 54 — theme | DONE — `theme.bp` + `spacing.bp` + `examples/emilia-theme/`; steps 1–7. `spacingNegHalf(n)` is the signed half step (`-0.5` is `spacingNegHalf(0)`; `spacingHalf` refuses a negative whole part), and the unknown-prefix refusal is asserted by its message (`emilia.bp` "front 54 — an entry in no namespace aborts…"). Front 33 hands over `paletteEntries() -> ThemeEntry[]`; fronts 33–47 rewire the dispatchers; front 56 wraps `themeCss`/`keyframeCss`; front 34 consumes `DarkMode` |
 
 The spec is the track README,

@@ -15,9 +15,9 @@ markup.
 
 | Site | Tokens | Class |
 |---|---|---|
-| container | `.Pad.All.__4`, `.Bg.White`, `.Color.Black` | `e_486b0b4f` |
-| heading | `.Text.Size.X3xl`, `.Text.Bold`, `.Color.Red.600` | `e_b63a108` |
-| body | `.Text.Size.Base`, `.Color.Gray.600`, `Token.Hover([.Color.Red.600])`, `Token.Md([.Text.Size.Lg])` | `e_74f3ae56` |
+| container | `.Pad.All.__4`, `.Bg.White`, `.Color.Black` | `e_13df5d57` |
+| heading | `.Text.Size.X3xl`, `.Text.Bold`, `.Color.Red.600` | `e_41222bb0` |
+| body | `.Text.Size.Base`, `.Color.Gray.600`, `Token.Hover([.Color.Red.600])`, `Token.Md([.Text.Size.Lg])` | `e_bcdc3f6a` |
 
 The class name is `e_` and the content hash in hex; the heading's has seven digits (the hex is
 not zero-padded).
@@ -29,10 +29,10 @@ names, one per line, then the document. The theme's `:root` block is the full de
 (elided here as `…`); the utilities layer and the keyframes follow it:
 
 ```text
-e_486b0b4f
-e_b63a108
-e_74f3ae56
-<style>@layer theme, base, components, utilities;@layer theme{:root{--spacing:0.25rem;…}}@layer utilities{.e_486b0b4f{padding:calc(var(--spacing) * 4);background:#ffffff;color:var(--color-black)}.e_b63a108{font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:bold;color:var(--color-red-600)}.e_74f3ae56{font-size:var(--text-base);line-height:var(--text-base--line-height);color:var(--color-gray-600)}@media (hover: hover){.e_74f3ae56:hover{color:var(--color-red-600)}}@media (width >= 48rem){.e_74f3ae56{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}}@keyframes spin{…}@keyframes ping{…}@keyframes pulse{…}@keyframes bounce{…}</style>
+e_13df5d57
+e_41222bb0
+e_bcdc3f6a
+<style>@layer theme, base, components, utilities;@layer theme{:root{--spacing:0.25rem;…}}@layer utilities{.e_13df5d57{padding:calc(var(--spacing) * 4);background:#ffffff;color:var(--color-black)}.e_41222bb0{font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:bold;color:var(--color-red-600)}.e_bcdc3f6a{font-size:var(--text-base);line-height:var(--text-base--line-height);color:var(--color-gray-600)}@media (hover: hover){.e_bcdc3f6a:hover{color:var(--color-red-600)}}@media (width >= 48rem){.e_bcdc3f6a{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}}@keyframes spin{…}@keyframes ping{…}@keyframes pulse{…}@keyframes bounce{…}</style>
 ```
 
 The hover and the breakpoint are sibling rules hoisted out of the body's class, each under the

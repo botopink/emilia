@@ -79,17 +79,17 @@ fn main() -> @Task<void> {
 // same bytes.
 
 val utilitiesLayer = "@layer utilities{"
-    + ".e_486b0b4f{padding:calc(var(--spacing) * 4);background:#ffffff;color:var(--color-black)}"
-    + ".e_b63a108{font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:bold;color:var(--color-red-600)}"
-    + ".e_74f3ae56{font-size:var(--text-base);line-height:var(--text-base--line-height);color:var(--color-gray-600)}"
-    + "@media (hover: hover){.e_74f3ae56:hover{color:var(--color-red-600)}}"
-    + "@media (width >= 48rem){.e_74f3ae56{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}"
+    + ".e_13df5d57{padding:calc(var(--spacing) * 4);background:#ffffff;color:var(--color-black)}"
+    + ".e_41222bb0{font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:bold;color:var(--color-red-600)}"
+    + ".e_bcdc3f6a{font-size:var(--text-base);line-height:var(--text-base--line-height);color:var(--color-gray-600)}"
+    + "@media (hover: hover){.e_bcdc3f6a:hover{color:var(--color-red-600)}}"
+    + "@media (width >= 48rem){.e_bcdc3f6a{font-size:var(--text-lg);line-height:var(--text-lg--line-height)}}"
     + "}";
 
 test "the three style sites answer their content-derived class names" {
-    assert cardClass == "e_486b0b4f";
-    assert titleClass == "e_b63a108";
-    assert bodyClass == "e_74f3ae56";
+    assert cardClass == "e_13df5d57";
+    assert titleClass == "e_41222bb0";
+    assert bodyClass == "e_bcdc3f6a";
 }
 
 test "identical token lists collapse to the same class name" {

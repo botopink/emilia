@@ -2,6 +2,13 @@
 
 ## Unreleased — v0.beta.22
 
+- **The class is `e_` + `contentHash` of its rules** (1.0.12-beta
+  `06-emilia/34` step 5, decision 367). `styleRule` hashes `classRules(sheet)`
+  — the class's rules as the document writes them, the class written
+  `\u{1}`, the text `styled` hashes for a component — instead of the codec
+  payload, which the cell still stores. Every class name moves once; no CSS
+  byte does. Contract 4's shared fixture is `e_f51c2501` (was `e_39b87d03`),
+  `emilia-card`'s classes `e_13df5d57` / `e_41222bb0` / `e_bcdc3f6a`.
 - **The open `05-emilia` rows, each measured against Tailwind 4.3.2's
   compiled output.**
   - `scale-*` writes upstream's `--tw-scale-{x,y,z}` percentages and

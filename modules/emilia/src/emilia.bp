@@ -6,7 +6,7 @@ import {spacing.spacing, spacing.spacingHalf, spacing.spacingNegHalf};
 import {output.Rule, output.Block, output.Sheet, output.Variant, output.Options};
 import {output.emptySheet, output.declSheet, output.blockSheet, output.mergeSheet, output.declarationsOf, output.nestVariant, output.markImportant};
 import {output.encodeSheet, output.decodeSheet, output.carriesSeparator};
-import {output.defaultOptions, output.withTheme, output.withBase, output.renderRule, output.renderDocument};
+import {output.defaultOptions, output.withTheme, output.withBase, output.renderRule, output.renderDocument, output.classRules};
 import {arbitrary.arbValueToSheet, arbitrary.arbPropToSheet, arbitrary.arbVariantToSheet, arbitrary.arbAtToSheet, arbitrary.arbMinToSheet, arbitrary.arbMaxToSheet};
 import {arbitrary.arbValue, arbitrary.arbProp, arbitrary.arbSel, arbitrary.arbAt, arbitrary.arbMin, arbitrary.arbMax};
 import {container.containerMarkerToCss, container.containerNamedToSheet, container.containerAtToSheet};
@@ -77,38 +77,37 @@ declare fn drainRules() -> @Task<string>;
 #[@External.Erlang("""(fun(N__) -> L__ = case get('__emilia_sheet') of undefined -> []; X__ -> X__ end, case lists:keyfind(N__, 1, L__) of {_, B__} -> B__; false -> <<>> end end)($0)""")]
 declare fn lookupRule(name: string) -> string;
 
-// Content-derived class id: std's `hash.contentHash` (decision 116) — the djb2
-// fold (seed 5381, masked to 32 bits) over the body's code points, rendered as
-// lowercase hex with no padding. Identical inputs → identical hex → identical
-// class name (the acceptance gate `hash`). Both targets fold code points, and a
-// class body is ASCII anyway (`assertAsciiBody`), so the two rows agree.
-//
-// WHAT IS FOLDED CHANGED WITH FRONT 56, and contract 4 of the milestone takes
-// the amendment. It used to be `tokensToCss(tokens)`; it is
-// `encodeSheet(tokensToSheet(tokens, th))` now, because a `Sheet` is what a
-// token list produces. Every property the contract rests on survives: still a
-// pure function of its input, still ASCII-only, token order is still class
-// identity. The one clause that changes is clause 1 — the hash is a pure
-// function of the token list AND THE THEME, because a `md:` variant carries the
-// theme's `--breakpoint-md` and a themed utility will carry more. The literal
-// hex of any pinned fixture is regenerated once, here.
+// Content-derived class id (decision 367, `contracts.md` § 4): `"e_"` and
+// std's `hash.contentHash` (decision 116 — the djb2 fold, seed 5381, masked to
+// 32 bits, over code points, lowercase hex, no padding) of the class's RULES as
+// the document writes them, the class written `\u{1}` (`output.bp`
+// `classRules`) — the text `styled` hashes for a component, so one class rule
+// names every component and the `e_` prefix is emilia's layer's. Identical
+// rules → identical class; a class body is ASCII (`assertAsciiBody`), so the
+// two targets agree. The hash is a pure function of the token list AND THE
+// THEME (a `md:` variant carries the theme's `--breakpoint-md`), token order is
+// class identity (a selector variant keeps its place among the plain rules),
+// and the `prefix` / `important` options never enter it. It was the codec
+// payload (`encodeSheet`) until 34 step 5: the payload is still what the cell
+// stores and `flush()` renders, it is no longer what is hashed.
 
 // ── public API ───────────────────────────────────────────────────
 
-// Walk a `Token[]` under a theme → encode the `Sheet` it produces → register
-// it under its content hash → return the assigned class name.
+// Walk a `Token[]` under a theme → name the class by its rules' hash → register
+// the encoded `Sheet` under that name → return the class name.
 pub fn emiliaWith(tokens: Token[], th: Theme) -> string {
     val rule = styleRule(tokens, th);
     register(rule._0, rule._1);
     return rule._0;
 }
 
-// The PURE half of `emiliaWith`: the class name and the encoded sheet it names,
+// The PURE half of `emiliaWith`: the class name and the encoded sheet it names
+// (the cell's payload; the name hashes the sheet's `classRules`),
 // with no host cell touched. A build step that reads `styleRule` fills its
 // style map from it (decision 116 rule 7); `emiliaWith` is this, then `register`.
 pub fn styleRule(tokens: Token[], th: Theme) -> #(string, string) {
-    val payload = encodeSheet(tokensToSheet(tokens, th));
-    return #("e_" + hash.contentHash(payload), payload);
+    val sheet = tokensToSheet(tokens, th);
+    return #("e_" + hash.contentHash(classRules(sheet)), encodeSheet(sheet));
 }
 
 // DECISION 80: the theme every contributing front's entries compose into, in
@@ -19601,7 +19600,7 @@ test "determinism — a fixed effects list hashes to the same class on both targ
         .Blend.Mix.Multiply,
         .Mask.Size.Cover,
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_7f00d34b";
+    assert emiliaWith(tokens, defaultTheme()) == "e_b11a8973";
 }
 
 // ── the regression walks ─────────────────────────────────────────────────────
@@ -20944,7 +20943,7 @@ test "Filter — the class name is a literal, and both targets must agree" {
         .Filter.Grayscale.__100,
         .BackdropFilter.Blur.Md,
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_4cb5836b";
+    assert emiliaWith(tokens, defaultTheme()) == "e_34f2e193";
 }
 // ── end front 42 ─────────────────────────────────────────────────────────────
 
@@ -21167,7 +21166,7 @@ test "Table — the class name is a literal, and both targets must agree" {
         .Table.Spacing.__2,
         .Table.Caption.Top,
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_38a1ad07";
+    assert emiliaWith(tokens, defaultTheme()) == "e_62f1e28f";
 }
 // ── end front 43 ─────────────────────────────────────────────────────────────
 
@@ -21906,7 +21905,7 @@ test "determinism — a fixed transitions list hashes to the same class on both 
         .Transition.Duration.__300,
         .Animate.Pulse,
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_665ff47d";
+    assert emiliaWith(tokens, defaultTheme()) == "e_a2e03d97";
 }
 
 // ── the regression walks ─────────────────────────────────────────────────────
@@ -23337,7 +23336,7 @@ test "Transform — the class name is a literal, and both targets must agree" {
         .Transform.Origin.BottomRight,
         .Transform.Perspective.Near,
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_fc82f487";
+    assert emiliaWith(tokens, defaultTheme()) == "e_aba4fd6f";
 }
 
 // ── the regression walks ─────────────────────────────────────────────────────
@@ -24826,7 +24825,7 @@ test "Interact — the class name is a literal, and both targets must agree" {
         .Interact.Select.None,
         .Interact.Snap.Type.X,
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_9988dbf";
+    assert emiliaWith(tokens, defaultTheme()) == "e_7c211aa7";
 }
 // ── end front 46 ─────────────────────────────────────────────────────────────
 
@@ -25059,7 +25058,7 @@ test "Svg / A11y — the class name is a literal, and both targets must agree" {
         .Svg.StrokeWidth.__2,
         .A11y.SrOnly,
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_1666a8e9";
+    assert emiliaWith(tokens, defaultTheme()) == "e_4c10c0b1";
 }
 // ── end front 47 ─────────────────────────────────────────────────────────────
 
@@ -25154,7 +25153,7 @@ test "Arb — the class name is a literal, and both targets must agree" {
         arbValue("background-color", "#316ff6"),
         arbMin("320px", inner),
     ];
-    assert emiliaWith(tokens, defaultTheme()) == "e_65bc49a6";
+    assert emiliaWith(tokens, defaultTheme()) == "e_5f5d2f44";
 }
 // ── end front 57 ─────────────────────────────────────────────────────────────
 
@@ -25253,7 +25252,7 @@ test "Container — the parent and the child land in one utilities layer" {
 test "Container — the class name is a literal, and both targets must agree" {
     val inner: Token[] = [.Flex.Row];
     val tokens: Token[] = [.Container.Inline, containerAtMd(inner)];
-    assert emiliaWith(tokens, defaultTheme()) == "e_b31f6ed0";
+    assert emiliaWith(tokens, defaultTheme()) == "e_ea3f0f2e";
 }
 // ── end front 58 ─────────────────────────────────────────────────────────────
 
@@ -25462,7 +25461,7 @@ test "named — the hashed class of the same list is byte-identical either way" 
     val n = named("btn-contract", btn());
     val after = emilia(btn());
     assert before == after;
-    assert before == "e_dce7a2da";
+    assert before == "e_902d2502";
     val cleared = await flushWith(bareOptions());
     assert cleared.startsWith("<style>");
 }
@@ -25534,7 +25533,9 @@ test "class: attributes — the shared fixture" {
     val drained = await flushWith(bareOptions());
     assert drained.startsWith("<style>");
     val c = className(cardTokens(), defaultTheme());
-    assert c == "e_39b87d03";
+    assert c == "e_f51c2501";
+    assert classRules(tokensToSheet(cardTokens(), defaultTheme()))
+        == "\u{1}{background:#ffffff;padding:calc(var(--spacing) * 4);font-weight:bold}@media (hover: hover){\u{1}:hover{background-color:var(--color-gray-100)}}";
     val sheet = await flushWith(bareOptions());
     assert sheet.indexOf("." + c + "{") != -1;
     assert sheet.indexOf("." + c + ":hover{") != -1;
