@@ -1,0 +1,10 @@
+{
+  "name": "effect-shadow",
+  "version": "0.0.1",
+  "src": "src/",
+  "entry": "main.bp",
+  "targets": ["commonJS", "erlang"],
+  "dependencies": {
+    "emilia": { "path": "../../../modules/emilia" }
+  }
+}

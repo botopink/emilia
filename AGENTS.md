@@ -33,7 +33,7 @@ Three named imports from `from "emilia"`:
    Sections: Text, Font, List, Color, Bg, Pad, Margin, Size, Space, Layout, Flex,
    Grid, Gap, Border, Outline, Ring, Divide,
    Effect, Blend, Mask, Filter, BackdropFilter, Transition, Animate, Transform, Gradient + the 83 modifier variants of front 34, each carrying a nested
-   `Token[]` (see below and `docs.md` § Modifiers). Front 41 rebuilt **`Effect`**
+   `Token[]` (see below and `conformance/docs.md` § Modifiers). Front 41 rebuilt **`Effect`**
    (Shadow, InsetShadow, TextShadow, Opacity) and added **`Blend`** and
    **`Mask`**, plus three top-level arbitrary-value variants
    `EffectShadowRaw(value)` / `EffectTextShadowRaw(value)` /
@@ -53,7 +53,7 @@ Front 54 adds the **theme** and the **spacing ladder** (`theme.bp`,
 `spacing.bp`): `ThemeEntry`, `Theme`, `DarkMode`, `Ns`, `nsPrefix`,
 `allNamespaces`, `defaultTheme`, `emptyTheme`, `extendTheme`, `clearNamespace`,
 `namespace`, `themeValue`, `themeVar`, `themeCss`, `keyframeCss`, `darkAtRule`,
-`darkSelector`, `withDarkMode`, `spacing`, `spacingHalf`, `spacingNegHalf` — see `docs.md`
+`darkSelector`, `withDarkMode`, `spacing`, `spacingHalf`, `spacingNegHalf` — see `conformance/docs.md`
 § The theme. Rewiring `tokenToCss` to `spacing()` and to the theme is fronts
 33–47's work. Front 35 took **six** of the seven drifted `rem` ladders front 54
 found in `emilia.bp` — `padScaleX/Y/All` and `marginScaleX/Y/All`; the seventh,
@@ -63,7 +63,7 @@ ladder is left in `emilia.bp`; `spacing.bp`'s docblock, which still claimed all
 seven for front 35, was corrected in the same commit.
 
 Front 56 adds the **rule model, the codec and the renderer** (`output.bp`) —
-see `docs.md` § The cascade and the output. It is the interface fronts 33, 34
+see `conformance/docs.md` § The cascade and the output. It is the interface fronts 33, 34
 and 35 consume, so it is stated here in one line each:
 
 | Name | What 33/34/35 see |
@@ -637,7 +637,19 @@ resolves to it, never to the umbrella.
 ```text
 emilia/
 ├── AGENTS.md          ← you are here
-├── docs.md            ← the user-facing token reference
+├── conformance/       ← the reference and its examples (decision 463)
+│   ├── docs.md        ← the user-facing token reference; each example is a
+│   │                    `<!-- example: <cell> -->` line naming a cell
+│   └── modules/<example>/  ← one cell per example of the reference, in the
+│                        language suite's shape (decisions 457, 462, 475):
+│                        `botopink.json` (emilia as a `path` dependency, as a
+│                        consumer declares it) · `src/main.bp` · `snapshot/output/
+│                        main.snap` (the answer, one for every target) ·
+│                        `snapshot/targets/<t>/…` only where a target departs
+│                        · `docs.md` (the reference text beside the cell).
+│                        `botopink cell check conformance/` (from this
+│                        directory) answers every cell; a candidate is accepted
+│                        by renaming `*.snap.new`, never written by the tool
 ├── botopink.json      ← WORKSPACE: name emilia · version · targets
 │                        [commonJS, erlang] (the default every member
 │                        inherits and may only restrict) · workspaces
@@ -1627,6 +1639,28 @@ here), `runExamplesGate "$bin" <t>`, `runRefusalsGate` (no `refusals/` here).
 The spec is the track README,
 [`specs/1.0.10-beta/05-emilia/README.md`](../../specs/1.0.10-beta/05-emilia/README.md), and its
 fronts.
+
+## Conformance
+
+`conformance/docs.md` is the reference and `conformance/modules/<example>/` holds
+its examples, one cell per example (decision 463). A reference line
+`<!-- example: <cell> -->` names the cell that stands for the example; the cell's
+own `docs.md` carries the paragraph that explains it. Add an example with
+`botopink cell new conformance/modules/<name>`, give it the `botopink.json` of its
+neighbours (emilia as the path dependency `../../../modules/emilia`), write
+`src/main.bp`, run `botopink cell check conformance/modules/<name>` from this
+directory and accept a candidate only after reading it, by renaming
+`*.snap.new` — the tool never writes an accepted `.snap`. A reference sentence
+and its cell must agree: when `botopink cell check` answers something the text
+does not say, the text is wrong, never the cell edited to match.
+
+Emilia's targets are commonJS and erlang; `botopink cell check` runs all four
+and narrows a cell by a `targets` file only where the excluded target refuses a
+host binding. wasm therefore has a departure in every cell, measured: a refusal
+(`arbitrary.bp`'s `join/1` does not resolve on wasm) for a cell that links it,
+an empty answer for one that does not — wasm prints nothing from a package with
+a path dependency. These files go the day the wasm backend answers like the
+other three.
 
 ## Local gate
 
