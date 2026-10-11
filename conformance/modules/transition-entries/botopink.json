@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "src": "src/",
   "entry": "main.bp",
-  "targets": ["commonJS", "erlang"],
+  "targets": ["commonJS", "erlang", "beam"],
   "dependencies": {
     "emilia": { "path": "../../../modules/emilia" }
   }
