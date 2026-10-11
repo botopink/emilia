@@ -1654,13 +1654,14 @@ directory and accept a candidate only after reading it, by renaming
 and its cell must agree: when `botopink cell check` answers something the text
 does not say, the text is wrong, never the cell edited to match.
 
-Emilia's targets are commonJS and erlang; `botopink cell check` runs all four
-and narrows a cell by a `targets` file only where the excluded target refuses a
-host binding. wasm therefore has a departure in every cell, measured: a refusal
-(`arbitrary.bp`'s `join/1` does not resolve on wasm) for a cell that links it,
-an empty answer for one that does not — wasm prints nothing from a package with
-a path dependency. These files go the day the wasm backend answers like the
-other three.
+Emilia's targets are commonJS and erlang, declared in each cell's `botopink.json`
+`"targets"` (decision 475). The `botopink cell check` of today still reads a
+`targets` file and runs all four targets, so every cell is red on wasm (and the
+`targets` file cannot narrow it: beam accepts the cell and wasm refuses it for
+another reason than a host binding) until the cell tool reads the manifest's
+`"targets"`. No wasm departure is recorded: a departure never pins a compiler
+defect (decision 458). On wasm emilia's `arbitrary.bp` does not build (`join/1`
+does not resolve), and a cell with a path dependency prints nothing.
 
 ## Local gate
 
