@@ -1,5 +1,7 @@
 # emilia — agent notes
 
+`decisions-taken.md` is generated — from the meta repository's `specs/<milestone>/decisions-taken.md` by `scripts/decisions-split.py`; edit it there, never here.
+
 > Type-safe CSS-in-bp library for botopink/jhonstart. **Zero compiler
 > surface** at v0 — the core is unaware of emilia (memory:
 > `feedback_no_lib_specific_in_core`,
