@@ -644,8 +644,9 @@ emilia/
 │   │                    `<!-- example: <cell> -->` line naming a cell
 │   └── modules/<example>/  ← one cell per example of the reference, in the
 │                        language suite's shape (decisions 457, 462, 475):
-│                        `botopink.json` (emilia as a `path` dependency, as a
-│                        consumer declares it) · `src/main.bp` · `snapshot/output/
+│                        `botopink.json` (`{ "name": "<cell>" }` — emilia, the
+│                        targets and the version are the workspace's,
+│                        `modules/botopink.json`) · `src/main.bp` · `snapshot/output/
 │                        main.snap` (the answer, one for every target) ·
 │                        `snapshot/targets/<t>/…` only where a target departs
 │                        · `docs.md` (the reference text beside the cell).
@@ -1649,12 +1650,14 @@ its examples, one cell per example (decision 463). A reference line
 `<!-- example: <cell> -->` names the cell that stands for the example; the cell's
 own `docs.md` carries the paragraph that explains it. Add an example with
 `botopink cell new conformance/modules/<name>`, give it the `botopink.json` of its
-neighbours (emilia as the path dependency `../../../modules/emilia`), write
+neighbours (`{ "name": "<name>" }`), write
 `src/main.bp`, run `botopink cell check conformance/modules/<name>` from this
 directory and accept a candidate only after reading it, by renaming
 `*.snap.new` — the tool never writes an accepted `.snap`. A reference sentence
 and its cell must agree: when `botopink cell check` answers something the text
 does not say, the text is wrong, never the cell edited to match.
+
+`conformance/modules/botopink.json` is a workspace whose members are the cells (`"workspaces": ["*"]`, decision 512 of the compiler): it declares what every cell shares — emilia as the path dependency `../../modules/emilia`, the targets commonJS, erlang and beam, the version — so a cell's own `botopink.json` holds its name alone, and the cells' dependencies share one code cache, `conformance/modules/.botopinkbuild/cache/` (decision 509; `botopink cell check --cold` reads none of it).
 
 Emilia's targets are commonJS and erlang, declared in each cell's `botopink.json`
 `"targets"` (decision 475). The `botopink cell check` of today still reads a
