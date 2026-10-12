@@ -933,7 +933,7 @@ stands on std's `asserts` and `snapshots`, re-exports nothing from std, and
 
 `.github/workflows/test.yml` — CI: the rows are the manifests' target set
 (gate-j of 1.0.11-beta `00-gate`) on the runners the compiler is gated on:
-`{ubuntu-24.04, macos-14} × {commonJS, erlang}`, against botopink-lang
+`ubuntu-24.04 × {commonJS, erlang}` (no macos row), against botopink-lang
 `vars.BOTOPINK_LANG_REF` (default `feat`). Every row is hard — no
 `allow_fail`, no `continue-on-error`. No `beam` row (`botopink test` cannot
 run beam) and no windows row (gate-f: botopink-lang's own workflow has none,
@@ -941,7 +941,7 @@ so a row here would measure the compiler's windows port; it returns with the
 compiler's). The linux runner is `ubuntu-24.04`; the compiler links against a
 pinned glibc 2.35 (decision 219, ubuntu-22.04's), so it starts on either
 runner — the 22.04 floor is the compiler's own workflow's. Erlang/OTP 28 **and** Node 22 are installed on every
-row (OTP 28 pinned on both runners — the release the root `botopink.json`'s `"otp"` names (`"28"`), read by a step before the installs (decision 228; the compiler refuses any other `erl` on PATH) — `erlef/setup-beam` on linux, `brew install erlang@<release> && brew link --force erlang@<release>` with its `bin` on `$GITHUB_PATH` on macos (decision 227; Homebrew's plain `erlang` is the latest OTP), and a step after both fails the job unless `erl` reports that release) — `zig build install` runs `erlc` and comptime evaluation spawns `erl`
+row (OTP 28 pinned on the runner — the release the root `botopink.json`'s `"otp"` names (`"28"`), read by a step before the installs (decision 228; the compiler refuses any other `erl` on PATH) — `erlef/setup-beam` (decision 227), and a step after it fails the job unless `erl` reports that release) — `zig build install` runs `erlc` and comptime evaluation spawns `erl`
 whatever the row's target. Each row is one `botopink-lib-test --bin
 "$BOTOPINK_BIN" --target <t> --strict` from a scratch directory with
 `BOTOPINK_LIB_ROOTS` naming this repository, so the runner discovers this
