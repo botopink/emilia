@@ -85,7 +85,7 @@ fn noTheme() -> Options {
 fn ruleFor(selector: string) -> string {
     val hits = preflightRules().filter({ r -> r.selector == selector });
     val hit = hits.at(0);
-    if (hit == null) { @panic("ruleFor: preflight has no rule for `" + selector + "`"); };
+    if (hit == null) { @panic("ruleFor: preflight has no rule for `" + selector + "`"); }
     return hit.declarations;
 }
 
