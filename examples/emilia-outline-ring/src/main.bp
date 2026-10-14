@@ -143,7 +143,6 @@ pub fn segmentedList() -> string {
 
 // ── tests ────────────────────────────────────────────────────────────────────
 
-
 // The composed `box-shadow` every shadow and ring token writes beside its own
 // channel (emilia front 40/41: upstream's five channels, each with its null
 // shadow as a fallback), spelled once for this example's assertions.
@@ -154,14 +153,18 @@ fn chain() -> string {
 test "the four outline properties, each with its own token" {
     val cls = outlineBasics();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{outline-width:2px;outline-style:dashed;"
-        + "outline-color:var(--color-indigo-500);outline-offset:2px}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{outline-width:2px;outline-style:dashed;"
+        + "outline-color:var(--color-indigo-500);outline-offset:2px}")
+        != -1;
 }
 
 test "a negative outline offset is a leaf, not a sign on a number" {
     val cls = insetOutline();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{outline-width:1px;outline-offset:-2px}") != -1;
+    assert doc.indexOf("." + cls + "{outline-width:1px;outline-offset:-2px}")
+        != -1;
 }
 
 // THE TRAP, asserted in both directions: the two declarations are present AND
@@ -170,17 +173,25 @@ test "a negative outline offset is a leaf, not a sign on a number" {
 test "outline-none is a transparent outline, never outline-style:none" {
     val cls = removedOutline();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{outline:2px solid transparent;"
-        + "outline-offset:2px}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{outline:2px solid transparent;"
+        + "outline-offset:2px}")
+        != -1;
     assert doc.indexOf("outline-style:none") == -1;
 }
 
 test "a ring is a custom property and a composed box-shadow" {
     val cls = ring();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{--tw-ring-shadow:var(--tw-ring-inset, ) 0 0 0 "
+    assert doc.indexOf("."
+        + cls
+        + "{--tw-ring-shadow:var(--tw-ring-inset, ) 0 0 0 "
         + "calc(2px + var(--tw-ring-offset-width, 0px)) var(--tw-ring-color, currentcolor);"
-        + "box-shadow:" + chain() + ";--tw-ring-color:var(--color-blue-500)}") != -1;
+        + "box-shadow:"
+        + chain()
+        + ";--tw-ring-color:var(--color-blue-500)}")
+        != -1;
 }
 
 test "the ring offset is two custom properties, width and colour" {
@@ -218,28 +229,40 @@ test "a ring composes with a shadow, and swapping them is a different class" {
 test "a divided list declares on its children, not on itself" {
     val cls = dividedRows();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){"
+    assert doc.indexOf(":where(."
+        + cls
+        + " > :not(:last-child)){"
         + "--tw-divide-y-reverse:0;border-top-width:calc(1px * var(--tw-divide-y-reverse));border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));"
-        + "border-color:var(--color-gray-200)}") != -1;
+        + "border-color:var(--color-gray-200)}")
+        != -1;
     assert doc.indexOf("." + cls + "{") == -1;
 }
 
 test "divide-x is the logical pair, and a style joins the same child rule" {
     val cls = dividedColumns();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){"
+    assert doc.indexOf(":where(."
+        + cls
+        + " > :not(:last-child)){"
         + "--tw-divide-x-reverse:0;border-inline-start-width:calc(2px * var(--tw-divide-x-reverse));border-inline-end-width:calc(2px * calc(1 - var(--tw-divide-x-reverse)));"
-        + "border-style:dashed}") != -1;
+        + "border-style:dashed}")
+        != -1;
 }
 
 test "end to end — a form control whose focus ring moves no layout" {
     val cls = formControl();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{border-width:1px;"
+    assert doc.indexOf("."
+        + cls
+        + "{border-width:1px;"
         + "border-color:var(--color-slate-300);"
-        + "border-radius:var(--radius-md)}") != -1;
-    assert doc.indexOf("." + cls + ":focus-visible{outline-width:2px;"
-        + "outline-color:var(--color-indigo-500);outline-offset:2px}") != -1;
+        + "border-radius:var(--radius-md)}")
+        != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":focus-visible{outline-width:2px;"
+        + "outline-color:var(--color-indigo-500);outline-offset:2px}")
+        != -1;
     // The focus state adds NO width and NO shadow, so focusing the control
     // reflows nothing. That is the whole reason `outline-*` exists.
     assert doc.indexOf(":focus-visible{border") == -1;
@@ -249,12 +272,18 @@ test "end to end — a form control whose focus ring moves no layout" {
 test "end to end — a segmented list borders itself and divides its rows" {
     val cls = segmentedList();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{border-width:1px;"
+    assert doc.indexOf("."
+        + cls
+        + "{border-width:1px;"
         + "border-color:var(--color-slate-200);"
-        + "border-radius:var(--radius-lg)}") != -1;
-    assert doc.indexOf(":where(." + cls + " > :not(:last-child)){"
+        + "border-radius:var(--radius-lg)}")
+        != -1;
+    assert doc.indexOf(":where(."
+        + cls
+        + " > :not(:last-child)){"
         + "--tw-divide-y-reverse:0;border-top-width:calc(1px * var(--tw-divide-y-reverse));border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)));"
-        + "border-color:var(--color-slate-200)}") != -1;
+        + "border-color:var(--color-slate-200)}")
+        != -1;
 }
 
 // The cross-front invariant, asserted from a CONSUMER package: `divide-*` and

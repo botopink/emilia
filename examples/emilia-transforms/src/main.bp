@@ -320,8 +320,11 @@ fn chain() -> string {
 test "rotate — the five steps of `§ 16.4`, and the property is `rotate`" {
     val cls = everyRotation();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{rotate:0deg;rotate:1deg;rotate:45deg;"
-        + "rotate:90deg;rotate:180deg}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{rotate:0deg;rotate:1deg;rotate:45deg;"
+        + "rotate:90deg;rotate:180deg}")
+        != -1;
     // the v4 property, never the v3 `transform:` function the 1.0.8 draft used
     assert doc.indexOf("transform:rotate(") == -1;
 }
@@ -329,8 +332,11 @@ test "rotate — the five steps of `§ 16.4`, and the property is `rotate`" {
 test "rotate — the negative half is a `Neg` sub-section, upstream's `calc(Ndeg * -1)`" {
     val cls = everyNegativeRotation();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{rotate:calc(1deg * -1);rotate:calc(12deg * -1);rotate:calc(45deg * -1);"
-        + "rotate:calc(90deg * -1);rotate:calc(180deg * -1)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{rotate:calc(1deg * -1);rotate:calc(12deg * -1);rotate:calc(45deg * -1);"
+        + "rotate:calc(90deg * -1);rotate:calc(180deg * -1)}")
+        != -1;
     assert doc.indexOf("rotate:-12deg") == -1;
     assert doc.indexOf("rotate:--") == -1;
 }
@@ -340,7 +346,13 @@ fn scaled() -> string {
 }
 
 fn scaleStep(v: string) -> string {
-    return "--tw-scale-x:" + v + ";--tw-scale-y:" + v + ";--tw-scale-z:" + v + scaled();
+    return "--tw-scale-x:"
+        + v
+        + ";--tw-scale-y:"
+        + v
+        + ";--tw-scale-z:"
+        + v
+        + scaled();
 }
 
 // UPSTREAM v4's SCALE: a percentage in `--tw-scale-{x,y,z}` and one reader.
@@ -348,19 +360,47 @@ fn scaleStep(v: string) -> string {
 test "scale — the ten steps, each a percentage in the three variables" {
     val cls = theScaleLadder();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{" + scaleStep("0%") + ";" + scaleStep("50%") + ";"
-        + scaleStep("75%") + ";" + scaleStep("90%") + ";" + scaleStep("95%") + ";"
-        + scaleStep("100%") + ";" + scaleStep("105%") + ";" + scaleStep("110%") + ";"
-        + scaleStep("125%") + ";" + scaleStep("150%") + "}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{"
+        + scaleStep("0%")
+        + ";"
+        + scaleStep("50%")
+        + ";"
+        + scaleStep("75%")
+        + ";"
+        + scaleStep("90%")
+        + ";"
+        + scaleStep("95%")
+        + ";"
+        + scaleStep("100%")
+        + ";"
+        + scaleStep("105%")
+        + ";"
+        + scaleStep("110%")
+        + ";"
+        + scaleStep("125%")
+        + ";"
+        + scaleStep("150%")
+        + "}")
+        != -1;
     assert doc.indexOf("scale:.5") == -1;
-    assert doc.indexOf("@property --tw-scale-x{syntax:\"*\";inherits:false;initial-value:1}") != -1;
+    assert doc.indexOf("@property --tw-scale-x{syntax:\"*\";inherits:false;initial-value:1}")
+        != -1;
 }
 
 // EACH AXIS WRITES ITS OWN VARIABLE, so the two compose into one scale.
 test "scale — the two axes, in one rule, each writing its own variable" {
     val cls = theTwoAxes();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{--tw-scale-x:50%" + scaled() + ";--tw-scale-y:150%" + scaled() + "}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{--tw-scale-x:50%"
+        + scaled()
+        + ";--tw-scale-y:150%"
+        + scaled()
+        + "}")
+        != -1;
 }
 
 fn composed() -> string {
@@ -372,25 +412,44 @@ fn composed() -> string {
 test "translate — the five `x` rows, each writing `--tw-translate-x`" {
     val cls = theHorizontalLadder();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{--tw-translate-x:0" + composed()
-        + ";--tw-translate-x:1px" + composed()
-        + ";--tw-translate-x:calc(var(--spacing) * 1)" + composed()
-        + ";--tw-translate-x:calc(1 / 2 * 100%)" + composed()
-        + ";--tw-translate-x:100%" + composed() + "}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{--tw-translate-x:0"
+        + composed()
+        + ";--tw-translate-x:1px"
+        + composed()
+        + ";--tw-translate-x:calc(var(--spacing) * 1)"
+        + composed()
+        + ";--tw-translate-x:calc(1 / 2 * 100%)"
+        + composed()
+        + ";--tw-translate-x:100%"
+        + composed()
+        + "}")
+        != -1;
     // `translate-x-1` is front 54's spacing ladder and never a resolved `rem`
     assert doc.indexOf("rem") == -1;
-    assert doc.indexOf("@property --tw-translate-y{syntax:\"*\";inherits:false;initial-value:0}") != -1;
+    assert doc.indexOf("@property --tw-translate-y{syntax:\"*\";inherits:false;initial-value:0}")
+        != -1;
     assert doc.indexOf("@layer properties{") != -1;
 }
 
 test "translate — the five `y` rows, writing the other variable" {
     val cls = theVerticalLadder();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{--tw-translate-y:0" + composed()
-        + ";--tw-translate-y:1px" + composed()
-        + ";--tw-translate-y:calc(var(--spacing) * 1)" + composed()
-        + ";--tw-translate-y:calc(1 / 2 * 100%)" + composed()
-        + ";--tw-translate-y:100%" + composed() + "}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{--tw-translate-y:0"
+        + composed()
+        + ";--tw-translate-y:1px"
+        + composed()
+        + ";--tw-translate-y:calc(var(--spacing) * 1)"
+        + composed()
+        + ";--tw-translate-y:calc(1 / 2 * 100%)"
+        + composed()
+        + ";--tw-translate-y:100%"
+        + composed()
+        + "}")
+        != -1;
 }
 
 fn skewChain() -> string {
@@ -403,9 +462,20 @@ test "skew — `--tw-skew-x:skewX(3deg)` and the chain, and never the reference 
     val a = aSkewedPanel();
     val b = twoSkewsInOneRule();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{--tw-skew-x:skewX(3deg);" + skewChain() + "}") != -1;
-    assert doc.indexOf("." + b + "{--tw-skew-x:skewX(3deg);" + skewChain()
-        + ";--tw-skew-y:skewY(6deg);" + skewChain() + "}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{--tw-skew-x:skewX(3deg);"
+        + skewChain()
+        + "}")
+        != -1;
+    assert doc.indexOf("."
+        + b
+        + "{--tw-skew-x:skewX(3deg);"
+        + skewChain()
+        + ";--tw-skew-y:skewY(6deg);"
+        + skewChain()
+        + "}")
+        != -1;
     assert doc.indexOf("{skew-x:") == -1;
     assert doc.indexOf(";skew-y:") == -1;
 }
@@ -413,11 +483,14 @@ test "skew — `--tw-skew-x:skewX(3deg)` and the chain, and never the reference 
 test "transform-origin — the nine rows, and a corner is two keywords" {
     val cls = everyOrigin();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{transform-origin:center;transform-origin:top;"
+    assert doc.indexOf("."
+        + cls
+        + "{transform-origin:center;transform-origin:top;"
         + "transform-origin:top right;transform-origin:right;"
         + "transform-origin:bottom right;transform-origin:bottom;"
         + "transform-origin:bottom left;transform-origin:left;"
-        + "transform-origin:top left}") != -1;
+        + "transform-origin:top left}")
+        != -1;
     assert doc.indexOf("top-right") == -1;
     assert doc.indexOf("bottom-left") == -1;
 }
@@ -427,8 +500,10 @@ test "transform-origin — the nine rows, and a corner is two keywords" {
 test "transform-style and backface — `transform-3d` emits `preserve-3d`" {
     val cls = aFlippableCardFace();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls
-        + "{transform-style:preserve-3d;backface-visibility:hidden}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{transform-style:preserve-3d;backface-visibility:hidden}")
+        != -1;
     assert doc.indexOf("transform-style:3d") == -1;
 }
 
@@ -438,11 +513,14 @@ test "perspective — five references, one keyword, and no `px` in any rule" {
     val a = everyPerspective();
     val b = flatOnPurpose();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{perspective:var(--perspective-dramatic);"
+    assert doc.indexOf("."
+        + a
+        + "{perspective:var(--perspective-dramatic);"
         + "perspective:var(--perspective-near);"
         + "perspective:var(--perspective-normal);"
         + "perspective:var(--perspective-midrange);"
-        + "perspective:var(--perspective-distant)}") != -1;
+        + "perspective:var(--perspective-distant)}")
+        != -1;
     assert doc.indexOf("." + b + "{perspective:none}") != -1;
     assert doc.indexOf("perspective:100px") == -1;
     assert doc.indexOf("perspective:1200px") == -1;
@@ -454,8 +532,11 @@ test "perspective — five references, one keyword, and no `px` in any rule" {
 test "perspective-origin — a scene viewed from below, three declarations" {
     val cls = aSceneViewedFromBelow();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{perspective:var(--perspective-near);"
-        + "perspective-origin:bottom;transform-style:preserve-3d}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{perspective:var(--perspective-near);"
+        + "perspective-origin:bottom;transform-style:preserve-3d}")
+        != -1;
 }
 
 // THE FRONT'S ARGUMENT FOR A REFERENCE OVER A LITERAL, asserted from a CONSUMER
@@ -475,8 +556,11 @@ test "zoom — the seven rows, with the leading zero the reference prints" {
     val z = theZoomLadder();
     val s = theScaleLadder();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + z + "{zoom:0;zoom:0.5;zoom:0.75;zoom:1;zoom:1.25;"
-        + "zoom:1.5;zoom:2}") != -1;
+    assert doc.indexOf("."
+        + z
+        + "{zoom:0;zoom:0.5;zoom:0.75;zoom:1;zoom:1.25;"
+        + "zoom:1.5;zoom:2}")
+        != -1;
     assert doc.indexOf("." + s + "{--tw-scale-x:0%;") != -1;
 }
 
@@ -485,8 +569,11 @@ test "the shorthand — `translateZ(0)` in front of the skew chain" {
     val g = theGpuShorthand();
     val n = noTransform();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + g + "{transform:translateZ(0) var(--tw-rotate-x,) var(--tw-rotate-y,) "
-        + "var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)}") != -1;
+    assert doc.indexOf("."
+        + g
+        + "{transform:translateZ(0) var(--tw-rotate-x,) var(--tw-rotate-y,) "
+        + "var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)}")
+        != -1;
     assert doc.indexOf("." + n + "{transform:none}") != -1;
 }
 
@@ -506,17 +593,30 @@ test "the escape hatches — the arbitrary rotation `§ 16.4` prints, and a cent
 test "end to end — a card that lifts, grows and deepens its shadow on hover" {
     val cls = aLiftingCard();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{background-color:var(--color-white);"
+    assert doc.indexOf("."
+        + cls
+        + "{background-color:var(--color-white);"
         + "border-radius:var(--radius-lg);"
-        + "--tw-shadow:var(--shadow-sm);box-shadow:" + chain() + ";"
+        + "--tw-shadow:var(--shadow-sm);box-shadow:"
+        + chain()
+        + ";"
         + "transition-property:color, background-color, border-color, "
         + "text-decoration-color, fill, stroke, opacity, box-shadow, transform, "
         + "filter, backdrop-filter;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
-        + "transition-duration:200ms}") != -1;
-    assert doc.indexOf("@media (hover: hover){." + cls
-        + ":hover{--tw-translate-y:1px" + composed() + ";" + scaleStep("105%") + ";"
-        + "--tw-shadow:var(--shadow-lg);box-shadow:" + chain() + "}}") != -1;
+        + "transition-duration:200ms}")
+        != -1;
+    assert doc.indexOf("@media (hover: hover){."
+        + cls
+        + ":hover{--tw-translate-y:1px"
+        + composed()
+        + ";"
+        + scaleStep("105%")
+        + ";"
+        + "--tw-shadow:var(--shadow-lg);box-shadow:"
+        + chain()
+        + "}}")
+        != -1;
 }
 
 // END TO END — the chevron. The rotation is this front's, the `.group` selector
@@ -524,10 +624,14 @@ test "end to end — a card that lifts, grows and deepens its shadow on hover" {
 test "end to end — a chevron that flips 180° when its disclosure opens" {
     val cls = aFlippingChevron();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{transition-property:transform;"
+    assert doc.indexOf("."
+        + cls
+        + "{transition-property:transform;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
-        + "transition-duration:200ms;transform-origin:center}") != -1;
-    assert doc.indexOf(":is(:where(.group):is([open], :popover-open, :open) *)") != -1;
+        + "transition-duration:200ms;transform-origin:center}")
+        != -1;
+    assert doc.indexOf(":is(:where(.group):is([open], :popover-open, :open) *)")
+        != -1;
     assert doc.indexOf("rotate:180deg}") != -1;
 }
 
@@ -548,7 +652,11 @@ test "no token in this example resolves a length, and the v4 properties compose"
     assert doc.indexOf("var(--perspective-near)") != -1;
     assert doc.indexOf("calc(var(--spacing) * 1)") != -1;
     // the composition: three properties, three declarations, one rule
-    assert doc.indexOf("--tw-translate-y:1px" + composed() + ";" + scaleStep("105%")) != -1;
+    assert doc.indexOf("--tw-translate-y:1px"
+        + composed()
+        + ";"
+        + scaleStep("105%"))
+        != -1;
     // the only `1px` in the document is `translate-*-px`'s, which is the
     // reference's own literal value and not a theme lookup
     assert doc.indexOf("--tw-translate-x:1px" + composed()) != -1;

@@ -1,4 +1,4 @@
-import { Token, emilia, flushWith, defaultOptions, withTheme, emptyTheme, rawTransitionProperty, rawAnimate } from "emilia";
+import {Token, emilia, flushWith, defaultOptions, withTheme, emptyTheme, rawTransitionProperty, rawAnimate} from "emilia";
 
 fn doc(name: string, tokens: Token[]) -> @Task<void> {
     emilia(tokens);

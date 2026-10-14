@@ -1,4 +1,4 @@
-import { defaultTheme, extendTheme, paletteEntries, themeValue, flushWith, withTheme, defaultOptions } from "emilia";
+import {defaultTheme, extendTheme, paletteEntries, themeValue, flushWith, withTheme, defaultOptions} from "emilia";
 
 pub fn main() -> @Task<void> {
     val th = extendTheme(defaultTheme(), paletteEntries());

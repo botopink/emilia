@@ -1,9 +1,4 @@
-import { Rule, Block, Sheet, Variant, Options,
-         emptySheet, declSheet, staticSheet, blockSheet, mergeSheet,
-         declarationsOf, layerNames, nestVariant, markImportant,
-         encodeSheet, decodeSheet, carriesSeparator,
-         defaultOptions, withTheme, withBase, withPrefix, withImportant, withLayers,
-         renderRule, renderDocument } from "emilia";
+import {Rule, Block, Sheet, Variant, Options, emptySheet, declSheet, staticSheet, blockSheet, mergeSheet, declarationsOf, layerNames, nestVariant, markImportant, encodeSheet, decodeSheet, carriesSeparator, defaultOptions, withTheme, withBase, withPrefix, withImportant, withLayers, renderRule, renderDocument} from "emilia";
 
 fn render(s: Sheet, o: Options) -> string {
     return s.rules.map({ r -> renderRule("c", r, o) }).join("");

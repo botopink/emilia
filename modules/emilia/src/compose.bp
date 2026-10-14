@@ -65,7 +65,10 @@ pub fn hocus(inner: Token[]) -> Token[] {
 // at-rule through `arbAt` — no path around either check.
 pub fn selector(v: Variant, inner: Token[]) -> Token {
     val sel = arbSel(v.selector, inner);
-    if (v.atRule != "" && !v.atRule.startsWith("@")) @panic("emilia compose: a variant's at-rule starts with @: '" + v.atRule + "'");
+    if (v.atRule != "" && !v.atRule.startsWith("@"))
+        @panic("emilia compose: a variant's at-rule starts with @: '"
+            + v.atRule
+            + "'");
     val query = v.atRule.split("@").drop(1).join("@");
     val wrapped: Token[] = [sel];
     val out = if (v.atRule == "") sel else arbAt(query, wrapped);

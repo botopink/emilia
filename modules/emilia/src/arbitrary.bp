@@ -98,27 +98,44 @@ pub fn refusesLength(raw: string) -> bool {
 // dies with the payload in the message.
 
 fn checkValue(prop: string, value: string) -> string {
-    if (refusesValue(value)) @panic("emilia arbitrary: the value of '" + prop + "' may not contain { } < > ; @ or a backslash: '" + value + "'");
+    if (refusesValue(value))
+        @panic("emilia arbitrary: the value of '"
+            + prop
+            + "' may not contain { } < > ; @ or a backslash: '"
+            + value
+            + "'");
     return value;
 }
 
 fn checkIdent(name: string) -> string {
-    if (refusesIdent(name)) @panic("emilia arbitrary: a property name may contain only letters, digits, - and _: '" + name + "'");
+    if (refusesIdent(name))
+        @panic("emilia arbitrary: a property name may contain only letters, digits, - and _: '"
+            + name
+            + "'");
     return name;
 }
 
 fn checkSelector(selector: string) -> string {
-    if (refusesSelector(selector)) @panic("emilia arbitrary: a selector carries exactly one & and none of { } < ; @ or a backslash: '" + selector + "'");
+    if (refusesSelector(selector))
+        @panic("emilia arbitrary: a selector carries exactly one & and none of { } < ; @ or a backslash: '"
+            + selector
+            + "'");
     return selector;
 }
 
 fn checkQuery(query: string) -> string {
-    if (refusesQuery(query)) @panic("emilia arbitrary: an at-rule condition is written without its @ and may not contain { } < > ; @ or a backslash: '" + query + "'");
+    if (refusesQuery(query))
+        @panic("emilia arbitrary: an at-rule condition is written without its @ and may not contain { } < > ; @ or a backslash: '"
+            + query
+            + "'");
     return query;
 }
 
 fn checkLength(px: string) -> string {
-    if (refusesLength(px)) @panic("emilia arbitrary: a breakpoint length is digits and one unit of px em rem ch vw vh %: '" + px + "'");
+    if (refusesLength(px))
+        @panic("emilia arbitrary: a breakpoint length is digits and one unit of px em rem ch vw vh %: '"
+            + px
+            + "'");
     return px;
 }
 
@@ -167,15 +184,20 @@ pub fn arbVariantToSheet(selector: string, inner: Sheet) -> Sheet {
 }
 
 pub fn arbAtToSheet(query: string, inner: Sheet) -> Sheet {
-    return nestVariant(inner, Variant(atRule: "@" + checkQuery(query), selector: "&"));
+    return nestVariant(inner, Variant(atRule: "@"
+        + checkQuery(query), selector: "&"));
 }
 
 pub fn arbMinToSheet(px: string, inner: Sheet) -> Sheet {
-    return nestVariant(inner, Variant(atRule: "@media (width >= " + checkLength(px) + ")", selector: "&"));
+    return nestVariant(inner, Variant(atRule: "@media (width >= "
+        + checkLength(px)
+        + ")", selector: "&"));
 }
 
 pub fn arbMaxToSheet(px: string, inner: Sheet) -> Sheet {
-    return nestVariant(inner, Variant(atRule: "@media (width < " + checkLength(px) + ")", selector: "&"));
+    return nestVariant(inner, Variant(atRule: "@media (width < "
+        + checkLength(px)
+        + ")", selector: "&"));
 }
 
 // ── the comptime gate ────────────────────────────────────────────────────────
@@ -190,9 +212,15 @@ pub fn cssValue(comptime q: @Expr<string>) -> @Expr<string> {
     val raw = q.text();
     val braces = raw.split("{").length + raw.split("}").length;
     val angles = raw.split("<").length + raw.split(">").length;
-    val others = raw.split(";").length + raw.split("@").length + raw.split("\\").length;
+    val others = raw.split(";").length
+        + raw.split("@").length
+        + raw.split("\\").length;
     val hits = braces + angles + others;
-    val safe = if (hits > 7) { q.fail("emilia: an arbitrary value may not contain { } < > ; @ or a backslash: " + raw); raw; } else { raw; };
+    val safe = if (hits > 7) {
+        q.fail("emilia: an arbitrary value may not contain { } < > ; @ or a backslash: "
+            + raw);
+        raw;
+    } else raw;
     return @expr(safe);
 }
 
@@ -200,16 +228,27 @@ pub fn cssIdent(comptime q: @Expr<string>) -> @Expr<string> {
     val raw = q.text();
     val allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
     val rest = allowed.split("").fold(raw, { acc, c -> acc.split(c).join("") });
-    val safe = if (rest != "" || raw == "") { q.fail("emilia: an arbitrary property name may contain only letters, digits, - and _: " + raw); raw; } else { raw; };
+    val safe = if (rest != "" || raw == "") {
+        q.fail("emilia: an arbitrary property name may contain only letters, digits, - and _: "
+            + raw);
+        raw;
+    } else raw;
     return @expr(safe);
 }
 
 pub fn cssSelector(comptime q: @Expr<string>) -> @Expr<string> {
     val raw = q.text();
     val braces = raw.split("{").length + raw.split("}").length;
-    val others = raw.split("<").length + raw.split(";").length + raw.split("@").length + raw.split("\\").length;
+    val others = raw.split("<").length
+        + raw.split(";").length
+        + raw.split("@").length
+        + raw.split("\\").length;
     val amps = raw.split("&").length;
-    val safe = if (braces + others > 6 || amps != 2) { q.fail("emilia: an arbitrary selector carries exactly one & and none of { } < ; @ or a backslash: " + raw); raw; } else { raw; };
+    val safe = if (braces + others > 6 || amps != 2) {
+        q.fail("emilia: an arbitrary selector carries exactly one & and none of { } < ; @ or a backslash: "
+            + raw);
+        raw;
+    } else raw;
     return @expr(safe);
 }
 
@@ -217,19 +256,33 @@ pub fn cssQuery(comptime q: @Expr<string>) -> @Expr<string> {
     val raw = q.text();
     val braces = raw.split("{").length + raw.split("}").length;
     val angles = raw.split("<").length + raw.split(">").length;
-    val others = raw.split(";").length + raw.split("@").length + raw.split("\\").length;
+    val others = raw.split(";").length
+        + raw.split("@").length
+        + raw.split("\\").length;
     val hits = braces + angles + others;
-    val safe = if (hits > 7) { q.fail("emilia: an at-rule condition is written without its @ and may not contain { } < > ; @ or a backslash: " + raw); raw; } else { raw; };
+    val safe = if (hits > 7) {
+        q.fail("emilia: an at-rule condition is written without its @ and may not contain { } < > ; @ or a backslash: "
+            + raw);
+        raw;
+    } else raw;
     return @expr(safe);
 }
 
 pub fn cssLength(comptime q: @Expr<string>) -> @Expr<string> {
     val raw = q.text();
-    val unit = "0123456789.".split("").fold(raw, { acc, c -> acc.split(c).join("") });
-    val bare = "0123456789".split("").fold(raw, { acc, c -> acc.split(c).join("") });
+    val unit = "0123456789."
+        .split("")
+        .fold(raw, { acc, c -> acc.split(c).join("") });
+    val bare = "0123456789"
+        .split("")
+        .fold(raw, { acc, c -> acc.split(c).join("") });
     val units: string[] = ["px", "em", "rem", "ch", "vw", "vh", "%"];
     val known = units.indexOf(unit) != -1 && raw.endsWith(unit);
-    val safe = if (bare == raw || !known) { q.fail("emilia: a breakpoint length is digits and one unit of px em rem ch vw vh %: " + raw); raw; } else { raw; };
+    val safe = if (bare == raw || !known) {
+        q.fail("emilia: a breakpoint length is digits and one unit of px em rem ch vw vh %: "
+            + raw);
+        raw;
+    } else raw;
     return @expr(safe);
 }
 
@@ -260,27 +313,27 @@ pub fn panicMessage(body: fn() -> i32) -> string {
 }
 
 test "cssValue — a hex compiles and yields itself" {
-    assert cssValue """#316ff6""" == "#316ff6";
-    assert cssValue """calc(100dvh - 1rem)""" == "calc(100dvh - 1rem)";
+    assert cssValue "#316ff6" == "#316ff6";
+    assert cssValue "calc(100dvh - 1rem)" == "calc(100dvh - 1rem)";
 }
 
 test "cssIdent — a custom property and a property name compile" {
-    assert cssIdent """--gutter-width""" == "--gutter-width";
-    assert cssIdent """background-color""" == "background-color";
+    assert cssIdent "--gutter-width" == "--gutter-width";
+    assert cssIdent "background-color" == "background-color";
 }
 
 test "cssSelector — one & compiles" {
-    assert cssSelector """&.is-dragging""" == "&.is-dragging";
-    assert cssSelector """& > li""" == "& > li";
+    assert cssSelector "&.is-dragging" == "&.is-dragging";
+    assert cssSelector "& > li" == "& > li";
 }
 
 test "cssQuery — a supports condition compiles without its @" {
-    assert cssQuery """supports(display:grid)""" == "supports(display:grid)";
+    assert cssQuery "supports(display:grid)" == "supports(display:grid)";
 }
 
 test "cssLength — px and rem compile" {
-    assert cssLength """320px""" == "320px";
-    assert cssLength """40rem""" == "40rem";
+    assert cssLength "320px" == "320px";
+    assert cssLength "40rem" == "40rem";
 }
 
 test "the reject sets — each refuses its breakout and admits the ordinary case" {
@@ -296,7 +349,7 @@ test "the reject sets — each refuses its breakout and admits the ordinary case
     assert refusesIdent("a→b");
     assert refusesIdent("→");
     assert refusesLength("1→px");
-    assert refusesValue("a→}") ;
+    assert refusesValue("a→}");
     assert refusesSelector(".is-dragging");
     assert refusesSelector("&.a &.b");
     assert refusesSelector("&{}");
@@ -313,28 +366,69 @@ test "the reject sets — each refuses its breakout and admits the ordinary case
 
 // EVERY BUILDER REFUSES AT RUN TIME, with the payload in the message.
 test "arbValue / arbProp — a breakout panics and names the property and the payload" {
-    val m1 = raisedBy({ -> val t = arbValue("color", "red}</style>"); 0; });
+    val m1 = raisedBy({ ->
+        val t = arbValue("color", "red}</style>");
+        0;
+    });
     assert m1.indexOf("the value of 'color'") != -1;
     assert m1.indexOf("red}</style>") != -1;
-    val m2 = raisedBy({ -> val t = arbProp("a;b", "1rem"); 0; });
+    val m2 = raisedBy({ ->
+        val t = arbProp("a;b", "1rem");
+        0;
+    });
     assert m2.indexOf("a property name may contain only") != -1;
-    assert raisedBy({ -> val t = arbValue("color", "red"); 0; }) == "";
-    assert raisedBy({ -> val t = arbValue("color", "red}"); 0; }) == "emilia arbitrary: the value of 'color' may not contain { } < > ; @ or a backslash: 'red}'";
+    assert raisedBy({ ->
+        val t = arbValue("color", "red");
+        0;
+    })
+        == "";
+    assert raisedBy({ ->
+        val t = arbValue("color", "red}");
+        0;
+    })
+        == "emilia arbitrary: the value of 'color' may not contain { } < > ; @ or a backslash: 'red}'";
 }
 
 test "arbSel / arbAt / arbMin / arbMax — each refuses its payload" {
     val inner: Token[] = [];
-    assert raisedBy({ -> val t = arbSel(".is-dragging", inner); 0; }).indexOf("exactly one &") != -1;
-    assert raisedBy({ -> val t = arbAt("@supports(display:grid)", inner); 0; }).indexOf("without its @") != -1;
-    assert raisedBy({ -> val t = arbMin("320", inner); 0; }).indexOf("breakpoint length") != -1;
-    assert raisedBy({ -> val t = arbMax("calc(1px)", inner); 0; }).indexOf("breakpoint length") != -1;
-    assert raisedBy({ -> val t = arbMin("320px", inner); 0; }) == "";
+    assert raisedBy({ ->
+        val t = arbSel(".is-dragging", inner);
+        0;
+    }).indexOf("exactly one &")
+        != -1;
+    assert raisedBy({ ->
+        val t = arbAt("@supports(display:grid)", inner);
+        0;
+    }).indexOf("without its @")
+        != -1;
+    assert raisedBy({ ->
+        val t = arbMin("320", inner);
+        0;
+    }).indexOf("breakpoint length")
+        != -1;
+    assert raisedBy({ ->
+        val t = arbMax("calc(1px)", inner);
+        0;
+    }).indexOf("breakpoint length")
+        != -1;
+    assert raisedBy({ ->
+        val t = arbMin("320px", inner);
+        0;
+    })
+        == "";
 }
 
 // THE DISPATCHER RE-CHECKS: a token built by the bare constructor, around the
 // builders, still dies when it is rendered.
 test "arbValueToSheet — a payload that skipped the builder is refused when dispatched" {
-    val m = raisedBy({ -> val s = arbValueToSheet("color", "red}</style>"); 0; });
+    val m = raisedBy({ ->
+        val s = arbValueToSheet("color", "red}</style>");
+        0;
+    });
     assert m.indexOf("red}</style>") != -1;
-    assert raisedBy({ -> val s = arbVariantToSheet("div", declSheet("color:red")); 0; }).indexOf("exactly one &") != -1;
+    assert raisedBy({ ->
+        val s = arbVariantToSheet("div", declSheet("color:red"));
+        0;
+    }).indexOf("exactly one &")
+        != -1;
 }

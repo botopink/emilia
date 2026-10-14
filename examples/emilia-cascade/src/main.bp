@@ -79,30 +79,44 @@ fn main() -> @Task<void> {
 test "the hover is a SIBLING rule, not a block nested in the class body" {
     val cls = card();
     val doc = await flushWith(projectOptions());
-    assert doc.indexOf("@media (hover: hover){." + cls + ":hover{background:#000000;color:var(--color-white)}}") != -1;
+    assert doc.indexOf("@media (hover: hover){."
+        + cls
+        + ":hover{background:#000000;color:var(--color-white)}}")
+        != -1;
     // The pre-56 nested form was `.e_x{background:#ffffff;:hover{...}}`, so a
     // `;:hover` anywhere in the document would mean the hoist did not happen.
     assert doc.indexOf(";:hover") == -1;
-    assert doc.indexOf("." + cls + "{background:#ffffff;color:var(--color-black);padding:calc(var(--spacing) * 4)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{background:#ffffff;color:var(--color-black);padding:calc(var(--spacing) * 4)}")
+        != -1;
 }
 
 test "the breakpoint is a hoisted @media whose width comes from the theme" {
     val cls = card();
     val doc = await flushWith(projectOptions());
-    assert doc.indexOf("@media (width >= 48rem){." + cls + "{padding:calc(var(--spacing) * 8)}}") != -1;
+    assert doc.indexOf("@media (width >= 48rem){."
+        + cls
+        + "{padding:calc(var(--spacing) * 8)}}")
+        != -1;
 }
 
 test "the unconditioned rule of a class precedes its conditioned ones" {
     val cls = card();
     val doc = await flushWith(projectOptions());
-    assert doc.indexOf("." + cls + "{background:#ffffff;color:var(--color-black);padding:calc(var(--spacing) * 4)}") < doc.indexOf("@media (hover: hover)");
-    assert doc.indexOf("@media (hover: hover)") < doc.indexOf("@media (width >= 48rem)");
+    assert doc.indexOf("."
+        + cls
+        + "{background:#ffffff;color:var(--color-black);padding:calc(var(--spacing) * 4)}")
+        < doc.indexOf("@media (hover: hover)");
+    assert doc.indexOf("@media (hover: hover)")
+        < doc.indexOf("@media (width >= 48rem)");
 }
 
 test "the reset is a literal selector in its own layer, and it is opt-in" {
     val _cls = card();
     val withReset = await flushWith(projectOptions());
-    assert withReset.indexOf("@layer base{html{line-height:1.5;-webkit-text-size-adjust:100%}*,::before,::after{box-sizing:border-box;margin:0}}") != -1;
+    assert withReset.indexOf("@layer base{html{line-height:1.5;-webkit-text-size-adjust:100%}*,::before,::after{box-sizing:border-box;margin:0}}")
+        != -1;
     val _again = card();
     val withoutReset = await flushWith(defaultOptions());
     assert withoutReset.indexOf("@layer base") == -1;
@@ -134,13 +148,17 @@ test "turning the layers off emits the same rules, in the same order, with no @l
     val _cls = card();
     val doc = await flushWith(withLayers(projectOptions(), false));
     assert doc.indexOf("@layer") == -1;
-    assert doc.indexOf("html{line-height:1.5") < doc.indexOf("background:#ffffff");
+    assert doc.indexOf("html{line-height:1.5")
+        < doc.indexOf("background:#ffffff");
 }
 
 test "the build-level important flag reaches every declaration of every rule" {
     val cls = card();
     val doc = await flushWith(withImportant(projectOptions(), true));
-    assert doc.indexOf("." + cls + "{background:#ffffff!important;color:var(--color-black)!important;padding:calc(var(--spacing) * 4)!important}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{background:#ffffff!important;color:var(--color-black)!important;padding:calc(var(--spacing) * 4)!important}")
+        != -1;
     assert doc.indexOf("html{line-height:1.5!important") != -1;
 }
 
@@ -166,5 +184,6 @@ test "a bundle and a named class from compose.bp, used from another package" {
     assert tag == "cascade-tag";
     assert doc.indexOf("." + cls + "{scrollbar-width:none}") != -1;
     assert doc.indexOf("." + cls + "::-webkit-scrollbar{display:none}") != -1;
-    assert doc.indexOf("@layer components{.cascade-tag{font-weight:bold}}") != -1;
+    assert doc.indexOf("@layer components{.cascade-tag{font-weight:bold}}")
+        != -1;
 }

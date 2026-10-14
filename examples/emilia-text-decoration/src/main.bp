@@ -187,7 +187,8 @@ test "the four lines are the LONGHAND, and the shorthand is gone" {
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls[0] + "{text-decoration-line:underline}") != -1;
     assert doc.indexOf("." + cls[1] + "{text-decoration-line:overline}") != -1;
-    assert doc.indexOf("." + cls[2] + "{text-decoration-line:line-through}") != -1;
+    assert doc.indexOf("." + cls[2] + "{text-decoration-line:line-through}")
+        != -1;
     assert doc.indexOf("." + cls[3] + "{text-decoration-line:none}") != -1;
     assert doc.indexOf("{text-decoration:") == -1;
 }
@@ -195,8 +196,10 @@ test "the four lines are the LONGHAND, and the shorthand is gone" {
 test "a line COMPOSES with a style, which the shorthand made impossible" {
     val cls = dottedUnderline();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls
-        + "{text-decoration-line:underline;text-decoration-style:dotted}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{text-decoration-line:underline;text-decoration-style:dotted}")
+        != -1;
 }
 
 test "style, thickness and offset" {
@@ -205,39 +208,60 @@ test "style, thickness and offset" {
     val c = fromFont();
     val d = offset();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a
-        + "{text-decoration-line:underline;text-decoration-style:wavy}") != -1;
-    assert doc.indexOf("." + b
-        + "{text-decoration-line:underline;text-decoration-thickness:4px}") != -1;
-    assert doc.indexOf("." + c
-        + "{text-decoration-line:underline;text-decoration-thickness:from-font}") != -1;
-    assert doc.indexOf("." + d
-        + "{text-decoration-line:underline;text-underline-offset:4px}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{text-decoration-line:underline;text-decoration-style:wavy}")
+        != -1;
+    assert doc.indexOf("."
+        + b
+        + "{text-decoration-line:underline;text-decoration-thickness:4px}")
+        != -1;
+    assert doc.indexOf("."
+        + c
+        + "{text-decoration-line:underline;text-decoration-thickness:from-font}")
+        != -1;
+    assert doc.indexOf("."
+        + d
+        + "{text-decoration-line:underline;text-underline-offset:4px}")
+        != -1;
 }
 
 test "a decoration colour is the palette's reference, with its shade" {
     val a = colouredUnderline();
     val cls = shades();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a
-        + "{text-decoration-line:underline;text-decoration-color:var(--color-sky-500)}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{text-decoration-line:underline;text-decoration-color:var(--color-sky-500)}")
+        != -1;
     // Three shades, three classes — asserted from a CONSUMER package, which is
     // what catches a dispatcher that discards its payload.
     assert cls[0] != cls[1];
     assert cls[1] != cls[2];
-    assert doc.indexOf("." + cls[0] + "{text-decoration-color:var(--color-rose-100)}") != -1;
-    assert doc.indexOf("." + cls[1] + "{text-decoration-color:var(--color-rose-500)}") != -1;
-    assert doc.indexOf("." + cls[2] + "{text-decoration-color:var(--color-rose-900)}") != -1;
+    assert doc.indexOf("."
+        + cls[0]
+        + "{text-decoration-color:var(--color-rose-100)}")
+        != -1;
+    assert doc.indexOf("."
+        + cls[1]
+        + "{text-decoration-color:var(--color-rose-500)}")
+        != -1;
+    assert doc.indexOf("."
+        + cls[2]
+        + "{text-decoration-color:var(--color-rose-900)}")
+        != -1;
 }
 
 test "lists answer three properties over six leaves" {
     val a = bulletList();
     val b = barefootList();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a
-        + "{list-style-type:disc;list-style-position:inside}") != -1;
-    assert doc.indexOf("." + b
-        + "{list-style-type:none;list-style-image:none}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{list-style-type:disc;list-style-position:inside}")
+        != -1;
+    assert doc.indexOf("." + b + "{list-style-type:none;list-style-image:none}")
+        != -1;
 }
 
 test "whitespace, breaking and hyphens are four distinct properties" {
@@ -246,7 +270,10 @@ test "whitespace, breaking and hyphens are four distinct properties" {
     val c = anywhere();
     val d = justified();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{font-family:var(--font-mono);white-space:pre}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{font-family:var(--font-mono);white-space:pre}")
+        != -1;
     assert doc.indexOf("." + b + "{word-break:break-all}") != -1;
     assert doc.indexOf("." + c + "{overflow-wrap:anywhere}") != -1;
     assert doc.indexOf("." + d + "{text-align:justify;hyphens:auto}") != -1;
@@ -260,9 +287,13 @@ test "indent is a spacing multiplier; align, tab and content are their own" {
     val b = footnoteMarker();
     val c = tabbed();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{text-indent:calc(var(--spacing) * 8)}") != -1;
-    assert doc.indexOf("." + b + "{vertical-align:super;"
-        + "font-size:var(--text-xs);line-height:var(--text-xs--line-height)}") != -1;
+    assert doc.indexOf("." + a + "{text-indent:calc(var(--spacing) * 8)}")
+        != -1;
+    assert doc.indexOf("."
+        + b
+        + "{vertical-align:super;"
+        + "font-size:var(--text-xs);line-height:var(--text-xs--line-height)}")
+        != -1;
     assert doc.indexOf("." + c + "{tab-size:4}") != -1;
 }
 
@@ -276,11 +307,17 @@ test "end to end — a footnoted paragraph whose links are wavy-underlined" {
     val para = footnoteParagraph();
     val link = wavyLink();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + para + "{text-align:justify;hyphens:auto;"
-        + "text-indent:calc(var(--spacing) * 8);line-height:var(--leading-relaxed)}") != -1;
-    assert doc.indexOf("." + link + "{text-decoration-line:underline;"
+    assert doc.indexOf("."
+        + para
+        + "{text-align:justify;hyphens:auto;"
+        + "text-indent:calc(var(--spacing) * 8);line-height:var(--leading-relaxed)}")
+        != -1;
+    assert doc.indexOf("."
+        + link
+        + "{text-decoration-line:underline;"
         + "text-decoration-style:wavy;text-decoration-color:var(--color-sky-500);"
-        + "text-decoration-thickness:2px;text-underline-offset:4px}") != -1;
+        + "text-decoration-thickness:2px;text-underline-offset:4px}")
+        != -1;
 }
 
 // ── the front's argument, asserted from OUTSIDE the library ──────────────────
@@ -291,7 +328,8 @@ test "a decoration colour and a text colour are ONE custom property" {
     val a = emilia(dec);
     val b = emilia(txt);
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{text-decoration-color:var(--color-sky-500)}") != -1;
+    assert doc.indexOf("." + a + "{text-decoration-color:var(--color-sky-500)}")
+        != -1;
     assert doc.indexOf("." + b + "{color:var(--color-sky-500)}") != -1;
     // A project override moves both, because there is one reference and not
     // two transcriptions.

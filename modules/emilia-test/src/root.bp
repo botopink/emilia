@@ -9,7 +9,7 @@
 //// track-D fronts. A consumer adds `"emilia-test"` to its dependencies; it
 //// re-exports nothing from std, and mocking is std's (decision 71).
 
-import { spacing } from "emilia";
+import {spacing} from "emilia";
 
 test "emilia-test: the core member resolves from the test member" {
     assert spacing(2) == "calc(var(--spacing) * 2)";

@@ -1,4 +1,4 @@
-import { spacing, spacingHalf, spacingNegHalf } from "emilia";
+import {spacing, spacingHalf, spacingNegHalf} from "emilia";
 
 pub fn main() {
     assert spacing(0) == "0";

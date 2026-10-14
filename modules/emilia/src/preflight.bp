@@ -63,7 +63,9 @@ pub fn preflightRules() -> Rule[] {
 // for a consumer shipping a static `reset.css`. The selectors carry no `&`, so
 // the class name (and any prefix) never reaches them.
 pub fn preflight() -> string {
-    return preflightRules().map({ r -> renderRule("", r, defaultOptions()) }).join("");
+    return preflightRules()
+        .map({ r -> renderRule("", r, defaultOptions()) })
+        .join("");
 }
 
 // ── front 55 · tests ─────────────────────────────────────────────────────────
@@ -85,7 +87,8 @@ fn noTheme() -> Options {
 fn ruleFor(selector: string) -> string {
     val hits = preflightRules().filter({ r -> r.selector == selector });
     val hit = hits.at(0);
-    if (hit == null) { @panic("ruleFor: preflight has no rule for `" + selector + "`"); }
+    if (hit == null)
+        @panic("ruleFor: preflight has no rule for `" + selector + "`");
     return hit.declarations;
 }
 
@@ -98,7 +101,8 @@ test "preflight — eleven rules, every one in the base layer with no at-rule" {
 }
 
 test "preflight — no selector carries `&`, so a prefix never reaches one" {
-    assert preflightRules().filter({ r -> r.selector.indexOf("&") != -1 }).length == 0;
+    assert preflightRules().filter({ r -> r.selector.indexOf("&") != -1 }).length
+        == 0;
 }
 
 // The eight bullets of `§ 4`, each named and each found.
@@ -117,11 +121,13 @@ test "preflight — links without text decoration (`§ 4` bullet 3)" {
 }
 
 test "preflight — images display: block (`§ 4` bullet 4)" {
-    assert ruleFor("img,svg,video,canvas,audio,iframe,embed,object") == "display:block;vertical-align:middle";
+    assert ruleFor("img,svg,video,canvas,audio,iframe,embed,object")
+        == "display:block;vertical-align:middle";
 }
 
 test "preflight — borders at border-width: 0, and solid (`§ 4` bullet 5)" {
-    assert ruleFor("*,::before,::after") == "box-sizing:border-box;border-width:0;border-style:solid";
+    assert ruleFor("*,::before,::after")
+        == "box-sizing:border-box;border-width:0;border-style:solid";
 }
 
 test "preflight — line-height: 1.5 on html (`§ 4` bullet 6)" {
@@ -134,14 +140,16 @@ test "preflight — fonts inherited by form controls (`§ 4` bullet 7)" {
 
 test "preflight — content: \"\" on ::before and ::after, once (`§ 4` bullet 8)" {
     assert ruleFor("::before,::after") == "content:\"\"";
-    assert preflightRules().filter({ r -> r.declarations.indexOf("content:") != -1 }).length == 1;
+    assert preflightRules().filter({ r -> r.declarations.indexOf("content:") != -1 }).length
+        == 1;
 }
 
 // ── step 2 · `border` means what it means in Tailwind ────────────────────────
 
 test "preflight — border-style:solid precedes every utilities body" {
     val o = withBase(noTheme(), preflightRules());
-    val doc = renderDocument("e_1\t" + encodeSheet(declSheet("border-width:1px")), o);
+    val doc = renderDocument("e_1\t"
+        + encodeSheet(declSheet("border-width:1px")), o);
     assert doc.indexOf("border-style:solid") != -1;
     assert doc.indexOf("border-style:solid") < doc.indexOf("@layer utilities");
 }
@@ -158,7 +166,8 @@ test "preflight() — a fragment that starts with the box-sizing rule" {
 
 // Byte-identical on both targets: pinned as a literal both must produce.
 test "preflight() — the whole fragment, as one literal" {
-    assert preflight() == "*,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4}body{margin:0}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit;margin:0}p,blockquote,figure,pre,dl,dd,hr{margin:0}ol,ul,menu{list-style:none;margin:0;padding:0}a{color:inherit;text-decoration:inherit}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;color:inherit;margin:0;padding:0;background-color:transparent}::before,::after{content:\"\"}";
+    assert preflight()
+        == "*,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4}body{margin:0}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit;margin:0}p,blockquote,figure,pre,dl,dd,hr{margin:0}ol,ul,menu{list-style:none;margin:0;padding:0}a{color:inherit;text-decoration:inherit}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;color:inherit;margin:0;padding:0;background-color:transparent}::before,::after{content:\"\"}";
 }
 
 // ── step 5 · the opt-out, stated once ────────────────────────────────────────
@@ -166,8 +175,11 @@ test "preflight() — the whole fragment, as one literal" {
 test "preflight — off by default, on when passed, off again when removed" {
     val none: Rule[] = [];
     val payload = "e_1\t" + encodeSheet(declSheet("color:red"));
-    assert renderDocument(payload, defaultOptions()).indexOf("@layer base") == -1;
+    assert renderDocument(payload, defaultOptions()).indexOf("@layer base")
+        == -1;
     val on = withBase(defaultOptions(), preflightRules());
-    assert renderDocument(payload, on).indexOf("@layer base{*,::before,::after{") != -1;
-    assert renderDocument(payload, withBase(on, none)).indexOf("@layer base") == -1;
+    assert renderDocument(payload, on).indexOf("@layer base{*,::before,::after{")
+        != -1;
+    assert renderDocument(payload, withBase(on, none)).indexOf("@layer base")
+        == -1;
 }

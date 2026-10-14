@@ -48,21 +48,28 @@ fn bareOptions() -> Options {
 
 pub fn attachmentValues() -> Token[] {
     val out: Token[] = [
-        .Bg.Attachment.Fixed, .Bg.Attachment.Local, .Bg.Attachment.Scroll,
+        .Bg.Attachment.Fixed,
+        .Bg.Attachment.Local,
+        .Bg.Attachment.Scroll,
     ];
     return out;
 }
 
 pub fn clipValues() -> Token[] {
     val out: Token[] = [
-        .Bg.Clip.Border, .Bg.Clip.Padding, .Bg.Clip.Content, .Bg.Clip.Text,
+        .Bg.Clip.Border,
+        .Bg.Clip.Padding,
+        .Bg.Clip.Content,
+        .Bg.Clip.Text,
     ];
     return out;
 }
 
 pub fn originValues() -> Token[] {
     val out: Token[] = [
-        .Bg.Origin.Border, .Bg.Origin.Padding, .Bg.Origin.Content,
+        .Bg.Origin.Border,
+        .Bg.Origin.Padding,
+        .Bg.Origin.Content,
     ];
     return out;
 }
@@ -71,23 +78,37 @@ pub fn originValues() -> Token[] {
 // between them — `left bottom`, never `left-bottom`, which is not a value.
 pub fn positionValues() -> Token[] {
     val out: Token[] = [
-        .Bg.Pos.Top, .Bg.Pos.Bottom, .Bg.Pos.Left, .Bg.Pos.Right, .Bg.Pos.Center,
-        .Bg.Pos.LeftTop, .Bg.Pos.LeftBottom, .Bg.Pos.RightTop, .Bg.Pos.RightBottom,
+        .Bg.Pos.Top,
+        .Bg.Pos.Bottom,
+        .Bg.Pos.Left,
+        .Bg.Pos.Right,
+        .Bg.Pos.Center,
+        .Bg.Pos.LeftTop,
+        .Bg.Pos.LeftBottom,
+        .Bg.Pos.RightTop,
+        .Bg.Pos.RightBottom,
     ];
     return out;
 }
 
 pub fn repeatValues() -> Token[] {
     val out: Token[] = [
-        .Bg.Repeat.Repeat, .Bg.Repeat.None, .Bg.Repeat.X, .Bg.Repeat.Y,
-        .Bg.Repeat.Round, .Bg.Repeat.Space,
+        .Bg.Repeat.Repeat,
+        .Bg.Repeat.None,
+        .Bg.Repeat.X,
+        .Bg.Repeat.Y,
+        .Bg.Repeat.Round,
+        .Bg.Repeat.Space,
     ];
     return out;
 }
 
 pub fn sizeAndImage() -> Token[] {
     val out: Token[] = [
-        .Bg.Size.Auto, .Bg.Size.Cover, .Bg.Size.Contain, .Bg.Image.None,
+        .Bg.Size.Auto,
+        .Bg.Size.Cover,
+        .Bg.Size.Contain,
+        .Bg.Image.None,
     ];
     return out;
 }
@@ -96,8 +117,14 @@ pub fn sizeAndImage() -> Token[] {
 
 pub fn directions() -> Token[] {
     val out: Token[] = [
-        .Gradient.To.T, .Gradient.To.Tr, .Gradient.To.R, .Gradient.To.Br,
-        .Gradient.To.B, .Gradient.To.Bl, .Gradient.To.L, .Gradient.To.Tl,
+        .Gradient.To.T,
+        .Gradient.To.Tr,
+        .Gradient.To.R,
+        .Gradient.To.Br,
+        .Gradient.To.B,
+        .Gradient.To.Bl,
+        .Gradient.To.L,
+        .Gradient.To.Tl,
     ];
     return out;
 }
@@ -108,7 +135,10 @@ pub fn directions() -> Token[] {
 // top so a face is not cropped off, and does not scroll with the page.
 pub fn heroPanel() -> string {
     val tokens: Token[] = [
-        .Bg.Size.Cover, .Bg.Pos.Top, .Bg.Repeat.None, .Bg.Attachment.Fixed,
+        .Bg.Size.Cover,
+        .Bg.Pos.Top,
+        .Bg.Repeat.None,
+        .Bg.Attachment.Fixed,
         .Pad.All.12,
     ];
     return emilia(tokens);
@@ -119,8 +149,12 @@ pub fn heroPanel() -> string {
 // reads.
 pub fn gradientCta() -> string {
     val tokens: Token[] = [
-        .Gradient.To.R, .Gradient.From.Indigo.500, .Gradient.Stop.Pink.500,
-        .Pad.X.6, .Pad.Y.3, .Border.Rounded.Full,
+        .Gradient.To.R,
+        .Gradient.From.Indigo.500,
+        .Gradient.Stop.Pink.500,
+        .Pad.X.6,
+        .Pad.Y.3,
+        .Border.Rounded.Full,
     ];
     return emilia(tokens);
 }
@@ -130,7 +164,9 @@ pub fn gradientCta() -> string {
 pub fn gradientBanner() -> string {
     val tokens: Token[] = [
         .Gradient.To.Br,
-        .Gradient.From.Indigo.500, .Gradient.Via.Purple.500, .Gradient.Stop.Pink.500,
+        .Gradient.From.Indigo.500,
+        .Gradient.Via.Purple.500,
+        .Gradient.Stop.Pink.500,
     ];
     return emilia(tokens);
 }
@@ -140,9 +176,13 @@ pub fn gradientBanner() -> string {
 // reason this idiom needs `§ 10.2` and not just `§ 10.4`.
 pub fn gradientHeading() -> string {
     val tokens: Token[] = [
-        .Bg.Clip.Text, .Color.Transparent,
-        .Gradient.To.Br, .Gradient.From.Sky.400, .Gradient.Stop.Fuchsia.600,
-        .Text.Size.X3xl, .Font.Weight.Bold,
+        .Bg.Clip.Text,
+        .Color.Transparent,
+        .Gradient.To.Br,
+        .Gradient.From.Sky.400,
+        .Gradient.Stop.Fuchsia.600,
+        .Text.Size.X3xl,
+        .Font.Weight.Bold,
     ];
     return emilia(tokens);
 }
@@ -151,7 +191,10 @@ pub fn gradientHeading() -> string {
 // pair `§ 10.5` and `§ 10.7` exist for.
 pub fn tiledTexture() -> string {
     val tokens: Token[] = [
-        .Bg.Repeat.X, .Bg.Origin.Padding, .Bg.Clip.Padding, .Bg.Pos.LeftTop,
+        .Bg.Repeat.X,
+        .Bg.Origin.Padding,
+        .Bg.Clip.Padding,
+        .Bg.Pos.LeftTop,
     ];
     return emilia(tokens);
 }
@@ -179,12 +222,21 @@ test "attachment, clip and origin are one rule of ten declarations" {
     val c = emilia(clipValues());
     val o = emilia(originValues());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{background-attachment:fixed;background-attachment:local;"
-        + "background-attachment:scroll}") != -1;
-    assert doc.indexOf("." + c + "{background-clip:border-box;background-clip:padding-box;"
-        + "background-clip:content-box;background-clip:text}") != -1;
-    assert doc.indexOf("." + o + "{background-origin:border-box;background-origin:padding-box;"
-        + "background-origin:content-box}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{background-attachment:fixed;background-attachment:local;"
+        + "background-attachment:scroll}")
+        != -1;
+    assert doc.indexOf("."
+        + c
+        + "{background-clip:border-box;background-clip:padding-box;"
+        + "background-clip:content-box;background-clip:text}")
+        != -1;
+    assert doc.indexOf("."
+        + o
+        + "{background-origin:border-box;background-origin:padding-box;"
+        + "background-origin:content-box}")
+        != -1;
 }
 
 test "the four corner positions are two keywords, with exactly one space" {
@@ -202,26 +254,36 @@ test "the four corner positions are two keywords, with exactly one space" {
 test "`bg-no-repeat` keeps the `no-` in the value and drops it from the name" {
     val r = emilia(repeatValues());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + r + "{background-repeat:repeat;background-repeat:no-repeat;"
+    assert doc.indexOf("."
+        + r
+        + "{background-repeat:repeat;background-repeat:no-repeat;"
         + "background-repeat:repeat-x;background-repeat:repeat-y;"
-        + "background-repeat:round;background-repeat:space}") != -1;
+        + "background-repeat:round;background-repeat:space}")
+        != -1;
 }
 
 test "size and `bg-none`, and `.Bg.Size` is not the `Size` section" {
     val z = emilia(sizeAndImage());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + z + "{background-size:auto;background-size:cover;"
-        + "background-size:contain;background-image:none}") != -1;
+    assert doc.indexOf("."
+        + z
+        + "{background-size:auto;background-size:cover;"
+        + "background-size:contain;background-image:none}")
+        != -1;
     assert doc.indexOf("width:") == -1;
 }
 
 test "the eight directions, each a phrase and not a hyphenated name" {
     val d = emilia(directions());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("linear-gradient(to top, var(--tw-gradient-stops))") != -1;
-    assert doc.indexOf("linear-gradient(to top right, var(--tw-gradient-stops))") != -1;
-    assert doc.indexOf("linear-gradient(to bottom left, var(--tw-gradient-stops))") != -1;
-    assert doc.indexOf("linear-gradient(to left, var(--tw-gradient-stops))") != -1;
+    assert doc.indexOf("linear-gradient(to top, var(--tw-gradient-stops))")
+        != -1;
+    assert doc.indexOf("linear-gradient(to top right, var(--tw-gradient-stops))")
+        != -1;
+    assert doc.indexOf("linear-gradient(to bottom left, var(--tw-gradient-stops))")
+        != -1;
+    assert doc.indexOf("linear-gradient(to left, var(--tw-gradient-stops))")
+        != -1;
     assert doc.indexOf("to top-right") == -1;
     assert doc.indexOf("to bottom-left") == -1;
     assert doc.indexOf("." + d + "{") != -1;
@@ -230,22 +292,28 @@ test "the eight directions, each a phrase and not a hyphenated name" {
 test "the hero covers its box and anchors to the top" {
     val cls = heroPanel();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{background-size:cover;background-position:top;"
+    assert doc.indexOf("."
+        + cls
+        + "{background-size:cover;background-position:top;"
         + "background-repeat:no-repeat;background-attachment:fixed;"
-        + "padding:calc(var(--spacing) * 12)}") != -1;
+        + "padding:calc(var(--spacing) * 12)}")
+        != -1;
 }
 
 test "the call to action is a direction and two stops, in one rule" {
     val cls = gradientCta();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{background-image:linear-gradient(to right, "
+    assert doc.indexOf("."
+        + cls
+        + "{background-image:linear-gradient(to right, "
         + "var(--tw-gradient-stops));"
         + "--tw-gradient-from:var(--color-indigo-500);"
         + "--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to, transparent);"
         + "--tw-gradient-to:var(--color-pink-500);"
         + "padding-left:calc(var(--spacing) * 6);padding-right:calc(var(--spacing) * 6);"
         + "padding-top:calc(var(--spacing) * 3);padding-bottom:calc(var(--spacing) * 3);"
-        + "border-radius:9999px}") != -1;
+        + "border-radius:9999px}")
+        != -1;
 }
 
 // THE ORDER TEST. `Via` is listed after `From`, so the three-stop list is the
@@ -266,20 +334,26 @@ test "the banner keeps the three-colour list, because `Via` is listed after `Fro
 test "gradient text needs `bg-clip-text` and a transparent colour" {
     val cls = gradientHeading();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{background-clip:text;color:transparent;"
+    assert doc.indexOf("."
+        + cls
+        + "{background-clip:text;color:transparent;"
         + "background-image:linear-gradient(to bottom right, var(--tw-gradient-stops));"
         + "--tw-gradient-from:var(--color-sky-400);"
         + "--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to, transparent);"
         + "--tw-gradient-to:var(--color-fuchsia-600);"
-        + "font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:700}") != -1;
+        + "font-size:var(--text-3xl);line-height:var(--text-3xl--line-height);font-weight:700}")
+        != -1;
 }
 
 test "a texture tiles on one axis, inside the padding box" {
     val cls = tiledTexture();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{background-repeat:repeat-x;"
+    assert doc.indexOf("."
+        + cls
+        + "{background-repeat:repeat-x;"
         + "background-origin:padding-box;background-clip:padding-box;"
-        + "background-position:left top}") != -1;
+        + "background-position:left top}")
+        != -1;
 }
 
 // THE FIRST HALF OF THE FRONT'S ARGUMENT. A stop and a background colour are
@@ -292,8 +366,14 @@ test "a project's indigo reaches the gradient stop and the background alike" {
     val fillCls = emilia(fill);
     val doc = await flushWith(withTheme(defaultOptions(), brandTheme()));
     assert doc.indexOf("--color-indigo-500:#4040ff") != -1;
-    assert doc.indexOf("." + stopCls + "{--tw-gradient-from:var(--color-indigo-500);") != -1;
-    assert doc.indexOf("." + fillCls + "{background-color:var(--color-indigo-500)}") != -1;
+    assert doc.indexOf("."
+        + stopCls
+        + "{--tw-gradient-from:var(--color-indigo-500);")
+        != -1;
+    assert doc.indexOf("."
+        + fillCls
+        + "{background-color:var(--color-indigo-500)}")
+        != -1;
 }
 
 // THE SECOND HALF. Nothing this example emits resolves a colour or a length,
@@ -310,8 +390,7 @@ test "no background token in this example resolves a colour or a length" {
     val _e = emilia(repeatValues());
     val _f = emilia(sizeAndImage());
     val _g = emilia(directions());
-    val stops: Token[] = [.Gradient.From.Indigo.500, .Gradient.Via.Purple.500,
-        .Gradient.Stop.Pink.500, .Gradient.From.White, .Gradient.Stop.Transparent];
+    val stops: Token[] = [.Gradient.From.Indigo.500, .Gradient.Via.Purple.500, .Gradient.Stop.Pink.500, .Gradient.From.White, .Gradient.Stop.Transparent];
     val _h = emilia(stops);
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("#") == -1;

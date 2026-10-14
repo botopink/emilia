@@ -43,7 +43,14 @@ pub fn spacing(n: i32) -> string {
 // cannot spell `-0.5`. The negative half steps are `spacingNegHalf`, and a
 // negative `n` here is refused rather than read as one of them.
 pub fn spacingHalf(n: i32) -> string {
-    if (n < 0) @panic("emilia spacing: spacingHalf(" + n.toString() + ") — the whole part of a half step is never negative; `-" + (0 - n).toString() + ".5` is spacingNegHalf(" + (0 - n).toString() + ")");
+    if (n < 0)
+        @panic("emilia spacing: spacingHalf("
+            + n.toString()
+            + ") — the whole part of a half step is never negative; `-"
+            + (0 - n).toString()
+            + ".5` is spacingNegHalf("
+            + (0 - n).toString()
+            + ")");
     val step = n.toString();
     return "calc(var(--spacing) * " + step + ".5)";
 }
@@ -53,7 +60,10 @@ pub fn spacingHalf(n: i32) -> string {
 // `spacingNegHalf(1)` is `calc(var(--spacing) * -1.5)`. The sign is in the
 // name, so `-0.5` has a spelling.
 pub fn spacingNegHalf(n: i32) -> string {
-    if (n < 0) @panic("emilia spacing: spacingNegHalf(" + n.toString() + ") — pass the magnitude's whole part, never negative");
+    if (n < 0)
+        @panic("emilia spacing: spacingNegHalf("
+            + n.toString()
+            + ") — pass the magnitude's whole part, never negative");
     val step = n.toString();
     return "calc(var(--spacing) * -" + step + ".5)";
 }

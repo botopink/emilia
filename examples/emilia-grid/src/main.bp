@@ -35,15 +35,23 @@ fn bareOptions() -> Options {
 
 pub fn directionValues() -> Token[] {
     val out: Token[] = [
-        .Flex.Row, .Flex.RowReverse, .Flex.Col, .Flex.ColReverse,
-        .Flex.Wrap, .Flex.WrapReverse, .Flex.NoWrap,
+        .Flex.Row,
+        .Flex.RowReverse,
+        .Flex.Col,
+        .Flex.ColReverse,
+        .Flex.Wrap,
+        .Flex.WrapReverse,
+        .Flex.NoWrap,
     ];
     return out;
 }
 
 pub fn itemSizing() -> Token[] {
     val out: Token[] = [
-        .Flex.Value.One, .Flex.Basis.0, .Flex.Grow.1, .Flex.Shrink.0,
+        .Flex.Value.One,
+        .Flex.Basis.0,
+        .Flex.Grow.1,
+        .Flex.Shrink.0,
         .Flex.Order.First,
     ];
     return out;
@@ -51,39 +59,57 @@ pub fn itemSizing() -> Token[] {
 
 pub fn alignmentGroups() -> Token[] {
     val out: Token[] = [
-        .Flex.Justify.Between, .Flex.Items.Baseline, .Flex.AlignSelf.Start,
-        .Flex.Content.Evenly, .Flex.JustifyItems.Start, .Flex.JustifySelf.Center,
-        .Flex.PlaceContent.Between, .Flex.PlaceItems.Center, .Flex.PlaceSelf.Stretch,
+        .Flex.Justify.Between,
+        .Flex.Items.Baseline,
+        .Flex.AlignSelf.Start,
+        .Flex.Content.Evenly,
+        .Flex.JustifyItems.Start,
+        .Flex.JustifySelf.Center,
+        .Flex.PlaceContent.Between,
+        .Flex.PlaceItems.Center,
+        .Flex.PlaceSelf.Stretch,
     ];
     return out;
 }
 
 pub fn templates() -> Token[] {
     val out: Token[] = [
-        .Grid.Cols.12, .Grid.Rows.3, .Grid.Cols.None, .Grid.Rows.Subgrid,
+        .Grid.Cols.12,
+        .Grid.Rows.3,
+        .Grid.Cols.None,
+        .Grid.Rows.Subgrid,
     ];
     return out;
 }
 
 pub fn placement() -> Token[] {
     val out: Token[] = [
-        .Grid.Col.Span.2, .Grid.Col.Span.Full, .Grid.Col.Start.13,
-        .Grid.Row.Span.Full, .Grid.Row.End.3,
+        .Grid.Col.Span.2,
+        .Grid.Col.Span.Full,
+        .Grid.Col.Start.13,
+        .Grid.Row.Span.Full,
+        .Grid.Row.End.3,
     ];
     return out;
 }
 
 pub fn flowAndTracks() -> Token[] {
     val out: Token[] = [
-        .Grid.Flow.RowDense, .Grid.Flow.ColDense,
-        .Grid.AutoCols.Fr, .Grid.AutoRows.Min,
+        .Grid.Flow.RowDense,
+        .Grid.Flow.ColDense,
+        .Grid.AutoCols.Fr,
+        .Grid.AutoRows.Min,
     ];
     return out;
 }
 
 pub fn gapValues() -> Token[] {
     val out: Token[] = [
-        .Gap.All.0, .Gap.All.4, .Gap.All.Px, .Gap.X.2, .Gap.Y.6,
+        .Gap.All.0,
+        .Gap.All.4,
+        .Gap.All.Px,
+        .Gap.X.2,
+        .Gap.Y.6,
     ];
     return out;
 }
@@ -91,8 +117,14 @@ pub fn gapValues() -> Token[] {
 pub fn toolbarBar() -> string {
     val stackUnderSm: Token[] = [.Flex.Col, .Flex.Items.Start];
     val bar: Token[] = [
-        .Layout.Flex, .Flex.Row, .Flex.Wrap, .Flex.Items.Center,
-        .Flex.Justify.Between, .Gap.All.3, .Pad.X.4, .Pad.Y.2,
+        .Layout.Flex,
+        .Flex.Row,
+        .Flex.Wrap,
+        .Flex.Items.Center,
+        .Flex.Justify.Between,
+        .Gap.All.3,
+        .Pad.X.4,
+        .Pad.Y.2,
         Token.MaxSm(stackUnderSm),
     ];
     return emilia(bar);
@@ -105,7 +137,10 @@ pub fn toolbarHeading() -> string {
 
 pub fn toolbarAction() -> string {
     val trailing: Token[] = [
-        .Flex.Shrink.0, .Flex.Order.Last, .Flex.AlignSelf.Center, .Pad.X.3,
+        .Flex.Shrink.0,
+        .Flex.Order.Last,
+        .Flex.AlignSelf.Center,
+        .Pad.X.3,
     ];
     return emilia(trailing);
 }
@@ -114,8 +149,12 @@ pub fn dashboardShell() -> string {
     val sixFromMd: Token[] = [.Grid.Cols.6];
     val twelveFromLg: Token[] = [.Grid.Cols.12];
     val shell: Token[] = [
-        .Layout.Grid, .Grid.Cols.1, .Gap.All.4, .Pad.All.6,
-        Token.Md(sixFromMd), Token.Lg(twelveFromLg),
+        .Layout.Grid,
+        .Grid.Cols.1,
+        .Gap.All.4,
+        .Pad.All.6,
+        Token.Md(sixFromMd),
+        Token.Lg(twelveFromLg),
     ];
     return emilia(shell);
 }
@@ -129,7 +168,10 @@ pub fn dashboardChart() -> string {
 pub fn dashboardAside() -> string {
     val spanFromLg: Token[] = [.Grid.Col.Span.4];
     val aside: Token[] = [
-        .Grid.Col.Span.Full, .Grid.AutoRows.Min, .Gap.Y.3, .Pad.All.4,
+        .Grid.Col.Span.Full,
+        .Grid.AutoRows.Min,
+        .Gap.Y.3,
+        .Pad.All.4,
         Token.Lg(spanFromLg),
     ];
     return emilia(aside);
@@ -137,7 +179,9 @@ pub fn dashboardAside() -> string {
 
 pub fn dashboardFooter() -> string {
     val footer: Token[] = [
-        .Grid.Col.Span.Full, .Grid.Flow.ColDense, .Flex.PlaceItems.Center,
+        .Grid.Col.Span.Full,
+        .Grid.Flow.ColDense,
+        .Flex.PlaceItems.Center,
     ];
     return emilia(footer);
 }
@@ -167,16 +211,22 @@ pub fn tightTheme() -> Theme {
 test "direction and wrap — the three reverse rows beside the four that predate 37" {
     val cls = emilia(directionValues());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{flex-direction:row;flex-direction:row-reverse;"
+    assert doc.indexOf("."
+        + cls
+        + "{flex-direction:row;flex-direction:row-reverse;"
         + "flex-direction:column;flex-direction:column-reverse;"
-        + "flex-wrap:wrap;flex-wrap:wrap-reverse;flex-wrap:nowrap}") != -1;
+        + "flex-wrap:wrap;flex-wrap:wrap-reverse;flex-wrap:nowrap}")
+        != -1;
 }
 
 test "the item properties — a shorthand of three components and two sentinels" {
     val cls = emilia(itemSizing());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{flex:1 1 0%;flex-basis:0;flex-grow:1;"
-        + "flex-shrink:0;order:-9999}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{flex:1 1 0%;flex-basis:0;flex-grow:1;"
+        + "flex-shrink:0;order:-9999}")
+        != -1;
     assert doc.indexOf("flex:1 1 0%") != -1;
     assert doc.indexOf("order:first") == -1;
 }
@@ -187,10 +237,13 @@ test "the item properties — a shorthand of three components and two sentinels"
 test "the alignment family — nine property groups in one rule" {
     val cls = emilia(alignmentGroups());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{justify-content:space-between;"
+    assert doc.indexOf("."
+        + cls
+        + "{justify-content:space-between;"
         + "align-items:baseline;align-self:flex-start;align-content:space-evenly;"
         + "justify-items:start;justify-self:center;place-content:space-between;"
-        + "place-items:center;place-self:stretch}") != -1;
+        + "place-items:center;place-self:stretch}")
+        != -1;
 }
 
 // The asymmetry upstream documents and emilia copies: the same leaf name is
@@ -198,40 +251,55 @@ test "the alignment family — nine property groups in one rule" {
 test "`Justify.Start` is `flex-start` and `JustifyItems.Start` is `start`" {
     val cls = emilia([.Flex.Justify.Start, .Flex.JustifyItems.Start]);
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{justify-content:flex-start;justify-items:start}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{justify-content:flex-start;justify-items:start}")
+        != -1;
     assert doc.indexOf("justify-items:flex-start") == -1;
 }
 
 test "templates — a repeat built from the leaf, and two keywords beside it" {
     val cls = emilia(templates());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{grid-template-columns:repeat(12, minmax(0, 1fr));"
+    assert doc.indexOf("."
+        + cls
+        + "{grid-template-columns:repeat(12, minmax(0, 1fr));"
         + "grid-template-rows:repeat(3, minmax(0, 1fr));"
-        + "grid-template-columns:none;grid-template-rows:subgrid}") != -1;
+        + "grid-template-columns:none;grid-template-rows:subgrid}")
+        != -1;
     assert doc.indexOf("repeat(12,minmax(0,1fr))") == -1;
 }
 
 test "placement — a span is doubled, `full` is line-based, and line 13 exists" {
     val cls = emilia(placement());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{grid-column:span 2 / span 2;grid-column:1 / -1;"
-        + "grid-column-start:13;grid-row:1 / -1;grid-row-end:3}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{grid-column:span 2 / span 2;grid-column:1 / -1;"
+        + "grid-column-start:13;grid-row:1 / -1;grid-row-end:3}")
+        != -1;
 }
 
 test "flow and implicit tracks — two words keep one space" {
     val cls = emilia(flowAndTracks());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{grid-auto-flow:row dense;"
+    assert doc.indexOf("."
+        + cls
+        + "{grid-auto-flow:row dense;"
         + "grid-auto-flow:column dense;grid-auto-columns:minmax(0, 1fr);"
-        + "grid-auto-rows:min-content}") != -1;
+        + "grid-auto-rows:min-content}")
+        != -1;
     assert doc.indexOf("grid-auto-flow:row-dense") == -1;
 }
 
 test "gap — one shorthand, two axes, and the pixel step" {
     val cls = emilia(gapValues());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{gap:0;gap:calc(var(--spacing) * 4);gap:1px;"
-        + "column-gap:calc(var(--spacing) * 2);row-gap:calc(var(--spacing) * 6)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{gap:0;gap:calc(var(--spacing) * 4);gap:1px;"
+        + "column-gap:calc(var(--spacing) * 2);row-gap:calc(var(--spacing) * 6)}")
+        != -1;
 }
 
 // The pendency this front closed: `Flex.Gap` used to answer a hand-written
@@ -254,13 +322,24 @@ test "the toolbar gives its heading the remaining space" {
     val heading = toolbarHeading();
     val action = toolbarAction();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + bar + "{display:flex;flex-direction:row;flex-wrap:wrap;"
+    assert doc.indexOf("."
+        + bar
+        + "{display:flex;flex-direction:row;flex-wrap:wrap;"
         + "align-items:center;justify-content:space-between;"
-        + "gap:calc(var(--spacing) * 3);") != -1;
-    assert doc.indexOf("@media (width < 40rem){." + bar
-        + "{flex-direction:column;align-items:flex-start}}") != -1;
-    assert doc.indexOf("." + heading + "{flex:1 1 0%;flex-basis:0;font-weight:bold}") != -1;
-    assert doc.indexOf("." + action + "{flex-shrink:0;order:9999;align-self:center;") != -1;
+        + "gap:calc(var(--spacing) * 3);")
+        != -1;
+    assert doc.indexOf("@media (width < 40rem){."
+        + bar
+        + "{flex-direction:column;align-items:flex-start}}")
+        != -1;
+    assert doc.indexOf("."
+        + heading
+        + "{flex:1 1 0%;flex-basis:0;font-weight:bold}")
+        != -1;
+    assert doc.indexOf("."
+        + action
+        + "{flex-shrink:0;order:9999;align-self:center;")
+        != -1;
 }
 
 // THE COMPOSITION GRID WAS BLOCKING ENTIRELY. One column on a phone, six from
@@ -273,19 +352,34 @@ test "the dashboard reflows from one column to twelve" {
     val aside = dashboardAside();
     val footer = dashboardFooter();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + shell + "{display:grid;"
+    assert doc.indexOf("."
+        + shell
+        + "{display:grid;"
         + "grid-template-columns:repeat(1, minmax(0, 1fr));"
-        + "gap:calc(var(--spacing) * 4);padding:calc(var(--spacing) * 6)}") != -1;
-    assert doc.indexOf("@media (width >= 48rem){." + shell
-        + "{grid-template-columns:repeat(6, minmax(0, 1fr))}}") != -1;
-    assert doc.indexOf("@media (width >= 64rem){." + shell
-        + "{grid-template-columns:repeat(12, minmax(0, 1fr))}}") != -1;
-    assert doc.indexOf("@media (width >= 64rem){." + chart
-        + "{grid-column:span 8 / span 8}}") != -1;
-    assert doc.indexOf("." + aside + "{grid-column:1 / -1;grid-auto-rows:min-content;"
-        + "row-gap:calc(var(--spacing) * 3);") != -1;
-    assert doc.indexOf("." + footer + "{grid-column:1 / -1;"
-        + "grid-auto-flow:column dense;place-items:center}") != -1;
+        + "gap:calc(var(--spacing) * 4);padding:calc(var(--spacing) * 6)}")
+        != -1;
+    assert doc.indexOf("@media (width >= 48rem){."
+        + shell
+        + "{grid-template-columns:repeat(6, minmax(0, 1fr))}}")
+        != -1;
+    assert doc.indexOf("@media (width >= 64rem){."
+        + shell
+        + "{grid-template-columns:repeat(12, minmax(0, 1fr))}}")
+        != -1;
+    assert doc.indexOf("@media (width >= 64rem){."
+        + chart
+        + "{grid-column:span 8 / span 8}}")
+        != -1;
+    assert doc.indexOf("."
+        + aside
+        + "{grid-column:1 / -1;grid-auto-rows:min-content;"
+        + "row-gap:calc(var(--spacing) * 3);")
+        != -1;
+    assert doc.indexOf("."
+        + footer
+        + "{grid-column:1 / -1;"
+        + "grid-auto-flow:column dense;place-items:center}")
+        != -1;
 }
 
 // THE POINT OF THE FRONT'S TWO LENGTH FAMILIES. The same token list under a
@@ -299,9 +393,12 @@ test "halving the spacing base moves the theme and not one byte of the rule" {
     assert stock == tight;
     val doc = await flushWith(withTheme(defaultOptions(), tightTheme()));
     assert doc.indexOf("--spacing:0.125rem") != -1;
-    assert doc.indexOf("." + stock + "{display:grid;"
+    assert doc.indexOf("."
+        + stock
+        + "{display:grid;"
         + "grid-template-columns:repeat(12, minmax(0, 1fr));"
-        + "gap:calc(var(--spacing) * 4);flex-basis:calc(var(--spacing) * 8)}") != -1;
+        + "gap:calc(var(--spacing) * 4);flex-basis:calc(var(--spacing) * 8)}")
+        != -1;
 }
 
 // Every token in this example references the theme or emits an integer. The

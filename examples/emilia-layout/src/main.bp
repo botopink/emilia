@@ -42,10 +42,16 @@ fn bareOptions() -> Options {
 
 pub fn displayValues() -> Token[] {
     val out: Token[] = [
-        .Layout.Block, .Layout.InlineBlock, .Layout.Inline,
-        .Layout.Flex, .Layout.InlineFlex,
-        .Layout.Grid, .Layout.InlineGrid,
-        .Layout.Contents, .Layout.FlowRoot, .Layout.ListItem,
+        .Layout.Block,
+        .Layout.InlineBlock,
+        .Layout.Inline,
+        .Layout.Flex,
+        .Layout.InlineFlex,
+        .Layout.Grid,
+        .Layout.InlineGrid,
+        .Layout.Contents,
+        .Layout.FlowRoot,
+        .Layout.ListItem,
         .Layout.Hidden,
     ];
     return out;
@@ -61,9 +67,15 @@ pub fn displayValues() -> Token[] {
 
 pub fn insetDirections() -> Token[] {
     val out: Token[] = [
-        .Layout.Inset.All.0, .Layout.Inset.X.2, .Layout.Inset.Y.4,
-        .Layout.Inset.T.1, .Layout.Inset.R.2, .Layout.Inset.B.3, .Layout.Inset.L.4,
-        .Layout.Inset.S.5, .Layout.Inset.E.5,
+        .Layout.Inset.All.0,
+        .Layout.Inset.X.2,
+        .Layout.Inset.Y.4,
+        .Layout.Inset.T.1,
+        .Layout.Inset.R.2,
+        .Layout.Inset.B.3,
+        .Layout.Inset.L.4,
+        .Layout.Inset.S.5,
+        .Layout.Inset.E.5,
     ];
     return out;
 }
@@ -215,29 +227,38 @@ fn main() -> @Task<void> {
 test "the eleven display values, with the six that predate front 36 first" {
     val cls = emilia(displayValues());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{display:block;display:inline-block;display:inline;"
+    assert doc.indexOf("."
+        + cls
+        + "{display:block;display:inline-block;display:inline;"
         + "display:flex;display:inline-flex;display:grid;display:inline-grid;"
-        + "display:contents;display:flow-root;display:list-item;display:none}") != -1;
+        + "display:contents;display:flow-root;display:list-item;display:none}")
+        != -1;
 }
 
 test "an axis inset is two declarations, because CSS has no `inset-x`" {
     val cls = emilia(insetDirections());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{inset:0;"
+    assert doc.indexOf("."
+        + cls
+        + "{inset:0;"
         + "left:calc(var(--spacing) * 2);right:calc(var(--spacing) * 2);"
         + "top:calc(var(--spacing) * 4);bottom:calc(var(--spacing) * 4);"
         + "top:calc(var(--spacing) * 1);right:calc(var(--spacing) * 2);"
         + "bottom:calc(var(--spacing) * 3);left:calc(var(--spacing) * 4);"
         + "inset-inline-start:calc(var(--spacing) * 5);"
-        + "inset-inline-end:calc(var(--spacing) * 5)}") != -1;
+        + "inset-inline-end:calc(var(--spacing) * 5)}")
+        != -1;
 }
 
 test "the four shapes of an inset leaf — fraction, keyword, negative, half step" {
     val cls = emilia(insetShapes());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{top:calc(1 / 2 * 100%);right:100%;bottom:auto;"
+    assert doc.indexOf("."
+        + cls
+        + "{top:calc(1 / 2 * 100%);right:100%;bottom:auto;"
         + "left:calc(var(--spacing) * -4);"
-        + "inset-inline-start:calc(var(--spacing) * 0.5)}") != -1;
+        + "inset-inline-start:calc(var(--spacing) * 0.5)}")
+        != -1;
 }
 
 // The inset ladder IS the padding ladder — one function, two properties — so
@@ -248,14 +269,18 @@ test "`.Layout.Inset.T.4` and `.Pad.T.4` differ only in the property name" {
     val padCls = emilia([.Pad.T.4]);
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + insetCls + "{top:calc(var(--spacing) * 4)}") != -1;
-    assert doc.indexOf("." + padCls + "{padding-top:calc(var(--spacing) * 4)}") != -1;
+    assert doc.indexOf("." + padCls + "{padding-top:calc(var(--spacing) * 4)}")
+        != -1;
 }
 
 test "overflow is three properties, not one property and an axis flag" {
     val cls = emilia(scrollBox());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{overflow-y:auto;overflow-x:hidden;"
-        + "overscroll-behavior:contain}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{overflow-y:auto;overflow-x:hidden;"
+        + "overscroll-behavior:contain}")
+        != -1;
 }
 
 // Two name-versus-value traps in one rule: `invisible` is the utility and
@@ -265,9 +290,12 @@ test "overflow is three properties, not one property and an axis flag" {
 test "the utility name is not the CSS value, twice in one rule" {
     val cls = emilia(flowValues());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{visibility:hidden;isolation:isolate;"
+    assert doc.indexOf("."
+        + cls
+        + "{visibility:hidden;isolation:isolate;"
         + "float:inline-start;clear:both;box-sizing:border-box;"
-        + "box-decoration-break:clone}") != -1;
+        + "box-decoration-break:clone}")
+        != -1;
     assert doc.indexOf("visibility:invisible") == -1;
     assert doc.indexOf("float:start") == -1;
 }
@@ -275,39 +303,60 @@ test "the utility name is not the CSS value, twice in one rule" {
 test "a column count is an integer; a column width is the theme's container" {
     val cls = emilia(columnLadder());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{columns:2;columns:var(--container-md);columns:auto;"
-        + "break-inside:avoid-column;break-after:page}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{columns:2;columns:var(--container-md);columns:auto;"
+        + "break-inside:avoid-column;break-after:page}")
+        != -1;
 }
 
 test "the media card clips and isolates; its image is cropped, not squashed" {
     val cardCls = mediaCard();
     val imageCls = mediaImage();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cardCls + "{overflow:hidden;isolation:isolate;"
-        + "border-radius:var(--radius-lg)}") != -1;
-    assert doc.indexOf("." + imageCls + "{aspect-ratio:16 / 9;object-fit:cover;"
-        + "object-position:center;width:100%}") != -1;
+    assert doc.indexOf("."
+        + cardCls
+        + "{overflow:hidden;isolation:isolate;"
+        + "border-radius:var(--radius-lg)}")
+        != -1;
+    assert doc.indexOf("."
+        + imageCls
+        + "{aspect-ratio:16 / 9;object-fit:cover;"
+        + "object-position:center;width:100%}")
+        != -1;
 }
 
 test "the sticky header stacks over a panel that scrolls on one axis" {
     val headerCls = stickyHeader();
     val panelCls = scrollPanel();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + headerCls + "{position:sticky;top:0;z-index:50;"
-        + "background:#ffffff}") != -1;
-    assert doc.indexOf("." + panelCls + "{overflow-y:auto;overscroll-behavior:contain;"
-        + "max-height:100vh}") != -1;
+    assert doc.indexOf("."
+        + headerCls
+        + "{position:sticky;top:0;z-index:50;"
+        + "background:#ffffff}")
+        != -1;
+    assert doc.indexOf("."
+        + panelCls
+        + "{overflow-y:auto;overscroll-behavior:contain;"
+        + "max-height:100vh}")
+        != -1;
 }
 
 test "the badge hangs off the corner on a negative inset" {
     val cardCls = relativeCard();
     val badgeCls = pinnedBadge();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cardCls + "{position:relative;"
-        + "padding:calc(var(--spacing) * 4)}") != -1;
-    assert doc.indexOf("." + badgeCls + "{position:absolute;"
+    assert doc.indexOf("."
+        + cardCls
+        + "{position:relative;"
+        + "padding:calc(var(--spacing) * 4)}")
+        != -1;
+    assert doc.indexOf("."
+        + badgeCls
+        + "{position:absolute;"
         + "top:calc(var(--spacing) * -2);right:calc(var(--spacing) * -2);"
-        + "z-index:10}") != -1;
+        + "z-index:10}")
+        != -1;
 }
 
 // THE POINT OF THE FRONT. The same token list under a theme whose `--spacing`
@@ -321,8 +370,11 @@ test "halving the spacing base moves the theme and not one byte of the rule" {
     assert stock == tight;
     val doc = await flushWith(withTheme(defaultOptions(), tightTheme()));
     assert doc.indexOf("--spacing:0.125rem") != -1;
-    assert doc.indexOf("." + stock + "{position:absolute;top:calc(var(--spacing) * 4);"
-        + "z-index:50}") != -1;
+    assert doc.indexOf("."
+        + stock
+        + "{position:absolute;top:calc(var(--spacing) * 4);"
+        + "z-index:50}")
+        != -1;
 }
 
 // EVERY token in this document references the theme, this front's and the one

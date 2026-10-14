@@ -1,4 +1,4 @@
-import { Token, styleRule, decodeSheet, declarationsOf, defaultTheme, rawRotate, rawTranslate } from "emilia";
+import {Token, styleRule, decodeSheet, declarationsOf, defaultTheme, rawRotate, rawTranslate} from "emilia";
 
 fn show(name: string, tokens: Token[]) {
     val sheet = decodeSheet(styleRule(tokens, defaultTheme())._1);

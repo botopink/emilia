@@ -184,10 +184,14 @@ test "a size token is TWO declarations — the pair emilia used to drop" {
     val cls = scale();
     val big = newSizes();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls
-        + "{font-size:var(--text-7xl);line-height:var(--text-7xl--line-height)}") != -1;
-    assert doc.indexOf("." + big
-        + "{font-size:var(--text-9xl);line-height:var(--text-9xl--line-height)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{font-size:var(--text-7xl);line-height:var(--text-7xl--line-height)}")
+        != -1;
+    assert doc.indexOf("."
+        + big
+        + "{font-size:var(--text-9xl);line-height:var(--text-9xl--line-height)}")
+        != -1;
 }
 
 test "the four weights the ladder was missing" {
@@ -202,8 +206,10 @@ test "antialiased is two vendor properties, and not-italic is the value normal" 
     val a = smoothing();
     val b = notItalic();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a
-        + "{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}")
+        != -1;
     assert doc.indexOf("." + b + "{font-style:normal}") != -1;
     assert doc.indexOf("not-italic") == -1;
 }
@@ -213,8 +219,11 @@ test "font-stretch and the figure set a price table wants" {
     val b = figures();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + a + "{font-stretch:semi-condensed}") != -1;
-    assert doc.indexOf("." + b + "{font-family:var(--font-mono);"
-        + "font-variant-numeric:tabular-nums;font-variant-numeric:slashed-zero}") != -1;
+    assert doc.indexOf("."
+        + b
+        + "{font-family:var(--font-mono);"
+        + "font-variant-numeric:tabular-nums;font-variant-numeric:slashed-zero}")
+        != -1;
 }
 
 test "tracking and leading reference the theme; leading-none is the exception" {
@@ -222,8 +231,10 @@ test "tracking and leading reference the theme; leading-none is the exception" {
     val b = leading();
     val c = leadingNone();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a
-        + "{letter-spacing:var(--tracking-widest);text-transform:uppercase}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{letter-spacing:var(--tracking-widest);text-transform:uppercase}")
+        != -1;
     assert doc.indexOf("." + b + "{line-height:var(--leading-loose)}") != -1;
     assert doc.indexOf("." + c + "{line-height:1}") != -1;
 }
@@ -232,18 +243,26 @@ test "line-clamp is four declarations, and line-clamp-none undoes all four" {
     val a = clamped();
     val b = unclamped();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{overflow:hidden;display:-webkit-box;"
-        + "-webkit-box-orient:vertical;-webkit-line-clamp:3}") != -1;
-    assert doc.indexOf("." + b + "{overflow:visible;display:block;"
-        + "-webkit-box-orient:horizontal;-webkit-line-clamp:none}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{overflow:hidden;display:-webkit-box;"
+        + "-webkit-box-orient:vertical;-webkit-line-clamp:3}")
+        != -1;
+    assert doc.indexOf("."
+        + b
+        + "{overflow:visible;display:block;"
+        + "-webkit-box-orient:horizontal;-webkit-line-clamp:none}")
+        != -1;
 }
 
 test "truncate is three declarations from one token" {
     val a = truncated();
     val b = wrapping();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a
-        + "{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}") != -1;
+    assert doc.indexOf("."
+        + a
+        + "{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}")
+        != -1;
     assert doc.indexOf("." + b + "{text-wrap:balance}") != -1;
 }
 
@@ -251,14 +270,20 @@ test "end to end — an article header over a clamped excerpt" {
     val head = articleHeader();
     val body = articleExcerpt();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + head + "{font-family:var(--font-sans);"
+    assert doc.indexOf("."
+        + head
+        + "{font-family:var(--font-sans);"
         + "font-size:var(--text-4xl);line-height:var(--text-4xl--line-height);"
         + "font-weight:800;letter-spacing:var(--tracking-tight);text-wrap:balance;"
-        + "-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}") != -1;
-    assert doc.indexOf("." + body + "{font-family:var(--font-serif);"
+        + "-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}")
+        != -1;
+    assert doc.indexOf("."
+        + body
+        + "{font-family:var(--font-serif);"
         + "font-size:var(--text-lg);line-height:var(--text-lg--line-height);"
         + "line-height:var(--leading-relaxed);overflow:hidden;display:-webkit-box;"
-        + "-webkit-box-orient:vertical;-webkit-line-clamp:3}") != -1;
+        + "-webkit-box-orient:vertical;-webkit-line-clamp:3}")
+        != -1;
 }
 
 // ── the front's argument, asserted from OUTSIDE the library ──────────────────

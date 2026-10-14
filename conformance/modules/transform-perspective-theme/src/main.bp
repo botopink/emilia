@@ -1,4 +1,4 @@
-import { defaultTheme, extendTheme, transformEntries, themeValue } from "emilia";
+import {defaultTheme, extendTheme, transformEntries, themeValue} from "emilia";
 
 pub fn main() {
     val th = extendTheme(defaultTheme(), transformEntries());

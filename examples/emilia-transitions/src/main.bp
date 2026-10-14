@@ -291,11 +291,14 @@ pub fn main() -> void {
 test "a preset is three declarations from one token, and the list is byte-exact" {
     val cls = everythingThatCanTransition();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{transition-property:color, background-color, "
+    assert doc.indexOf("."
+        + cls
+        + "{transition-property:color, background-color, "
         + "border-color, text-decoration-color, fill, stroke, opacity, box-shadow, "
         + "transform, filter, backdrop-filter;"
         + "transition-timing-function:var(--ease-out);"
-        + "transition-duration:150ms}") != -1;
+        + "transition-duration:150ms}")
+        != -1;
     assert doc.indexOf("color,background-color") == -1;
 }
 
@@ -303,7 +306,9 @@ test "the five narrow presets are five rules, each with the same tail" {
     val cls = theNarrowPresets();
     val none = noTransition();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{transition-property:all;"
+    assert doc.indexOf("."
+        + cls
+        + "{transition-property:all;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transition-property:color, background-color, border-color, "
         + "text-decoration-color, fill, stroke;"
@@ -313,7 +318,8 @@ test "the five narrow presets are five rules, each with the same tail" {
         + "transition-property:box-shadow;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transition-property:transform;"
-        + "transition-timing-function:var(--ease-out);transition-duration:150ms}") != -1;
+        + "transition-timing-function:var(--ease-out);transition-duration:150ms}")
+        != -1;
     // `transition-none` is ONE declaration and carries none of the tail
     assert doc.indexOf("." + none + "{transition-property:none}") != -1;
 }
@@ -335,13 +341,19 @@ test "a preset then its overrides — both declarations, the later winning" {
     val a = slowAndLinear();
     val b = slowAndLinearReversed();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{transition-property:all;"
+    assert doc.indexOf("."
+        + a
+        + "{transition-property:all;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
-        + "transition-duration:700ms;transition-timing-function:linear}") != -1;
-    assert doc.indexOf("." + b + "{transition-timing-function:linear;"
+        + "transition-duration:700ms;transition-timing-function:linear}")
+        != -1;
+    assert doc.indexOf("."
+        + b
+        + "{transition-timing-function:linear;"
         + "transition-duration:700ms;transition-property:all;"
         + "transition-timing-function:var(--ease-out);"
-        + "transition-duration:150ms}") != -1;
+        + "transition-duration:150ms}")
+        != -1;
     assert a != b;
 }
 
@@ -351,20 +363,29 @@ test "the two ms ladders — the delay is a third declaration, and zero keeps it
     val a = staggeredReveal();
     val z = zeroSteps();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + a + "{transition-property:opacity;"
+    assert doc.indexOf("."
+        + a
+        + "{transition-property:opacity;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
-        + "transition-duration:300ms;transition-delay:150ms}") != -1;
-    assert doc.indexOf("." + z + "{transition-duration:0ms;transition-delay:0ms}") != -1;
+        + "transition-duration:300ms;transition-delay:150ms}")
+        != -1;
+    assert doc.indexOf("."
+        + z
+        + "{transition-duration:0ms;transition-delay:0ms}")
+        != -1;
     assert doc.indexOf("transition-duration:0}") == -1;
 }
 
 test "the four easings — one CSS keyword and three theme references" {
     val cls = theFourEasings();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{transition-timing-function:linear;"
+    assert doc.indexOf("."
+        + cls
+        + "{transition-timing-function:linear;"
         + "transition-timing-function:var(--ease-in);"
         + "transition-timing-function:var(--ease-out);"
-        + "transition-timing-function:var(--ease-in-out)}") != -1;
+        + "transition-timing-function:var(--ease-in-out)}")
+        != -1;
     // upstream has no `--ease-linear`, and this library does not invent one
     assert doc.indexOf("var(--ease-linear)") == -1;
 }
@@ -383,7 +404,8 @@ test "a project's easing moves the theme layer and not one rule" {
     // and the value IS reachable — it lives in the theme, which is where it
     // belongs, and this is the control that shows the assertion above is not
     // vacuous
-    assert themeValue(easedTheme(), "--ease-in-out") == "cubic-bezier(0.4, 0, 0.2, 1)";
+    assert themeValue(easedTheme(), "--ease-in-out")
+        == "cubic-bezier(0.4, 0, 0.2, 1)";
     assert themeValue(defaultTheme(), "--ease-in-out") == "";
 }
 
@@ -417,7 +439,8 @@ test "the other three built-ins, each with its own block" {
     assert doc.indexOf("." + b + "{animation:var(--animate-ping)}") != -1;
     assert doc.indexOf("." + c + "{animation:var(--animate-bounce)}") != -1;
     assert doc.indexOf("@keyframes pulse{50%{opacity:0.5}}") != -1;
-    assert doc.indexOf("@keyframes ping{75%,100%{transform:scale(2);opacity:0}}") != -1;
+    assert doc.indexOf("@keyframes ping{75%,100%{transform:scale(2);opacity:0}}")
+        != -1;
     assert doc.indexOf("@keyframes bounce{0%,100%{") != -1;
     // `animate-none` names no keyframes, so it hoists none
     assert doc.indexOf("." + n + "{animation:none}") != -1;
@@ -432,9 +455,12 @@ test "a custom animation names keyframes this library does not own, and hoists n
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + a + "{animation:fade 300ms ease-out}") != -1;
     assert doc.indexOf("@keyframes fade") == -1;
-    assert doc.indexOf("." + b + "{transition-property:width;"
+    assert doc.indexOf("."
+        + b
+        + "{transition-property:width;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
-        + "transition-duration:200ms}") != -1;
+        + "transition-duration:200ms}")
+        != -1;
 }
 
 // END TO END — the submit button, and the hover the transition exists for.
@@ -444,7 +470,9 @@ test "a custom animation names keyframes this library does not own, and hoists n
 test "end to end — a submit button whose colours move over 200ms on hover" {
     val cls = submitButton();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{background-color:var(--color-indigo-600);"
+    assert doc.indexOf("."
+        + cls
+        + "{background-color:var(--color-indigo-600);"
         + "padding-left:calc(var(--spacing) * 4);"
         + "padding-right:calc(var(--spacing) * 4);"
         + "padding-top:calc(var(--spacing) * 2);"
@@ -454,16 +482,21 @@ test "end to end — a submit button whose colours move over 200ms on hover" {
         + "text-decoration-color, fill, stroke;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
         + "transition-duration:200ms;"
-        + "transition-timing-function:var(--ease-out)}") != -1;
-    assert doc.indexOf("@media (hover: hover){." + cls
-        + ":hover{background-color:var(--color-indigo-700)}}") != -1;
+        + "transition-timing-function:var(--ease-out)}")
+        != -1;
+    assert doc.indexOf("@media (hover: hover){."
+        + cls
+        + ":hover{background-color:var(--color-indigo-700)}}")
+        != -1;
 }
 
 test "end to end — the same button in flight, dimmed, with a spinner beside it" {
     val b = submitButtonInFlight();
     val s = submitSpinner();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + b + "{background-color:var(--color-indigo-600);"
+    assert doc.indexOf("."
+        + b
+        + "{background-color:var(--color-indigo-600);"
         + "padding-left:calc(var(--spacing) * 4);"
         + "padding-right:calc(var(--spacing) * 4);"
         + "padding-top:calc(var(--spacing) * 2);"
@@ -472,10 +505,14 @@ test "end to end — the same button in flight, dimmed, with a spinner beside it
         + "transition-property:color, background-color, border-color, "
         + "text-decoration-color, fill, stroke;"
         + "transition-timing-function:var(--ease-out);transition-duration:150ms;"
-        + "transition-duration:200ms;opacity:60%}") != -1;
-    assert doc.indexOf("." + s + "{animation:var(--animate-spin);"
+        + "transition-duration:200ms;opacity:60%}")
+        != -1;
+    assert doc.indexOf("."
+        + s
+        + "{animation:var(--animate-spin);"
         + "width:calc(var(--spacing) * 4);"
-        + "height:calc(var(--spacing) * 4)}") != -1;
+        + "height:calc(var(--spacing) * 4)}")
+        != -1;
     assert doc.endsWith("@keyframes spin{to{transform:rotate(360deg)}}</style>");
 }
 
@@ -504,5 +541,6 @@ test "no token in this example resolves a timing function or an animation" {
     // than banning the string outright
     val _g = bouncingArrow();
     val doc2 = await flushWith(bareOptions());
-    assert doc2.indexOf("animation-timing-function:cubic-bezier(0.8,0,1,1)") != -1;
+    assert doc2.indexOf("animation-timing-function:cubic-bezier(0.8,0,1,1)")
+        != -1;
 }

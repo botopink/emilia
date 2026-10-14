@@ -90,7 +90,8 @@ test "overriding a variable replaces it rather than appending a second one" {
 test "an imported theme composes with the default, and both stay reachable" {
     val composed = extendTheme(defaultTheme(), vendorEntries());
     assert themeValue(composed, "--radius-pill") == "9999px";
-    assert themeValue(composed, "--shadow-card") == "0 1px 3px 0 rgb(0 0 0 / 0.1)";
+    assert themeValue(composed, "--shadow-card")
+        == "0 1px 3px 0 rgb(0 0 0 / 0.1)";
     assert themeValue(composed, "--radius-lg") == "0.5rem";
     assert themeValue(composed, "--spacing") == "0.25rem";
     assert themeValue(composed, "--animate-spin") == "spin 1s linear infinite";
@@ -129,8 +130,12 @@ test "the flushed document carries the brand theme, in the theme layer" {
 test "the theme layer precedes the utilities layer, which is what lets a project beat a utility" {
     val cls = card();
     val styles = await flushWith(withTheme(defaultOptions(), brandTheme()));
-    assert styles.indexOf("@layer theme{") < styles.indexOf("@layer utilities{");
-    assert styles.indexOf("@layer utilities{." + cls + "{background:#ffffff;font-weight:bold}}") != -1;
+    assert styles.indexOf("@layer theme{")
+        < styles.indexOf("@layer utilities{");
+    assert styles.indexOf("@layer utilities{."
+        + cls
+        + "{background:#ffffff;font-weight:bold}}")
+        != -1;
 }
 
 test "turning the layers off emits the same rules and no @layer token" {
@@ -139,7 +144,8 @@ test "turning the layers off emits the same rules and no @layer token" {
     val styles = await flushWith(o);
     assert styles.indexOf("@layer") == -1;
     assert styles.startsWith("<style>:root{--spacing:4px;");
-    assert styles.indexOf("." + cls + "{background:#ffffff;font-weight:bold}") != -1;
+    assert styles.indexOf("." + cls + "{background:#ffffff;font-weight:bold}")
+        != -1;
 }
 
 test "a prefix reaches the class and not the theme's literal selector" {
@@ -147,5 +153,8 @@ test "a prefix reaches the class and not the theme's literal selector" {
     val o = withPrefix(withTheme(defaultOptions(), brandTheme()), "tw_");
     val styles = await flushWith(o);
     assert styles.indexOf(":root{--spacing:4px;") != -1;
-    assert styles.indexOf(".tw_" + cls + "{background:#ffffff;font-weight:bold}") != -1;
+    assert styles.indexOf(".tw_"
+        + cls
+        + "{background:#ffffff;font-weight:bold}")
+        != -1;
 }

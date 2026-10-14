@@ -1,4 +1,4 @@
-import { Theme, ThemeEntry, Ns, defaultTheme, extendTheme, clearNamespace, namespace, themeValue } from "emilia";
+import {Theme, ThemeEntry, Ns, defaultTheme, extendTheme, clearNamespace, namespace, themeValue} from "emilia";
 
 fn brandTheme() -> Theme {
     val stripped = clearNamespace(defaultTheme(), Ns.Color);

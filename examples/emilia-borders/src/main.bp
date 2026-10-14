@@ -161,17 +161,26 @@ test "a side is one declaration and an axis is two" {
     val sideCls = sides();
     val axisCls = axes();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + sideCls + "{border-top-width:4px;border-right-width:1px;"
-        + "border-bottom-width:0;border-left-width:2px}") != -1;
-    assert doc.indexOf("." + axisCls + "{border-left-width:2px;border-right-width:2px;"
-        + "border-top-width:8px;border-bottom-width:8px}") != -1;
+    assert doc.indexOf("."
+        + sideCls
+        + "{border-top-width:4px;border-right-width:1px;"
+        + "border-bottom-width:0;border-left-width:2px}")
+        != -1;
+    assert doc.indexOf("."
+        + axisCls
+        + "{border-left-width:2px;border-right-width:2px;"
+        + "border-top-width:8px;border-bottom-width:8px}")
+        != -1;
 }
 
 test "the logical pair is inline-start and inline-end, not left and right" {
     val cls = logical();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{border-inline-start-width:4px;"
-        + "border-inline-end-width:1px}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{border-inline-start-width:4px;"
+        + "border-inline-end-width:1px}")
+        != -1;
     assert doc.indexOf("border-left-width") == -1;
     assert doc.indexOf("border-right-width") == -1;
 }
@@ -185,8 +194,11 @@ test "a border style is a token now, and it crosses the package boundary" {
 test "the palette reaches border-color, shade included" {
     val cls = palette();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{border-width:1px;"
-        + "border-color:var(--color-slate-200)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{border-width:1px;"
+        + "border-color:var(--color-slate-200)}")
+        != -1;
 }
 
 // THE DEFECT THIS FRONT CLOSED, asserted from OUTSIDE the library. Three
@@ -213,16 +225,23 @@ test "a side radius is two corners and a corner radius is one" {
     val sideCls = sideRadius();
     val cornerCls = cornerRadius();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + sideCls + "{border-top-left-radius:var(--radius-lg);"
-        + "border-top-right-radius:var(--radius-lg)}") != -1;
-    assert doc.indexOf("." + cornerCls + "{border-top-left-radius:9999px}") != -1;
+    assert doc.indexOf("."
+        + sideCls
+        + "{border-top-left-radius:var(--radius-lg);"
+        + "border-top-right-radius:var(--radius-lg)}")
+        != -1;
+    assert doc.indexOf("." + cornerCls + "{border-top-left-radius:9999px}")
+        != -1;
 }
 
 test "the logical corners follow the writing direction" {
     val cls = logicalRadius();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "{border-start-start-radius:var(--radius-md);"
-        + "border-end-end-radius:var(--radius-md)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + "{border-start-start-radius:var(--radius-md);"
+        + "border-end-end-radius:var(--radius-md)}")
+        != -1;
 }
 
 test "end to end — a card with a rounded top, a square bottom and a dashed rule" {
@@ -230,16 +249,25 @@ test "end to end — a card with a rounded top, a square bottom and a dashed rul
     val rule = cardRule();
     val foot = cardFoot();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + head + "{border-width:1px;"
+    assert doc.indexOf("."
+        + head
+        + "{border-width:1px;"
         + "border-color:var(--color-slate-300);"
         + "border-top-left-radius:var(--radius-lg);"
         + "border-top-right-radius:var(--radius-lg);"
-        + "border-style:solid}") != -1;
-    assert doc.indexOf("." + rule + "{border-bottom-width:2px;border-style:dashed;"
-        + "border-color:var(--color-slate-200)}") != -1;
-    assert doc.indexOf("." + foot + "{border-width:1px;"
+        + "border-style:solid}")
+        != -1;
+    assert doc.indexOf("."
+        + rule
+        + "{border-bottom-width:2px;border-style:dashed;"
+        + "border-color:var(--color-slate-200)}")
+        != -1;
+    assert doc.indexOf("."
+        + foot
+        + "{border-width:1px;"
         + "border-color:var(--color-slate-300);"
-        + "border-bottom-right-radius:0;border-bottom-left-radius:0}") != -1;
+        + "border-bottom-right-radius:0;border-bottom-left-radius:0}")
+        != -1;
 }
 
 // Nothing in this document resolves a colour or a length. The two literals it

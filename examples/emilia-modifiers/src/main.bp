@@ -192,8 +192,10 @@ fn main() -> @Task<void> {
 test "a modifier is a SIBLING rule — the bar's dark surface leaves its class" {
     val cls = nav();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("@media (prefers-color-scheme: dark){." + cls
-        + "{background-color:var(--color-slate-900);color:var(--color-white)}}") != -1;
+    assert doc.indexOf("@media (prefers-color-scheme: dark){."
+        + cls
+        + "{background-color:var(--color-slate-900);color:var(--color-white)}}")
+        != -1;
     // The pre-front-56 nested form would put the at-rule inside the class body.
     assert doc.indexOf(";@media") == -1;
 }
@@ -201,8 +203,12 @@ test "a modifier is a SIBLING rule — the bar's dark surface leaves its class" 
 test "the bar addresses both ends of the ladder, in rem and in both directions" {
     val cls = nav();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("@media (width >= 48rem){." + cls + "{flex-direction:row") != -1;
-    assert doc.indexOf("@media (width < 40rem){." + cls + "{padding-left") != -1;
+    assert doc.indexOf("@media (width >= 48rem){."
+        + cls
+        + "{flex-direction:row")
+        != -1;
+    assert doc.indexOf("@media (width < 40rem){." + cls + "{padding-left")
+        != -1;
     assert doc.indexOf("min-width") == -1;
     assert doc.indexOf("768px") == -1;
 }
@@ -216,8 +222,14 @@ test "`print:` is the modifier that has nothing to do with a screen" {
 test "a link reads the BAR's hover through .group, and its own through :hover" {
     val cls = navLink();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + ":is(:where(.group):hover *){color:var(--color-black)}") != -1;
-    assert doc.indexOf("@media (hover: hover){." + cls + ":hover{text-decoration-line:underline}}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":is(:where(.group):hover *){color:var(--color-black)}")
+        != -1;
+    assert doc.indexOf("@media (hover: hover){."
+        + cls
+        + ":hover{text-decoration-line:underline}}")
+        != -1;
 }
 
 test "the two ends of the link list are trimmed structurally, not by an index" {
@@ -230,22 +242,27 @@ test "the two ends of the link list are trimmed structurally, not by an index" {
 test "`marker` reaches the element's own marker and its descendants', as upstream does" {
     val cls = navLink();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + " *::marker{color:var(--color-gray-500)}") != -1;
-    assert doc.indexOf("." + cls + "::marker{color:var(--color-gray-500)}") != -1;
+    assert doc.indexOf("." + cls + " *::marker{color:var(--color-gray-500)}")
+        != -1;
+    assert doc.indexOf("." + cls + "::marker{color:var(--color-gray-500)}")
+        != -1;
     assert doc.indexOf("." + cls + " ::marker") == -1;
 }
 
 test "the input's four form states are four sibling rules of one class" {
     val cls = input();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + "::placeholder{color:var(--color-gray-500)}") != -1;
+    assert doc.indexOf("." + cls + "::placeholder{color:var(--color-gray-500)}")
+        != -1;
     assert doc.indexOf("." + cls + ":disabled{opacity:50%}") != -1;
     // The palette reference and not `border-color:red`: front 40 rewrote
     // `Border.Color` onto front 33's grid, so the shade this token always
     // carried finally reaches the output. What this test pins is the SELECTOR,
     // which is this front's.
-    assert doc.indexOf("." + cls
-        + ":invalid{border-color:var(--color-red-500)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":invalid{border-color:var(--color-red-500)}")
+        != -1;
     assert doc.indexOf("." + cls + ":required{border-width:2px}") != -1;
 }
 
@@ -253,15 +270,25 @@ test "the error message is shown by its SIBLING's state, with no script" {
     val cls = errorMessage();
     val doc = await flushWith(bareOptions());
     assert doc.indexOf("." + cls + "{display:none}") != -1;
-    assert doc.indexOf("." + cls + ":is(:where(.peer):invalid ~ *){display:block") != -1;
-    assert doc.indexOf("." + cls + "::before{color:var(--color-red-600)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":is(:where(.peer):invalid ~ *){display:block")
+        != -1;
+    assert doc.indexOf("." + cls + "::before{color:var(--color-red-600)}")
+        != -1;
 }
 
 test "the striped row — two structural rows, one indexed, and the flag" {
     val cls = row();
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + ":nth-child(odd){background-color:var(--color-gray-100)}") != -1;
-    assert doc.indexOf("." + cls + ":nth-child(even){background-color:var(--color-white)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":nth-child(odd){background-color:var(--color-gray-100)}")
+        != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":nth-child(even){background-color:var(--color-white)}")
+        != -1;
     assert doc.indexOf("." + cls + ":nth-child(3){font-weight:bold}") != -1;
     assert doc.indexOf("." + cls + "{display:block!important}") != -1;
 }
@@ -269,22 +296,29 @@ test "the striped row — two structural rows, one indexed, and the flag" {
 test "dark — the `Media` strategy, which is the stock theme's" {
     val cls = panelUnder(defaultTheme());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("@media (prefers-color-scheme: dark){." + cls
-        + "{background-color:var(--color-slate-900)}}") != -1;
+    assert doc.indexOf("@media (prefers-color-scheme: dark){."
+        + cls
+        + "{background-color:var(--color-slate-900)}}")
+        != -1;
 }
 
 test "dark — the `Class` strategy, same token list, no at-rule at all" {
     val cls = panelUnder(byClass());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls + ":where(.dark, .dark *){background-color:var(--color-slate-900)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":where(.dark, .dark *){background-color:var(--color-slate-900)}")
+        != -1;
     assert doc.indexOf("prefers-color-scheme") == -1;
 }
 
 test "dark — the `Attribute` strategy, same token list again" {
     val cls = panelUnder(byAttribute());
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("." + cls
-        + ":where([data-theme=dark], [data-theme=dark] *){background-color:var(--color-slate-900)}") != -1;
+    assert doc.indexOf("."
+        + cls
+        + ":where([data-theme=dark], [data-theme=dark] *){background-color:var(--color-slate-900)}")
+        != -1;
     assert doc.indexOf("prefers-color-scheme") == -1;
 }
 
@@ -304,8 +338,10 @@ test "a range is nesting — there is no MdMaxXl, and there does not need to be"
     val tokens: Token[] = [Token.Md(mid)];
     val cls = emilia(tokens);
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("@media (width >= 48rem){@media (width < 80rem){." + cls
-        + "{font-weight:bold}}}") != -1;
+    assert doc.indexOf("@media (width >= 48rem){@media (width < 80rem){."
+        + cls
+        + "{font-weight:bold}}}")
+        != -1;
 }
 
 test "a chain is nesting too, and the outer modifier is outermost" {
@@ -314,8 +350,10 @@ test "a chain is nesting too, and the outer modifier is outermost" {
     val tokens: Token[] = [Token.Dark(hover)];
     val cls = emilia(tokens);
     val doc = await flushWith(bareOptions());
-    assert doc.indexOf("@media (prefers-color-scheme: dark){@media (hover: hover){." + cls
-        + ":hover{font-weight:bold}}}") != -1;
+    assert doc.indexOf("@media (prefers-color-scheme: dark){@media (hover: hover){."
+        + cls
+        + ":hover{font-weight:bold}}}")
+        != -1;
 }
 
 test "every class this example builds is one class, whatever it reaches" {
