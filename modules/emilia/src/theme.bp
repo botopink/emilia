@@ -342,7 +342,7 @@ fn replaceNamed(entries: ThemeEntry[], e: ThemeEntry) -> ThemeEntry[] {
     return entries.map({ x ->
         val hit = x.name == e.name;
         val out = if (hit) e else x;
-        out;
+        out
     });
 }
 

@@ -588,7 +588,7 @@ pub fn classRules(s: Sheet) -> string {
         .map({ n ->
             coalesce(orderedClassRules(placedOfLayer(placed, n), classMark()))
                 .map({ p -> ruleText(classMark(), p.rule, false) })
-                .join("");
+                .join("")
         })
         .join("");
 }
